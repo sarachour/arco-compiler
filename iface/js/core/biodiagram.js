@@ -1,87 +1,169 @@
+var SVGUtil = function(){
+   this.createTextBox = function(s,c,text){
+      var view = {};
+      var padding = {x:8,y:5};
+      view.box = s.rect(0,0,0,0,10,10)
+         .attr('fill',c.fill)
+         .attr('stroke',c.stroke)
+         .attr('strokeWidth',3);
+
+      view.text = s.text(0,0,text)
+         .attr('font-size',"20px")
+         .attr('text-anchor',"start")
+         .attr('fill', c.text)
+         .attr('x', padding.x)
+
+      view.box
+         .attr('width', view.text.node.clientWidth+padding.x*2)
+         .attr('height', view.text.node.clientHeight+padding.y*2)
+
+      view.text
+         .attr('y', view.text.node.clientHeight)
+
+
+      view.all = s.group(view.box,view.text);
+      return view;
+   }
+}
+var svgUtil = new SVGUtil();
+
+
+var GeneElement = function(paper, parent, gene){
+   this.init = function(){
+      this.model = gene;
+      this.paper = paper;
+      this.view =  svgUtil.createTextBox(paper,{fill:"#2574A9", stroke:"#222222", text:"#ffffff"}, gene.name);
+      this.view.all
+         .data('info',this)
+         .click(function(){
+            console.log(this.data('info'));
+         });
+   }
+   this.get_view = function(){
+      return this.view.all;
+   }
+
+   this.init();
+}
+var LocusElement = function(paper, parent, locus){
+   this.init = function(){
+      this.model = locus;
+      this.parent = parent;
+      this.paper = paper;
+      this.gene = [];
+
+      this.p = {};
+      this.p.pad = 20; // space between genes
+      this.p.height = 10;
+
+      this.view = {};
+      this.view.gaps = paper.group();
+      this.view.genes = paper.group();
+      this.view.all = paper.group(this.view.gaps,this.view.genes);
+   }
+   this.get_view = function(){
+      return this.view.all;
+   }
+   this._update = function(){
+      var that = this;
+      var x = this.p.pad;
+      var h = 0;
+      var create_gap = function(x,y,l,r){
+         var gap = paper.rect(0,0,0,0,0,0)
+         .attr('fill','#444444')
+         .attr('width',that.p.pad)
+         .attr('height',that.p.height)
+         .data('left', l)
+         .data('right',r)
+         .click(function(){
+            console.log(this.data('left'), this.data('right'))
+         });
+
+         var mat = new Snap.Matrix();
+         mat.translate(x,y);
+         gap.transform(mat.toTransformString());
+         that.view.gaps.append(gap);
+
+      }
+      var last = null;
+      for(var i=0; i < this.gene.length; i++){
+         var v = this.gene[i].get_view();
+         var cw = v.getBBox().width;
+         var ch = v.getBBox().height;
+
+         var mat = new Snap.Matrix();
+         mat.translate(x,0);
+         v.transform(mat.toTransformString());
+         
+         create_gap(x-this.p.pad, ch/2-this.p.height/2, last,this.gene[i]);
+         
+         x += cw+this.p.pad;
+         if(ch > h) h = ch;
+         last = this.gene[i];
+      }
+      create_gap(x-this.p.pad, ch/2-this.p.height/2, last,null);
+   }
+   this.add_gene = function(gene_data, gene_after){
+      if(gene_after == undefined){
+         var ge = new GeneElement(this.paper, this, gene_data);
+         this.view.genes.append(ge.get_view());
+         this.gene.push(ge);
+      }
+      this._update();
+      return ge;
+   }
+   this.init();
+
+}
+var PathwayElement = function(paper, name){
+   this.init = function(){
+      this.paper = paper;
+      this.name = name;
+      this.loci = [];
+      this.view = {};
+      this.view.all = this.paper.group();
+   }
+   this.add_locus = function(locus_data){
+      var le = new LocusElement(this.paper, this, locus_data);
+      var mat = new Snap.Matrix();
+      var v = le.get_view();
+      
+      mat.translate(0,this.loci.length*150);
+      v.transform(mat.toTransformString());
+      this.view.all.append(v);
+      this.loci.push(le);
+      return le;
+   }
+   this.init();
+}
+
 var BioDiagram = function(id,model,w,h){
    this.init = function(){
       var that = this;
       this.model = model;
-      this.width  =w;
-      this.height = h;
+      this.p = {}
+      this.p.width  =w;
+      this.p.height = h;
       this.evt = new Observer();
-      this.instances = {};
-      this.div = $("#"+id);
-      jsPlumb.setContainer($(id));
 
-      jsPlumb.ready(function(){
-         console.log("ready");
-         that.root = jsPlumb.getInstance({
-            DragOptions: {cursor: 'pointer', zIndex:2000},
-            Container: id
-         })
-         that.evt.trigger('ready');
-         that._build();
-      })
-      $("#"+id).width(w).height(h);
-   }
-   this._build_locus = function(l){
-      console.log(l);
-      var lname = "locus."+l.name+".inst"+this._get_instance(l);
-      var locus = $("<div/>").attr('id',lname).addClass("locus");
-      var locus_cap = $("<div/>").addClass('locus-cap')
-                        .attr('id', lname+".start")
-                        .html(l.name);
-      var last = locus_cap;
+      this.paper = Snap("#"+id)
+         .attr('width',w)
+         .attr('height',h)
 
-      locus.append(locus_cap);
-      this.div.append(locus);
+      this.load();
+   }
 
-      for(var i=0; i < l.members.length; i++){
-         var gene_name = l.members[i];
-         var gene = this._build_gene(this.model.gene(gene_name));
-         gene.css('margin-left', "5em");
-         locus.append(gene);
-         jsPlumb.connect({
-            source: last.attr('id'),
-            target: gene.attr('id'),
-            connector: "Straight",
-            anchor: ["Continuous", {faces:["left","right"]}],
-            endpoint: ["Rectangle", {cssClass:"locus-cap",width:10, height:10}]
-         })
-         last = gene;
-      }
-      return locus;
-   }
-   this._get_instance = function(name, id){
-      if(!(name in this.instances)){
-         this.instances[name] = {count:0, id:id};
-      }
-      else this.instances[name]+=1;
-
-      return this.instances[name].count;
-   }
-   this._build_gene = function(g){
-      var inst_name = "gene."+g.name+".inst"+this._get_instance(g.name, g.id);
-      var gene = $("<div/>")
-         .attr('id',inst_name)
-         .html(g.name)
-         .addClass('gene')
-         .data("info",g)
-         .click(function(){
-            console.log($(this).data('info'));
-         });
-      return gene;
-   }
-   this._build_inhibitory = function(l){
-
-   }
-   this._build_excitatory = function(l){
-
-   }
-   this._build = function(){
+   this.load = function(){
       var d = this.model.get_data();
-      var genes = [];
+      var pathway = new PathwayElement(this.paper, d.name);
       for(locus in d.structure.loci){
-         var locus_data = d.structure.loci[locus];
-         var locus_view = this._build_locus(locus_data);
+         var loc = d.structure.loci[locus];
+         var locv = pathway.add_locus(loc);
+         for(var j=0; j < loc.members.length; j++){
+            locv.add_gene(this.model.gene(loc.members[j]));
+         }
+
       }
-      console.log(genes);
 
    }
 

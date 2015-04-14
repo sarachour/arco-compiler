@@ -6,16 +6,18 @@
   padding: 5px;
   padding-left: 15px;
   padding-right:15px;
-  
+
 }
 .gene {
   position: relative;
   display: inline-block;
-  background-color: 'blue';
-  color: 'white';
-  border-radius: 5px;
+  border-radius: 7px;
   border: 3px solid;
   padding: 5px;
   padding-left: 15px;
   padding-right:15px;
+}
+
+#diag {
+  height: 400px;
 }

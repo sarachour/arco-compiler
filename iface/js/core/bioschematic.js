@@ -13,10 +13,13 @@ var BioSchematic = function(){
          inhibit: {},
          excite: {}
       }
+      this.data.info = {
+
+      }
       this._id = 0;
       this.all = {};
 
-
+      this.info("Linearization Circuit");
 
       this.gene("Plux", 'promoter');
       this.gene('luxR', 'gene');
@@ -33,6 +36,12 @@ var BioSchematic = function(){
       this.add_to_locus('high copy plasmid', 'Plux');
       this.add_to_locus('high copy plasmid', 'mCherry');
 
+   }
+   this.info = function(name){
+      if(name != undefined){
+         this.data.info.name = name;
+      }
+      return this.data.info.name;
    }
    //genes have unique names
    this.gene = function(name, type){
