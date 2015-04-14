@@ -1,3 +1,5 @@
+
+/*create special nodes*/
 var SVGUtil = function(){
    this.createTextBox = function(s,c,text){
       var view = {};
@@ -24,6 +26,34 @@ var SVGUtil = function(){
       view.all = s.group(view.box,view.text);
       return view;
    }
+   this.createArrow = function(s,c,size, text){
+      var view = {};
+      var padding = {x:8,y:5};
+      view = this.createTextBox(s,{fill:c, stroke:c, text:"#eeeeee"},text);
+
+
+      var arrow = s.polygon([0,10,4,10,2,0,0,10])
+         .attr('fill', c)
+         .transform('r90');
+      var marker = arrow.marker(0,0,10,10,0,5);
+
+      var ch = view.all.node.getBBox().height;
+      var cw = view.all.node.getBBox().width;
+      console.log(ch,cw);
+      view.line1 = s.paper.line(0,0,0,-ch/2)
+         .attr('stroke',c)
+         .attr('strokeWidth', size);
+
+      view.line2 = s.paper.line(0,-ch/2,cw,-ch/2)
+         .attr('stroke',c)
+         .attr('strokeWidth', size)
+         .attr('markerEnd', marker)
+      
+      view.all.append(view.line1);
+      view.all.append(view.line2);
+
+      return view;
+   }
 }
 var svgUtil = new SVGUtil();
 
@@ -33,6 +63,7 @@ var GeneElement = function(paper, parent, gene){
       this.model = gene;
       this.paper = paper;
       this.parent = parent;
+      this.view = {};
       this.view =  svgUtil.createTextBox(paper,{fill:"#2574A9", stroke:"#222222", text:"#ffffff"}, gene.name);
       this.view.all
          .data('info',this)
@@ -41,7 +72,7 @@ var GeneElement = function(paper, parent, gene){
          });
    }
    this.get_view = function(){
-      return this.view.all;
+      return this.view;
    }
 
    this.init();
@@ -51,7 +82,12 @@ var PromoterElement = function(paper,parent,gene){
       this.model = gene;
       this.paper = paper;
       this.parent = parent;
+      this.view = svgUtil.createArrow(paper,"#444444", 5, gene.name);
    }
+   this.get_view = function(){
+      return this.view;
+   }
+   this.init();
 }
 var LocusElement = function(paper, parent, locus){
    this.init = function(){
@@ -73,7 +109,7 @@ var LocusElement = function(paper, parent, locus){
       this.view.all = paper.group(this.view.gaps,this.view.genes, this.view.name);
    }
    this.get_view = function(){
-      return this.view.all;
+      return this.view;
    }
    this._update = function(){
       var that = this;
@@ -99,20 +135,20 @@ var LocusElement = function(paper, parent, locus){
       var last = null;
       for(var i=0; i < this.gene.length; i++){
          var v = this.gene[i].get_view();
-         var cw = v.getBBox().width;
-         var ch = v.getBBox().height;
+         var cw = v.box.getBBox().width;
+         var ch = v.box.getBBox().height;
 
          var mat = new Snap.Matrix();
-         mat.translate(x,0);
-         v.transform(mat.toTransformString());
+         mat.translate(x,-ch/2);
+         v.all.transform(mat.toTransformString());
          
-         create_gap(x-this.p.pad, ch/2-this.p.height/2, last,this.gene[i]);
+         create_gap(x-this.p.pad, 0, last,this.gene[i]);
          
          x += cw+this.p.pad;
          if(ch > h) h = ch;
          last = this.gene[i];
       }
-      create_gap(x-this.p.pad, ch/2-this.p.height/2, last,null);
+      create_gap(x-this.p.pad, 0, last,null);
 
       var mat = new Snap.Matrix();
       mat.translate(0,h+10);
@@ -120,8 +156,11 @@ var LocusElement = function(paper, parent, locus){
    }
    this.add_gene = function(gene_data, gene_after){
       if(gene_after == undefined){
-         var ge = new GeneElement(this.paper, this, gene_data);
-         this.view.genes.append(ge.get_view());
+         if(gene_data.type == "gene")
+            var ge = new GeneElement(this.paper, this, gene_data);
+         else if(gene_data.type == "promoter")
+            var ge = new PromoterElement(this.paper, this, gene_data);
+         this.view.genes.append(ge.get_view().all);
          this.gene.push(ge);
       }
       this._update();
@@ -141,9 +180,9 @@ var PathwayElement = function(paper, name){
    this.add_locus = function(locus_data){
       var le = new LocusElement(this.paper, this, locus_data);
       var mat = new Snap.Matrix();
-      var v = le.get_view();
+      var v = le.get_view().all;
       
-      mat.translate(0,this.loci.length*150);
+      mat.translate(0,100+this.loci.length*150);
       v.transform(mat.toTransformString());
       this.view.all.append(v);
       this.loci.push(le);
