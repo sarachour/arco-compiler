@@ -113,8 +113,6 @@ var LocusElement = function(paper, parent, locus){
    }
    this._update = function(){
       var that = this;
-      var x = this.p.pad;
-      var h = 0;
       var create_gap = function(x,y,l,r){
          var gap = paper.rect(0,0,0,0,0,0)
          .attr('fill','#444444')
@@ -130,25 +128,36 @@ var LocusElement = function(paper, parent, locus){
          mat.translate(x,y);
          gap.transform(mat.toTransformString());
          that.view.gaps.append(gap);
-
+         return gap;
       }
+
+      var x = 0;
+      var h = 0;
       var last = null;
       for(var i=0; i < this.gene.length; i++){
          var v = this.gene[i].get_view();
          var cw = v.box.getBBox().width;
          var ch = v.box.getBBox().height;
 
+         if(last == null){
+            create_gap(x, 0, last,this.gene[i]).attr('width',this.p.pad*3);
+            x+= this.p.pad*3;
+         }
+         else{
+            create_gap(x, 0, last,this.gene[i]);
+            x += this.p.pad;
+         }
          var mat = new Snap.Matrix();
          mat.translate(x,-ch/2);
          v.all.transform(mat.toTransformString());
          
-         create_gap(x-this.p.pad, 0, last,this.gene[i]);
          
-         x += cw+this.p.pad;
+         x += cw;
          if(ch > h) h = ch;
          last = this.gene[i];
       }
-      create_gap(x-this.p.pad, 0, last,null);
+      //create last numb
+      create_gap(x, 0,last,null).attr('width',this.p.pad*3);
 
       var mat = new Snap.Matrix();
       mat.translate(0,h+10);
