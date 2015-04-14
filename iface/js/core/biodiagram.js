@@ -32,6 +32,7 @@ var GeneElement = function(paper, parent, gene){
    this.init = function(){
       this.model = gene;
       this.paper = paper;
+      this.parent = parent;
       this.view =  svgUtil.createTextBox(paper,{fill:"#2574A9", stroke:"#222222", text:"#ffffff"}, gene.name);
       this.view.all
          .data('info',this)
@@ -44,6 +45,13 @@ var GeneElement = function(paper, parent, gene){
    }
 
    this.init();
+}
+var PromoterElement = function(paper,parent,gene){
+   this.init = function(){
+      this.model = gene;
+      this.paper = paper;
+      this.parent = parent;
+   }
 }
 var LocusElement = function(paper, parent, locus){
    this.init = function(){
@@ -58,8 +66,11 @@ var LocusElement = function(paper, parent, locus){
 
       this.view = {};
       this.view.gaps = paper.group();
+      this.view.name = paper.text(0,0,locus.name)
+         .attr('alignment-baseline', 'text-before-edge')
+         .attr('font-size',20);
       this.view.genes = paper.group();
-      this.view.all = paper.group(this.view.gaps,this.view.genes);
+      this.view.all = paper.group(this.view.gaps,this.view.genes, this.view.name);
    }
    this.get_view = function(){
       return this.view.all;
@@ -102,6 +113,10 @@ var LocusElement = function(paper, parent, locus){
          last = this.gene[i];
       }
       create_gap(x-this.p.pad, ch/2-this.p.height/2, last,null);
+
+      var mat = new Snap.Matrix();
+      mat.translate(0,h+10);
+      this.view.name.transform(mat.toTransformString());
    }
    this.add_gene = function(gene_data, gene_after){
       if(gene_after == undefined){
