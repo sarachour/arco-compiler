@@ -22,8 +22,16 @@ var SVGUtil = function(){
       view.text
          .attr('y', view.text.node.clientHeight)
 
-
       view.all = s.group(view.box,view.text);
+
+      view.all.hover(
+         function(){ //hover in
+            view.box.attr('stroke',"#ee3333");
+         },
+         function(){ //hover out
+            view.box.attr('stroke',c.stroke);
+         })
+
       return view;
    }
    this.createArrow = function(s,c,size, text){
@@ -40,11 +48,11 @@ var SVGUtil = function(){
       var ch = view.all.node.getBBox().height;
       var cw = view.all.node.getBBox().width;
       console.log(ch,cw);
-      view.line1 = s.paper.line(0,0,0,-ch/2)
+      view.line1 = s.paper.line(0,ch/2,0,-ch)
          .attr('stroke',c)
          .attr('strokeWidth', size);
 
-      view.line2 = s.paper.line(0,-ch/2,cw,-ch/2)
+      view.line2 = s.paper.line(0,-ch,cw,-ch)
          .attr('stroke',c)
          .attr('strokeWidth', size)
          .attr('markerEnd', marker)
@@ -99,6 +107,7 @@ var LocusElement = function(paper, parent, locus){
       this.p = {};
       this.p.pad = 20; // space between genes
       this.p.height = 10;
+      this.p.cap = 4;
 
       this.view = {};
       this.view.gaps = paper.group();
@@ -122,6 +131,12 @@ var LocusElement = function(paper, parent, locus){
          .data('right',r)
          .click(function(){
             console.log(this.data('left'), this.data('right'))
+         })
+         .hover(function(){
+            this.attr('fill',"#ee4444")
+         },
+         function(){
+            this.attr('fill',"#444444");
          });
 
          var mat = new Snap.Matrix();
@@ -140,8 +155,8 @@ var LocusElement = function(paper, parent, locus){
          var ch = v.box.getBBox().height;
 
          if(last == null){
-            create_gap(x, 0, last,this.gene[i]).attr('width',this.p.pad*3);
-            x+= this.p.pad*3;
+            create_gap(x, 0, last,this.gene[i]).attr('width',this.p.pad*this.p.cap);
+            x+= this.p.pad*this.p.cap;
          }
          else{
             create_gap(x, 0, last,this.gene[i]);
@@ -151,13 +166,13 @@ var LocusElement = function(paper, parent, locus){
          mat.translate(x,-ch/2);
          v.all.transform(mat.toTransformString());
          
-         
+
          x += cw;
          if(ch > h) h = ch;
          last = this.gene[i];
       }
       //create last numb
-      create_gap(x, 0,last,null).attr('width',this.p.pad*3);
+      create_gap(x, 0,last,null).attr('width',this.p.pad*this.p.cap);
 
       var mat = new Snap.Matrix();
       mat.translate(0,h+10);
