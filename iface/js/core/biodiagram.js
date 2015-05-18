@@ -1,5 +1,6 @@
 
 /*create special nodes*/
+
 var SVGUtil = function(){
    this.createTextBox = function(s,c,text){
       var view = {};
@@ -15,16 +16,31 @@ var SVGUtil = function(){
          .attr('fill', c.text)
          .attr('x', padding.x)
 
+      var cw =  view.text.node.clientWidth;
+      var ch = view.text.node.clientHeight; 
       view.box
-         .attr('width', view.text.node.clientWidth+padding.x*2)
-         .attr('height', view.text.node.clientHeight+padding.y*2)
+         .attr('width', cw+padding.x*2)
+         .attr('height', ch+padding.y*2)
 
       view.text
          .attr('y', view.text.node.clientHeight)
 
-      view.all = s.group(view.box,view.text);
+      var hitrad = 6;
+      view.connectors = {};
+      view.connectors.left = s.circle(0,ch/2+padding.y, hitrad).attr('fill','grey');
+      view.connectors.right = s.circle(cw+padding.x*2,ch/2+padding.y, hitrad).attr('fill','grey');
+      view.connectors.up = s.circle(cw/2+padding.x,0, hitrad).attr('fill','grey');
+      view.connectors.down = s.circle(cw/2+padding.x,ch+padding.y*2, hitrad).attr('fill','grey');
+      
+      view.connectors.all = s.group(
+         view.connectors.left,
+         view.connectors.right,
+         view.connectors.up,
+         view.connectors.down);
 
-      view.all.hover(
+      view.all = s.group(view.box,view.text,view.connectors.all);
+
+      view.text.hover(
          function(){ //hover in
             view.box.attr('stroke',"#ee3333");
          },
@@ -65,6 +81,7 @@ var SVGUtil = function(){
 }
 var svgUtil = new SVGUtil();
 
+var selected = null;
 
 var GeneElement = function(paper, parent, gene){
    this.init = function(){
@@ -190,6 +207,12 @@ var LocusElement = function(paper, parent, locus){
       this._update();
       return ge;
    }
+   this.get_gene = function(name){
+      for(var i=0; i < this.gene.length; i++){
+         if(this.gene[i].model.name == name) return this.gene[i];
+      }
+      return null;
+   }
    this.init();
 
 }
@@ -211,6 +234,13 @@ var PathwayElement = function(paper, name){
       this.view.all.append(v);
       this.loci.push(le);
       return le;
+   }
+   this.get_gene = function(name){
+      for(var i=0; i < this.loci.length; i++){
+         var e = this.loci[i].get_gene(name);
+         if(e != null) return e;
+      }
+      return null;
    }
    this.init();
 }
@@ -241,6 +271,12 @@ var BioDiagram = function(id,model,w,h){
             locv.add_gene(this.model.gene(loc.members[j]));
          }
 
+      }
+      for(iname in d.interactions.inhibit){
+         var inh = d.interactions.inhibit[iname];
+         var comp_g = pathway.get_gene(inh.compound.name);
+         var targ_g = pathway.get_gene(inh.target.name);
+         var bc = new BoxConnector(this.paper,comp_g.view.all, targ_g.view.all);
       }
 
    }

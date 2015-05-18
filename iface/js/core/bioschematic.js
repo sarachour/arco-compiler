@@ -26,6 +26,7 @@ var BioSchematic = function(){
       this.gene('gfp', 'gene');
       this.gene('mCherry', 'gene');
 
+      this.inhibits('Coloring inhibits promoter','gene', 'mCherry', 'gene', 'Plux');
 
       var l1 = this.locus('low copy plasmid');
       this.add_to_locus('low copy plasmid', 'Plux');
@@ -68,6 +69,25 @@ var BioSchematic = function(){
          this._id++;
       }
       return this.data.structure.loci[name];
+   }
+   this._get_dynamic = function(t,e){
+      if(t == 'gene') return this.gene(e);
+      else if(t == "locus") return this.locus(e);
+
+   }
+   this._add_interaction = function(itype, desc, t1, e1, t2, e2){
+      if(e1 != undefined && e2 != undefined){
+         var e = {};
+         e.compound = this._get_dynamic(t1,e1);
+         e.target = this._get_dynamic(t2,e2);
+         this.data.interactions[itype][desc] = e;
+      }
+   }
+   this.inhibits = function(desc,t1,e1,t2,e2){
+      this._add_interaction('inhibit',desc,t1,e1,t2,e2);
+   }
+   this.excites = function(desc,t1,e1,t2,e2){
+      this._add_interaction('excite',desc,t1,e1,t2,e2);
    }
    //adds to locus in left-to-right order
    this.add_to_locus = function(locus, gene){
