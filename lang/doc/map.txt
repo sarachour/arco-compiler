@@ -1,0 +1,145 @@
+/*
+Mapping from biology to Circuit
+Can we measure these?
+
+*/
+
+ 
+type DNA {
+   Properties:
+
+}
+
+// example type and conversion from circuit 
+// properties to physical properties
+type Protein {
+   Properties:
+      Concentration <-> ElectronConcentration
+      ForwardRate <-> CurrentFlow
+
+}
+process TranscriptionRegulation {
+   Inputs:
+      Activator activates: Protein,Metabolite,MRNA;
+      Repressor inhibits: Protein,Metabolite;
+      Inducer activates: Metabolite;
+      GuideRNA activates: RNA;
+      DNABindingProteins activates: Protein;
+
+   Outputs:
+      TranscriptionSignal : DNA
+
+   Parameters: //fill in biological parameters
+      For Each Activator Require KD
+      For Each Repressor Require KD
+
+   Structure: //this is where you describe the circuit component
+      <STRUCTURE HERE>
+      AM1 = AnalogMultiplier({PARAMS});
+      AM2 = AnalogMultiplier({PARAMS});
+      AM3 = AnalogMultiplier({PARAMS});
+      DC = DependentCurrentGenerator({PARAMS});
+      Activator*Inducer -> AM1;
+      1/Repressor -> AM2;
+      GuideRNA*DNABindingProteins -> AM3;
+      AM1 -> DC;
+      AM2 -> DC;
+      AM3 -> DC;
+
+      DC -> GROUND;
+      OUTPUT = DC;
+
+}
+process TranscriptionRiboswitch {
+   Inputs:
+      taRNA activates|inhibits: RNA;
+   Outputs:
+      5UTR : DNA
+   Parameters:
+   Structure:
+      <STRUCTURE HERE>
+}
+
+process PreMRNA {
+   Inputs:
+      TranscriptionSignal from TranscriptionRegulation : DNA;
+      5UTR from TranscriptionRiboswitch: DNA;
+   Outputs:
+      PreMRNA : PreMRNA
+   Parameters:
+   Structure:
+      <Structure HERE>
+}
+
+process MRNA {
+   Inputs:
+      PreMRNA from PreMRNA : PreMRNA;
+      SplicingActivator activates: Protein,Metabolite;
+      RecombinaseInhibitor inhibits: Protein,Metabolite;
+      Dicer inhibits: MRNA;
+      Drosha inhibits: MRNA;
+      Apatazyme inhibits: MRNA;
+
+      SmallActivator excites: Metabolite;
+      SmallInhibitor inhibits: Metabolite;
+      3UTR excites: MRNA;
+      RNAi excites : MRNA;
+      RISC excites : MRNA;
+      RNAase excites: MRNA;
+   Outputs:
+      MRNA: MRNA;
+   Parameters:
+   Structure:
+      AM1 = AnalogMultiplier({});
+      AM2 = AnalogMultiplier({});
+      DC = DependentCurrentGenerator({});
+      CAP = Capacitor({});
+      VR = VariableResistor({});
+
+      SplicingActivator -> AM1;
+      RecombinaseInhibitor -> AM2;
+      AM1,AM2 -> DC;
+
+      RESM1 = AnalogMultiplier();
+      RESM2 = AnalogMultiplier();
+      1/Dicer*1/Crosha*1/Apatazyme*1/SmallInhibitor -> RSM1;
+      3UTR*SmallActivator*RNAi*RISC -> RSM2;
+      RSM1,RSM2,RNAase -> VR;
+
+
+      STORE=DC->CAP;
+      DEGRADE=STORE->VR;
+      DEGRADE -> Output:MRNA;
+      CAP->Ground;
+      DC->Ground;
+      VR->Ground;
+
+
+
+}
+
+process PrePeptide {
+   Inputs:
+      MRNA from MRNA : MRNA;
+      RiboswitchFaciliatator activates|inhibits : MRNA,Metabolite
+      UnknownProteinActivator activates: Protein
+   Outputs:
+      PrePeptide: Protein;
+   Parameters:
+   Structure:
+
+}
+process Protein {
+   Inputs:
+      PhosphorylationActivator activates: Protein;
+      MethylationActivator activates: Protein;
+      AcetylationActivator activates: Protein;
+      UnknownProteinInteractor activates|inhibits: Protein,SmallMolecule;
+      UnknownProteinActivator actives: Protein
+   Outputs:
+      Protein: Protein;
+   Parameters:
+   Structure:
+
+}
+
