@@ -9,11 +9,12 @@ type term =
 
 type expr =
   Deriv of term*symbol*symbol
-  | Plus of expr list
-  | Minus of expr list
+  | Add of expr list
+  | Sub of expr list
   | Mult of expr list
   | Div of expr*expr
   | Exp of expr*term
+  | Term of term
 ;;
 
 (* = = = =, equality expression *)
@@ -51,17 +52,18 @@ struct
   let rec expr2str (e:expr) = 
     let rec exprlist2str lst delim = 
       match lst with
-        h::t::l -> (expr2str h)^delim^(expr2str t)^(exprlist2str l delim)
-        |h::[] -> (expr2str h)
+        h::[] -> (expr2str h)
+        |h::t -> (expr2str h)^delim^(exprlist2str t delim)
         |[] -> ""
     in
     match e with
       | Deriv(t,dep,indep) -> "d"^dep^"/d"^indep^"("^(term2str t)^")"
-      | Plus(t) -> exprlist2str t "+"
-      | Minus(t) -> exprlist2str t "-"
+      | Add(t) -> exprlist2str t "+"
+      | Sub(t) -> exprlist2str t "-"
       | Mult(t) -> exprlist2str t "*"
       | Div(a,b) -> (expr2str a)^"/"^(expr2str b)
       | Exp(base,exp) -> (expr2str base)^"^"^"("^(term2str exp)^")"
+      | Term(a) -> term2str(a)
 
   let rec rel2str (r:relation) = match r with
         h::t::l -> (expr2str h)^"="^(expr2str t)^(rel2str l)
