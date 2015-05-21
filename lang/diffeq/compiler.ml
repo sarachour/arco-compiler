@@ -15,7 +15,7 @@ let compile f =
    in
       Format.printf "-Result-\n";
       Format.print_flush();
-      Data.DEQEnv.print result;
+      Format.printf "%s\n" (Data.DEQEnv.env2str result);
       Format.printf "------\n"
 
 let help() = print_string "biospec <file>\n"

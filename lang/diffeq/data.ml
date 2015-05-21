@@ -1,18 +1,75 @@
 
+type symbol = string;;
 
+type term = 
+  Decimal of float
+  | Integer of int
+  | Symbol of symbol 
+;;
+
+type expr =
+  Deriv of term*symbol*symbol
+  | Plus of expr list
+  | Minus of expr list
+  | Mult of expr list
+  | Div of expr*expr
+  | Exp of expr*term
+;;
+
+(* = = = =, equality expression *)
+type relation = expr list 
+type assignment = relation -> symbol -> term -> relation
+
+type relations = relation list
 
 module DEQEnv:
 sig
   type env = {
-    mutable names : string list;
+    mutable relations : relations;
   }
   val create: unit -> env
-  val print: env -> unit
+  val add: env -> relation -> env
+  val term2str: term -> string
+  val expr2str: expr -> string
+  val rel2str: relation -> string
+  val env2str: env -> string
 end =
 struct
   type env = {
-    mutable names : string list;
+    mutable relations : relations;
   }
-  let create() = {names=[];}
-  let print e = print_string "TT\n"
+  let create() = {relations=[];}
+
+  let add env (r:relation) : env = env.relations <- r::env.relations; env
+
+  let term2str (t:term) : string = 
+    match t with
+      Decimal(f) -> string_of_float f
+    | Integer(i) -> string_of_int i
+    | Symbol(s) -> s
+
+  let rec expr2str (e:expr) = 
+    let rec exprlist2str lst delim = 
+      match lst with
+        h::t::l -> (expr2str h)^delim^(expr2str t)^(exprlist2str l delim)
+        |h::[] -> (expr2str h)
+        |[] -> ""
+    in
+    match e with
+      | Deriv(t,dep,indep) -> "d"^dep^"/d"^indep^"("^(term2str t)^")"
+      | Plus(t) -> exprlist2str t "+"
+      | Minus(t) -> exprlist2str t "-"
+      | Mult(t) -> exprlist2str t "*"
+      | Div(a,b) -> (expr2str a)^"/"^(expr2str b)
+      | Exp(base,exp) -> (expr2str base)^"^"^"("^(term2str exp)^")"
+
+  let rec rel2str (r:relation) = match r with
+        h::t::l -> (expr2str h)^"="^(expr2str t)^(rel2str l)
+        |h::[] -> (expr2str h)
+        |[] -> ""
+  
+
+  let env2str (e:env) : string = 
+    List.fold_right(fun x y -> y^(rel2str x)^"\n") e.relations ""
+
 end
