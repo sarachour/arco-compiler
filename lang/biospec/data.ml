@@ -53,12 +53,12 @@ struct
 
   let has_type env (t:typedef) = 
     List.fold_right 
-      (fun (a:typedef) (b:bool) -> a.name == t.name || b) 
+      (fun (a:typedef) (b:bool) -> a.name = t.name || b) 
       env.types false
 
   let has_action env (u:actiondef) = 
     List.fold_right 
-      (fun (a:actiondef) (b:bool) -> a.name == u.name || b) 
+      (fun (a:actiondef) (b:bool) -> a.name = u.name || b) 
       env.actions false
 
   let print env = 
