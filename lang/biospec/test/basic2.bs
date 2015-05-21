@@ -1,0 +1,29 @@
+//specification header
+action inhibits
+action excites
+action produces
+/*
+kind Gene
+kind Protein
+
+Gene GA
+Gene GB
+Gene GC
+
+Protein PA
+Protein PB
+Protein PC
+
+//Gene -> Protein Relation
+GA produces PA
+GB produces PB
+GC produces PC
+
+//LABEL: X relation GB descriptors
+
+InteractA: PA inhibits GB 
+InteractB: PB inhibits GC
+InteractC: PC excites GA
+
+PA inhibits InteractB
+*/ 
