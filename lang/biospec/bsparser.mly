@@ -3,18 +3,18 @@
 open Printf
 open Data
 
-let env = Data.BSEnv.create()
-
 %}
 
 
 %token <string> TOKEN
-%token COLON EOL TAB
+%token COLON EOF
 %token ACTION KIND
 
 
+
+%type <Data.BSEnv.env> toplevel
+%type <Data.BSEnv.env> statement
 %type <Data.BSEnv.env> main
-%type <int> indent
 
 %start main
 
@@ -22,14 +22,21 @@ let env = Data.BSEnv.create()
 
 
 main:
-   toplevel {env}
+   toplevel {$1}
 ;
 
-indent:
-   EOL {0}
-   | indent TAB {$1+1}
-;
+statement:
+   ACTION TOKEN {
+      let e = Data.BSEnv.create() in 
+      Data.BSEnv.add_action e (Data.BSEnv.make_action $2); e
+   }
+   | KIND TOKEN {
+      let e = Data.BSEnv.create() in 
+      Data.BSEnv.add_type e (Data.BSEnv.make_type $2); e
+   }
+
 
 toplevel:
-   indent ACTION TOKEN {} 
+   statement toplevel {Data.BSEnv.merge $1 $2}
+   | EOF {Data.BSEnv.create()}
 ;

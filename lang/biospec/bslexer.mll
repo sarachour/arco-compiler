@@ -1,13 +1,13 @@
 {
    open BSParser
-   exception Eof
 }
 
 rule main = parse
-   "   "|'\t' {TAB}
+   "/*" _* "*/" {main lexbuf}
+   | "//" [^'\n'] {main lexbuf}
+   |[' ''\t''\n'] {main lexbuf}
    | [':'] {COLON}
-   | ['\n'] {EOL}
    | "action" {ACTION}
    | "kind" {KIND}
    | ['A'-'Z' 'a'-'z' '_']+ as word {TOKEN(word)}
-   | eof {raise Eof}
+   | eof {EOF}
