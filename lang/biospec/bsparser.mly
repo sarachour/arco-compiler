@@ -1,17 +1,35 @@
+%{
+
+open Printf
+open Data
+
+let env = Data.BSEnv.create()
+
+%}
+
+
 %token <string> TOKEN
-%token COLON ASSIGNMENT TAB EOL
+%token COLON EOL TAB
+%token ACTION KIND
 
-%token INPUTS OUTPUTS PARAMETERS PROPERTIES RELATION
 
-%type <int> main
+%type <Data.BSEnv.env> main
+%type <int> indent
+
 %start main
 
 %%
 
+
 main:
-   toplevel {5}
+   toplevel {env}
+;
+
+indent:
+   EOL {0}
+   | indent TAB {$1+1}
 ;
 
 toplevel:
-   EOL {0}
+   indent ACTION TOKEN {} 
 ;

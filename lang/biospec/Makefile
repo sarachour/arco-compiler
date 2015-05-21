@@ -3,10 +3,11 @@ all: biospec
 
 biospec: BSParser.cmo BSLexer.cmo data.cmo compiler.cmo
 	 ocamlc -o biospec \
-	 	BSParser.cmo BSLexer.cmo data.cmo compiler.cmo
+	 	 data.cmo BSParser.cmo BSLexer.cmo compiler.cmo
 	 chmod +x biospec
-bslexer.cmo: BSParser.cmo
-
+BSLexer.cmo: BSParser.cmo
+BSParser.cmo: data.cmo
+compiler.cmo: BSParser.cmo data.cmo BSLexer.cmo
 
 %.ml: %.mll 
 	ocamllex $< -o $@
@@ -16,11 +17,11 @@ bslexer.cmo: BSParser.cmo
 	ocamlyacc $<
 
 %.ml: %.mli
-	ocamlfind ocamlc -c  $< -o $@
+	ocamlc -c  $< -o $@
 
 
 %.cmo: %.ml
-	ocamlfind ocamlc -c $< -o $@
+	ocamlc -c $< -o $@
 
 
 clean:
