@@ -28,11 +28,11 @@ main:
 statement:
    ACTION TOKEN {
       let e = Data.BSEnv.create() in 
-      Data.BSEnv.add_action e (Data.BSEnv.make_action $2); e
+      Data.BSEnv.add_action e (Data.BSEnv.make_action $2)
    }
    | KIND TOKEN {
       let e = Data.BSEnv.create() in 
-      Data.BSEnv.add_type e (Data.BSEnv.make_type $2); e
+      Data.BSEnv.add_type e (Data.BSEnv.make_type $2)
    }
 
 
