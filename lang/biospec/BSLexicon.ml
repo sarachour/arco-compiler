@@ -67,86 +67,53 @@ let rec pg (g: grammar) (s: string list) : varlist*(string list) =
 
 let rec gg (g:grammar) (v: varlist) : string list = []
 
-   
+type kind = {
+   name: string;
+   phrase: grammar;
+}
 module Kind ( Q : sig type typ end) : 
 sig
    type t = Q.typ
-   type kind = {
-      name: string;
-      phrase: grammar;
-   };;
-   
-   val create  : unit -> kind 
-   val parse : kind -> string list -> t maybe
-   val generate : kind -> t -> (string list) maybe
+   val spec  : kind 
+   val parse :  string list -> t maybe
+   val generate :  t -> (string list) maybe
    val bind : varlist -> t maybe 
    val unbind : t -> varlist
-   val test : kind -> string list -> bool
-   val to_string : kind -> string
+   val test : string list -> bool
+   val to_string : string
 end =
 struct 
    type t = Q.typ
-   type kind = {
-      name: string;
-      phrase: grammar;
-   };;
-
    
-   let create() = {name="";phrase=[]}
+   let spec = {name="";phrase=[]}
 
-
+   let _name = ""
    let bind v = None
    let unbind i = []
 
-   let parse k s =
+   let parse s =
       try
-         let v =  (pg k.phrase s) in 
+         let v =  (pg spec.phrase s) in 
          bind v
       with
          _ -> None
 
-   let generate k i = 
+   let generate i = 
       try
          let v = unbind i in 
-         Some(gg k.phrase v)
+         Some(gg spec.phrase v)
       with
       | _ -> None
 
-   let to_string k =
-      "name:"^k.name^"\n"^
-      "grammar:"^grammar2str k.phrase^"\n"
+   let to_string  =
+      "name:"^spec.name^"\n"^
+      "grammar:"^grammar2str spec.phrase^"\n"
 
-   let test k g = match parse k g with
+   let test g = match parse g with
       Some(a) -> true
       | None -> false
 
 
 end
 
-(*
-module type Kind = sig
-      type t
-      val empty : t -> t kind
-      val create  : t -> unit -> t kind 
-      val parse : t -> t kind -> grammar -> t maybe 
-      val generate : t -> t kind -> t maybe  -> grammar
-      val test : t -> t kind -> grammar -> bool
-end
-
-module KindStub : (Kind with type t : a)
-
-type impl = { name:string }
-module Gene 
-   : (Kind with type t := impl) =
-struct
-   include KindStub
-   let empty = {
-      name= "Gene";
-      data={name=""};
-      phrase=[Required(Group([Kind("gene"); Variable]))]
-   }
-   let create () = empty
-   let generate 
-end
-*)
 

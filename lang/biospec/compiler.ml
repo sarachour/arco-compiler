@@ -28,4 +28,3 @@ let () = if Array.length Sys.argv = 1 then help()
             Format.printf "compiling %s\n" file;
             Format.print_flush();
             compile file;
-            Format.printf "GENE TYPE\n%s\n" (BSLibrary.Gene.to_string (BSLibrary.Gene.create()))

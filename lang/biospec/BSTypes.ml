@@ -7,7 +7,7 @@ module Gene = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
+   let spec = {
       name="Gene";
       phrase=[Required([Variable("name")])];
    }
@@ -32,8 +32,9 @@ module Protein = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
-      name="Protein";
+   let _name = "Protein"
+   let spec = {
+      name=_name;
       phrase=[Required([Variable("name")])];
    }
    (* Bind to struct *)
@@ -57,7 +58,7 @@ module MRNA = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
+   let spec = {
       name="MRNA";
       phrase=[Required([Variable("name")])];
    }
@@ -82,7 +83,7 @@ module PreMRNA = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
+   let spec = {
       name="PreMRNA";
       phrase=[Required([Variable("name")])];
    }
@@ -107,7 +108,7 @@ module PolyPeptide = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
+   let spec = {
       name="PolyPeptide";
       phrase=[Required([Variable("name")])];
    }
@@ -132,7 +133,7 @@ module Metabolite = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
+   let spec = {
       name="Metabolite";
       phrase=[Required([Variable("name")])];
    }
@@ -157,7 +158,7 @@ module SmallMolecule = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
+   let spec = {
       name="SmallMolecule";
       phrase=[Required([Variable("name")])];
    }
@@ -182,7 +183,7 @@ module Promoter = struct
    }
    include Kind (struct type typ = impl end)
 
-   let create() = {
+   let spec = {
       name="Promoter";
       phrase=[Required([Variable("name")])];
    }
