@@ -1,6 +1,9 @@
 action inhibits;
 action excites;
-action produces;
+action translates;
+action transcribes;
+action promotes;
+action generates;
 
 kind Gene;
 kind Protein;
@@ -13,9 +16,9 @@ Protein PA;
 Protein PB;
 Protein PC;
 
-GA produces PA;
-GB produces PB;
-GC produces PC;
+GA generates PA;
+GB generates PB;
+GC generates PC;
 
 InteractA: PA inhibits GB ;
 InteractB: PB inhibits GC;

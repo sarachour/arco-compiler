@@ -1,13 +1,29 @@
 
+
+DEPS=data.cmo BSParser.cmo BSLexer.cmo BSLexicon.cmo \
+	BSTypes.cmo BSTypeTable.cmo BSActions.cmo BSActionTable.cmo \
+	BSLibrary.cmo compiler.cmo
+
 all: biospec
 
-biospec: BSParser.cmo BSLexer.cmo data.cmo compiler.cmo
+biospec: $(DEPS)
 	 ocamlc -o biospec \
-	 	 data.cmo BSParser.cmo BSLexer.cmo compiler.cmo
+	 	 $(DEPS)
 	 chmod +x biospec
-BSLexer.cmo: BSParser.cmo
+
+BSTypes.cmo: BSLexicon.cmo
+BSActions.cmo: BSLexicon.cmo
+
+
+BSTypeTable.cmo: BSTypes.cmo
+BSActionTable.cmo: BSActions.cmo
+
+BSLibrary.cmo: BSTypes.cmo BSActions.cmo BSTypeTable.cmo BSActionTable.cmo 
+
+
 BSParser.cmo: data.cmo
-compiler.cmo: BSParser.cmo data.cmo BSLexer.cmo
+BSLexer.cmo: BSParser.cmo
+compiler.cmo: BsLibrary.cmo BSLexer.cmo
 
 %.ml: %.mll 
 	ocamllex $< -o $@

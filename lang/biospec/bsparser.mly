@@ -27,6 +27,7 @@ main:
    toplevel {$1}
 ;
 
+/*parse declaration statements*/
 statement:
    ACTION TOKEN SEMICOLON {
       Data.BSEnv.add_action env (Data.BSEnv.make_action $2)
