@@ -5,6 +5,7 @@ open Relation
 type typ = 
    Action of string*(typ list)*relation*typ
    | State of string
+   | Parameter
 ;;
 
 
@@ -14,7 +15,7 @@ module type TypeSystemSig =
 sig 
    type 'a tree = 
       Leaf of 'a 
-      | Node of 'a*'a tree list
+      | Node of 'a * 'a tree list
       | Empty 
    ;;
    type ts = {
@@ -23,6 +24,7 @@ sig
    }
    val get_child_types: typ tree -> typ -> typ list
    val get_parent_types: typ tree -> typ -> typ list
+   val get: ts->string->typ maybe
    val create: unit->ts
    val has: ts->typ->bool
    val add: ts->typ->ts
@@ -39,10 +41,9 @@ module TypeSystem : TypeSystemSig = struct
    ;;
    type ts = {
       mutable types: typ list;
-      mutable hierarchy:typ tree;
+      mutable hierarchy: typ tree;
    }
    let create () = {types=[];hierarchy=Empty}
-
 
    let get_child_types root t =
       let rec _traverse_vert r ty : (typ list) maybe =
@@ -107,25 +108,43 @@ module TypeSystem : TypeSystemSig = struct
             | None -> []
          end
 
-   let add ts typ =
-      ts.types <- typ::ts.types; ts
-
-   let has (t:ts) (e:typ) : bool =
-      let rec _has (r:typ tree) (e:typ) =
-         let rec _has_list (r:(typ tree) list) (e:typ) = 
-            begin 
-            match r with
-               h::t -> if _has h e then true else _has_list t e 
-            end
-         in
+   
+   let get (t:ts) (e:string) : typ maybe =
+      let rec _get (r:typ list) (e:string) =
          begin
          match r with
-            | Node(a,rst) -> if a = e then true else _has_list rst e
-            | Leaf(a) -> if a = e then true else false
-            | Empty -> false
+            |Parameter::t -> if e = "parameter" then Some(Parameter) else _get t e
+            |State(n)::t -> if n = e then Some(State(n)) else _get t e 
+            |Action(n,x1,x2,x3)::t -> if n = e then Some(Action(n,x1,x2,x3)) else _get t e 
+            |[] -> None
          end
-      in 
-         _has t.hierarchy e
+      in
+         _get t.types e
+
+   let add ts (ty:typ) =
+      let name = match ty with
+         |State(x) -> x
+         |Parameter ->"parameter"
+         |Action(x,_,_,_) -> x
+      in
+      if (get ts name) = None then 
+      begin
+         ts.types <- ty::(ts.types);
+         ts
+      end
+      else 
+         raise (TypeException "type already exists.")
+
+
+   let has (t:ts) (e:typ) : bool =
+      let rec _has (r:typ list) (e:typ) =
+         begin
+         match r with
+            h::t -> if h = e then true else _has t e 
+            |[] -> false
+         end
+      in
+         _has t.types e
 
 
    let is (t:ts) (chld:typ) (par:typ) : bool =
@@ -162,6 +181,7 @@ module TypeSystem : TypeSystemSig = struct
                   let (q,lst) = remove_from_children lst e in 
                      (q, Node(a,lst))
             | Leaf(a) -> if a = e then (Some(Leaf(a)),Empty) else (None,Leaf(a))
+            | Empty -> (None, Empty)
          end
       in   
       let rec add_elem rt par e : (typ tree) = 
@@ -172,11 +192,35 @@ module TypeSystem : TypeSystemSig = struct
             | Empty -> Empty
          end
       in
-      let (subtree, ntree) = remove_elem t.hierarchy child in
-      begin
-      match subtree with
-         | Some(st) -> let newtree = add_elem ntree par st in t.hierarchy <- newtree; t
-         | None -> t
-      end
+      let rec is_valid par chl = 
+         let rec is_valid_arglist parlst chllst=
+            begin
+            match (parlst,chllst) with
+               (h1::t1,h2::t2) ->
+                  if (is t h2 h1) then (is_valid_arglist t1 t2) else false
+               |([],[]) -> true
+               | _ -> false
+            end
+         in
+         begin
+         match (par,chl) with
+            (State(a),State(b)) -> true
+            |(Action(n1,inps1,rel1,outp1),Action(n2,inps2,rel2,outp2)) ->
+               (is_valid_arglist inps1 inps2 && is_valid_arglist [outp1] [outp2])
+         end
+      in
+      if has t par && has t child then
+         if is_valid par child then
+            let (subtree, ntree) = remove_elem t.hierarchy child in
+            begin
+            match subtree with
+               | Some(st) -> let newtree = add_elem ntree par st in t.hierarchy <- newtree; t
+               | None -> raise (TypeException "Failed to extend type.")
+            end
+         else
+            raise (TypeException "type cannot extend provided type because type signatures mismatch.")
+      else
+         raise (TypeException "cannot extend: parent or child type doesn't exist.")
+
 
 end;;
