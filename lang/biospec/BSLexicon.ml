@@ -116,4 +116,11 @@ struct
 
 end
 
+module Rule ( Q : sig type typ end) : 
+sig
 
+end = struct
+   include Kind (Q)
+   
+
+end

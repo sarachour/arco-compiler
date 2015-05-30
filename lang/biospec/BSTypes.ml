@@ -1,7 +1,8 @@
 
 open BSLexicon
 
-module Gene = struct 
+
+module Gene = struct
    type impl = {
       name : string
    }
@@ -102,7 +103,7 @@ module PreMRNA = struct
 
 end
 
-module PolyPeptide = struct 
+module PolyPeptide = struct
    type impl = {
       name : string
    }
@@ -127,7 +128,7 @@ module PolyPeptide = struct
 
 end
 
-module Metabolite = struct 
+module Metabolite = struct
    type impl = {
       name : string
    }
@@ -185,6 +186,31 @@ module Promoter = struct
 
    let spec = {
       name="Promoter";
+      phrase=[Required([Variable("name")])];
+   }
+   (* Bind to struct *)
+   let rec bind vlist = 
+      match vlist with
+         ("name",v)::t -> 
+            let q = bind t in {name=v}
+         |(k,v)::t -> 
+            raise_bind_error ("Unknown key "^k);
+         | [] -> {name=""}
+
+   (* Bind from struct *)
+   let rec unbind imp = 
+      [("name",imp.name)]
+
+end
+
+module Riboswitch = struct
+   type impl = {
+      name : string
+   }
+   include Kind (struct type typ = impl end)
+
+   let spec = {
+      name="Riboswitch";
       phrase=[Required([Variable("name")])];
    }
    (* Bind to struct *)

@@ -1,5 +1,6 @@
 open BSTypes
 
+(* Stores all declared modules *)
 module TypeTable :
 sig
    type elements = {
