@@ -6,7 +6,7 @@ open Relation
 type typ = 
    Action of string*((string*typ) list)*relation*typ
    | State of string
-   
+   | Signal of string
    | Parameter
 ;;
 type identifier = string*typ
@@ -73,6 +73,7 @@ module TypeSystem : TypeSystemSig = struct
          match r with
             |Parameter::t -> if e = "parameter" then Some(Parameter) else _get t e
             |State(n)::t -> if n = e then Some(State(n)) else _get t e 
+            |Signal(n)::t -> if n = e then Some(Signal(n)) else _get t e 
             |Action(n,x1,x2,x3)::t -> if n = e then Some(Action(n,x1,x2,x3)) else _get t e 
             |[] -> None
          end
@@ -82,6 +83,7 @@ module TypeSystem : TypeSystemSig = struct
    let add ts (ty:typ) =
       let name = match ty with
          |State(x) -> x
+         |Signal(x) ->x
          |Parameter ->"parameter"
          |Action(x,_,_,_) -> x
       in
@@ -121,6 +123,7 @@ module TypeSystem : TypeSystemSig = struct
          begin
          match t with
             |State(x) -> "state:"^x
+            |Signal(x) -> "sig:"^x
             |Parameter -> "parameter"
             |Action(name, inputs, rel, output) -> "action:"^name
                ^" ("^
@@ -150,7 +153,8 @@ module TypeSystem : TypeSystemSig = struct
       let rec is_valid par chl = 
          begin
          match (par,chl) with
-            (State(a),State(b)) -> true
+            |(State(a),State(b)) -> true
+            |(Signal(a),Signal(b)) -> true
             |(Action(n1,inps1,rel1,outp1),Action(n2,inps2,rel2,outp2)) -> false
             | _ -> false
          end
