@@ -30,12 +30,7 @@ type action = {
 
 module type BipartiteGraphEnvironmentSig = 
 sig
-   type connection = 
-      | StateToAction of state*action
-      | ActionToState of action*state
-      | ParameterToAction of state*action
-      | ActionToParameter of action*state
-   ;;
+   type connection = identifier*identifier
    type bipartite = {
       mutable states: state list;
       mutable actions: action list;
@@ -63,11 +58,7 @@ end
 
 module BipartiteGraphEnvironment : BipartiteGraphEnvironmentSig = 
 struct
-   type connection = 
-      | StateToAction of state*action
-      | ActionToState of action*state
-      | ParameterToAction of state*action
-      | ActionToParameter of action*state
+   type connection = identifier*identifier
    ;;
    type bipartite = {
       mutable states: state list;
@@ -144,9 +135,9 @@ struct
       let rec get_ident_list env typlst lst = 
          begin
          match (typlst,lst) with
-            | (t::tr, n::lr) -> 
+            | (t::t1::tr, n::n1::lr) -> 
                begin
-               match (get_ident env t n, get_ident_list env tr lr) with
+               match (get_ident env t n, get_ident_list env (t1::tr) (n1::lr)) with
                   (Some(a), Some(q))-> Some(a::q)
                   | _ -> None
                end
@@ -156,7 +147,7 @@ struct
                   | Some(a) -> Some([a]) 
                   | None -> None
                end
-            | ([],[]) -> None
+            | _ -> None
          end 
       in
       begin
@@ -166,9 +157,14 @@ struct
                let output = get_ident env tout out in
                   begin 
                      match(inputs, output) with
-                        | (Some(a), Some(b)) -> 
-                           let elem = {name=nm;inputs=a;output=b;t=Action(tnm,tins,rel,tout)} in 
-                              env.g.actions <- elem::env.g.actions; env
+                        | (Some(in_e), Some(out_e)) -> 
+                           let telem = Action(tnm,tins,rel,tout) in
+                           let elem = {name=nm;inputs=in_e;output=out_e;t=telem} in 
+                           let into = List.map (fun inp -> (inp,(nm,telem))) in_e in 
+                           let out = List.map (fun outp -> ((nm,telem),outp)) [out_e] in
+                              env.g.actions <- elem::env.g.actions; 
+                              env.g.conns <- out@into@env.g.conns;
+                              env
                         | _ ->
                            raise (TypeException ("Action type signature doesn't match identifiers."))
                   end
