@@ -1,112 +1,70 @@
 open Util 
 open Relation
 
+
 (* Types *)
 type typ = 
-   Action of string*(typ list)*relation*typ
+   Action of string*((string*typ) list)*relation*typ
    | State of string
+   
    | Parameter
 ;;
+type identifier = string*typ
 
 
 
 (* type system with inheritence *)
 module type TypeSystemSig =
 sig 
-   type 'a tree = 
-      Leaf of 'a 
-      | Node of 'a * 'a tree list
-      | Empty 
-   ;;
+   type inherit_entry = {
+      entry: typ;
+      mutable children: typ list;
+      mutable parents: typ list;
+   }
    type ts = {
       mutable types: typ list;
-      mutable hierarchy:typ tree;
+      mutable hierarchy:inherit_entry list;
    }
-   val get_child_types: typ tree -> typ -> typ list
-   val get_parent_types: typ tree -> typ -> typ list
+   val get_child_types: ts -> typ -> typ list
+   val get_parent_types: ts -> typ -> typ list
    val get: ts->string->typ maybe
    val create: unit->ts
    val has: ts->typ->bool
    val add: ts->typ->ts
    val extends: ts->typ->typ->ts
    val is: ts->typ->typ->bool
+   val to_string: ts -> string
 end 
 
 
 module TypeSystem : TypeSystemSig = struct
-   type 'a tree = 
-      Leaf of 'a 
-      | Node of 'a*('a tree list) 
-      | Empty 
-   ;;
+   type inherit_entry = {
+      entry: typ;
+      mutable children: typ list;
+      mutable parents: typ list;
+   }
    type ts = {
       mutable types: typ list;
-      mutable hierarchy: typ tree;
+      mutable hierarchy: inherit_entry list;
    }
-   let create () = {types=[];hierarchy=Empty}
+   let create () = {types=[];hierarchy=[]}
 
-   let get_child_types root t =
-      let rec _traverse_vert r ty : (typ list) maybe =
-         let rec _traverse_horiz lst ty : (typ list) maybe = 
-            begin
-            match lst with
-               h::t -> 
-                  let hl = _traverse_vert h ty in
-                  let tl = _traverse_horiz t ty in
-                  begin
-                  match (hl,tl) with
-                     (Some(a), Some(b)) -> Some(a@b)
-                     |(Some(a), None) -> Some(a)
-                     |(None, Some(b)) -> Some(b)
-                     |(None,None) -> None
-                  end
-               | [] -> None 
-            end
-         in 
-         begin
-         match r with
-            Node(m,lst) -> 
-               let rest = match (_traverse_horiz lst ty) with Some(a) -> a | None -> [] in
-               if m = ty then Some(m::rest)
-               else Some(rest)
-            | Leaf(m) -> Some([m])
-            | Empty -> None
-         end
+   let get_child_types (root:ts) (t:typ) =
+      let rec _get_child_types lst e : typ list = 
+         match lst with
+            h::t -> if h.entry = e then h.children else _get_child_types t e 
+            | [] -> []
       in 
-         begin
-         match _traverse_vert root t  with
-            Some(a) -> a 
-            | None -> []
-         end
+         _get_child_types root.hierarchy t 
+        
 
-   let get_parent_types root t =
-      let rec _traverse_vert r ty upst : (typ list) maybe =
-         let rec _traverse_horiz lst ty upst : (typ list) maybe = 
-            begin
-            match lst with
-               h::t -> 
-                  begin
-                  match _traverse_vert h ty upst with
-                     Some(a) -> Some(a)
-                     | None -> (_traverse_horiz t ty upst)
-                  end
-               | [] -> None 
-            end
-         in 
-         begin
-         match r with
-            |Node(m,lst) -> if m = ty 
-               then Some(m::upst) 
-               else _traverse_horiz lst ty upst
-            | Leaf(m) -> if m = t then Some([m]) else None
-            | Empty -> None
-         end
+   let get_parent_types (root:ts) (t:typ) =
+      let rec _get_parent_types lst e: typ list = 
+         match lst with
+            h::t -> if h.entry = e then h.parents else _get_parent_types t e 
+            | [] -> []
       in 
-         begin
-         match _traverse_vert root t [] with
-            Some(a) -> a 
-            | None -> []
-         end
+         _get_parent_types root.hierarchy t
 
    
    let get (t:ts) (e:string) : typ maybe =
@@ -130,6 +88,7 @@ module TypeSystem : TypeSystemSig = struct
       if (get ts name) = None then 
       begin
          ts.types <- ty::(ts.types);
+         ts.hierarchy <- {entry=ty;children=[];parents=[]}::ts.hierarchy;
          ts
       end
       else 
@@ -148,74 +107,74 @@ module TypeSystem : TypeSystemSig = struct
 
 
    let is (t:ts) (chld:typ) (par:typ) : bool =
-      let rec _extends (m:typ) (l:typ list) : bool=
+      let rec _extends (m:typ) (l:typ list) : bool =
          begin
          match l with
             h::t -> if h = m then true else _extends m t 
             | [] -> false
          end
       in
-         _extends chld (get_child_types t.hierarchy par)
+         _extends chld (get_child_types t par)
 
-   let extends (t:ts) (child:typ) (par:typ) : ts =
-      let rec remove_elem rt e : ((typ tree) maybe)*(typ tree) =
-         let rec remove_from_children lst e :((typ tree) maybe)*((typ tree) list) = 
-            begin 
-            match lst with 
-               h::t -> 
-                  begin
-                  match remove_elem h e with
-                     |(Some(a), Empty) -> (Some(a), t)
-                     |(Some(a), newh) -> (Some(a), newh::t)
-                     |(None, newh) -> 
-                        let (a,nlst) = remove_from_children t e in (a,h::nlst)
-                  end
-               | [] -> (None,[])
-            end
-         in
+   let to_string (t:ts) : string = 
+      let rec _print_type (t:typ) = 
          begin
-         match rt with
-            Node(a,lst) -> if a = e 
-               then (Some(Node(a,lst)),Empty) 
-               else 
-                  let (q,lst) = remove_from_children lst e in 
-                     (q, Node(a,lst))
-            | Leaf(a) -> if a = e then (Some(Leaf(a)),Empty) else (None,Leaf(a))
-            | Empty -> (None, Empty)
-         end
-      in   
-      let rec add_elem rt par e : (typ tree) = 
-         begin
-         match rt with
-            |Node(a,rest) -> if a = par then Node(a,e::rest) else Node(a,rest)
-            | Leaf(a) -> if a = par then Node(a,[e]) else Leaf(a)
-            | Empty -> Empty
+         match t with
+            |State(x) -> "state:"^x
+            |Parameter -> "parameter"
+            |Action(name, inputs, rel, output) -> "action:"^name
+               ^" ("^
+                  (List.fold_right (fun (n,t) str -> str^n^"="^(_print_type t)^"," ) inputs "")
+               ^") -> "^(to_string rel)^" -> "^(_print_type output)
+               
          end
       in
+      let rec _print_types (t: typ list) delim = 
+         begin
+         match t with 
+            |h::t -> (_print_type h)^delim^(_print_types t delim)
+            |[] -> ""
+         end
+      in
+      let rec _print_inheritence (env:ts) (t: typ list) delim delim2 = 
+         match t with 
+            | h::t -> (_print_type h)^" := "^(_print_types (get_child_types env h) delim)^
+               delim2^(_print_inheritence env t delim delim2)
+            | [] -> ""
+
+      in
+         "# Types\n   "^(_print_types t.types "\n   ")^"\n"^
+         "# Inheritence\n   "^(_print_inheritence t t.types " " "\n   ")^"\n"
+
+   let extends (t:ts) (child:typ) (par:typ) : ts =
       let rec is_valid par chl = 
-         let rec is_valid_arglist parlst chllst=
-            begin
-            match (parlst,chllst) with
-               (h1::t1,h2::t2) ->
-                  if (is t h2 h1) then (is_valid_arglist t1 t2) else false
-               |([],[]) -> true
-               | _ -> false
-            end
-         in
          begin
          match (par,chl) with
             (State(a),State(b)) -> true
-            |(Action(n1,inps1,rel1,outp1),Action(n2,inps2,rel2,outp2)) ->
-               (is_valid_arglist inps1 inps2 && is_valid_arglist [outp1] [outp2])
+            |(Action(n1,inps1,rel1,outp1),Action(n2,inps2,rel2,outp2)) -> false
+            | _ -> false
          end
+      in
+      let rec add_child (lst:inherit_entry list) (par:typ) (chl:typ) : inherit_entry list = 
+         match lst with
+            | h::t -> if h.entry = par 
+               then begin h.children <- chl::h.children; h::t end
+               else h::(add_child t par chl)
+            | [] -> []
+      in
+      let rec add_parent lst par chl = 
+         match lst with
+            | h::t -> if h.entry = chl 
+               then begin h.parents <- par::h.parents; h::t end
+               else h::(add_parent t par chl)
+            | [] -> []
       in
       if has t par && has t child then
          if is_valid par child then
-            let (subtree, ntree) = remove_elem t.hierarchy child in
             begin
-            match subtree with
-               | Some(st) -> let newtree = add_elem ntree par st in t.hierarchy <- newtree; t
-               | None -> raise (TypeException "Failed to extend type.")
+            t.hierarchy <- add_child t.hierarchy par child;
+            t.hierarchy <- add_parent t.hierarchy par child;
+            t
             end
          else
             raise (TypeException "type cannot extend provided type because type signatures mismatch.")

@@ -18,13 +18,12 @@ type state = {
    t: typ;
 }
 
-type identifier = string*typ
 
 type action = {
    t:typ;
    name: string;
-   inputs:identifier list;
-   output:identifier;
+   inputs:identifier*identifier list;
+   output:identifier*identifier list;
 }
 
 
@@ -52,7 +51,7 @@ sig
    val get_parameter: env->string->parameter maybe
 
    val add_state: env->string->string->env
-   val add_action: env->string->string->string list->string->env
+   val add_action: env->string->string->string*string list->string*string list->env
    val add_parameter: env->string->float->env
 end 
 
@@ -83,7 +82,7 @@ struct
       else (env.ts <- (TypeSystem.add env.ts t); env)
 
    let extend env child parent = 
-      env.ts <- (TypeSystem.extends env.ts parent child); env
+      env.ts <- (TypeSystem.extends env.ts child parent); env
 
    let add_parameter env nm v =
       env.g.params <- {name=nm; value=v;t=Parameter}::env.g.params; env
@@ -110,66 +109,8 @@ struct
          raise (TypeException ("no type exists with name "^ty))
 
 
-   let add_action env kind nm ins out =
-      let get_ident env typ nm : identifier maybe = 
-         begin
-         match typ with
-            | Parameter -> 
-               begin
-               match(get_parameter env nm) with 
-                  |Some(_) -> Some(nm,typ) 
-                  | None -> None
-               end
-            | State(_) -> 
-               begin
-               match get_state env nm with 
-                  |None -> None
-                  |Some(v) -> 
-                     if (TypeSystem.is env.ts v.t typ) 
-                        then Some(nm,typ) 
-                        else None
-               end
-            | _ -> None
-         end
-      in
-      let rec get_ident_list env typlst lst = 
-         begin
-         match (typlst,lst) with
-            | (t::t1::tr, n::n1::lr) -> 
-               begin
-               match (get_ident env t n, get_ident_list env (t1::tr) (n1::lr)) with
-                  (Some(a), Some(q))-> Some(a::q)
-                  | _ -> None
-               end
-            | ([t], [n]) ->  
-               begin 
-               match (get_ident env t n) with
-                  | Some(a) -> Some([a]) 
-                  | None -> None
-               end
-            | _ -> None
-         end 
-      in
-      begin
-         match TypeSystem.get env.ts kind with
-            |Some(Action(tnm,tins,rel,tout)) ->
-               let inputs = get_ident_list env tins ins in 
-               let output = get_ident env tout out in
-                  begin 
-                     match(inputs, output) with
-                        | (Some(in_e), Some(out_e)) -> 
-                           let telem = Action(tnm,tins,rel,tout) in
-                           let elem = {name=nm;inputs=in_e;output=out_e;t=telem} in 
-                           let into = List.map (fun inp -> (inp,(nm,telem))) in_e in 
-                           let out = List.map (fun outp -> ((nm,telem),outp)) [out_e] in
-                              env.g.actions <- elem::env.g.actions; 
-                              env.g.conns <- out@into@env.g.conns;
-                              env
-                        | _ ->
-                           raise (TypeException ("Action type signature doesn't match identifiers."))
-                  end
-            | _ -> raise (TypeException ("no action type with name "^nm^"."))
-      end
+   let add_action (env:env) (kind:string) (name:string) (ins:string*string list) (outs:string*string list) : env =
+      env
 end
 
 
