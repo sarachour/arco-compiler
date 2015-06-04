@@ -1,6 +1,6 @@
 
 DIFFEQ=../diffeq
-DEPS=Util.cmo Relation.cmo TypeSystem.cmo BipartiteGraph.cmo
+DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo BipartiteGraph.cmo
 
 
 all: biology

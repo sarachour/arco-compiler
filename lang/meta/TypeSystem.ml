@@ -1,10 +1,10 @@
 open Util 
 open Relation
-
+open Rule
 
 (* Types *)
 type typ = 
-   Action of string*((string*typ) list)*relation*typ
+   Action of string*((string*typ) list)*relation*((string*rule) list)*typ
    | State of string
    | Signal of string
    | Parameter
@@ -74,7 +74,7 @@ module TypeSystem : TypeSystemSig = struct
             |Parameter::t -> if e = "parameter" then Some(Parameter) else _get t e
             |State(n)::t -> if n = e then Some(State(n)) else _get t e 
             |Signal(n)::t -> if n = e then Some(Signal(n)) else _get t e 
-            |Action(n,x1,x2,x3)::t -> if n = e then Some(Action(n,x1,x2,x3)) else _get t e 
+            |Action(n,x1,x2,x3,x4)::t -> if n = e then Some(Action(n,x1,x2,x3,x4)) else _get t e 
             |[] -> None
          end
       in
@@ -85,7 +85,7 @@ module TypeSystem : TypeSystemSig = struct
          |State(x) -> x
          |Signal(x) ->x
          |Parameter ->"parameter"
-         |Action(x,_,_,_) -> x
+         |Action(x,_,_,_,_) -> x
       in
       if (get ts name) = None then 
       begin
@@ -119,16 +119,18 @@ module TypeSystem : TypeSystemSig = struct
          _extends chld (get_child_types t par)
 
    let to_string (t:ts) : string = 
+      let prefix = "   " in 
       let rec _print_type (t:typ) = 
          begin
          match t with
             |State(x) -> "state:"^x
             |Signal(x) -> "sig:"^x
             |Parameter -> "parameter"
-            |Action(name, inputs, rel, output) -> "action:"^name
-               ^" ("^
-                  (List.fold_right (fun (n,t) str -> str^n^"="^(_print_type t)^"," ) inputs "")
-               ^") -> "^(to_string rel)^" -> "^(_print_type output)
+            |Action(name, inputs, rel, rules, output) -> prefix^"action:"^name^"\n"^
+                  prefix^"   inputs:"^(List.fold_right (fun (n,t) str -> str^n^":"^(_print_type t)^"," ) inputs "")^
+                  prefix^(List.fold_right (fun (n,r) str -> str^"\n   "^n^" :<= "^(Rule.to_string r)^";") rules "")^"\n"^
+                  prefix^"   rel: "^(Relation.to_string rel)^"\n"^
+                  prefix^"   out: "^(_print_type output)^"\n"
                
          end
       in
@@ -155,7 +157,7 @@ module TypeSystem : TypeSystemSig = struct
          match (par,chl) with
             |(State(a),State(b)) -> true
             |(Signal(a),Signal(b)) -> true
-            |(Action(n1,inps1,rel1,outp1),Action(n2,inps2,rel2,outp2)) -> false
+            |(Action(n1,inps1,rel1,rul1,outp1),Action(n2,inps2,rel2,rul2,outp2)) -> false
             | _ -> false
          end
       in

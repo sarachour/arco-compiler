@@ -15,10 +15,16 @@ let rec to_string (r:relation) : string =
    match r with
    | Plus(h::r) -> let delim="+" in 
       List.fold_right (fun e str -> str^delim^(to_string e)) r ((to_string h))
+   | Plus([]) -> "" 
+
    | Minus(h::r) -> let delim="-" in 
       List.fold_right (fun e str -> str^delim^(to_string e)) r ((to_string h))
+   | Minus([]) -> "" 
+
    | Mult(h::r) -> let delim="*" in 
-      List.fold_right (fun e str -> str^delim^(to_string e)) r ((to_string h))   
+      List.fold_right (fun e str -> str^delim^(to_string e)) r ((to_string h))  
+   | Mult([]) -> "" 
+   
    | Divide(t,b) -> "("^(to_string t)^")/("^(to_string b)^")"  
    | Exp(t,b) -> "("^(to_string t)^")^("^(to_string b)^")"  
    | Symbol(t) -> t
