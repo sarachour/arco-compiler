@@ -4,7 +4,7 @@ open Rule
 
 (* Types *)
 type typ = 
-   Action of string*((string*typ) list)*relation*((string*rule) list)*typ
+   Action of string*((string*typ) list)*relation*((string*rule) list)*(string*typ)
    | State of string
    | Signal of string
    | Parameter
@@ -33,6 +33,7 @@ sig
    val add: ts->typ->ts
    val extends: ts->typ->typ->ts
    val is: ts->typ->typ->bool
+   val type2str: typ -> string
    val to_string: ts -> string
 end 
 
@@ -118,32 +119,31 @@ module TypeSystem : TypeSystemSig = struct
       in
          _extends chld (get_child_types t par)
 
+   let rec type2str (t:typ) : string = 
+      match t with
+         |State(x) -> "state:"^x
+         |Signal(x) -> "sig:"^x
+         |Parameter -> "parameter"
+         |Action(name, inputs, rel, rules, (nout, tout)) -> "action:"^name^"{ "^
+               (List.fold_right (fun (n,t) str -> str^n^":"^(type2str t)^"*" ) inputs "")^" -> "^
+               (Relation.to_string rel)^
+               (List.fold_right (fun (n,r) str -> str^" -> "^n^" : "^(Rule.to_string r)) rules "")^
+               " -> "^nout^":"^(type2str tout)^"\n"
+            
+      
+
    let to_string (t:ts) : string = 
       let prefix = "   " in 
-      let rec _print_type (t:typ) = 
-         begin
-         match t with
-            |State(x) -> "state:"^x
-            |Signal(x) -> "sig:"^x
-            |Parameter -> "parameter"
-            |Action(name, inputs, rel, rules, output) -> prefix^"action:"^name^"\n"^
-                  prefix^"   inputs:"^(List.fold_right (fun (n,t) str -> str^n^":"^(_print_type t)^"," ) inputs "")^
-                  prefix^(List.fold_right (fun (n,r) str -> str^"\n   "^n^" :<= "^(Rule.to_string r)^";") rules "")^"\n"^
-                  prefix^"   rel: "^(Relation.to_string rel)^"\n"^
-                  prefix^"   out: "^(_print_type output)^"\n"
-               
-         end
-      in
       let rec _print_types (t: typ list) delim = 
          begin
          match t with 
-            |h::t -> (_print_type h)^delim^(_print_types t delim)
+            |h::t -> (type2str h)^delim^(_print_types t delim)
             |[] -> ""
          end
       in
       let rec _print_inheritence (env:ts) (t: typ list) delim delim2 = 
          match t with 
-            | h::t -> (_print_type h)^" := "^(_print_types (get_child_types env h) delim)^
+            | h::t -> (type2str h)^" := "^(_print_types (get_child_types env h) delim)^
                delim2^(_print_inheritence env t delim delim2)
             | [] -> ""
 
