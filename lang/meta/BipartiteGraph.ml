@@ -51,7 +51,7 @@ sig
    val get_parameter: env->string->parameter maybe
 
    val add_state: env->string->string->env
-   val add_action: env->string->string->string*string list->string*string list->env
+   val add_action: env->string->string->(string*string) list->(string*string) list->env
    val add_parameter: env->string->float->env
 
    val to_string : env->string
@@ -119,7 +119,7 @@ struct
          raise (TypeException ("no type exists with name "^ty))
 
 
-   let add_action (env:env) (kind:string) (name:string) (ins:string*string list) (outs:string*string list) : env =
+   let add_action (env:env) (kind:string) (name:string) (ins:(string*string) list) (outs:(string*string) list) : env =
       env
 
    let to_string (env:env) = 
