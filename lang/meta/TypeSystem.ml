@@ -25,6 +25,7 @@ sig
       mutable types: typ list;
       mutable hierarchy:inherit_entry list;
    }
+   val get_descendent_types: ts -> typ -> typ list
    val get_child_types: ts -> typ -> typ list
    val get_parent_types: ts -> typ -> typ list
    val get: ts->string->typ maybe
@@ -48,16 +49,27 @@ module TypeSystem : TypeSystemSig = struct
       mutable types: typ list;
       mutable hierarchy: inherit_entry list;
    }
-   let create () = {types=[];hierarchy=[]}
+   let create () = {types=[];hierarchy=[{entry=Parameter; children=[]; parents=[]}]}
 
    let get_child_types (root:ts) (t:typ) =
       let rec _get_child_types lst e : typ list = 
          match lst with
-            h::t -> if h.entry = e then h.children else _get_child_types t e 
+            h::t -> if h.entry = e then h.entry::h.children else _get_child_types t e 
             | [] -> []
       in 
          _get_child_types root.hierarchy t 
-        
+     
+   let get_descendent_types (root:ts) (t:typ) : typ list=  
+      let rec _get_desc_types (lst:typ list): typ list = 
+         match lst with
+            | h::t -> 
+               let rest = _get_desc_types t in 
+               let is_in = List.fold_right (fun x inside -> (h = x) || inside) rest false in
+                  if is_in then rest
+                  else (get_child_types root h) @ rest
+            | [] -> []
+      in
+         _get_desc_types (get_child_types root t) 
 
    let get_parent_types (root:ts) (t:typ) =
       let rec _get_parent_types lst e: typ list = 
@@ -110,14 +122,15 @@ module TypeSystem : TypeSystemSig = struct
 
 
    let is (t:ts) (chld:typ) (par:typ) : bool =
-      let rec _extends (m:typ) (l:typ list) : bool =
+      let rec _extends (nodes: typ list) (child:typ) : bool =
          begin
-         match l with
-            h::t -> if h = m then true else _extends m t 
+         match nodes with
+            h::t -> 
+               if h = par then  true else _extends t child 
             | [] -> false
          end
       in
-         _extends chld (get_child_types t par)
+         _extends (get_descendent_types t par) chld
 
    let rec type2str (t:typ) : string = 
       match t with

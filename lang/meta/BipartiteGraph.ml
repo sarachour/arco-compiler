@@ -89,14 +89,46 @@ struct
    let add_parameter env nm v =
       env.g.params <- {name=nm; value=v;t=Parameter}::env.g.params; env
    
-   let get_action env nm = 
-      None
+   let get_action env nm : action maybe = 
+      let rec _get_action (l: action list) = match l with
+         | h::t -> 
+            begin
+               match h with
+                  {name=n; inputs=_; output=_; t=_} -> 
+                     if n = nm then Some(h) else _get_action t
+                  | _ -> _get_action t
+            end
+         | [] -> None
+      in
+         _get_action env.g.actions
+
+   let get_parameter env nm : parameter maybe = 
+      let rec _get_parameter l = match l with
+         | h::t -> 
+            begin
+               match h with
+                  {name=n; value=_; t=_} -> 
+                     if n = nm then Some(h) else _get_parameter t
+                  | _ -> _get_parameter t
+            end
+         | [] -> None
+      in
+         _get_parameter env.g.params
     
-   let get_parameter env nm = 
-      None
     
-   let get_state env nm = 
-      None
+   let get_state (env:env) (nm:string) : state maybe= 
+      let rec _get_state (l: state list) = match l with
+         | h::t -> 
+            begin
+               match h with
+                  {name=n; t=_} -> 
+                     if n = nm then Some(h) else _get_state t
+                  | _ -> _get_state t
+            end
+         | [] -> None
+      in
+         _get_state env.g.states
+    
 
    let add_state env ty nm= 
       if TypeSystem.has env.ts (State ty) then
@@ -119,8 +151,45 @@ struct
          raise (TypeException ("no type exists with name "^ty))
 
 
-   let add_action (env:env) (kind:string) (name:string) (ins:(string*string) list) (outs:(string*string) list) : env =
-      env
+   let add_action (env:env) (name:string) (kind:string) (ins:(string*string) list) (outs:(string*string) list) : env =
+      match TypeSystem.get env.ts kind with
+         | Some(Action(name,inputs,rel,rules,outputs)) -> 
+            let rec find_rel_typ (s:string) (lst:(string*typ) list) : typ maybe = 
+               match lst with
+               | (nm,ty)::t -> if s = nm then Some(ty) else find_rel_typ s t 
+               | [] -> None
+            in
+            let rec find_env_type (s:string) : typ maybe = 
+               match (get_state env s, get_parameter env s, get_action env s) with
+                  |(Some(s),_,_) -> Some(s.t)
+                  |(_,Some(s),_) -> Some(s.t)
+                  |(_,_,Some(s)) -> Some(s.t)
+                  | _ -> None
+            in
+            let rec check_types (names:(string*string) list) (types: (string*typ) list) : unit = 
+               match names with
+                  | (inp_name, rel_name)::t -> 
+                     begin
+                     match ((find_rel_typ rel_name types), (find_env_type inp_name)) with
+                     | (Some(rx), Some(nx)) -> if TypeSystem.is env.ts nx rx then check_types t types else
+                        raise (TypeException ("input type "^(TypeSystem.type2str nx)^" does not match argument type of "^(TypeSystem.type2str rx)))
+                     | (_,None) -> raise (TypeException ("argument "^inp_name^" has not been declared in the environment."))
+                     | (None,_) -> raise (TypeException ("no argument for action type "^kind^" exists with name "^rel_name))
+                     end
+                  | [] -> ()
+            in
+            begin
+               try
+                  check_types ins inputs;
+                  check_types outs [outputs];
+                  env
+               with
+                  TypeException(msg) -> raise (GraphException ("Adding action "^name^":"^kind^" failed. "^msg))
+            end
+
+         | Some(_) -> raise (TypeException ("the type with name "^kind^" is not an action."))
+         | None -> raise (TypeException ("no type exists with name "^kind))
+      
 
    let to_string (env:env) = 
       let rec print_params (p:parameter list) = 
@@ -135,6 +204,7 @@ struct
             | [] -> ""
             | _::t -> "<failed to parse>\n"^(print_states t)
       in
+         (TypeSystem.to_string env.ts)^"\n\n"^
          (print_params env.g.params)^"\n\n"^
          (print_states env.g.states)
 end
