@@ -27,7 +27,7 @@ type action = {
 }
 
 
-module type BipartiteGraphEnvironmentSig = 
+module type MetaLanguageASTSig = 
 sig
    type connection = identifier*identifier
    type bipartite = {
@@ -57,7 +57,7 @@ sig
    val to_string : env->string
 end 
 
-module BipartiteGraphEnvironment : BipartiteGraphEnvironmentSig = 
+module MetaLanguageAST : MetaLanguageASTSig = 
 struct
    type connection = identifier*identifier
    ;;
@@ -93,10 +93,8 @@ struct
       let rec _get_action (l: action list) = match l with
          | h::t -> 
             begin
-               match h with
-                  {name=n; inputs=_; output=_; t=_} -> 
+               match h with {name=n; inputs=_; output=_; t=_} -> 
                      if n = nm then Some(h) else _get_action t
-                  | _ -> _get_action t
             end
          | [] -> None
       in
@@ -106,10 +104,8 @@ struct
       let rec _get_parameter l = match l with
          | h::t -> 
             begin
-               match h with
-                  {name=n; value=_; t=_} -> 
+               match h with  {name=n; value=_; t=_} -> 
                      if n = nm then Some(h) else _get_parameter t
-                  | _ -> _get_parameter t
             end
          | [] -> None
       in
@@ -120,10 +116,8 @@ struct
       let rec _get_state (l: state list) = match l with
          | h::t -> 
             begin
-               match h with
-                  {name=n; t=_} -> 
+               match h with {name=n; t=_} -> 
                      if n = nm then Some(h) else _get_state t
-                  | _ -> _get_state t
             end
          | [] -> None
       in
