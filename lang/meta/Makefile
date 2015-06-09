@@ -1,6 +1,6 @@
 
 DIFFEQ=../diffeq
-DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo BipartiteGraph.cmo DiffEqCompiler.cmo CircuitCompiler.cmo
+DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo BipartiteGraph.cmo DiffEq.cmo Visitor.cmo DiffEqCompiler.cmo CircuitCompiler.cmo
 
 
 all: biology
