@@ -5,4 +5,5 @@ type 'a maybe =
 
 exception TypeException of string;;
 exception GraphException of string;;
+exception PrintException of string;;
 

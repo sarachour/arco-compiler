@@ -22,8 +22,8 @@ type state = {
 type action = {
    t:typ;
    name: string;
-   inputs:identifier*identifier list;
-   output:identifier*identifier list;
+   inputs:(identifier*identifier) list;
+   output:(identifier*identifier) list;
 }
 
 
@@ -166,22 +166,32 @@ struct
                   |(_,_,Some(s)) -> Some(s.t)
                   | _ -> None
             in
-            let rec check_types (names:(string*string) list) (types: (string*typ) list) : unit = 
+            let rec check_types (names:(identifier*identifier) list) : unit = 
                match names with
-                  | (inp_name, rel_name)::t -> 
+                  | ((en,et), (rn,rt))::t -> 
+                     if TypeSystem.is env.ts et rt then check_types t else
+                        raise (TypeException ("input type "^(TypeSystem.type2str et)^" does not match argument type of "^(TypeSystem.type2str rt)))
+                     
+                  | [] -> ()
+            in
+            let rec make_mapping (names:(string*string) list) (types: (string*typ) list) : (identifier*identifier) list = 
+               match names with
+                  | (inp_name, rel_name)::t ->
                      begin
                      match ((find_rel_typ rel_name types), (find_env_type inp_name)) with
-                     | (Some(rx), Some(nx)) -> if TypeSystem.is env.ts nx rx then check_types t types else
-                        raise (TypeException ("input type "^(TypeSystem.type2str nx)^" does not match argument type of "^(TypeSystem.type2str rx)))
+                     | (Some(rx), Some(nx)) -> ((inp_name,nx),(rel_name,rx))::(make_mapping t types)
                      | (_,None) -> raise (TypeException ("argument "^inp_name^" has not been declared in the environment."))
                      | (None,_) -> raise (TypeException ("no argument for action type "^kind^" exists with name "^rel_name))
                      end
-                  | [] -> ()
+                  | [] -> []
             in
             begin
                try
-                  check_types ins inputs;
-                  check_types outs [outputs];
+                  let inp_map = make_mapping ins inputs in 
+                  let outp_map = make_mapping outs [outputs] in
+                  check_types inp_map;
+                  check_types outp_map;
+                  env.g.actions <- {inputs=inp_map; output=outp_map; t=Action(name,inputs,rel,rules,outputs); name=name}::env.g.actions;
                   env
                with
                   TypeException(msg) -> raise (GraphException ("Adding action "^name^":"^kind^" failed. "^msg))
@@ -192,21 +202,29 @@ struct
       
 
    let to_string (env:env) = 
-      let rec print_params (p:parameter list) = 
+      let rec print_params (p:parameter list) : string = 
          match p with
             | {name=n;value=v;t=ty}::t -> "param "^n^"="^string_of_float(v)^"\n"^(print_params t)
             | [] -> ""
       in
-      let rec print_states (p:state list) = 
+      let rec print_states (p:state list) : string = 
          match p with
             | {name=n;t=State(ty)}::t -> "state "^ty^" "^n^";"^"\n"^(print_states t)
             | {name=n;t=Signal(ty)}::t -> "sig "^ty^" "^n^";"^"\n"^(print_states t)
             | [] -> ""
-            | _::t -> "<failed to parse>\n"^(print_states t)
+            | _::t -> raise (PrintException "Failed to parse..")
+      in
+      let rec print_actions (a:action list) : string = 
+         match a with
+            | {name=n; t=typ; inputs=in_map; output=out_map}::t ->
+               "action "^n^"("^") -> "^"\n"^
+               (print_actions t)
+            | [] -> ""
       in
          (TypeSystem.to_string env.ts)^"\n\n"^
          (print_params env.g.params)^"\n\n"^
-         (print_states env.g.states)
+         (print_states env.g.states)^"\n\n"^
+         (print_actions env.g.actions)
 end
 
 
