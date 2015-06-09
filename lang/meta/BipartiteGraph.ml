@@ -214,10 +214,17 @@ struct
             | [] -> ""
             | _::t -> raise (PrintException "Failed to parse..")
       in
+      let rec print_identifier_list (a:(identifier*identifier) list): string = 
+         match a with
+            |((n1,t1),(n2,t2))::t -> n1^":"^n2^" | "^(print_identifier_list t)
+            |[] -> ""
+      in
       let rec print_actions (a:action list) : string = 
          match a with
             | {name=n; t=typ; inputs=in_map; output=out_map}::t ->
-               "action "^n^"("^") -> "^"\n"^
+               "action "^n^"("^
+                  (print_identifier_list in_map)^") -> "^
+                  (print_identifier_list out_map)^"\n"^
                (print_actions t)
             | [] -> ""
       in
