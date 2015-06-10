@@ -146,11 +146,11 @@ let create_instance () =
 ;;
 
 let create_topology env =
-   let env = MetaLanguageAST.add_parameter env "mrna_deg" 0.0125 in 
-   let env = MetaLanguageAST.add_parameter env "prot_deg" 0.0125 in 
+   let env = MetaLanguageAST.add_parameter env "mrna_deg" 0.025 in 
+   let env = MetaLanguageAST.add_parameter env "prot_deg" 0.0100 in 
    let env = MetaLanguageAST.add_parameter env "translate_rate" 0.0125 in 
-   let env = MetaLanguageAST.add_parameter env "transcribe_rate" 0.0125 in 
-   let env = MetaLanguageAST.add_parameter env "inh_rate" 0.0125 in  
+   let env = MetaLanguageAST.add_parameter env "transcribe_rate" 0.000125 in 
+   let env = MetaLanguageAST.add_parameter env "inh_rate" 0.55 in  
    let env = MetaLanguageAST.add_parameter env "rep_act_rate" 0.0125 in
    let env = MetaLanguageAST.add_state env ("promoter") "TetR-ETR-VP16" in
    let env = MetaLanguageAST.add_state env ("promoter") "PSV40" in

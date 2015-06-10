@@ -2,6 +2,7 @@ open DiffEqAST
 open MetaLanguageAST
 open Util
 open Visitor
+open Relation
 
 exception DiffCompileException of string;;
 
@@ -9,6 +10,17 @@ type tbl = {
    mutable states : (string*expr) list;
    mutable params : (string*expr) list;
 }
+
+let rec rel2expr (r:relation) : expr = 
+   match r with
+      | Plus(x) -> Add(List.map (fun y -> rel2expr y) x)
+      | Minus(x) -> Sub(List.map (fun y -> rel2expr y) x)
+      | Mult(x) -> Mult(List.map (fun y -> rel2expr y) x)
+      | Divide(x,y) -> Div( (rel2expr x) , (rel2expr y) )
+      | Decimal(x) -> Term(Decimal(x))
+      | Integer(x) -> Term(Integer(x))
+      | Symbol(x) -> Term(Symbol(x))
+      | Exp(x,y) -> Exp((rel2expr x), (rel2expr y))
 
 module DiffEqTable :
 sig
@@ -52,8 +64,13 @@ module DiffEqCompiler : MetaLanguageVisitor with type s = tbl  =
 struct
    type s=tbl
    let visit_action (st:s) (env: env) (act:action) : s  = 
-      st
-   
+      let sublist = List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.inputs in
+      match act.t with
+         | Action(tname, tinputs, trel, rules, toutput) -> 
+            let nrel = subst4rel trel sublist in
+            st
+         | _ -> raise (DiffCompileException ("action somehow doesn't have action type.."))
+
    let visit_state (st: s) (env: env) (state:state) : s   = 
       DiffEqTable.add_state st state.name
    

@@ -1,4 +1,6 @@
 
+exception DiffEQASTException of string;;
+
 type symbol = string;;
 
 type term = 
@@ -14,7 +16,7 @@ type expr =
   | Sub of expr list
   | Mult of expr list
   | Div of expr*expr
-  | Exp of expr*term
+  | Exp of expr*expr
   | Term of term
 ;;
 
@@ -22,6 +24,33 @@ type stmt =
   | Eq of expr*expr
   | Decl of string*string*expr
 
+let rec subst4expr (e:expr) (subs:(string*string) list) : expr =
+    let sub_term (t:term) : term =
+      match t with
+        | Symbol(s) -> 
+          begin
+          match List.filter (fun (nw,targ) -> targ = s) subs with
+            | [(nw,targ)] -> Symbol(nw)
+            | [] -> Symbol(s)
+            | _ -> raise (DiffEQASTException "repeated substitutions in list")
+          end
+        | x -> x 
+    in
+    let rec sub_expr_list (e:expr list) : expr list = 
+      match e with
+        | h::t -> (subst4expr h subs)::(sub_expr_list t)
+        | [] -> []
+    in
+    let rec sub_expr (e:expr) : expr =
+      match e with
+      | Term(t) -> Term (sub_term (t))
+      | Add(e) -> Add (sub_expr_list e)
+      | Sub(e) -> Sub (sub_expr_list e)
+      | Mult(e) -> Mult (sub_expr_list e)
+      | Div(e1,e2) -> Div ((sub_expr e1), (sub_expr e2))
+      | Exp(e,t) -> Exp ((sub_expr e),(sub_expr t))
+    in
+      sub_expr e
 
 let rec eq2tex (e:expr) : string = 
    let term2tex (t:term) : string =
@@ -43,7 +72,7 @@ let rec eq2tex (e:expr) : string =
       | Sub(t) -> exprlist2tex t "-"
       | Mult(t) -> exprlist2tex t "\\cdot"
       | Div(a,b) -> "\\frac {"^(eq2tex a)^"} {"^(eq2tex b)^"}"
-      | Exp(base,exp) -> "{"^(eq2tex base)^"}^{"^(term2tex exp)^"}"
+      | Exp(base,exp) -> "{"^(eq2tex base)^"}^{"^(eq2tex exp)^"}"
       | Term(a) -> term2tex(a)
 
 let stmt2tex (s:stmt) : string = 
@@ -75,7 +104,7 @@ let rec eq2str (e:expr) : string =
       | Sub(t) -> exprlist2str t "-"
       | Mult(t) -> exprlist2str t "*"
       | Div(a,b) -> (eq2str a)^"/"^(eq2str b)
-      | Exp(base,exp) -> (eq2str base)^"^"^"("^(term2str exp)^")"
+      | Exp(base,exp) -> (eq2str base)^"^"^"("^(eq2str exp)^")"
       | Term(a) -> term2str(a)
 
 let stmt2str (s:stmt) : string = 

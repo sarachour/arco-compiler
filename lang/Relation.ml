@@ -1,6 +1,7 @@
+exception RelationException of string;;
 
 type relation = 
-   Plus of relation list
+   | Plus of relation list
    | Minus of relation list
    | Mult of relation list
    | Divide of relation*relation
@@ -9,6 +10,31 @@ type relation =
    | Decimal of float
    | Integer of int 
 ;;
+
+let rec subst4rel (e:relation) (subs:(string*string) list) : relation =
+    let update_varname (s:string) : string =
+      match List.filter (fun (nw,targ) -> targ = s) subs with
+         | [(nw,targ)] -> nw
+         | [] -> s
+         | _ -> raise (RelationException "repeated substitutions in list")
+    in
+    let rec sub_rel_list (e:relation list) : relation list = 
+      match e with
+        | h::t -> (subst4rel h subs)::(sub_rel_list t)
+        | [] -> []
+    in
+    let rec sub_rel (e:relation) : relation =
+      match e with
+      | Symbol(s) -> Symbol (update_varname s)
+      | Plus(e) -> Plus (sub_rel_list e)
+      | Minus(e) -> Minus (sub_rel_list e)
+      | Mult(e) -> Mult (sub_rel_list e)
+      | Divide(e1,e2) -> Divide ((sub_rel e1), (sub_rel e2))
+      | Exp(e,t) -> Exp ((sub_rel e),(sub_rel t))
+      | Decimal(f) -> Decimal(f)
+      | Integer(i) -> Integer(i)
+    in
+      sub_rel e
 
 
 let rec to_string (r:relation) : string = 
