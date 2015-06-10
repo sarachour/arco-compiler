@@ -1,7 +1,6 @@
 
 type rule = 
    | Hole 
-   | NewHole
    | Plus of rule list
    | Minus of rule list
    | Times of rule list
@@ -18,5 +17,4 @@ let rec to_string (r:rule) =
       | Relation -> "f(x)"
       | Input(s) -> "in("^s^")"
       | Output -> "out"
-      | NewHole -> "#"
       | _ -> ""

@@ -24,6 +24,19 @@ type stmt =
   | Eq of expr*expr
   | Decl of string*string*expr
 
+let rec fillhole4expr (e:expr) (s:expr) : expr = 
+    let rec _fill_expr (e:expr) : expr = 
+      match e with
+      | Add(e) -> Add (List.map (fun x -> _fill_expr x) e)
+      | Sub(e) -> Sub (List.map (fun x -> _fill_expr x) e)
+      | Mult(e) -> Mult (List.map (fun x -> _fill_expr x) e)
+      | Div(e1,e2) -> Div ((_fill_expr e1), (_fill_expr e2))
+      | Exp(e,t) -> Exp ((_fill_expr e),(_fill_expr t))
+      | Term(Hole) -> s
+      | t -> t
+    in
+      _fill_expr e
+
 let rec subst4expr (e:expr) (subs:(string*string) list) : expr =
     let sub_term (t:term) : term =
       match t with
@@ -68,11 +81,11 @@ let rec eq2tex (e:expr) : string =
    in
     match e with
       | Deriv(t,dep,indep) -> "\\frac{\\delta "^dep^"} {\\delta "^indep^"} "^(term2tex t)^""
-      | Add(t) -> exprlist2tex t "\\plus"
+      | Add(t) -> exprlist2tex t " \\plus "
       | Sub(t) -> exprlist2tex t "-"
-      | Mult(t) -> exprlist2tex t "\\cdot"
+      | Mult(t) -> exprlist2tex t " \\cdot "
       | Div(a,b) -> "\\frac {"^(eq2tex a)^"} {"^(eq2tex b)^"}"
-      | Exp(base,exp) -> "{"^(eq2tex base)^"}^{"^(eq2tex exp)^"}"
+      | Exp(base,exp) -> " {"^(eq2tex base)^"}^{ "^(eq2tex exp)^" }"
       | Term(a) -> term2tex(a)
 
 let stmt2tex (s:stmt) : string = 
@@ -91,6 +104,7 @@ let rec eq2str (e:expr) : string =
       | Decimal(f) -> string_of_float f
       | Integer(i) -> string_of_int i
       | Symbol(s) -> s
+      | Hole -> "@"
    in
    let rec exprlist2str lst delim = 
       match lst with

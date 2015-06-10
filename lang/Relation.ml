@@ -13,8 +13,8 @@ type relation =
 
 let rec subst4rel (e:relation) (subs:(string*string) list) : relation =
     let update_varname (s:string) : string =
-      match List.filter (fun (nw,targ) -> targ = s) subs with
-         | [(nw,targ)] -> nw
+      match List.filter (fun (ename,rname) -> rname = s) subs with
+         | [(ename,rname)] -> ename
          | [] -> s
          | _ -> raise (RelationException "repeated substitutions in list")
     in

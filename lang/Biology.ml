@@ -43,9 +43,9 @@ let create_instance () =
                Symbol("V_max")
             ]),
             [
-               ("A",Minus([Hole;Relation;NewHole]));
-               ("R",Minus([Hole;Relation;NewHole]));
-               ("P", Plus([Hole;Relation;NewHole]))
+               ("A",Minus([Relation;Hole]));
+               ("R",Minus([Relation;Hole]));
+               ("P", Plus([Relation;Hole]))
             ],
             ("P",Signal "promoter")
          )
@@ -68,9 +68,9 @@ let create_instance () =
                Symbol("V_max")
             ]),
             [
-               ("P",Minus([Hole;Relation;NewHole]));
-               ("I",Minus([Hole;Relation;NewHole]));
-               ("E",Plus([Hole;Relation;NewHole]))
+               ("P",Minus([Relation;Hole]));
+               ("I",Minus([Relation;Hole]));
+               ("E",Plus([Relation;Hole]))
             ],
             ("E",State "env")
          )
@@ -83,7 +83,7 @@ let create_instance () =
             [("P",(Signal "promoter"))],
             (Symbol "P"),
             [
-               ("A", Plus([Hole;Relation;NewHole]))
+               ("A", Plus([Relation;Hole]))
             ],
             ("A",Signal "gene")
          )
@@ -96,7 +96,7 @@ let create_instance () =
             [("A",(State "mrna"));("k_mrna_deg",Parameter)],
             Mult([Symbol("k_mrna_deg"); Symbol("A")]),
             [
-               ("A", Minus([Hole;Relation;NewHole]))
+               ("A", Minus([Relation;Hole]))
             ],
             ("E", State "env")
          )
@@ -109,7 +109,7 @@ let create_instance () =
             [("A",(State "protein"));("k_prot_deg",Parameter)],
             Mult([Symbol("k_prot_deg"); Symbol("A")]),
             [
-               ("A", Minus([Hole;Relation;NewHole]))
+               ("A", Minus([Relation;Hole]))
             ],
             ("E",State "env")
          )
@@ -122,7 +122,7 @@ let create_instance () =
             [("gA",(Signal "gene")); ("ktrans",Parameter)],
             Mult([Symbol("ktrans"); Symbol("SIG")]),
             [
-               ("mA", Plus([Hole;Relation;NewHole]))
+               ("mA", Plus([Relation;Hole]))
             ],
             ("mA",State "mrna")
          )
@@ -135,8 +135,8 @@ let create_instance () =
             [("mA",(State "mrna")); ("ktrans",Parameter)],
             Mult([Symbol("ktrans"); Symbol("A")]),
             [
-               ("pA", Plus([Hole;Relation;NewHole]));
-               ("mA", Minus([Hole;Relation;NewHole]))
+               ("pA", Plus([Relation;Hole]));
+               ("mA", Minus([Relation;Hole]))
             ],
             ("pA",State "protein")
          )

@@ -8,7 +8,7 @@ open Rule
 exception DiffCompileException of string;;
 
 type tbl = {
-   mutable states : (string*expr) list;
+   mutable states : (string*expr*int) list;
    mutable params : (string*expr) list;
 }
 
@@ -26,20 +26,20 @@ let rec rel2expr (r:relation) : expr =
 let rule2expr (par:expr) (rel:expr) (r:rule) : expr = 
    let rec _rule2expr (r:rule) : expr = 
       match r with
-         | Hole -> par
-         | NewHole -> Term(Hole)
+         | Hole -> Term(Hole)
          | Plus(lst) -> Add(List.map (fun x -> _rule2expr x) lst)
          | Minus(lst) -> Sub(List.map (fun x -> _rule2expr x) lst)
          | Times(lst) -> Mult(List.map (fun x -> _rule2expr x) lst)
          | Relation -> rel
    in
-      _rule2expr r
+      let nexpr = _rule2expr r in
+      fillhole4expr par nexpr
 
 module DiffEqTable :
 sig
    val create : unit -> tbl
    val get_state : tbl -> string -> expr
-   val add_state : tbl -> string -> tbl
+   val add_state : tbl -> string -> int -> tbl
    val update_state : tbl -> string -> expr -> tbl
    val add_parameter : tbl -> string -> expr -> tbl
    val to_string : tbl -> string
@@ -47,37 +47,44 @@ end =
 struct
    let create () : tbl = {params=[]; states=[]}
    let get_state (t:tbl) (name:string) : expr =
-      match List.filter (fun (n,e) -> n = name) t.states with
-         |[(n,e)] -> e
+      match List.filter (fun (n,_,_) -> n = name) t.states with
+         |[(_,e,_)] -> e
          |[] -> raise (DiffCompileException ("state with name "^name^" does not exist."))
          | _ -> raise (DiffCompileException ("multiple states with name "^name))
 
-   let add_state (t:tbl) (name:string) : tbl =
-      match List.filter (fun (n,e) -> n = name) t.states with
-         | [] -> t.states <- (name, Term(Hole))::t.states; t
+   let add_state (t:tbl) (name:string) (order:int) : tbl =
+      match List.filter (fun (n,_,_) -> n = name) t.states with
+         | [] -> t.states <- (name, Term(Hole), order)::t.states; t
          | _ -> raise (DiffCompileException ("state with name "^name^" already exists."))
 
    let add_parameter (t:tbl) (name:string) (e:expr) : tbl = 
-      match List.filter (fun (n,e) -> n = name) t.params with
+      match List.filter (fun (n,_) -> n = name) t.params with
          | [] -> t.params <- (name, e)::t.params; t
          | _ -> raise (DiffCompileException ("parameter with name "^name^" already exists."))
 
    let update_state (t:tbl) (name:string) (e:expr) : tbl = 
-      match List.filter (fun (n,e) -> n = name) t.states with
-         | [h] -> t.states <- (name, Term(Hole))::(List.filter (fun (n,e) -> n <> name) t.states); t
+      match List.filter (fun (n,_,_) -> n = name) t.states with
+         | [(n,_,o)] -> t.states <- (n,e,o)::(List.filter (fun (n,_,_) -> n <> name) t.states); t
          | [] -> raise (DiffCompileException ("state with name "^name^" does not exist."))
          | _ -> raise (DiffCompileException ("multiple declarations of state with name "^name^"."))
 
    let to_string (t:tbl) = 
-      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("param",n,e)) ) ) t.params "")^"\n\n"^
-      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("state",n,e)) ) ) t.states "")
+      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2str (Decl("param",n,e)) ) ) t.params "")^"\n\n"^
+      (List.fold_right (fun (n,e,o) r-> r^"\n"^(stmt2str (Decl("state["^(string_of_int o)^"]",n,e)) ) ) t.states "")
 end
 
 module DiffEqCompiler : MetaLanguageVisitor with type s = tbl  = 
 struct
    type s=tbl
    let visit_action (st:s) (env: env) (act:action) : s  = 
-      let sublist = List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.inputs in
+      let sublist = 
+         (List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.inputs) @
+         (List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.output) 
+      in
+      let rec find_state name lst : string = match lst with
+         | (sname,rname)::t -> if name = rname then sname else find_state name t
+         | [] -> name
+      in  
       let apply_rule (nst:s) (name:string) (e:expr) (r:rule) : s = 
          let oexpr = (DiffEqTable.get_state st name) in
          let nexpr = rule2expr oexpr e r in
@@ -85,7 +92,7 @@ struct
       in
       let rec apply_rules (nst:s) (e:expr) (lst: (string*rule) list) = 
          match lst with
-            | (name,rul)::t -> let x = apply_rule nst name e rul in apply_rules x e t
+            | (name,rul)::t -> let x = apply_rule nst (find_state name sublist) e rul in apply_rules x e t
             | [] -> nst
       in
       match act.t with
@@ -94,8 +101,11 @@ struct
             apply_rules st expr rules
          | _ -> raise (DiffCompileException ("action somehow doesn't have action type.."))
 
-   let visit_state (st: s) (env: env) (state:state) : s   = 
-      DiffEqTable.add_state st state.name
+   let visit_state (st: s) (env: env) (state:state) : s  = 
+      match state.t with
+         |Signal(_) -> DiffEqTable.add_state st state.name 0
+         |State(_) -> DiffEqTable.add_state st state.name 1
+         | _ -> raise (DiffCompileException ("state somehow doesn't have state/signal type.."))
    
    let visit_parameter (st: s) (env: env) (p:parameter) : s  = 
       DiffEqTable.add_parameter st p.name (Term(Decimal(p.value)))
