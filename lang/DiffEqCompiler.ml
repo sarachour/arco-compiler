@@ -22,6 +22,18 @@ let rec rel2expr (r:relation) : expr =
       | Symbol(x) -> Term(Symbol(x))
       | Exp(x,y) -> Exp((rel2expr x), (rel2expr y))
 
+let rule2expr (par:expr) (rel:expr) (r:rule) : expr = 
+   let rec _rule2expr (r:rule) = 
+      match r with
+         | Hole -> par
+         | NewHole -> Hole
+         | Plus(lst) -> Add(List.map (fun x -> _rule2expr x) lst)
+         | Minus(lst) -> Sub(List.map (fun x -> _rule2expr x) lst)
+         | Mult(lst) -> Mult(List.map (fun x -> _rule2expr x) lst)
+         | Relation -> rel
+      in
+         _rule2expr r
+
 module DiffEqTable :
 sig
    val create : unit -> tbl
@@ -65,6 +77,8 @@ struct
    type s=tbl
    let visit_action (st:s) (env: env) (act:action) : s  = 
       let sublist = List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.inputs in
+      let apply_rule (name:string) (r:rule) = 
+         apply_rule2rel r 
       match act.t with
          | Action(tname, tinputs, trel, rules, toutput) -> 
             let nrel = subst4rel trel sublist in

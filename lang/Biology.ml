@@ -68,9 +68,9 @@ let create_instance () =
                Symbol("V_max")
             ]),
             [
-               ("P",Minus(Hole,Relation));
-               ("I", Minus(Hole,Relation));
-               ("E", Plus(Hole,Relation))
+               ("P",Minus(Minus(Hole,Relation),NewHole));
+               ("I",Minus(Minus(Hole,Relation),NewHole));
+               ("E",Plus(Plus(Hole,Relation),NewHole))
             ],
             ("E",State "env")
          )
@@ -83,7 +83,7 @@ let create_instance () =
             [("P",(Signal "promoter"))],
             (Symbol "P"),
             [
-               ("A", Plus(Hole,Relation))
+               ("A", Plus(Plus(Hole,Relation)),NewHole)
             ],
             ("A",Signal "gene")
          )
@@ -96,7 +96,7 @@ let create_instance () =
             [("A",(State "mrna"));("k_mrna_deg",Parameter)],
             Mult([Symbol("k_mrna_deg"); Symbol("A")]),
             [
-               ("A", Minus(Hole,Relation))
+               ("A", Minus(Minus(Hole,Relation)),NewHole)
             ],
             ("E", State "env")
          )
@@ -109,7 +109,7 @@ let create_instance () =
             [("A",(State "protein"));("k_prot_deg",Parameter)],
             Mult([Symbol("k_prot_deg"); Symbol("A")]),
             [
-               ("A", Minus(Hole,Relation))
+               ("A", Minus(Minus(Hole,Relation)),NewHole)
             ],
             ("E",State "env")
          )
@@ -122,7 +122,7 @@ let create_instance () =
             [("gA",(Signal "gene")); ("ktrans",Parameter)],
             Mult([Symbol("ktrans"); Symbol("SIG")]),
             [
-               ("mA", Plus(Hole,Relation))
+               ("mA", Plus(Plus(Hole,Relation)),NewHole)
             ],
             ("mA",State "mrna")
          )
@@ -135,8 +135,8 @@ let create_instance () =
             [("mA",(State "mrna")); ("ktrans",Parameter)],
             Mult([Symbol("ktrans"); Symbol("A")]),
             [
-               ("pA", Plus(Hole,Relation));
-               ("mA", Minus(Hole,Relation))
+               ("pA", Plus(Plus(Hole,Relation)),NewHole);
+               ("mA", Minus(Minus(Hole,Relation)),NewHole)
             ],
             ("pA",State "protein")
          )
