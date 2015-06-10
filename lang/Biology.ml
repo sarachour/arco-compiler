@@ -1,6 +1,7 @@
 open MetaLanguageAST
 open TypeSystem
 open Sys 
+open DiffEqCompiler
 
 (*
 (Divide(
@@ -162,7 +163,6 @@ let create_topology env =
    let env = MetaLanguageAST.add_state env ("repressor") "pEKRAB" in
    let env = MetaLanguageAST.add_state env ("env") "Environment" in
    let env = MetaLanguageAST.add_state env ("smallmolecule") "Erythromycin" in
-   let dumb = Format.printf "%s\n" (MetaLanguageAST.to_string env) in
    let env = MetaLanguageAST.add_action env 
       "erith_inhibits_prot_EKRAB" "smallmolecule-inhibits-protein" 
          [("pEKRAB","P");("Erythromycin","I");("inh_rate","V_max")]
@@ -229,11 +229,14 @@ let main () =
    if Array.length Sys.argv <> 1 then begin
       Format.printf "Usage: biology\n";
    end else begin
-      let env = create_instance() in
-      let inst = create_topology env in 
-      (*Format.printf "TYPE INFORMATION\n";*)
-      (*Format.printf "%s\n" (TypeSystem.to_string (env.ts))*)
-         Format.printf "%s\n" (MetaLanguageAST.to_string inst)
+      let tenv = create_instance() in
+      
+      let env = create_topology tenv in 
+      let env_str = MetaLanguageAST.to_string env in
+
+      let diffeq_tbl = DiffEqCompiler.visit_env env in
+      let diffeq_str = DiffEqTable.to_string diffeq_tbl in
+         Format.printf "%s\n" diffeq_str
    end
 ;;
 

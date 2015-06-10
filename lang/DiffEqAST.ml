@@ -2,13 +2,14 @@
 type symbol = string;;
 
 type term = 
-  Decimal of float
+  | Decimal of float
   | Integer of int
   | Symbol of symbol 
+  | Hole
 ;;
 
 type expr =
-  Deriv of term*symbol*symbol
+  | Deriv of term*symbol*symbol
   | Add of expr list
   | Sub of expr list
   | Mult of expr list
@@ -17,6 +18,10 @@ type expr =
   | Term of term
 ;;
 
+type stmt = 
+  | Eq of expr*expr
+  | Decl of string*string*expr
+
 
 let rec eq2tex (e:expr) : string = 
    let term2tex (t:term) : string =
@@ -24,6 +29,7 @@ let rec eq2tex (e:expr) : string =
       | Decimal(f) -> string_of_float f
       | Integer(i) -> string_of_int i
       | Symbol(s) -> s
+      | Hole -> "@"
    in
    let rec exprlist2tex lst delim = 
       match lst with
@@ -40,6 +46,15 @@ let rec eq2tex (e:expr) : string =
       | Exp(base,exp) -> "{"^(eq2tex base)^"}^{"^(term2tex exp)^"}"
       | Term(a) -> term2tex(a)
 
+let stmt2tex (s:stmt) : string = 
+    match s with
+      | Eq(x,y) -> (eq2tex x)^"="^(eq2tex y)
+      | Decl(q,n,e) ->q^" "^n^"="^(eq2tex e)
+
+let rec stmts2tex (s:stmt list) : string = 
+    match s with
+      | h::t -> (stmt2tex h)^"\n"^(stmts2tex t)
+      | [] -> ""
 
 let rec eq2str (e:expr) : string = 
    let term2str (t:term) : string =
@@ -62,3 +77,13 @@ let rec eq2str (e:expr) : string =
       | Div(a,b) -> (eq2str a)^"/"^(eq2str b)
       | Exp(base,exp) -> (eq2str base)^"^"^"("^(term2str exp)^")"
       | Term(a) -> term2str(a)
+
+let stmt2str (s:stmt) : string = 
+    match s with
+      | Eq(x,y) -> (eq2str x)^"="^(eq2str y)
+      | Decl(q,n,e) ->q^" "^n^"="^(eq2str e)
+
+let rec stmts2str (s:stmt list) : string = 
+    match s with
+      | h::t -> (stmt2str h)^"\n"^(stmts2str t)
+      | [] -> ""

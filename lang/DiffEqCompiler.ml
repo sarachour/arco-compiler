@@ -3,44 +3,84 @@ open MetaLanguageAST
 open Util
 open Visitor
 
-type denv = expr list
+exception DiffCompileException of string;;
 
+type tbl = {
+   mutable states : (string*expr) list;
+   mutable params : (string*expr) list;
+}
 
-module DiffEqCompiler : MetaLanguageVisitor with type t = expr and type s = denv   = 
+module DiffEqTable :
+sig
+   val create : unit -> tbl
+   val get_state : tbl -> string -> expr
+   val add_state : tbl -> string -> tbl
+   val update_state : tbl -> string -> expr -> tbl
+   val add_parameter : tbl -> string -> expr -> tbl
+   val to_string : tbl -> string
+end = 
 struct
-   type t=expr
-   type s=denv
-   let visit_action (st: s) (env: env) (act:action) : s*(t maybe)  = 
-      ([],None)
-   
-   let visit_state (st: s) (env: env) (st:state) : s*(t maybe)   = 
-      ([],None)
-   
-   let visit_parameter (st: s) (env: env) (p:parameter) : s*(t maybe)   = 
-      ([],None)
+   let create () : tbl = {params=[]; states=[]}
+   let get_state (t:tbl) (name:string) : expr =
+      match List.filter (fun (n,e) -> n = name) t.states with
+         |[(n,e)] -> e
+         |[] -> raise (DiffCompileException ("state with name "^name^" does not exist."))
+         | _ -> raise (DiffCompileException ("multiple states with name "^name))
 
-   let rec visit_actions (st: s) (env: env) (act:action list) : s*(t maybe)  = 
-      ([],None)
-   
-   let rec visit_states (st: s) (env: env) (st:state list) : s*(t maybe)   = 
-      ([],None)
-   
-   let rec visit_parameters (st: s) (env: env) (p:parameter list) : s*(t maybe)   = 
-      ([],None)
+   let add_state (t:tbl) (name:string) : tbl =
+      match List.filter (fun (n,e) -> n = name) t.states with
+         | [] -> t.states <- (name, Term(Hole))::t.states; t
+         | _ -> raise (DiffCompileException ("state with name "^name^" already exists."))
 
-   let rec visit_env (st: s) (env: env) : s*(t)   = 
-      ([],Term(Integer(0)))
+   let add_parameter (t:tbl) (name:string) (e:expr) : tbl = 
+      match List.filter (fun (n,e) -> n = name) t.params with
+         | [] -> t.params <- (name, e)::t.params; t
+         | _ -> raise (DiffCompileException ("parameter with name "^name^" already exists."))
+
+   let update_state (t:tbl) (name:string) (e:expr) : tbl = 
+      match List.filter (fun (n,e) -> n = name) t.states with
+         | [h] -> t.states <- (name, Term(Hole))::(List.filter (fun (n,e) -> n <> name) t.states); t
+         | [] -> raise (DiffCompileException ("state with name "^name^" does not exist."))
+         | _ -> raise (DiffCompileException ("multiple declarations of state with name "^name^"."))
+
+   let to_string (t:tbl) = 
+      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("param",n,e)) ) ) t.params "")^
+      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("state",n,e)) ) ) t.states "")
+end
+
+module DiffEqCompiler : MetaLanguageVisitor with type s = tbl  = 
+struct
+   type s=tbl
+   let visit_action (st:s) (env: env) (act:action) : s  = 
+      st
+   
+   let visit_state (st: s) (env: env) (state:state) : s   = 
+      DiffEqTable.add_state st state.name
+   
+   let visit_parameter (st: s) (env: env) (p:parameter) : s  = 
+      DiffEqTable.add_parameter st p.name (Term(Decimal(p.value)))
+
+   let rec visit_actions (st: s) (env: env) (act:action list) : s = 
+      match act with
+      |h::t -> let nst = visit_action st env h in visit_actions nst env t
+      | [] -> st
+   
+   let rec visit_states (st: s) (env: env) (states:state list) : s  = 
+      match states with
+      |h::t -> let nst = visit_state st env h in visit_states nst env t
+      | [] -> st
+   
+   let rec visit_parameters (st: s) (env: env) (p:parameter list) : s  = 
+      match p with
+      |h::t -> let nst = visit_parameter st env h in visit_parameters nst env t
+      | [] -> st
+
+   let rec visit_env (env: env) : s  =
+      let st = DiffEqTable.create() in
+      let st = visit_parameters st env env.g.params in
+      let st = visit_states st env env.g.states in
+      let st = visit_actions st env env.g.actions in
+      st
 
 end;;
 
-
-(*
-module type DiffEqCompilerSig = Visitor.MetaLanguageVisitor (DiffEqType);;
-
-module DiffEqCompiler : DiffEqCompileSig = 
-struct
-   type t = DiffEqType.t
-   let visit (e:env) (a:action) : t =
-      Term(Integer(0))
-end
-*)
