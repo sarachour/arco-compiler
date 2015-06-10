@@ -32,8 +32,8 @@ compiler.cmo: BsLibrary.cmo BSLexer.cmo
 %.mli: %.mly
 	ocamlyacc $<
 
-%.ml: %.mli
-	ocamlc -c  $< -o $@
+%.mli: %.ml
+	ocamlc -i  $< -o $@
 
 
 %.cmo: %.ml

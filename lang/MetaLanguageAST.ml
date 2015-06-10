@@ -4,9 +4,6 @@ open Util
 
 (*Implementation*)
 
-type metric = {
-   name: string
-}
 type parameter = {
    name: string;
    value: float;
@@ -19,29 +16,28 @@ type state = {
 }
 
 
+type connection = identifier*identifier
+
 type action = {
    t:typ;
    name: string;
-   inputs:(identifier*identifier) list;
-   output:(identifier*identifier) list;
+   inputs:connection list;
+   output:connection list;
 }
 
+type bipartite = {
+   mutable states: state list;
+   mutable actions: action list;
+   mutable params: parameter list;
+}
 
-module type MetaLanguageASTSig = 
+type env = {
+   mutable ts: TypeSystem.ts;
+   mutable g: bipartite;
+}
+
+module type MetaLanguageASTSig  = 
 sig
-   type connection = identifier*identifier
-   type bipartite = {
-      mutable states: state list;
-      mutable actions: action list;
-      mutable params: parameter list;
-      mutable conns: connection list;
-   }
-   type env = {
-      mutable ts: TypeSystem.ts;
-      mutable g: bipartite;
-      metrics: metric list;
-   }
-
    val create : unit -> env
    val define : env->typ->env
    val extend : env -> typ -> typ -> env
@@ -59,24 +55,10 @@ end
 
 module MetaLanguageAST : MetaLanguageASTSig = 
 struct
-   type connection = identifier*identifier
-   ;;
-   type bipartite = {
-      mutable states: state list;
-      mutable actions: action list;
-      mutable params: parameter list;
-      mutable conns: connection list;
-   }
-   type env = {
-      mutable ts: TypeSystem.ts;
-      mutable g: bipartite;
-      metrics: metric list;
-   }
    let create () = 
       {
-         ts=TypeSystem.create(); 
-         metrics=[];
-         g={params=[];conns=[];actions=[];states=[]}
+         ts=TypeSystem.create();
+         g={params=[];actions=[];states=[]}
       }
 
    let define env t = 
@@ -160,7 +142,7 @@ struct
                   |(_,_,Some(s)) -> Some(s.t)
                   | _ -> None
             in
-            let rec check_types (names:(identifier*identifier) list) : unit = 
+            let rec check_types (names:connection list) : unit = 
                match names with
                   | ((en,et), (rn,rt))::t -> 
                      if TypeSystem.is env.ts et rt then check_types t else
@@ -168,7 +150,7 @@ struct
                      
                   | [] -> ()
             in
-            let rec make_mapping (names:(string*string) list) (types: (string*typ) list) : (identifier*identifier) list = 
+            let rec make_mapping (names:(string*string) list) (types: (string*typ) list) : connection list = 
                match names with
                   | (inp_name, rel_name)::t ->
                      begin
@@ -208,7 +190,7 @@ struct
             | [] -> ""
             | _::t -> raise (PrintException "Failed to parse..")
       in
-      let rec print_identifier_list (a:(identifier*identifier) list): string = 
+      let rec print_identifier_list (a:connection list): string = 
          match a with
             |((n1,t1),(n2,t2))::t -> n1^":"^n2^" | "^(print_identifier_list t)
             |[] -> ""

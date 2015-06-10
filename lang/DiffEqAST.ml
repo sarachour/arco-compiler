@@ -17,6 +17,7 @@ type expr =
   | Term of term
 ;;
 
+
 let rec eq2tex (e:expr) : string = 
    let term2tex (t:term) : string =
     match t with

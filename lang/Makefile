@@ -1,6 +1,8 @@
 
 DIFFEQ=../diffeq
-DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo MetaLanguageAST.cmo DiffEqAST.cmo Visitor.cmo DiffEqCompiler.cmo CircuitCompiler.cmo
+DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo \
+	MetaLanguageAST.cmo DiffEqAST.cmo Visitor.cmo \
+	DiffEqCompiler.cmo CircuitCompiler.cmo
 
 
 all: biology
@@ -17,8 +19,8 @@ biology: $(DEPS) Biology.cmo
 %.mli: %.mly
 	ocamlyacc $<
 
-%.ml: %.mli
-	ocamlc -c  $< -o $@
+%.mli: %.ml
+	ocamlc -i  $< -o $@
 
 diffeq/%.cmo: diffeq/%.ml
 	cd $(DIFFEQ) && 
