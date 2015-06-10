@@ -3,6 +3,7 @@ open MetaLanguageAST
 open Util
 open Visitor
 open Relation
+open Rule
 
 exception DiffCompileException of string;;
 
@@ -23,16 +24,16 @@ let rec rel2expr (r:relation) : expr =
       | Exp(x,y) -> Exp((rel2expr x), (rel2expr y))
 
 let rule2expr (par:expr) (rel:expr) (r:rule) : expr = 
-   let rec _rule2expr (r:rule) = 
+   let rec _rule2expr (r:rule) : expr = 
       match r with
          | Hole -> par
-         | NewHole -> Hole
+         | NewHole -> Term(Hole)
          | Plus(lst) -> Add(List.map (fun x -> _rule2expr x) lst)
          | Minus(lst) -> Sub(List.map (fun x -> _rule2expr x) lst)
-         | Mult(lst) -> Mult(List.map (fun x -> _rule2expr x) lst)
+         | Times(lst) -> Mult(List.map (fun x -> _rule2expr x) lst)
          | Relation -> rel
-      in
-         _rule2expr r
+   in
+      _rule2expr r
 
 module DiffEqTable :
 sig
@@ -77,12 +78,20 @@ struct
    type s=tbl
    let visit_action (st:s) (env: env) (act:action) : s  = 
       let sublist = List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.inputs in
-      let apply_rule (name:string) (r:rule) = 
-         apply_rule2rel r 
+      let apply_rule (nst:s) (name:string) (e:expr) (r:rule) : s = 
+         let oexpr = (DiffEqTable.get_state st name) in
+         let nexpr = rule2expr oexpr e r in
+         DiffEqTable.update_state nst name nexpr
+      in
+      let rec apply_rules (nst:s) (e:expr) (lst: (string*rule) list) = 
+         match lst with
+            | (name,rul)::t -> let x = apply_rule nst name e rul in apply_rules x e t
+            | [] -> nst
+      in
       match act.t with
          | Action(tname, tinputs, trel, rules, toutput) -> 
-            let nrel = subst4rel trel sublist in
-            st
+            let expr = rel2expr (subst4rel trel sublist) in
+            apply_rules st expr rules
          | _ -> raise (DiffCompileException ("action somehow doesn't have action type.."))
 
    let visit_state (st: s) (env: env) (state:state) : s   = 
