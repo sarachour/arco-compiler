@@ -44,7 +44,7 @@ struct
          | _ -> raise (DiffCompileException ("multiple declarations of state with name "^name^"."))
 
    let to_string (t:tbl) = 
-      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("param",n,e)) ) ) t.params "")^
+      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("param",n,e)) ) ) t.params "")^"\n\n"^
       (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("state",n,e)) ) ) t.states "")
 end
 
