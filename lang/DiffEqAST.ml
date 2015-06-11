@@ -1,4 +1,5 @@
 open ExtString
+open Util 
 
 exception DiffEQASTException of string;;
 
@@ -24,6 +25,31 @@ type expr =
 type stmt = 
   | Eq of expr*expr
   | Decl of string*string*expr
+
+let rec expr2conc (e:expr) : expr = 
+  let rec _expr2conc (e:expr) : expr maybe = 
+      let red_lst (lst:expr list) (elem: expr) : expr list = 
+        match _expr2conc elem with
+          |Some(e) -> e::lst
+          |None -> lst
+      in
+      let pair_lst (e1:expr) (e2:expr) (f:expr->expr->expr maybe) =
+          match (_expr2conc e1, _expr2conc e2) with
+          | (Some(x1),Some(x2)) -> f x1 x2
+          | _ -> raise (DiffEQASTException "can't concretize pairwise arguments. Misplaced hole.")
+      in
+      match e with
+      | Add(e) -> Some (Add (List.fold_left red_lst [] e))
+      | Sub(e) -> Some (Sub (List.fold_left red_lst [] e))
+      | Mult(e) -> Some (Mult (List.fold_left red_lst [] e))
+      | Div(e1,e2) -> pair_lst e1 e2 (fun x y -> Some(Div(x,y)))
+      | Exp(e1,e2) -> pair_lst e1 e2 (fun x y -> Some(Exp(x,y)))
+      | Term(Hole) -> None
+      | t -> Some(t)
+    in
+      match _expr2conc e with
+        | Some x -> x
+        | None -> Term(Hole)
 
 let rec fillhole4expr (e:expr) (s:expr) : expr = 
     let rec _fill_expr (e:expr) : expr = 
@@ -84,7 +110,7 @@ let rec eq2tex (e:expr) : string =
       | Decimal(f) -> string_of_float f
       | Integer(i) -> string_of_int i
       | Symbol(s) -> sanitize s
-      | Hole -> "@"
+      | Hole -> ""
    in
    let rec exprlist2tex lst delim = 
       match lst with
@@ -93,8 +119,8 @@ let rec eq2tex (e:expr) : string =
       |[] -> ""
    in
     match e with
-      | Deriv(t,dep,indep) -> "\\frac{\\delta "^(sanitize dep)^"} {\\delta "^(sanitize indep)^"} "^(term2tex t)^""
-      | Add(t) -> exprlist2tex t " \\plus "
+      | Deriv(t,dep,indep) -> "\\frac{\\partial "^(sanitize dep)^"} {\\partial "^(sanitize indep)^"} "^(term2tex t)^""
+      | Add(t) -> exprlist2tex t "+"
       | Sub(t) -> exprlist2tex t "-"
       | Mult(t) -> exprlist2tex t " \\cdot "
       | Div(a,b) -> "\\frac {"^(eq2tex a)^"} {"^(eq2tex b)^"}"

@@ -85,8 +85,8 @@ struct
       (List.fold_right (
          fun (n,e,o) r-> 
             match o with
-               | 0 -> r^"\n"^(stmt2tex (Eq(Term(Symbol(n)),e)) ) 
-               | 1 -> r^"\n"^(stmt2tex (Eq(Deriv(Hole,n,"t"),e)) ) 
+               | 0 -> r^"\n"^(stmt2tex (Eq(Term(Symbol(n)),expr2conc e)) ) 
+               | 1 -> r^"\n"^(stmt2tex (Eq(Deriv(Hole,n,"t"),expr2conc e)) ) 
          ) t.states "")
 
 end

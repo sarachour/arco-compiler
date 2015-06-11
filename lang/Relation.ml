@@ -11,6 +11,25 @@ type relation =
    | Integer of int 
 ;;
 
+let rec def4rel (e:relation) (symbs: string list) : unit =
+   let def_varname (s:string) : unit =
+      match List.filter (fun rname -> rname = s) symbs with
+         | [_] -> ()
+         | [] -> raise (RelationException ("literal "^s^" is undefined."))
+         | _ -> raise (RelationException "repeated substitutions in list")
+    in
+    let rec def_rel (e:relation) : unit =
+      match e with
+      | Symbol(s) -> (def_varname s)
+      | Plus(e) ->  List.map (fun x -> def_rel x) e; ()
+      | Minus(e) -> List.map (fun x -> def_rel x) e; ()
+      | Mult(e) -> List.map (fun x -> def_rel x) e; ()
+      | Divide(e1,e2) -> def_rel e1; def_rel e2; ()
+      | Exp(e,t) -> def_rel e; def_rel t; ()
+      | Decimal(f) -> ()
+      | Integer(i) -> ()
+    in
+      def_rel e
 let rec subst4rel (e:relation) (subs:(string*string) list) : relation =
     let update_varname (s:string) : string =
       match List.filter (fun (ename,rname) -> rname = s) subs with

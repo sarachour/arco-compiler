@@ -8,6 +8,33 @@ type rule =
    | Input of string
    | Output
 
+exception RuleException of string;;
+
+let rec def4rule (r:rule) (sym: string list) : unit=
+   let def_literal (s:string) : unit = 
+      match List.filter (fun x -> x = s) sym with
+         | [_] -> ()
+         | [] -> raise (RuleException ("literal "^s^" is not defined."))
+         | _ -> raise (RuleException ("literal "^s^" has too many matches"))
+   in
+   match r with
+      | Hole -> ()
+      | Plus(xlst) -> List.fold_right (fun x e -> def4rule x; e) xlst ()
+      | Minus(xlst) -> List.fold_right (fun x e -> def4rule x; e) xlst ()
+      | Times(xlst) -> List.fold_right (fun x e -> def4rule x; e) xlst ()
+      | Input(s) -> def_literal s
+
+let rec def4rules (r:(string*rule) list) (sym: string list) :unit =
+   let def_literal (s:string) : unit = 
+      match List.filter (fun x -> x = s) sym with
+         | [_] -> ()
+         | [] -> raise (RuleException ("literal "^s^" is not defined."))
+         | _ -> raise (RuleException ("literal "^s^" has too many matches"))
+   in
+   match r with
+      | (n,h)::t -> def_literal n; def4rule h sym; def4rules t sym
+      | [] -> ()
+
 let rec to_string (r:rule) =
    match r with
       | Hole -> "@"

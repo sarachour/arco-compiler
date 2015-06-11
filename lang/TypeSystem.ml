@@ -94,6 +94,20 @@ module TypeSystem : TypeSystemSig = struct
          _get t.types e
 
    let add ts (ty:typ) =
+      let validate_type (t:typ) =
+         match t with 
+            | Action(n,inp,rel,rules,out) ->
+               let idents = List.map (fun (n,t) -> n) (inp@[out]) in
+               begin
+               try 
+                  def4rel rel idents;
+                  def4rules rules idents;
+               with
+                  | RuleException(e) -> raise (TypeException ("Rule "^n^": [RuleException] "^e)) 
+                  | RelationException(e) ->  raise (TypeException ("Rule "^n^": [RelationException] "^e)) 
+               end
+            | _ -> ()
+      in 
       let name = match ty with
          |State(x) -> x
          |Signal(x) ->x
@@ -102,6 +116,7 @@ module TypeSystem : TypeSystemSig = struct
       in
       if (get ts name) = None then 
       begin
+         validate_type ty;
          ts.types <- ty::(ts.types);
          ts.hierarchy <- {entry=ty;children=[];parents=[]}::ts.hierarchy;
          ts

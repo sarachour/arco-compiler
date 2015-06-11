@@ -58,8 +58,8 @@ let create_instance () =
             [("I",(State "smallmolecule"));("P", (State "protein")); ("V_max", Parameter)],
             Mult([
                (Divide(
-                  (Symbol("A")), 
-                  (Plus([Integer(1); Symbol("A")]))
+                  (Symbol("P")), 
+                  (Plus([Integer(1); Symbol("P")]))
                ));
                (Divide(
                   (Symbol("I")), 
@@ -120,7 +120,7 @@ let create_instance () =
          Action (
             "transcribes",
             [("gA",(Signal "gene")); ("ktrans",Parameter)],
-            Mult([Symbol("ktrans"); Symbol("SIG")]),
+            Mult([Symbol("ktrans"); Symbol("gA")]),
             [
                ("mA", Plus([Relation;Hole]))
             ],
@@ -133,7 +133,7 @@ let create_instance () =
          Action (
             "translates",
             [("mA",(State "mrna")); ("ktrans",Parameter)],
-            Mult([Symbol("ktrans"); Symbol("A")]),
+            Mult([Symbol("ktrans"); Symbol("mA")]),
             [
                ("pA", Plus([Relation;Hole]));
                ("mA", Minus([Relation;Hole]))
