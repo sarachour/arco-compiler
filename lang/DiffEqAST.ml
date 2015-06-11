@@ -1,3 +1,4 @@
+open ExtString
 
 exception DiffEQASTException of string;;
 
@@ -38,15 +39,15 @@ let rec fillhole4expr (e:expr) (s:expr) : expr =
       _fill_expr e
 
 let rec subst4expr (e:expr) (subs:(string*string) list) : expr =
+    let sub_word (s:string) : string = 
+        match List.filter (fun (nw,targ) -> targ = s) subs with
+          | [(nw,targ)] -> nw
+          | [] -> s
+          | _ -> raise (DiffEQASTException "repeated substitutions in list")
+    in
     let sub_term (t:term) : term =
       match t with
-        | Symbol(s) -> 
-          begin
-          match List.filter (fun (nw,targ) -> targ = s) subs with
-            | [(nw,targ)] -> Symbol(nw)
-            | [] -> Symbol(s)
-            | _ -> raise (DiffEQASTException "repeated substitutions in list")
-          end
+        | Symbol(s) -> Symbol (sub_word s)
         | x -> x 
     in
     let rec sub_expr_list (e:expr list) : expr list = 
@@ -62,15 +63,27 @@ let rec subst4expr (e:expr) (subs:(string*string) list) : expr =
       | Mult(e) -> Mult (sub_expr_list e)
       | Div(e1,e2) -> Div ((sub_expr e1), (sub_expr e2))
       | Exp(e,t) -> Exp ((sub_expr e),(sub_expr t))
+      | Deriv(a,s1,s2) -> Deriv (sub_term a, sub_word s1, sub_word s2)
     in
       sub_expr e
 
 let rec eq2tex (e:expr) : string = 
+   let sanitize s : string = 
+      let rec _sanitize (lst: char list) (cap:bool): char list = 
+        match (lst,cap) with
+          | ('_'::t,_) -> _sanitize t true
+          | ('-'::t,_) -> _sanitize t true
+          | (x::t,true) -> (Char.uppercase x)::(_sanitize t false)
+          | (x::t,false) -> (x)::(_sanitize t false)
+          | ([],_) -> []
+      in
+        ExtString.String.implode (_sanitize (ExtString.String.explode s) false)
+   in
    let term2tex (t:term) : string =
     match t with
       | Decimal(f) -> string_of_float f
       | Integer(i) -> string_of_int i
-      | Symbol(s) -> s
+      | Symbol(s) -> sanitize s
       | Hole -> "@"
    in
    let rec exprlist2tex lst delim = 
@@ -80,7 +93,7 @@ let rec eq2tex (e:expr) : string =
       |[] -> ""
    in
     match e with
-      | Deriv(t,dep,indep) -> "\\frac{\\delta "^dep^"} {\\delta "^indep^"} "^(term2tex t)^""
+      | Deriv(t,dep,indep) -> "\\frac{\\delta "^(sanitize dep)^"} {\\delta "^(sanitize indep)^"} "^(term2tex t)^""
       | Add(t) -> exprlist2tex t " \\plus "
       | Sub(t) -> exprlist2tex t "-"
       | Mult(t) -> exprlist2tex t " \\cdot "

@@ -4,11 +4,12 @@ DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo \
 	MetaLanguageAST.cmo DiffEqAST.cmo Visitor.cmo \
 	DiffEqCompiler.cmo CircuitCompiler.cmo
 
+LIBS=-package extlib 
 
 all: biology
 
 biology: $(DEPS) Biology.cmo 
-	 ocamlc -g -o biology \
+	 ocamlfind ocamlc -g $(LIBS) -linkpkg -o biology \
 	 	$(DEPS) Biology.cmo
 	 chmod +x biology
 
@@ -19,15 +20,9 @@ biology: $(DEPS) Biology.cmo
 %.mli: %.mly
 	ocamlyacc $<
 
-%.mli: %.ml
-	ocamlc -i  $< -o $@
-
-diffeq/%.cmo: diffeq/%.ml
-	cd $(DIFFEQ) && 
-	ocamlc -c $< -o $@
 
 %.cmo: %.ml
-	ocamlc -c $< -o $@
+	ocamlfind ocamlc $(LIBS) -c $< -o $@
 
 
 clean:
