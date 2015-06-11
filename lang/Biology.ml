@@ -235,7 +235,7 @@ let main () =
       let env_str = MetaLanguageAST.to_string env in
 
       let diffeq_tbl = DiffEqCompiler.visit_env env in
-      let diffeq_str = DiffEqTable.to_string diffeq_tbl in
+      let diffeq_str = DiffEqTable.to_tex diffeq_tbl in
          Format.printf "%s\n" diffeq_str
    end
 ;;

@@ -43,6 +43,7 @@ sig
    val update_state : tbl -> string -> expr -> tbl
    val add_parameter : tbl -> string -> expr -> tbl
    val to_string : tbl -> string
+   val to_tex : tbl -> string
 end = 
 struct
    let create () : tbl = {params=[]; states=[]}
@@ -70,7 +71,24 @@ struct
 
    let to_string (t:tbl) = 
       (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2str (Decl("param",n,e)) ) ) t.params "")^"\n\n"^
-      (List.fold_right (fun (n,e,o) r-> r^"\n"^(stmt2str (Decl("state["^(string_of_int o)^"]",n,e)) ) ) t.states "")
+      (List.fold_right (fun (n,e,o) r-> r^"\n"^(stmt2str (Decl("state["^(string_of_int o)^"]",n,Term Hole)) ) ) t.states "")^"\n\n"^
+      (List.fold_right (
+         fun (n,e,o) r-> 
+            match o with
+               | 0 -> r^"\n"^(stmt2str (Eq(Term(Symbol(n)),e)) ) 
+               | 1 -> r^"\n"^(stmt2str (Eq(Deriv(Hole,n,"t"),e)) ) 
+         ) t.states "")
+
+   let to_tex (t:tbl) = 
+      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("param",n,e)) ) ) t.params "")^"\n\n"^
+      (List.fold_right (fun (n,e,o) r-> r^"\n"^(stmt2tex (Decl("state["^(string_of_int o)^"]",n,Term Hole)) ) ) t.states "")^"\n\n"^
+      (List.fold_right (
+         fun (n,e,o) r-> 
+            match o with
+               | 0 -> r^"\n"^(stmt2tex (Eq(Term(Symbol(n)),e)) ) 
+               | 1 -> r^"\n"^(stmt2tex (Eq(Deriv(Hole,n,"t"),e)) ) 
+         ) t.states "")
+
 end
 
 module DiffEqCompiler : MetaLanguageVisitor with type s = tbl  = 
