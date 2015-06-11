@@ -13,7 +13,7 @@ type term =
 ;;
 
 type expr =
-  | Deriv of term*symbol*symbol
+  | Deriv of symbol*symbol
   | Add of expr list
   | Sub of expr list
   | Mult of expr list
@@ -24,7 +24,7 @@ type expr =
 
 type stmt = 
   | Eq of expr*expr
-  | Decl of string*string*expr
+  | Decl of string*string*(expr maybe)
 
 let rec expr2conc (e:expr) : expr = 
   let rec _expr2conc (e:expr) : expr maybe = 
@@ -89,7 +89,7 @@ let rec subst4expr (e:expr) (subs:(string*string) list) : expr =
       | Mult(e) -> Mult (sub_expr_list e)
       | Div(e1,e2) -> Div ((sub_expr e1), (sub_expr e2))
       | Exp(e,t) -> Exp ((sub_expr e),(sub_expr t))
-      | Deriv(a,s1,s2) -> Deriv (sub_term a, sub_word s1, sub_word s2)
+      | Deriv(s1,s2) -> Deriv (sub_word s1, sub_word s2)
     in
       sub_expr e
 
@@ -119,8 +119,9 @@ let rec eq2tex (e:expr) : string =
       |[] -> ""
    in
     match e with
-      | Deriv(t,dep,indep) -> "\\frac{\\partial "^(sanitize dep)^"} {\\partial "^(sanitize indep)^"} "^(term2tex t)^""
+      | Deriv(dep,indep) -> "\\frac{\\partial "^(sanitize dep)^"} {\\partial "^(sanitize indep)^"} "
       | Add(t) -> exprlist2tex t "+"
+      | Sub([h]) -> "-"^(eq2tex h)
       | Sub(t) -> exprlist2tex t "-"
       | Mult(t) -> exprlist2tex t " \\cdot "
       | Div(a,b) -> "\\frac {"^(eq2tex a)^"} {"^(eq2tex b)^"}"
@@ -130,11 +131,11 @@ let rec eq2tex (e:expr) : string =
 let stmt2tex (s:stmt) : string = 
     match s with
       | Eq(x,y) -> (eq2tex x)^"="^(eq2tex y)
-      | Decl(q,n,e) ->q^" "^n^"="^(eq2tex e)
+      | Decl(q,n,se) -> match se with Some(e) -> q^" "^n^"="^(eq2tex e) | None -> q^" "^n
 
 let rec stmts2tex (s:stmt list) : string = 
     match s with
-      | h::t -> (stmt2tex h)^"\n"^(stmts2tex t)
+      | h::t -> (stmt2tex h)^"\\\\\n"^(stmts2tex t)
       | [] -> ""
 
 let rec eq2str (e:expr) : string = 
@@ -152,8 +153,9 @@ let rec eq2str (e:expr) : string =
       |[] -> ""
    in
     match e with
-      | Deriv(t,dep,indep) -> "d"^dep^"/d"^indep^"("^(term2str t)^")"
+      | Deriv(dep,indep) -> "d"^dep^"/d"^indep
       | Add(t) -> exprlist2str t "+"
+      | Sub([h]) -> "-"^(eq2str h)
       | Sub(t) -> exprlist2str t "-"
       | Mult(t) -> exprlist2str t "*"
       | Div(a,b) -> (eq2str a)^"/"^(eq2str b)
@@ -163,7 +165,7 @@ let rec eq2str (e:expr) : string =
 let stmt2str (s:stmt) : string = 
     match s with
       | Eq(x,y) -> (eq2str x)^"="^(eq2str y)
-      | Decl(q,n,e) ->q^" "^n^"="^(eq2str e)
+      | Decl(q,n,se) ->match se with Some(e) -> q^" "^n^"="^(eq2str e) | None -> q^" "^n
 
 let rec stmts2str (s:stmt list) : string = 
     match s with

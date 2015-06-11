@@ -70,23 +70,24 @@ struct
          | _ -> raise (DiffCompileException ("multiple declarations of state with name "^name^"."))
 
    let to_string (t:tbl) = 
-      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2str (Decl("param",n,e)) ) ) t.params "")^"\n\n"^
-      (List.fold_right (fun (n,e,o) r-> r^"\n"^(stmt2str (Decl("state["^(string_of_int o)^"]",n,Term Hole)) ) ) t.states "")^"\n\n"^
+      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2str (Decl("param",n,Some e)) ) ) t.params "")^"\n\n"^
+      (List.fold_right (fun (n,e,o) r-> r^"\n"^(stmt2str (Decl("state["^(string_of_int o)^"]",n,None)) ) ) t.states "")^"\n\n"^
       (List.fold_right (
          fun (n,e,o) r-> 
             match o with
                | 0 -> r^"\n"^(stmt2str (Eq(Term(Symbol(n)),e)) ) 
-               | 1 -> r^"\n"^(stmt2str (Eq(Deriv(Hole,n,"t"),e)) ) 
+               | 1 -> r^"\n"^(stmt2str (Eq(Deriv(n,"t"),e)) ) 
+               | _ -> raise (DiffCompileException ("differential equation term with order higher than 1 not supported."))
          ) t.states "")
 
    let to_tex (t:tbl) = 
-      (List.fold_right (fun (n,e) r-> r^"\n"^(stmt2tex (Decl("param",n,e)) ) ) t.params "")^"\n\n"^
-      (List.fold_right (fun (n,e,o) r-> r^"\n"^(stmt2tex (Decl("state["^(string_of_int o)^"]",n,Term Hole)) ) ) t.states "")^"\n\n"^
+      (List.fold_right (fun (n,e) r-> r^"\\\\\n"^(stmt2tex (Decl("param",n,Some e)) ) ) t.params "")^"\n\n"^
+      (List.fold_right (fun (n,e,o) r-> r^"\\\\\n"^(stmt2tex (Decl("state["^(string_of_int o)^"]",n,None)) ) ) t.states "")^"\n\n"^
       (List.fold_right (
          fun (n,e,o) r-> 
             match o with
-               | 0 -> r^"\n"^(stmt2tex (Eq(Term(Symbol(n)),expr2conc e)) ) 
-               | 1 -> r^"\n"^(stmt2tex (Eq(Deriv(Hole,n,"t"),expr2conc e)) ) 
+               | 0 -> r^"\\\\\n"^(stmt2tex (Eq(Term(Symbol(n)),expr2conc e)) ) 
+               | 1 -> r^"\\\\\n"^(stmt2tex (Eq(Deriv(n,"t"),expr2conc e)) ) 
          ) t.states "")
 
 end
