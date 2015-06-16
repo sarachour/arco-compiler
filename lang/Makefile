@@ -1,10 +1,10 @@
 
 DIFFEQ=../diffeq
 DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo \
-	MetaLanguageAST.cmo DiffEqAST.cmo Visitor.cmo \
+	MetaLanguageAST.cmo DiffEqAST.cmo AnalogAST.cmo Visitor.cmo \
 	DiffEqCompiler.cmo CircuitCompiler.cmo
 
-LIBS=-package extlib 
+LIBS=-package extlib  -package yojson
 
 all: biology
 
