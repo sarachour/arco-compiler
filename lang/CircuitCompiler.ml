@@ -99,7 +99,7 @@ struct
             in
             let
                j_hub = Joint(join_hub_id, [w_hub_use;w_hub_add;w_capac_hub])
-               and j_add = Joint(join_use_id, [w_hub_add])
+               and j_add = Joint(join_add_id, [w_hub_add])
                and j_use = Joint(join_use_id, [w_hub_use])
             in
             let circ = Circuit.create (CircuitTable.fId st, Some n) in
