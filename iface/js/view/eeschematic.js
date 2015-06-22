@@ -3,7 +3,8 @@ var EESchematic = function(id){
       this.root = $("#"+id);
       var w = $(window).width();
       var h = $(window).height();
-
+      this.w = w;
+      this.h = h;
       this.root.attr({
          width:w,
          height:h
@@ -13,8 +14,9 @@ var EESchematic = function(id){
          height:h
       })
 
-      this.data = null;
+      this.data = {};
       this.s = Snap("#"+id);
+      this.create_layout();
    }
    this.capacitor = function(id){
       var style = {fill:"#000"};
@@ -30,8 +32,11 @@ var EESchematic = function(id){
       var conn_bot = this.s.circle(w/2,h-r,r).attr(style);
       var line_top = this.s.rect(w/2-r/2,r,r,h/2-sp-th);
       var line_bottom = this.s.rect(w/2-r/2,h/2+sp+th,r,h/2-sp-th);
-      var g = this.s.group(top,bot,conn_top,conn_bot,line_top, line_bottom);
-      g.attr({"transform":"t250,170s"})
+
+      conn_top.addClass("connector input");
+      conn_bot.addClass("connector output");
+      var g = this.s.group(top,bot,conn_top,conn_bot,line_top, line_bottom)
+         .addClass("element capacitor");
       return g;
    }
    this.ground = function(id){
@@ -48,68 +53,141 @@ var EESchematic = function(id){
       var line4 = this.s.rect(w*0.90/2,h-th,w*0.10,th).attr(style);
       var conn_top = this.s.circle(w/2,r,r).attr(style);
       var line_top = this.s.rect(w/2-r/2,r,r,h-sp*3-th);
-      
-      var g = this.s.group(line1,line2,line3);
-
+      conn_top.addClass("connector input");
+      var g = this.s.group(line1,line2,line3,line4,conn_top, line_top)
+         .addClass("element ground");
       return g;
    }
    this.joint = function(id){
-      var jnt = this.s.circle(Math.random()*400+100,100,4);
+      var jnt = this.s.circle(0,0,4);
       var that = this;
       jnt.attr({
          fill: "#000",
          stroke:"#000",
          strokewidth:2
-      })
-      jnt.click(function(){
-         var d = that.data[id];
-         console.log(d);
-      })
-      return jnt;
+      }).addClass("element connector input output joint");
+      var g = this.s.group(jnt);
+      return g;
    }
-   this.load = function(data){
+   this.hole = function(id){
+      alert("hole not supported");
+   }
+   this.smthole = function(id){
+      alert("smt hole not supported");
+   }
+   this.circuit = function(id){
+      alert("circuit not supported");
+   }
+   this.wire = function(id,source,sink){
+      var p = this.s.path().attr({fill:"#F00",stroke:"#F00",strokewidth:2})
+      var g = this.s.group(p);
+
+      var src = this.data[source];
+      var snk = this.data[sink];
+      /*
+      var update = function(){
+         var inp = src.svg.select(".output");
+         var out = snk.svg.select(".input");
+         var ix = inp.attr("cx"); 
+         var iy = inp.attr("cy");
+         var ox = out.attr("cx"); 
+         var oy = out.attr("cy");
+         var newpath = "M "+ix+" "+iy+" L "+ox+" "+oy
+         console.log(newpath);
+         p.animate({d:newpath})
+      }
+      update();
+      */
+      return g;
+   }
+   this.create_layout = function(){
       var that = this;
-      var name = data.id.name;
-      this.data = {};
-      this.svg = {};
+      if(this.layout == undefined){
+         this.layout = {};
+         this.layout.nodes = {};
+         this.layout.edges = {};
+         this.layout.graph = new Springy.Graph();
+         this.layout.layout = new Springy.Layout.ForceDirected(
+           that.layout.graph,
+           400.0, // Spring stiffness
+           400.0, // Node repulsion
+           0.5 // Damping
+         );
 
-      data.wires.forEach(function(w){
-         var name = w.id.name;
-         var id = w.id.id;
-         that.data[id] = w;
-         console.log(w);
-      })
-      data.circuits.forEach(function(c){
-         var name = c.id.name;
-         var id = c.id.id;
-
-         that.data[id] = c;
-         c.wires.forEach(function(w){
-            var name = w.id.name;
-            var id = w.id.id;
-            that.data[id] = w; 
-            console.log(w);
-         })
-
-         c.blocks.forEach(function(b){
-            var name = b.id.name;
-            var id = b.id.id;
-            var type = b.type;
-            that.data[id] = b; 
-            if(type == "capacitor"){
-               that.capacitor(id);
-            }
-            else if(type == "ground"){
-               that.ground(id);
-            }
-            else if(type == "joint"){
-               that.joint(id);
-            }
-            console.log(type,b);
-         })
-         
-      })
+         this.layout.renderer = new Springy.Renderer(
+           that.layout.layout,
+           function clear() {
+             // code to clear screen
+           },
+           function drawEdge(edge, p1, p2) {
+             var id = edge.data.id;
+             var e = that.data[id].svg;
+             var ix = p1.x, iy = p1.y;
+             var ox = p2.x, oy = p2.y;
+             // draw an edge
+             var newpath = "M "+ix+" "+iy+" L "+ox+" "+oy
+             e.select("path").attr({d:newpath})
+           },
+           function drawNode(node, p) {
+             var id = node.data.id;
+             var t = new Snap.Matrix();
+             t.translate(p.x*5+50, p.y*5+50); 
+             that.data[id].svg.transform(t);
+             //that.data[id].obs.trigger('update');
+             // draw a node
+           }
+         );
+         this.layout.renderer.start();
+      }
    }
+   this.add = function(type,id,data,source,sink){
+      this.data[id] = clone(data);
+      if(type == "capacitor"){
+         var g= this.capacitor(id);
+      }
+      else if(type == "ground"){
+         var g= this.ground(id);
+      }
+      else if(type == "joint"){
+         var g= this.joint(id);
+      }
+      else if(type == "hole"){
+         var g= this.hole(id);
+      }
+      else if(type == "circuit"){
+         var g= this.circuit(id);
+      }
+      else if(type == "smthole"){
+         var g= this.smthole(id);
+      }
+      else if(type == "wire"){
+         var g= this.wire(id,source,sink);
+      }
+      
+      g.attr("id",id);
+      this.data[id].svg = g;
+      this.data[id].obs = new Observer();
+      if(type == "wire"){
+         
+         this.layout.edges[id] = this.layout.graph.newEdge(
+            this.layout.nodes[source],
+            this.layout.nodes[sink],
+         {id:id});
+         
+      }
+      else {
+         this.layout.nodes[id+".input"] = this.layout.graph.newNode({
+            id:id,
+            type:"input"
+         }
+         this.layout.nodes[id+".output"] = this.layout.graph.newNode({
+            id:id
+            type:"output"
+         }
+         var length = g.getBBox().height;
+         
+   }
+   
 
    this.init(id);
 }
