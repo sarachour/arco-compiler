@@ -1,42 +1,36 @@
 open Relation
 open Yojson
+open Util
 
-type wire
+type flow = Forward|Backward
+type op = Plus|Minus
 
-type sign = Plus | Minus
+type id = int*string maybe
 
-type port = string
 
-type block= 
-   | AnalogAdder
-   | AnalogMultiplier 
-   | GenericComponent of relation
-   | Capacitor of float
+type 'a block= 
+   | SMTHole of id*relation*relation
+   | Capacitor of id*float
    | Ground 
-   | Split
-   | Join
+   | Joint of id*('a list)
+   | Adder of id*('a list)
+   | Multiplier of id*('a list)
 
-type component = string*block
+type wire = 
+   | Wire of id*(wire block)*(wire block)*flow
 
 type kind = 
-   | AnalogAdder
-   | AnalogMultiplier
-   | GenericComponent
+   | SMTHole
    | Capacitor
    | Ground
-   | Split
-   | Join
-   | CurrentGenerator
+   | Joint
+   | Adder
+   | Multiplier
+   | Wire
 
-
-type wire = {
-   name : string;
-   a : component;
-   b : component;
-}
 
 type circuit = {
-   mutable comps : (component) list;
+   mutable blocks : (wire block) list;
    mutable wires : (wire) list;
 }
 
@@ -46,22 +40,22 @@ sig
    (*get elements*)
    val get_wire : circuit -> string -> wire maybe
    val find_wire : circuit -> string -> string -> wire maybe
-   val get_component : circuit -> kind -> string -> component maybe
+   val get_block : circuit -> kind -> string -> wire block maybe
    (*add elements*)
    val add_wire : circuit -> wire -> circuit
-   val add_component : circuit -> component -> circuit
+   val add_block : circuit -> wire block -> circuit
    (*export as string*)
    val to_string : circuit -> string
    val to_json : circuit -> string
 end = 
 struct
-   let create() = {comps=[];wires=[]}
+   let create() = {blocks=[];wires=[]}
    let get_wire c n = None
    let find_wire c a b = None
-   let get_component c k s = None
+   let get_block c k s = None
    let add_wire c w = c 
-   let add_component c co = c 
-   let to_string = ""
-   let to_json = ""
+   let add_block c co = c 
+   let to_string c = ""
+   let to_json c = ""
 
 end
