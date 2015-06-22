@@ -2,6 +2,7 @@ open MetaLanguageAST
 open TypeSystem
 open Sys 
 open DiffEqCompiler
+open CircuitCompiler
 
 (*
 (Divide(
@@ -236,7 +237,9 @@ let main () =
 
       let diffeq_tbl = DiffEqCompiler.visit_env env in
       let diffeq_str = DiffEqTable.to_tex diffeq_tbl in
-         Format.printf "%s\n" diffeq_str
+      let analog_tbl = CircuitCompiler.visit_env env in
+      let analog_str = CircuitTable.to_string analog_tbl in
+         Format.printf "%s\n" analog_str
    end
 ;;
 
