@@ -4,6 +4,7 @@ open Visitor
 open Relation
 open Rule
 open AnalogAST
+open Yojson
  
 
 exception CircuitCompilationException of string;;
@@ -25,16 +26,15 @@ sig
    val fId : tbl -> int
    val make: tbl -> id
    val to_string: tbl -> string
-   val to_json: tbl -> string
+   val to_json: tbl -> json
 end =
 struct
    let create () = {s=(System.create (0,Some("system"))); params=[]; idx=(ref 1)}
    let get_circuit e n = None
-   let add_circuit e n=e 
+   let add_circuit tbl circ=tbl.s <- System.add_circuit tbl.s circ; tbl
    let update_circuit e n=e 
-   let add_parameter t n f =
-      t.params <- (n,f)::t.params; t
-   let add_wire e w=e 
+   let add_parameter t n f = t.params <- (n,f)::t.params; t
+   let add_wire tbl wire= tbl.s <- System.add_wire tbl.s wire; tbl
    let fId e = 
       let i = ! (e.idx) in 
       e.idx := i + 1;

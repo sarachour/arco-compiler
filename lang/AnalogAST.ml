@@ -31,8 +31,6 @@ type circuit = {
 type system = {
    mutable circuits : circuit list;
    mutable wires : (wire) list;
-   mutable inputs: id list;
-   mutable outputs: id list;
    mutable id: id;
 }
 
@@ -54,7 +52,7 @@ sig
    
    (*export as string*)
    val to_string : circuit -> string
-   val to_json : circuit -> string
+   val to_json : circuit -> json
 end = 
 struct
    let _get_block_id b = match b with
@@ -116,8 +114,60 @@ struct
    let add_inputs c b = c 
    let add_outputs c b = c 
 
-   let to_string c = ""
-   let to_json c = ""
+
+   let to_json (c:circuit) = 
+      let _id_to_json (i:id) : json = 
+         match i with
+            |(x,None) -> `Assoc([("id",  `Int x)])
+            |(x,Some(n)) -> `Assoc([("id",`Int x);("name",`String n)])
+      in
+      let _wire_to_json (Wire(id,src,sink)) : json = 
+         let mid = _id_to_json id in
+         let sid = _id_to_json src in 
+         let snkid = _id_to_json sink in 
+         `Assoc([("source",sid);("sink",snkid);("id",mid)])
+      in
+      let rec _wires_to_json ws : json list = 
+         match ws with 
+         |h::t -> (_wire_to_json h)::(_wires_to_json t)
+         |[] -> []
+      in
+      let _block_to_json b : json = match b with
+         | Hole(id) -> `Assoc([("type",`String "hole"); ("id", _id_to_json id)])
+         | Ground(id) -> `Assoc([("type",`String "ground"); ("id", _id_to_json id)])
+         | Capacitor(id,v) -> `Assoc([
+            ("type",`String "capacitor"); ("id", _id_to_json id); 
+            ("value", `Float v)
+         ])
+         | Joint(id,lst) -> `Assoc([
+            ("type",`String "joint"); ("id", _id_to_json id); 
+            ("wires", `List (_wires_to_json lst))
+         ])
+         | _ -> raise (AnalogASTException ("unsupported by json."))
+      in 
+      let rec _blocks_to_json bs : json list = 
+         match bs with 
+         |h::t -> (_block_to_json h)::(_blocks_to_json t)
+         |[] -> []
+      in
+      let rec _idlist_to_json is : json list = 
+         match is with 
+         |(n,h)::t -> 
+            begin
+            match (_id_to_json h) with
+            |`Assoc(props) -> (`Assoc (("port",`String n)::props))::(_idlist_to_json t)
+            | _ -> raise (AnalogASTException ("expected associative array from id."))
+            end
+         |[] -> []
+      in 
+         `Assoc([
+            ("wires",`List (_wires_to_json c.wires));
+            ("blocks",`List (_blocks_to_json c.blocks));
+            ("inputs",`List (_idlist_to_json c.inputs));
+            ("outputs",`List (_idlist_to_json c.outputs));
+            ("id", _id_to_json c.id)
+         ])
+   let to_string c = Yojson.to_string (to_json c)
 
 end
 
@@ -125,23 +175,49 @@ module System :
 sig
    val create : id -> system
    (*get elements*)
-   val add_wire : system -> wire -> marker maybe-> system
+   val add_wire : system -> wire -> system
    val get_circuit : system -> id -> circuit maybe
    (*add elements*)
    val get_wire : system -> id -> wire maybe
    val add_circuit : system -> circuit -> system
    (*export as string*)
    val to_string : system -> string
-   val to_json : system -> string
+   val to_json : system -> json
 end = 
 struct
-   let create i = {circuits=[];wires=[];inputs=[];outputs=[];id=i}
+   let create i = {circuits=[];wires=[];id=i}
    let get_circuit c id = None
-   let add_circuit c w = c 
+   let add_circuit sys circ = sys.circuits <- circ::sys.circuits; sys 
    let update_circuit c w = c
    let get_wire c id = None
-   let add_wire c w m = c 
-   let to_string c = ""
-   let to_json c = ""
+   let add_wire sys wire = sys.wires <- wire::sys.wires; sys 
+   let to_json c = 
+      let _id_to_json (i:id) : json = 
+         match i with
+            |(x,None) -> `Assoc([("id",  `Int x)])
+            |(x,Some(n)) -> `Assoc([("id",`Int x);("name",`String n)])
+      in
+      let _wire_to_json (Wire(id,src,sink)) : json = 
+         let mid = _id_to_json id in
+         let sid = _id_to_json src in 
+         let snkid = _id_to_json sink in 
+         `Assoc([("source",sid);("sink",snkid);("id",mid)])
+      in
+      let rec _wires_to_json ws : json list = 
+         match ws with 
+         |h::t -> (_wire_to_json h)::(_wires_to_json t)
+         |[] -> []
+      in
+      let rec _circuits_to_json cs : json list =
+         match cs with 
+         |h::t -> (Circuit.to_json h)::(_circuits_to_json t)
+         |[] -> []
+      in
+         `Assoc([
+            ("wires",`List (_wires_to_json c.wires));
+            ("circuits",`List (_circuits_to_json c.circuits));
+            ("id", _id_to_json c.id)
+         ])
 
+   let to_string c =  Yojson.to_string (to_json c)
 end
