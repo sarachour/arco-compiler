@@ -59,7 +59,7 @@ var EESchematic = function(id){
       return g;
    }
    this.joint = function(id){
-      var jnt = this.s.circle(0,0,4);
+      var jnt = this.s.circle(4,4,4);
       var that = this;
       jnt.attr({
          fill: "#000",
@@ -79,7 +79,7 @@ var EESchematic = function(id){
       alert("circuit not supported");
    }
    this.wire = function(id,source,sink){
-      var p = this.s.path().attr({fill:"#F00",stroke:"#F00",strokewidth:2})
+      var p = this.s.path().attr({fill:"rgba(0,0,0,0)",stroke:"#F00",strokewidth:2})
       var g = this.s.group(p);
 
       var src = this.data[source];
@@ -102,6 +102,15 @@ var EESchematic = function(id){
    }
    this.create_layout = function(){
       var that = this;
+      if(this.layout == undefined){
+         this.layout = {};
+         this.layout.g = new dagre.graphlib.Digraph();
+         this.layout.g.setGraph({});
+
+         this.layout.g.setDefaultEdgeLabel(function(){return {};});
+
+      }
+      /*
       if(this.layout == undefined){
          this.layout = {};
          this.layout.nodes = {};
@@ -139,6 +148,32 @@ var EESchematic = function(id){
          );
          this.layout.renderer.start();
       }
+      */
+   }
+   this.draw = function(){
+      var g = this.layout.g;
+      var that = this;
+      dagre.layout(g);
+      this.layout.g.nodes().forEach(function(v){
+         var n = g.node(v);
+         var el = that.data[v].svg;
+         var width = el.getBBox().width;
+         var height = el.getBBox().height;
+         var t = new Snap.Matrix();
+         t.translate(n.x-width/2,n.y-height/2); 
+         el.transform(t);
+      })
+      this.layout.g.edges().forEach(function(e){
+         var ed = g.edge(e);
+         var path = "";
+
+         path += "M"+ed.points[0].x + " "+ed.points[0].y;
+         for(var i=1; i < ed.points.length; i++){
+            path += " L "+ed.points[i].x + " "+ed.points[i].y;
+         }
+         console.log(path);
+         that.data[ed.id].svg.select('path').attr("d",path)
+      })
    }
    this.add = function(type,id,data,source,sink){
       this.data[id] = clone(data);
@@ -167,6 +202,17 @@ var EESchematic = function(id){
       g.attr("id",id);
       this.data[id].svg = g;
       this.data[id].obs = new Observer();
+
+      if(type == "wire"){
+         this.layout.g.setEdge(id,source,sink);
+      }
+      else{
+         var width = g.getBBox().width;
+         var height = g.getBBox().height;
+         this.layout.g.setNode(id, {width:width, height:height})
+         
+      }
+      /*
       if(type == "wire"){
          
          this.layout.edges[id] = this.layout.graph.newEdge(
@@ -185,7 +231,8 @@ var EESchematic = function(id){
             type:"output"
          }
          var length = g.getBBox().height;
-         
+         var type = 
+      */
    }
    
 

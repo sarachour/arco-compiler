@@ -16,13 +16,13 @@ this.load = function(data){
       })
 
       c.wires.forEach(function(w){
-         console.log(w);
          var g = view.add("wire",w.id.id,w,w.source.id,w.sink.id);
       })
 
       
       
    })
+   view.draw();
 }
 
 $(document).ready(function(){
