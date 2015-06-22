@@ -66,8 +66,8 @@ struct
    let create i = {blocks=[];wires=[];inputs=[];outputs=[];id=i}
    let get_wire c id = None
    let get_block c k id = None
-   let add_wire c w  = c 
-   let add_block c b = c 
+   let add_wire c w  = c.wires <- w::c.wires; c
+   let add_block c b = c.blocks <- b::c.blocks; c
    let add_wires c w  = c 
    let add_blocks c b = c 
    let add_input c b = c 
