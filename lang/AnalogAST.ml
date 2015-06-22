@@ -2,7 +2,6 @@ open Relation
 open Yojson
 open Util
 
-type flow = Forward|Backward;;
 type marker = Input|Output;;
 type hint = Adder | Multiplier;;
 
@@ -14,22 +13,24 @@ type 'a block=
    | Capacitor of id*float
    | Ground of id
    | Joint of id*('a list)
+   | Hole of id
 
 type wire = 
-   | Wire of id*id*id*flow
+   | Wire of id*id*id
 
 type kind = 
-   | SMTHole
-   | Capacitor
-   | Ground
-   | Joint
+   | KSMTHole
+   | KCapacitor
+   | KGround
+   | KJoint
+   | KHole
 
 
 type circuit = {
    mutable blocks : (wire block) list;
    mutable wires : (wire) list;
-   mutable inputs: id list;
-   mutable outputs: id list;
+   mutable inputs: (string*id) list;
+   mutable outputs: (string*id) list;
    mutable id: id;
 }
 
@@ -48,8 +49,15 @@ sig
    val get_wire : circuit -> id -> wire maybe
    val get_block : circuit -> kind -> id -> wire block maybe
    (*add elements*)
-   val add_wire : circuit -> wire -> marker maybe-> circuit
+   val add_wire : circuit -> wire -> circuit
+   val add_wires : circuit -> wire list -> circuit
    val add_block : circuit -> wire block -> circuit
+   val add_blocks : circuit -> wire block list -> circuit
+   val add_input : circuit -> (string*id) -> circuit
+   val add_inputs : circuit -> (string*id) list -> circuit
+   val add_output : circuit -> (string*id) -> circuit
+   val add_outputs : circuit -> (string*id) list -> circuit
+   
    (*export as string*)
    val to_string : circuit -> string
    val to_json : circuit -> string
@@ -58,8 +66,15 @@ struct
    let create i = {blocks=[];wires=[];inputs=[];outputs=[];id=i}
    let get_wire c id = None
    let get_block c k id = None
-   let add_wire c w m = c 
+   let add_wire c w  = c 
    let add_block c b = c 
+   let add_wires c w  = c 
+   let add_blocks c b = c 
+   let add_input c b = c 
+   let add_output c b = c 
+   let add_inputs c b = c 
+   let add_outputs c b = c 
+
    let to_string c = ""
    let to_json c = ""
 
