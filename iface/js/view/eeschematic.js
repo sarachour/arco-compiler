@@ -1,5 +1,17 @@
-
 var EESchematic = function(id){
+   this.rect = function(x,y,w,h){
+      return this.s.append('rect').attr({x:x,y:y,width:w,height:h})
+   }
+   this.circle = function(x,y,r){
+      return this.s.append('circle').attr({cx:x,cy:y,r:r})
+   }
+   this.group = function(l){
+      var g = this.s.append("g");
+      l.forEach(function(x){g.node().appendChild(x.node())})
+      return g
+   }
+
+   
    this.init = function(id){
       this.root = $("#"+id);
       var w = $(window).width();
@@ -16,9 +28,12 @@ var EESchematic = function(id){
       })
 
       this.data = {};
+      this.ids = [];
+      this.s = d3.select("#"+id);
+      this.groot = this.group([]);
       this.create_layout(id);
    }
-   /*
+   
    this.capacitor = function(id){
       var style = {fill:"#000"};
       var w = 40;
@@ -88,47 +103,82 @@ var EESchematic = function(id){
 
       return g;
    }
-   */
+   
    this.create_layout = function(id){
       var that = this;
-      
-      if(this.layout == undefined){
-         this.layout = {};
-         this.layout.g = new joint.dia.Graph;
-         this.layout.paper = new joint.dia.Paper({
-            el: $("#"+id),
-            width: that.w,
-            height: that.h,
-            model: that.layout.g,
-            gridsize: 1
-         });
-         this.layout.templates = {};
-         this.layout.templates.box = new joint.shapes.basic.Rect({
-               position: { x: 0, y: 0 },
-               size: { width: 100, height: 30 },
-               attrs: { rect: { fill: 'blue' }, text: { text: 'my box', fill: 'white' } }
-         })
-
-         this.layout.templates.link = function(source,sink){
-            var link = new joint.dia.Link({
-               source: {id: source},
-               target: {id: sink}
-            });
-            link.attr({
-               '.connection': { stroke: 'blue' },
-               '.marker-source': { fill: 'red', d: 'M 10 0 L 0 5 L 10 10 z' },
-               '.marker-target': { fill: 'yellow', d: 'M 10 0 L 0 5 L 10 10 z' }
-            });
-            return link;
-          }
-      }
+      this.layout = {};
+      this.layout.nodes = [];
+      this.layout.links = [];
+   }
+   this.collide = function(node) {
+      var r = node.radius + 16,
+      nx1 = node.x - r,
+      nx2 = node.x + r,
+      ny1 = node.y - r,
+      ny2 = node.y + r;
+     return function(quad, x1, y1, x2, y2) {
+       if (quad.point && (quad.point !== node)) {
+         var x = node.x - quad.point.x,
+             y = node.y - quad.point.y,
+             l = Math.sqrt(x * x + y * y),
+             r = node.radius + quad.point.radius;
+         if (l < r) {
+           l = (l - r) / l * .5;
+           node.x -= x *= l;
+           node.y -= y *= l;
+           quad.point.x += x;
+           quad.point.y += y;
+         }
+       }
+       return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+     };
    }
    this.draw = function(){
-      
+      var that = this;
+
+      var tick = function(){
+         //collision detection
+         var nodes = that.layout.nodes;
+         var q = d3.geom.quadtree(nodes);
+         var i = 0;
+         var n = nodes.length;
+         while (++i < n) q.visit(that.collide(nodes[i]));
+
+         that.s.selectAll(".node")
+            .attr("transform", function(d){
+               return "translate("+d.layout.x+","+d.layout.y+")";
+            })
+         that.s.selectAll(".link")
+            .attr("transform", function(d){
+               var x1 = d.layout.source.x, y1 = d.layout.source.y;
+               var x2 = d.layout.target.x, y2 = d.layout.target.y;
+               var midx = (x1+x2)/2
+               var midy = (y1+y2)/2;
+               var p = that.s.select("path",$(this));
+               var c = function(x,y){return Math.floor(x)+" "+Math.floor(y)}
+               var path = "M "+c(x1,y1)+
+                  " L "+c(x2,y2);
+
+               p.attr('d', path)
+                  .attr("stroke-width","3px")
+                  .attr("stroke","red");
+               console.log(p,path);
+               //return "translate("+d.layout.x+","+d.layout.y+")";
+            })
+      }
+      this.layout.force = d3.layout.force()
+       .nodes(this.layout.nodes)
+       .links(this.layout.links)
+       .size([this.w, this.h])
+       .charge(-200)
+       .gravity(0.05)
+       .size([this.w, this.h])
+       .on("tick", function(){ tick(); })
+       .start();
    }
    this.add = function(type,id,data,source,sink){
       this.data[id] = clone(data);
-      /*
+      
       if(type == "capacitor"){
          var g= this.capacitor(id);
       }
@@ -152,26 +202,41 @@ var EESchematic = function(id){
       }
       
       g.attr("id",id);
-      this.data[id].svg = g;
+      this.ids.push(id);
+      this.data[id].view = g;
+      this.data[id].layout = {};
 
       if(type == "wire"){
-         g.attr("class","link");
+         this.data[id].layout.id = this.layout.links.length;
+         var sid = this.data[source].layout.id;
+         var eid = this.data[sink].layout.id;
+         this.layout.links.push({
+            source:sid,
+            target:eid,
+            id: id
+         })
+         g.classed("link", true)
+         .data([{
+            data: this.data[id],
+            layout:this.layout.links[this.data[id].layout.id]
+         }]).enter()
       }
       else{
-         g.attr("class","node")
+         this.data[id].layout.id = this.layout.nodes.length;
+         this.layout.nodes.push({
+            index:this.data[id].layout.id,
+            x: 0,
+            y:0,
+            radius:Math.max(g.node().getBBox().width,g.node().getBBox().height)/2,
+            id: id
+         })
+         g.classed("node", true)
+         .data([{
+            data: this.data[id],
+            layout: this.layout.nodes[this.data[id].layout.id]
+         }]).enter()
       }
-      */
-      if(type == "wire"){
-         var sid = this.data[source].view.id;
-         var eid = this.data[sink].view.id;
-
-         this.data[id].view = this.layout.templates.link(sid,eid);
-         this.layout.g.addCell(this.data[id].view);
-      }
-      else {
-         this.data[id].view = this.layout.templates.box.clone();
-         this.layout.g.addCell(this.data[id].view);
-      }
+      
    }
    
 
