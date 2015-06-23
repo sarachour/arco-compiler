@@ -9,7 +9,7 @@ var EESchematic = function(id){
    this.path = function(){
       return this.s.append('path');
    }
-   this.group = function(l){
+   this.g = function(l){
       var g = this.s.append("g");
       l.forEach(function(x){g.node().appendChild(x.node())})
       return g
@@ -33,29 +33,44 @@ var EESchematic = function(id){
 
       this.data = {};
       this.ids = [];
+
       this.s = d3.select("#"+id);
-      this.groot = this.group([]);
+      this.groot = this.g([]);
       this.create_layout(id);
    }
    
    this.capacitor = function(id){
       var style = {fill:"#000"};
-      var w = 40;
-      var h = 50;
+      var w = 20;
+      var h = 40;
       var sp = 5;
       var th = 3;
       var r = 2;
+      var center_trans = "translate("+(-w/2)+","+(-h/2)+")";
+      var top = this.rect(0,h/2-sp-th,w,th)
+         .attr(style)
+         .attr("transform",center_trans);
+      var bot = this.rect(0,h/2+sp,w,th)
+         .attr(style)
+         .attr("transform",center_trans);
+      var conn_top = this.circle(w/2,r,r)
+         .attr(style)
+         .attr("transform",center_trans);
+      var conn_bot = this.circle(w/2,h-r,r)
+         .attr(style)
+         .attr("transform",center_trans);
+      var line_top = this.rect(w/2-r/2,r,r,h/2-sp-th)
+         .attr(style)
+         .attr("transform",center_trans);
+      var line_bottom = this.rect(w/2-r/2,h/2+sp+th,r,h/2-sp-th)
+         .attr(style)
+         .attr("transform",center_trans);
 
-      var top = this.rect(0,h/2-sp-th,w,th).attr(style);
-      var bot = this.rect(0,h/2+sp,w,th).attr(style);
-      var conn_top = this.circle(w/2,r,r).attr(style);
-      var conn_bot = this.circle(w/2,h-r,r).attr(style);
-      var line_top = this.rect(w/2-r/2,r,r,h/2-sp-th);
-      var line_bottom = this.rect(w/2-r/2,h/2+sp+th,r,h/2-sp-th);
+      var bg = this.circle(0,0,h/2).attr({fill:"#fff",stroke:"#444",strokewidth:2});
 
       conn_top.classed("connector input", true);
       conn_bot.classed("connector output", true);
-      var g = this.group([top,bot,conn_top,conn_bot,line_top, line_bottom])
+      var g = this.g([bg,top,bot,conn_top,conn_bot,line_top, line_bottom])
          .classed("element capacitor", true);
       return g;
    }
@@ -67,29 +82,44 @@ var EESchematic = function(id){
       var sp = 8;
       var th = 2;
       var r = 2;
+      var center_trans = "translate("+(-w/2)+","+(-h/2)+")";
       
-      var line1 = this.rect(0,h-sp*3-th,w,th).attr(style);
-      var line2 = this.rect(w*0.33/2,h-sp*2-th,w*0.66,th).attr(style);
-      var line3 = this.rect(w*0.66/2,h-sp-th,w*0.33,th).attr(style);
-      var line4 = this.rect(w*0.90/2,h-th,w*0.10,th).attr(style);
-      var conn_top = this.circle(w/2,r,r).attr(style);
-      var line_top = this.rect(w/2-r/2,r,r,h-sp*3-th);
+      var line1 = this.rect(0,h-sp*3-th,w,th)
+         .attr(style)
+         .attr("transform",center_trans);
+      var line2 = this.rect(w*0.33/2,h-sp*2-th,w*0.66,th)
+         .attr(style)
+         .attr("transform",center_trans);
+      var line3 = this.rect(w*0.66/2,h-sp-th,w*0.33,th)
+         .attr(style)
+         .attr("transform",center_trans);
+      var line4 = this.rect(w*0.90/2,h-th,w*0.10,th)
+         .attr(style)
+         .attr("transform",center_trans);
+      var conn_top = this.circle(w/2,r,r)
+         .attr(style)
+         .attr("transform",center_trans);
+      var line_top = this.rect(w/2-r/2,r,r,h-sp*3-th)
+         .attr(style)
+         .attr("transform",center_trans);
       conn_top.classed("connector input", true);
 
-      var g = this.group([line1,line2,line3,line4,conn_top, line_top])
+      var bg = this.circle(0,0,h/2).attr({fill:"#fff",stroke:"#444",strokewidth:2});
+
+      var g = this.g([bg, line1,line2,line3,line4,conn_top, line_top])
          .classed("element ground", true);
       return g;
    }
    this.joint = function(id){
       var that = this;
-      var jnt = this.circle(4,4,4)
+      var jnt = this.circle(0,0,4)
          .attr({
             fill: "#000",
             stroke:"#000",
             strokewidth:2
          })
          .classed("element connector input output joint", true);
-      var g = this.group([jnt]);
+      var g = this.g([jnt]);
       return g;
    }
    this.hole = function(id){
@@ -103,8 +133,8 @@ var EESchematic = function(id){
    }
    this.wire = function(id,source,sink){
       var p = this.path()
-         .attr({fill:"rgba(0,0,0,0)",stroke:"#F00",strokewidth:2})
-      var g = this.group([p]);
+         .attr({fill:"rgba(0,0,0,0)",stroke:"#F00",strokewidth:2,"z-index":-3})
+      var g = this.g([p]);
 
       return g;
    }
@@ -114,51 +144,48 @@ var EESchematic = function(id){
       this.layout = {};
       this.layout.nodes = [];
       this.layout.links = [];
+      this.layout.constraints = [];
+      this.layout.groups = [];
+      this.layout.make = {};
+      this.layout.make.align = function(axis,src,snk){
+         return {
+            type: "alignment",
+            axis: axis,
+            offsets: [
+               {node:src.layout.id, offset:0},
+               {node:snk.layout.id, offset:0}
+            ]
+         }
+      }
+      this.layout.make.ineq = function(axis,src,snk,gap){
+         if(axis == "x"){
+            return {
+               axis:"x",
+               left:src.layout.id,
+               right:snk.layout.id,
+               gap:gap
+            }
+         }
+         else{
+            return {
+               axis:"y",
+               left:src.layout.id,
+               right:snk.layout.id,
+               gap:gap
+            }
+         }
+      }
    }
 
-   this.constrain = function(link){
-      var x = (link.source.x + link.target.x)/2;
-      var y = (link.source.y + link.target.y)/2;
-      var has = function(s,u){return s.indexOf(u) >= 0}
-      //console.log(link);
-      if(has(link.alignment,"vertical")){
-         link.source.x = x;
-         link.target.x = x;
-      }
-      else if(has(link.alignment,"horizontal")){
-         link.source.y = y;
-         link.target.y = y;
-      }
-      else if(has(link.alignment, "below")){
-         link.target.y = Math.max(link.target.y,link.source.y)
-      }
-      else if(has(link.alignment, "stiff")){
-         var len = link.length;
-         link.target.y = link.source.y + len;
-      }
-   }
    this.draw = function(){
       var that = this;
 
       var tick = function(){
-         //collision detection
-         //constrain
-         var links = that.layout.links
-            .filter(function(e){return e.alignment != undefined})
-            .forEach(function(e){
-               that.constrain(e);
-            });
-
          //draw
          that.s.selectAll(".node")
             .attr("transform", function(d){
-               var inp = d.layout.input;
-               var outp = d.layout.output;
-               var b = $(this)[0].getBBox();
-               var x = inp.x -b.width/2;
-               var y = inp.y;
-               //d.layout.input.x = d.layout.output.x = x;
-
+               var x = d.layout.x;
+               var y = d.layout.y;
                return "translate("+x+","+y+")";
             })
          that.s.selectAll(".link")
@@ -179,20 +206,40 @@ var EESchematic = function(id){
                   .attr("stroke","red");
             })
       }
-      this.layout.force = d3.layout.force()
-       .nodes(this.layout.nodes)
-       .links(this.layout.links)
-       .size([this.w/2, this.h/2])
-       .charge(-200)
-       .gravity(0.05)
-       .linkDistance(20)
-       .size([this.w, this.h])
-       .on("tick", function(){ tick(); })
-       .start();
+      this.s.selectAll("g").sort(function(a,b){
+         if(a == undefined || b == undefined) return 1;
+         if(a.layout.type != "edge") return 1;
+         else return -1;
+      })
+      this.layout.force = cola.d3adaptor()
+        .nodes(this.layout.nodes)
+        .links(this.layout.links)
+        .groups(this.layout.groups)
+        .constraints(this.layout.constraints)
+        .linkDistance(60)
+        .handleDisconnected(true)
+        .avoidOverlaps(true)
+        .size([this.w, this.h])
+        .on('tick', function(){tick()})
+        .start();
+
    }
-   this.add = function(type,id,data,source,sink){
+   this.group = function(){
+      var grp = {
+         leaves:[]
+      };
+      this.layout.groups.push(grp);
+      return this.layout.groups.length - 1;
+   }
+   this.add = function(type,id,data,source,sink, grp){
       this.data[id] = clone(data);
-      
+      var group = null;
+      if(grp != undefined){
+         group = grp;
+      }
+      else if(type != "wire" && source != undefined){
+         group = source;
+      }
       if(type == "capacitor"){
          var g= this.capacitor(id);
       }
@@ -222,23 +269,17 @@ var EESchematic = function(id){
 
       if(type == "wire"){
          this.data[id].layout.id = this.layout.links.length;
-         var sid = this.data[source].layout.output_id;
-         var eid = this.data[sink].layout.input_id;
-         var stype = this.data[source].type;
-         var etype = this.data[sink].type;
-         var alignment = undefined;
-         if(stype == "joint" && etype == "joint"){
-            //alignment = "horizontal";
-         }
-         else if(etype == "ground") {
-            //alignment = "vertical below";
-         }
+         var src = this.data[source], snk = this.data[sink];
+         var stype = src.type, etype = snk.type;
+
+
+         this.layout.constraints.push(this.layout.make.ineq("y",src,snk,45))
 
          this.layout.links.push({
-            source:sid,
-            target:eid,
-            id: id,
-            alignment: alignment
+            source:src.layout.id,
+            target:snk.layout.id,
+            type:"edge",
+            id: id
          })
          g.classed("link", true)
          .data([{
@@ -247,34 +288,26 @@ var EESchematic = function(id){
          }]).enter()
       }
       else{
-         this.data[id].layout.input_id = this.layout.nodes.length;
-         this.data[id].layout.output_id = this.layout.nodes.length+1;
-         this.data[id].layout.conn_id = this.layout.links.length;
+         var b = g.node().getBBox();
+         this.data[id].layout.id = this.layout.nodes.length;
          this.layout.nodes.push({
-            index:this.data[id].layout.input_id,
+            index:this.data[id].layout.id,
+            width: b.width,
+            height: b.height,
+            rx: b.width/2,
+            ry: b.height/2,
+            type:"node",
             id: id
-         })
-         this.layout.nodes.push({
-            index:this.data[id].layout.output_id,
-            id: id
-         })
-         this.layout.links.push({
-            source:this.data[id].layout.input_id,
-            target:this.data[id].layout.output_id,
-            id: id,
-            radius:Math.max(g.node().getBBox().height,g.node().getBBox().width)/2,
-            alignment:undefined
-            //alignment:"stiff vertical below"
          })
          g.classed("node", true)
          .data([{
             data: this.data[id],
-            layout: {
-               input:this.layout.nodes[this.data[id].layout.input_id],
-               output:this.layout.nodes[this.data[id].layout.output_id],
-               conn:this.layout.nodes[this.data[id].layout.conn_id]
-            }
+            layout: this.layout.nodes[this.data[id].layout.id]
          }]).enter()
+      }
+      if(group != null && type != "wire"){
+         console.log(this.data[id].layout.id);
+         this.layout.groups[group].leaves.push(this.data[id].layout.id);
       }
       
    }

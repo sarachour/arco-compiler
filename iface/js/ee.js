@@ -11,12 +11,13 @@ this.load = function(data){
       var g = view.add("wire",w.id.id,w);
    })
    data.circuits.forEach(function(c){
+      var grp = view.group();
       c.blocks.forEach(function(b){
-         var g = view.add(b.type,b.id.id,b);
+         var g = view.add(b.type,b.id.id,b, grp);
       })
 
       c.wires.forEach(function(w){
-         var g = view.add("wire",w.id.id,w,w.source.id,w.sink.id);
+         var g = view.add("wire",w.id.id,w,w.source.id,w.sink.id, grp);
       })
 
       
