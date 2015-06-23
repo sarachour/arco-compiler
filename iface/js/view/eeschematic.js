@@ -1,15 +1,5 @@
+
 var EESchematic = function(id){
-   this.rect = function(x,y,w,h){
-      return this.s.append('rect').attr({x:x,y:y,width:w,height:h})
-   }
-   this.circle = function(x,y,r){
-      return this.s.append('circle').attr({cx:x,cy:y,r:r})
-   }
-   this.group = function(l){
-      var g = this.s.append("g");
-      l.forEach(function(x){g.node().appendChild(x.node())})
-      return g
-   }
    this.init = function(id){
       this.root = $("#"+id);
       var w = $(window).width();
@@ -26,9 +16,7 @@ var EESchematic = function(id){
       })
 
       this.data = {};
-      this.s = d3.select("#"+id);
-      this.groot = this.group([]);
-      this.create_layout();
+      this.create_layout(id);
    }
    /*
    this.capacitor = function(id){
@@ -101,52 +89,47 @@ var EESchematic = function(id){
       return g;
    }
    */
-   this.create_layout = function(){
+   this.create_layout = function(id){
       var that = this;
+      
       if(this.layout == undefined){
          this.layout = {};
-         this.layout.g = new dagreD3.graphlib.Graph().setGraph({});
-         this.layout.render = new dagreD3.render();
-         this.layout.render.shapes().capacitor = function(parent, bbox, node) {
-           var w = bbox.width,
-               h = bbox.height,
-               points = [
-                 { x:   0, y:        0 },
-                 { x:   w, y:        0 },
-                 { x:   w, y:       -h },
-                 { x: w/2, y: -h * 3/2 },
-                 { x:   0, y:       -h }
-               ];
-               shapeSvg = 
-                  parent
-                 .insert("polygon", ":first-child")
-                 .attr("points", points.map(function(d) { return d.x + "," + d.y; }).join(" "))
-                 .attr("transform", "translate(" + (-w/2) + "," + (h * 3/4) + ")");
-
-           node.intersect = function(point) {
-             return dagreD3.intersect.polygon(node, points, point);
-           };
-
-           return shapeSvg;
-         };
-         // Set up zoom support
-         this.layout.zoom = d3.behavior.zoom().on("zoom", function() {
-            that.groot.attr("transform", "translate(" + d3.event.translate + ")" +
-              "scale(" + d3.event.scale + ")");
+         this.layout.g = new joint.dia.Graph;
+         this.layout.paper = new joint.dia.Paper({
+            el: $("#"+id),
+            width: that.w,
+            height: that.h,
+            model: that.layout.g,
+            gridsize: 1
          });
-         this.s.call(this.layout.zoom);
+         this.layout.auto = new joint.layout.GridLayout.layout(this.layout.g, {
+            columns:20,
+            columnWidth: 100,
+            rowHeight: 70
+         })
+         this.layout.templates = {};
+         this.layout.templates.box = new joint.shapes.basic.Rect({
+               position: { x: 0, y: 0 },
+               size: { width: 100, height: 30 },
+               attrs: { rect: { fill: 'blue' }, text: { text: 'my box', fill: 'white' } }
+         })
+
+         this.layout.templates.link = function(source,sink){
+            var link = new joint.dia.Link({
+               source: {id: source},
+               target: {id: sink}
+            });
+            link.attr({
+               '.connection': { stroke: 'blue' },
+               '.marker-source': { fill: 'red', d: 'M 10 0 L 0 5 L 10 10 z' },
+               '.marker-target': { fill: 'yellow', d: 'M 10 0 L 0 5 L 10 10 z' }
+            });
+            return link;
+          }
       }
    }
    this.draw = function(){
-      console.log(this.layout.g);
-      this.layout.render(this.groot, this.layout.g);
-      // Center the graph
-      var initialScale = 0.75;
-      this.layout.zoom
-        .translate([(this.s.attr("width") - this.layout.g.graph().width * initialScale) / 2, 20])
-        .scale(initialScale)
-        .event(this.s);
-      this.s.attr('height', this.layout.g.graph().height * initialScale + 40);
+      
    }
    this.add = function(type,id,data,source,sink){
       this.data[id] = clone(data);
@@ -184,25 +167,15 @@ var EESchematic = function(id){
       }
       */
       if(type == "wire"){
-         this.layout.g.setEdge(source, sink,{
-            arrowhead:"vee",
-            style:"stroke:#F00; stroke-width:2px;fill:rgba(0,0,0,0);",
-            arrowheadStyle:"fill:#F00",
-            lineInterpolate: "bundle",
-            id:id
-         });
+         var sid = this.data[source].view.id;
+         var eid = this.data[sink].view.id;
+
+         this.data[id].view = this.layout.templates.link(sid,eid);
+         this.layout.g.addCell(this.data[id].view);
       }
       else {
-         var colors = {
-            "capacitor": "0f0",
-            "ground" : "ff0",
-            "joint" : "00f"
-         }
-         this.layout.g.setNode(id, {
-            shape: "capacitor", 
-            style:"stroke:#0F0; stroke-width:1px; fill:#"+colors[type]+";",
-            label: data.name
-         })  
+         this.data[id].view = this.layout.templates.box.clone();
+         this.layout.g.addCell(this.data[id].view);
       }
    }
    
