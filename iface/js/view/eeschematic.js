@@ -102,11 +102,6 @@ var EESchematic = function(id){
             model: that.layout.g,
             gridsize: 1
          });
-         this.layout.auto = new joint.layout.GridLayout.layout(this.layout.g, {
-            columns:20,
-            columnWidth: 100,
-            rowHeight: 70
-         })
          this.layout.templates = {};
          this.layout.templates.box = new joint.shapes.basic.Rect({
                position: { x: 0, y: 0 },
