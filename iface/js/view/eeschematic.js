@@ -1,9 +1,13 @@
+
 var EESchematic = function(id){
    this.rect = function(x,y,w,h){
       return this.s.append('rect').attr({x:x,y:y,width:w,height:h})
    }
    this.circle = function(x,y,r){
       return this.s.append('circle').attr({cx:x,cy:y,r:r})
+   }
+   this.path = function(){
+      return this.s.append('path');
    }
    this.group = function(l){
       var g = this.s.append("g");
@@ -98,7 +102,8 @@ var EESchematic = function(id){
       alert("circuit not supported");
    }
    this.wire = function(id,source,sink){
-      var p = this.s.append("path").attr({fill:"rgba(0,0,0,0)",stroke:"#F00",strokewidth:2})
+      var p = this.path()
+         .attr({fill:"rgba(0,0,0,0)",stroke:"#F00",strokewidth:2})
       var g = this.group([p]);
 
       return g;
@@ -110,70 +115,77 @@ var EESchematic = function(id){
       this.layout.nodes = [];
       this.layout.links = [];
    }
-   this.collide = function(node) {
-      var r = node.radius + 16,
-      nx1 = node.x - r,
-      nx2 = node.x + r,
-      ny1 = node.y - r,
-      ny2 = node.y + r;
-     return function(quad, x1, y1, x2, y2) {
-       if (quad.point && (quad.point !== node)) {
-         var x = node.x - quad.point.x,
-             y = node.y - quad.point.y,
-             l = Math.sqrt(x * x + y * y),
-             r = node.radius + quad.point.radius;
-         if (l < r) {
-           l = (l - r) / l * .5;
-           node.x -= x *= l;
-           node.y -= y *= l;
-           quad.point.x += x;
-           quad.point.y += y;
-         }
-       }
-       return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
-     };
+
+   this.constrain = function(link){
+      var x = (link.source.x + link.target.x)/2;
+      var y = (link.source.y + link.target.y)/2;
+      var has = function(s,u){return s.indexOf(u) >= 0}
+      //console.log(link);
+      if(has(link.alignment,"vertical")){
+         link.source.x = x;
+         link.target.x = x;
+      }
+      else if(has(link.alignment,"horizontal")){
+         link.source.y = y;
+         link.target.y = y;
+      }
+      else if(has(link.alignment, "below")){
+         link.target.y = Math.max(link.target.y,link.source.y)
+      }
+      else if(has(link.alignment, "stiff")){
+         var len = link.length;
+         link.target.y = link.source.y + len;
+      }
    }
    this.draw = function(){
       var that = this;
 
       var tick = function(){
          //collision detection
-         var nodes = that.layout.nodes;
-         var q = d3.geom.quadtree(nodes);
-         var i = 0;
-         var n = nodes.length;
-         while (++i < n) q.visit(that.collide(nodes[i]));
+         //constrain
+         var links = that.layout.links
+            .filter(function(e){return e.alignment != undefined})
+            .forEach(function(e){
+               that.constrain(e);
+            });
 
+         //draw
          that.s.selectAll(".node")
             .attr("transform", function(d){
-               return "translate("+d.layout.x+","+d.layout.y+")";
+               var inp = d.layout.input;
+               var outp = d.layout.output;
+               var b = $(this)[0].getBBox();
+               var x = inp.x -b.width/2;
+               var y = inp.y;
+               //d.layout.input.x = d.layout.output.x = x;
+
+               return "translate("+x+","+y+")";
             })
          that.s.selectAll(".link")
-            .attr("transform", function(d){
+            .each(function(d){
                var x1 = d.layout.source.x, y1 = d.layout.source.y;
                var x2 = d.layout.target.x, y2 = d.layout.target.y;
                var midx = (x1+x2)/2
                var midy = (y1+y2)/2;
-               var p = that.s.select("path",$(this));
+               var p = d3.select(this).select("path");
                var c = function(x,y){return Math.floor(x)+" "+Math.floor(y)}
                var path = "M "+c(x1,y1)+
-                  " L "+c(midx,y1)+
-                  " L "+c(midx,y2)+
+                  //" L "+c(midx,y1)+
+                  //" L "+c(midx,y2)+
                   " L "+c(x2,y2);
 
                p.attr('d', path)
                   .attr("stroke-width","3px")
                   .attr("stroke","red");
-               console.log(p,path);
-               //return "translate("+d.layout.x+","+d.layout.y+")";
             })
       }
       this.layout.force = d3.layout.force()
        .nodes(this.layout.nodes)
        .links(this.layout.links)
-       .size([this.w, this.h])
+       .size([this.w/2, this.h/2])
        .charge(-200)
        .gravity(0.05)
+       .linkDistance(20)
        .size([this.w, this.h])
        .on("tick", function(){ tick(); })
        .start();
@@ -210,12 +222,23 @@ var EESchematic = function(id){
 
       if(type == "wire"){
          this.data[id].layout.id = this.layout.links.length;
-         var sid = this.data[source].layout.id;
-         var eid = this.data[sink].layout.id;
+         var sid = this.data[source].layout.output_id;
+         var eid = this.data[sink].layout.input_id;
+         var stype = this.data[source].type;
+         var etype = this.data[sink].type;
+         var alignment = undefined;
+         if(stype == "joint" && etype == "joint"){
+            //alignment = "horizontal";
+         }
+         else if(etype == "ground") {
+            //alignment = "vertical below";
+         }
+
          this.layout.links.push({
             source:sid,
             target:eid,
-            id: id
+            id: id,
+            alignment: alignment
          })
          g.classed("link", true)
          .data([{
@@ -224,18 +247,33 @@ var EESchematic = function(id){
          }]).enter()
       }
       else{
-         this.data[id].layout.id = this.layout.nodes.length;
+         this.data[id].layout.input_id = this.layout.nodes.length;
+         this.data[id].layout.output_id = this.layout.nodes.length+1;
+         this.data[id].layout.conn_id = this.layout.links.length;
          this.layout.nodes.push({
-            index:this.data[id].layout.id,
-            x: 0,
-            y:0,
-            radius:Math.max(g.node().getBBox().width,g.node().getBBox().height)/2,
+            index:this.data[id].layout.input_id,
             id: id
+         })
+         this.layout.nodes.push({
+            index:this.data[id].layout.output_id,
+            id: id
+         })
+         this.layout.links.push({
+            source:this.data[id].layout.input_id,
+            target:this.data[id].layout.output_id,
+            id: id,
+            radius:Math.max(g.node().getBBox().height,g.node().getBBox().width)/2,
+            alignment:undefined
+            //alignment:"stiff vertical below"
          })
          g.classed("node", true)
          .data([{
             data: this.data[id],
-            layout: this.layout.nodes[this.data[id].layout.id]
+            layout: {
+               input:this.layout.nodes[this.data[id].layout.input_id],
+               output:this.layout.nodes[this.data[id].layout.output_id],
+               conn:this.layout.nodes[this.data[id].layout.conn_id]
+            }
          }]).enter()
       }
       
