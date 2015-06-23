@@ -157,6 +157,8 @@ var EESchematic = function(id){
                var p = that.s.select("path",$(this));
                var c = function(x,y){return Math.floor(x)+" "+Math.floor(y)}
                var path = "M "+c(x1,y1)+
+                  " L "+c(midx,y1)+
+                  " L "+c(midx,y2)+
                   " L "+c(x2,y2);
 
                p.attr('d', path)
