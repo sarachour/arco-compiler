@@ -93,7 +93,7 @@ struct
                gnd = Ground(gnd_id);
                and capac = Capacitor(capac_id,1.)
                and w_capac_gnd = Wire(CircuitTable.make st,capac_id,gnd_id)
-               and w_capac_hub = Wire(CircuitTable.make st,capac_id,join_hub_id)
+               and w_capac_hub = Wire(CircuitTable.make st,join_hub_id,capac_id)
                and w_hub_use = Wire(CircuitTable.make st, join_hub_id, join_use_id)
                and w_hub_add = Wire(CircuitTable.make st, join_add_id, join_hub_id)
             in
