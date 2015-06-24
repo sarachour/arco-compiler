@@ -56,10 +56,23 @@ end
 module CircuitCompiler : MetaLanguageVisitor with type s = tbl  = 
 struct
    type s=tbl
-   let visit_action (st:s) (env: env) (act:action) : s  = 
+   let visit_rule (st:s) (rel:id) (inps:(string*id) list) (out:(string*id)) : s = 
       st
 
-   let visit_state (st: s) (env: env) (state:state) : s  = 
+   let visit_rules (st:s) (rel:id) (inps:(string*id) list) (out:(string*id)) : s =
+      st
+
+   let visit_action (st:s)  (act:action) : s  = 
+      match (act.t, act.name,act.inputs, act.output) with
+      | (Action(tn,tins,rel,rules,tout),actName,actIns,actOuts) ->
+         let an = sanitize actName in
+         let kind = sanitize tn in
+         let smtid = (CircuitTable.fId, Some(kind^"_"^an)) in
+
+         st
+      | _ -> raise (CircuitCompilationException "unexpected parameter")
+
+   let visit_state (st: s) (state:state) : s  = 
       match state with
          | {name=name; t=Signal(v)} -> 
             let n = sanitize name in
@@ -93,7 +106,7 @@ struct
                gnd = Ground(gnd_id);
                and capac = Capacitor(capac_id,1.)
                and w_capac_gnd = Wire(CircuitTable.make st,capac_id,gnd_id)
-               and w_capac_hub = Wire(CircuitTable.make st,join_hub_id,capac_id)
+               and w_capac_hub = Wire(CircuitTable.make st,join_hub_id,                         capac_id)
                and w_hub_use = Wire(CircuitTable.make st, join_hub_id, join_use_id)
                and w_hub_add = Wire(CircuitTable.make st, join_add_id, join_hub_id)
             in
@@ -110,33 +123,33 @@ struct
                CircuitTable.add_circuit st circ
 
       
-   let visit_parameter (st: s) (env: env) (p:parameter) : s  =
+   let visit_parameter (st: s) (p:parameter) : s  =
       match p with
          | {name=n; value=v; t=ty} ->
             CircuitTable.add_parameter st n v 
          | _ -> raise (CircuitCompilationException "unexpected parameter")
       
       
-   let rec visit_actions (st: s) (env: env) (act:action list) : s = 
+   let rec visit_actions (st: s) (act:action list) : s = 
       match act with
-      |h::t -> let nst = visit_action st env h in visit_actions nst env t
+      |h::t -> let nst = visit_action st h in visit_actions nst t
       | [] -> st
    
-   let rec visit_states (st: s) (env: env) (states:state list) : s  = 
+   let rec visit_states (st: s) (states:state list) : s  = 
       match states with
-      |h::t -> let nst = visit_state st env h in visit_states nst env t
+      |h::t -> let nst = visit_state st h in visit_states nst t
       | [] -> st
    
-   let rec visit_parameters (st: s) (env: env) (p:parameter list) : s  = 
+   let rec visit_parameters (st: s) (p:parameter list) : s  = 
       match p with
-      |h::t -> let nst = visit_parameter st env h in visit_parameters nst env t
+      |h::t -> let nst = visit_parameter st h in visit_parameters nst t
       | [] -> st
 
    let rec visit_env (env: env) : s  =
       let st = CircuitTable.create() in
-      let st = visit_parameters st env env.g.params in
-      let st = visit_states st env env.g.states in
-      let st = visit_actions st env env.g.actions in
+      let st = visit_parameters st env.g.params in
+      let st = visit_states st env.g.states in
+      let st = visit_actions st env.g.actions in
       st
 
 end;;

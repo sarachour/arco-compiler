@@ -19,10 +19,12 @@ let rec def4rule (r:rule) (sym: string list) : unit=
    in
    match r with
       | Hole -> ()
-      | Plus(xlst) -> List.fold_right (fun x e -> def4rule x; e) xlst ()
-      | Minus(xlst) -> List.fold_right (fun x e -> def4rule x; e) xlst ()
-      | Times(xlst) -> List.fold_right (fun x e -> def4rule x; e) xlst ()
+      | Plus(xlst) -> List.fold_right (fun x e -> def4rule x sym; e) xlst ()
+      | Minus(xlst) -> List.fold_right (fun x e -> def4rule x sym; e) xlst ()
+      | Times(xlst) -> List.fold_right (fun x e -> def4rule x sym; e) xlst ()
       | Input(s) -> def_literal s
+      | Output -> ()
+      | Relation -> ()
 
 let rec def4rules (r:(string*rule) list) (sym: string list) :unit =
    let def_literal (s:string) : unit = 

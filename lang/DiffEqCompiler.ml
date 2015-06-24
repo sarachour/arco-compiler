@@ -31,6 +31,7 @@ let rule2expr (par:expr) (rel:expr) (r:rule) : expr =
          | Minus(lst) -> Sub(List.map (fun x -> _rule2expr x) lst)
          | Times(lst) -> Mult(List.map (fun x -> _rule2expr x) lst)
          | Relation -> rel
+         | _ -> raise (DiffCompileException ("unhandled rule->expr: input or output"))
    in
       let nexpr = _rule2expr r in
       fillhole4expr par nexpr
@@ -87,7 +88,8 @@ struct
          fun (n,e,o) r-> 
             match o with
                | 0 -> r^"\\\\\n"^(stmt2tex (Eq(Term(Symbol(n)),expr2conc e)) ) 
-               | 1 -> r^"\\\\\n"^(stmt2tex (Eq(Deriv(n,"t"),expr2conc e)) ) 
+               | 1 -> r^"\\\\\n"^(stmt2tex (Eq(Deriv(n,"t"),expr2conc e)) )
+               | _ -> raise (DiffCompileException ("cannot handle higher order differential equations"))
          ) t.states "")
 
 end
@@ -95,7 +97,7 @@ end
 module DiffEqCompiler : MetaLanguageVisitor with type s = tbl  = 
 struct
    type s=tbl
-   let visit_action (st:s) (env: env) (act:action) : s  = 
+   let visit_action (st:s) (act:action) : s  = 
       let sublist = 
          (List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.inputs) @
          (List.map (fun ((n1,t1),(n2,t2)) -> (n1,n2)) act.output) 
@@ -120,35 +122,35 @@ struct
             apply_rules st expr rules
          | _ -> raise (DiffCompileException ("action somehow doesn't have action type.."))
 
-   let visit_state (st: s) (env: env) (state:state) : s  = 
+   let visit_state (st: s) (state:state) : s  = 
       match state.t with
          |Signal(_) -> DiffEqTable.add_state st state.name 0
          |State(_) -> DiffEqTable.add_state st state.name 1
          | _ -> raise (DiffCompileException ("state somehow doesn't have state/signal type.."))
    
-   let visit_parameter (st: s) (env: env) (p:parameter) : s  = 
+   let visit_parameter (st: s) (p:parameter) : s  = 
       DiffEqTable.add_parameter st p.name (Term(Decimal(p.value)))
 
-   let rec visit_actions (st: s) (env: env) (act:action list) : s = 
+   let rec visit_actions (st: s)  (act:action list) : s = 
       match act with
-      |h::t -> let nst = visit_action st env h in visit_actions nst env t
+      |h::t -> let nst = visit_action st h in visit_actions nst  t
       | [] -> st
    
-   let rec visit_states (st: s) (env: env) (states:state list) : s  = 
+   let rec visit_states (st: s) (states:state list) : s  = 
       match states with
-      |h::t -> let nst = visit_state st env h in visit_states nst env t
+      |h::t -> let nst = visit_state st h in visit_states nst t
       | [] -> st
    
-   let rec visit_parameters (st: s) (env: env) (p:parameter list) : s  = 
+   let rec visit_parameters (st: s) (p:parameter list) : s  = 
       match p with
-      |h::t -> let nst = visit_parameter st env h in visit_parameters nst env t
+      |h::t -> let nst = visit_parameter st h in visit_parameters nst t
       | [] -> st
 
    let rec visit_env (env: env) : s  =
       let st = DiffEqTable.create() in
-      let st = visit_parameters st env env.g.params in
-      let st = visit_states st env env.g.states in
-      let st = visit_actions st env env.g.actions in
+      let st = visit_parameters st env.g.params in
+      let st = visit_states st env.g.states in
+      let st = visit_actions st env.g.actions in
       st
 
 end;;

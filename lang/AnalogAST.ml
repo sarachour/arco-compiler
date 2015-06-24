@@ -10,7 +10,7 @@ type id = int*string maybe
 exception AnalogASTException of string;;
 
 type 'a block= 
-   | SMTHole of id*relation*relation*hint
+   | SMTHole of id*((id*string) list)*relation*((id*string) list)*(hint maybe)
    | Capacitor of id*float
    | Ground of id
    | Joint of id*('a list)
@@ -59,7 +59,7 @@ struct
       | Capacitor(id,_) -> id
       | Ground(id) -> id
       | Hole(id) -> id 
-      | SMTHole(id,_,_,_) -> id
+      | SMTHole(id,_,_,_,_) -> id
       | Joint(id,_) -> id
 
    let _get_wire_id (w:wire): id = match w with
