@@ -56,11 +56,13 @@ end
 module CircuitCompiler : MetaLanguageVisitor with type s = tbl  = 
 struct
    type s=tbl
-   let visit_rule (st:s) (rel:id) (inps:(string*id) list) (out:(string*id)) : s = 
+   let visit_rule (st:s) (r:rule) (rel:id) (inps:(string*id) list) (out:(string*id)) : s = 
       st
 
-   let visit_rules (st:s) (rel:id) (inps:(string*id) list) (out:(string*id)) : s =
-      st
+   let rec visit_rules (st:s) (rlst:rule list) (rel:id) (inps:(string*id) list) (out:(string*id)) : s =
+      match rlst with
+      | h::t -> let e = visit_rule st h rel inps out in visit_rules e t rel inps out 
+      | [] -> st
 
    let visit_action (st:s)  (act:action) : s  = 
       match (act.t, act.name,act.inputs, act.output) with
