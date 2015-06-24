@@ -5,7 +5,7 @@ open Relation
 open Rule
 open AnalogAST
 open Yojson
- 
+open TypeSystem
 
 exception CircuitCompilationException of string;;
 
@@ -98,13 +98,26 @@ struct
          CircuitTable.update_circuit st circ
       | None -> raise (CircuitCompilationException ("expected to find circuit with name '"^oname^"'."))
 
+   let visit_link (st:s) (mp:connection) (t:string*typ): string*id = 
+      ("",(0,None))
+
+   let rec visit_link_list (st:s) (mlst: connection list) (tlst :(string*typ) list) : (string*id) list = 
+      match (mlst,tlst) with
+      |(h1::t1,h2::t2) -> (visit_link st h1 h2)::(visit_link_list st t1 t2)
+      |([],[]) -> []
+      | _ -> raise (CircuitCompilationException ("mismatched list lengths during link list visitation."))
+
    let visit_action (st:s)  (act:action) : s  = 
       match (act.t, act.name,act.inputs, act.output) with
       | (Action(tn,tins,rel,rules,tout),actName,actIns,actOuts) ->
+         let inputs = visit_link_list st actIns tins in 
+         let outputs = visit_link_list st actOuts [tout] in
          let smtid = (CircuitTable.fId st, Some (mangle_action_name act)) in
          let st = visit_relation st smtid rel [] ("",smtid) in
          visit_rules st rules smtid [] ("",smtid) 
       | _ -> raise (CircuitCompilationException "unexpected parameter")
+
+
 
    let visit_state (st: s) (state:state) : s  =
       let name = mangle_state_name state in 
