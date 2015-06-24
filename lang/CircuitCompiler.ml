@@ -96,7 +96,7 @@ struct
       | Some(circ) ->
          let circ = Circuit.add_block circ elem in
          CircuitTable.update_circuit st circ
-      | None -> raise (CircuitCompilationException ("expected to find circuit with name "^oname))
+      | None -> raise (CircuitCompilationException ("expected to find circuit with name '"^oname^"'."))
 
    let visit_action (st:s)  (act:action) : s  = 
       match (act.t, act.name,act.inputs, act.output) with
