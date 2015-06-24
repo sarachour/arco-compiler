@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+DREAL=$1
+INSTANCE=$2
+shift 2
+EXPECTED_OUT=${INSTANCE}.expected
+TMP=${INSTANCE}.out
+OPTIONS=$@
+echo $DREAL $OPTIONS -- "$INSTANCE"
+$DREAL $OPTIONS -- "$INSTANCE" | tee $TMP
+diff $TMP $EXPECTED_OUT
+RESULT=$?
+rm $TMP
+exit $RESULT
