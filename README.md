@@ -1,2 +1,6 @@
-biocadence
-==========
+BioCadance
+=====
+
+run 
+
+	./setup.sh
