@@ -2,7 +2,7 @@ __author__ = 'sachour'
 
 from z3 import *;
 
-class TreeSolver:
+class ExpressionMatchingProblem:
 
     def __init__(self):
         self.s=Solver()
@@ -19,10 +19,37 @@ class TreeSolver:
         self.Expr.declare('mul', ('e1',self.Expr), ('e2',self.Expr))
         self.Expr.declare('div', ('e1',self.Expr), ('e2',self.Expr))
         self.Expr.declare('exp', ('e1',self.Expr), ('e2',self.Expr))
+
         self.Expr = self.Expr.create()
 
+        self.x = Const("__x",self.Expr);
+        self.y = Const("__y",self.Expr);
+        self.simpl = Function('simpl', self.Expr, self.Expr);
+
+        t1 = self.Expr.exp(self.x,self.Expr.literal(self.Literal.number(1)))
+        '''
+        self.axioms = [
+
+            ForAll(
+                [self.x, self.y],
+                Implies(
+                        self.simpl(self.y) == self.simpl(t1),
+                        self.simpl(self.y) == self.simpl(self.y)
+                ),
+                patterns=[MultiPattern(self.simpl(self.y), self.simpl(t1))]
+            )
+
+        ]
+        '''
+        print self.Expr.is_mul
+        self.axioms = [
+            Forall([self.x],
+
+                   pattern=self.simpl(self.x))
+        ]
         self.symbols = {"fwd":{},"rev":{}};
         self.symbol_id = 0;
+
         self.vars = {};
 
     def define_var(self, varname):
@@ -55,7 +82,7 @@ class TreeSolver:
 
     def Var(self, n):
         if n not in self.vars:
-            raise ValueError('Variable '+x+' is not defined.')
+            raise ValueError('Variable '+n+' is not defined.')
         return self.vars[n];
 
     def to_string(self,v):
@@ -64,9 +91,10 @@ class TreeSolver:
             return self.to_string(v.arg(0))
         elif(v.decl().eq(self.Literal.symbol)):
             idx = v.arg(0).as_long().real
-            return self.symbols["rev"][idx]
+            return "sym("+self.symbols["rev"][idx]+")"
         elif(v.decl().eq(self.Literal.number)):
-            return v.arg(0)
+            idx = v.arg(0).as_decimal(5)
+            return "num("+idx+")"
         elif(v.decl().eq(self.Expr.add)):
             return "Add"+conv(v);
         elif(v.decl() == self.Expr.mul):
@@ -75,8 +103,11 @@ class TreeSolver:
             return v
 
     def check(self, lhs, rhs):
-        self.s.add(lhs == rhs);
-        print (lhs),"==",(rhs)
+
+        self.s.add(self.axioms)
+        self.s.add(self.simpl(lhs) == self.simpl(rhs));
+        print lhs,"==",rhs;
+        #(apply (then simplify solve-eqs))
         t=self.s.check()
         if t==sat:
             print "==== Satisfiable ===="
@@ -93,7 +124,7 @@ class TreeSolver:
 
 
 
-s = TreeSolver()
+s = ExpressionMatchingProblem()
 s.define_var("R");
 s.define_var("I");
 s.define_symbol("a");
@@ -101,6 +132,6 @@ s.define_symbol("k");
 
 #comp = s.Op("/",s.Op("^",s.Var("x"),s.Var("k")),s.Op("+",s.Number(1),s.Op("^",s.Var("x"),s.Var("k"))))
 #expr = s.Op("/",s.Symbol("a"),s.Op("+",s.Number(1),s.Symbol("a")))
-comp = s.Op("*",s.Var("I"),s.Var("R"))
-expr = s.Op("*",s.Symbol("a"),s.Symbol("k"))
+comp = s.Op("^",s.Var("I"),s.Var("R"))
+expr = s.Symbol("a")
 s.check(comp,expr)

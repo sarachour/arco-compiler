@@ -1,12 +1,14 @@
 
 
-all: build-z3
+all: build
 
-build-z3:
+build:
 	cd z3; make
 	cd dreal; make
+	cd leon; make
 
 
 clean:
 	cd z3; make clean
 	cd dreal; make clean
+	cd leon; make clean

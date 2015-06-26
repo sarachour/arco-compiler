@@ -1,0 +1,49 @@
+# Vim
+*.swp
+
+# emacs
+*~
+
+# ensime
+.ensime
+.ensime_cache
+
+# sbt
+target
+/project/build
+/leon
+/setupenv
+/leon-bench
+/.test-history
+/out-classes
+
+# synthesis
+derivation*.dot
+
+# leon
+last.log
+*.last
+*.table
+*.log
+vcs/
+
+#eclipse
+.cache
+.classpath
+.project
+.settings/
+.worksheet/
+
+#intellij
+.idea
+Leon.eml
+Leon.iml
+bin
+
+#scripts
+out-classes
+
+#z3
+.z3-trace
+
+travis/builds
