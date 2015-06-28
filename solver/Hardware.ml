@@ -13,8 +13,9 @@ type hwexpr =
 	| NatExp of hwexpr
 	| Exp of hwexpr*hwexpr
 	| Div of hwexpr*hwexpr
-	| Mult of hwexpr*hwexpr
-	| Add of hwexpr*hwexpr
+	| Mult of hwexpr list
+	| Add of hwexpr list
+	| Sub of hwexpr list
 	| CVoltage of decimal
 	| CCurrent of decimal
 	| Wildcard
