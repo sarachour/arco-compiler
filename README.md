@@ -2,7 +2,7 @@ BioCadance
 =====
 make sure you have the following packages installed
 
-   mercurial ocaml ocaml-camlp4 ocaml-extlib gcc-4.8 g++-4.8 opam
+   mercurial ocaml ocaml-camlp4 gcc-4.8 g++-4.8 opam
 
 
 make sure you have the following installed:
@@ -17,7 +17,7 @@ Initialize opam
 
 setup the opam environmental variable
 
-	eval `opam config env`
+	eval $(opam config env)
 
 ## Setting up GCC/G++ 4.8 for mac
 
