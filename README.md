@@ -57,8 +57,3 @@ This script will prompt you with lines to add to your bashrc or a command you ca
 compile the dependencies
 
 	make dep
-
-install the haskell bindings for z3
-
-	cabal install z3 --extra-include-dirs=$BIOCAD_HOME/dep/z3/src/api --extra-lib-dirs=$BIOCARD_HOME/dep/z3/build
-
