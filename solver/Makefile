@@ -1,8 +1,8 @@
 
 DIFFEQ=../diffeq
-DEPS=Hardware.cmo Cytomorphic.cmo SimpleFPAA.cmo
+DEPS=Util.cmo Hardware.cmo Cytomorphic.cmo SimpleFPAA.cmo
 
-LIBS=-package extlib  -package yojson
+LIBS=-package extlib  -package yojson -package z3
 
 all: solver
 

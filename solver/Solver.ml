@@ -1,4 +1,5 @@
 open Sys
+open Z3
 
 let main () =
    if Array.length Sys.argv <> 1 then begin

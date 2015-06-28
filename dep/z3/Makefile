@@ -4,11 +4,10 @@ all: build/z3
 
 build/z3: build
 	cd build; make -j 8
+	make install 
 	
 build:
-	git pull
-	./configure
-	python scripts/mk_make.py
+	python scripts/mk_make.py --ml
 
 
 clean:

@@ -2,12 +2,29 @@ BioCadance
 =====
 make sure you have the following packages installed
 
-   mercurial ocaml ocaml-camlp4 gcc-4.8 g++-4.8 opam
+	mercurial gcc-4.8 g++-4.8 wget
+
+Install the ocaml base packages
+
+	ocaml ocaml-camlp4 opam 
+
+
+install haskell and hackage for the z3 bindings.
+
+	hs-cabal-install
+
+Update cabal
+
+	cabal install cabal-install
+
+update the package list.
+
+	cabal update
 
 
 make sure you have the following installed:
 
-   ocamlfind batteries oasis extlib
+   ocamlfind batteries oasis extlib yojson
 
 ## Setting up OPAM
 
@@ -36,3 +53,12 @@ run
 	./setup.sh
 
 This script will prompt you with lines to add to your bashrc or a command you can run to setup the environment.
+
+compile the dependencies
+
+	make dep
+
+install the haskell bindings for z3
+
+	cabal install z3 --extra-include-dirs=$BIOCAD_HOME/dep/z3/src/api --extra-lib-dirs=$BIOCARD_HOME/dep/z3/build
+
