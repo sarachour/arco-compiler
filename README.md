@@ -2,7 +2,7 @@ BioCadance
 =====
 make sure you have the following packages installed
 
-	mercurial gcc-4.8 g++-4.8 wget
+	mercurial gcc-4.8 g++-4.8 wget sbt graphviz
 
 Install the ocaml base packages
 
@@ -24,7 +24,7 @@ update the package list.
 
 make sure you have the following installed:
 
-   ocamlfind batteries oasis extlib yojson
+   ocamlfind batteries oasis extlib yojson zarith
 
 ## Setting up OPAM
 
@@ -36,13 +36,25 @@ setup the opam environmental variable
 
 	eval $(opam config env)
 
+switch the the supported version of ocaml
+
+	opam switch 4.02.1
+
+install the necessary dependencies
+
+	ocamlfind batteries oasis extlib yojson
+
+install zarith with special flags
+
+	C_INCLUDE_PATH=/opt/local/include LIBRARY_PATH=/opt/local/lib CC=gcc-mp-4.8 opam install zarith
+
 ## Setting up GCC/G++ 4.8 for mac
 
 First install gcc 4.8 using ports:
 
 	sudo port install gcc48
 
-DReal requires gcc 4.8, modify the makefile in DEP to point to your install of gcc/g++ 4.8
+DReal requires gcc 4.8, modify the makefile in DEP to point to your install of gcc/g++ 4.8. 
 
 	vim dep/dreal/Makefile
 
@@ -56,4 +68,4 @@ This script will prompt you with lines to add to your bashrc or a command you ca
 
 compile the dependencies
 
-	make dep
+	make deps

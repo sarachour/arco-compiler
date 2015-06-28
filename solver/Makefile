@@ -1,27 +1,15 @@
 
 DIFFEQ=../diffeq
-DEPS=Util.cmo Hardware.cmo Cytomorphic.cmo SimpleFPAA.cmo
+DEPS=Util.ml Hardware.ml Cytomorphic.ml SimpleFPAA.ml CircuitSolver.ml
+ARGS=C_INCLUDE_PATH=/opt/local/include LIBRARY_PATH=/opt/local/lib CC=gcc-mp-4.8 
 
-LIBS=-package extlib  -package yojson -package z3
+LIBS=-package extlib  -package yojson -package z3 -package z3overlay
 
 all: solver
 
-solver: $(DEPS) Solver.cmo 
-	 ocamlfind ocamlc -g $(LIBS) -linkpkg -o solver \
-	 	$(DEPS) Solver.cmo
+solver: $(DEPS)
+	 $(ARGS) ocamlbuild -use-ocamlfind CircuitSolver.native && mv CircuitSolver.native solver
 	 chmod +x solver
-
-%.ml: %.mll 
-	ocamllex $< -o $@
-	
-
-%.mli: %.mly
-	ocamlyacc $<
-
-
-%.cmo: %.ml
-	ocamlfind ocamlc $(LIBS) -c $< -o $@
-
 
 clean:
 	rm -f *.cmo *.cmi *.mli solver &> /dev/null

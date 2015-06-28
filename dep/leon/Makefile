@@ -1,5 +1,5 @@
 
-all: build
+all: 
 	sbt compile
 	sbt script
 
