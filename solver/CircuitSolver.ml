@@ -1,5 +1,10 @@
 open Sys
 open ZZ3
+open SimpleFPAA
+open HWConvAlgorithm
+open Generic 
+open Hardware
+
 
 module Z = ZZ3.Make (struct let ctx = Z3.mk_context [] end)
 
@@ -43,7 +48,16 @@ let main () =
    if Array.length Sys.argv <> 1 then begin
       Format.printf "Usage: solver\n";
    end else begin
-      Format.printf "%s\n" "done."
+      let hw = simpleFPAAChip in 
+      let expr : grel= Eq(
+        Deriv(Literal(Symbol(0, Some "X"))),
+        Add(
+          [Literal(Symbol(1, Some "Y"));
+          Literal(Symbol(2, Some "Z"))]
+        )
+      ) in
+      let config = HWConvAlgorithm.convert hw expr in
+      Format.printf "%s\n" (Chip.config2str config)
    end
 ;;
 

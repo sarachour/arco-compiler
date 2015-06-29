@@ -1,1 +1,1 @@
-true: package(z3,z3overlay)
+true: package(z3,z3overlay,extlib)

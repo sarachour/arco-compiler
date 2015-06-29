@@ -8,7 +8,11 @@ Install the ocaml base packages
 
 	ocaml ocaml-camlp4 opam 
 
+make sure you have the following installed:
 
+   ocamlfind batteries oasis extlib yojson zarith
+
+## Installing Hascall
 install haskell and hackage for the z3 bindings.
 
 	hs-cabal-install
@@ -21,10 +25,6 @@ update the package list.
 
 	cabal update
 
-
-make sure you have the following installed:
-
-   ocamlfind batteries oasis extlib yojson zarith
 
 ## Setting up OPAM
 

@@ -15,4 +15,7 @@ type gexpr =
 	| Sub of gexpr list
 	| Exp of gexpr*gexpr
 	| NatExp of gexpr
-	| Deriv of gliteral
+	| Deriv of gexpr
+
+type grel = 
+	| Eq of gexpr*gexpr

@@ -20,31 +20,55 @@ type hwexpr =
 	| CCurrent of decimal
 	| Wildcard
 	| Literal of hwliteral
-	| Deriv of hwliteral
+	| Deriv of hwexpr
 
 type hwrel = 
 	| Eq of hwexpr*hwexpr
 
-type component = {
+type hwcomp = {
 	mutable inputs: hwid list;
 	mutable output: hwid list;
 	mutable relations: hwrel list;
 	id: hwid
 }
 
-type chip = {
-	mutable components: component list;
-	mutable instances: (int*hwid) list;
+type hwinst = int*hwid 
+
+(* defines a type of connection allowed *)
+type hwrule = 
+   | CompToComp of hwcomp*hwid*hwcomp*hwid
+   | InstanceToInstance of hwinst*hwid*hwinst*hwid
+   | AllOutputToInput
+   | AllToAll
+
+type hwconn = {
+   src: hwinst*hwid;
+   sink: hwinst*hwid;
+}
+
+type hwchip = {
+	mutable components: hwcomp list;
+	mutable instances: hwinst list;
+   mutable rules: hwrule list;
+}
+
+type hwconfig = {
+   mutable conns: hwconn list; 
 }
 
 
 module Chip :
 sig
-   val create : unit -> chip
-   val add_component: chip -> component -> int -> chip
+   val create : unit -> hwchip
+   val config : unit -> hwconfig
+   val add_component: hwchip -> hwcomp -> int -> hwchip
+   val add_rule: hwchip -> hwrule -> hwchip
+   val config2str : hwconfig -> string
+
 end =
 struct
-   let create () = {instances=[]; components=[];}
+   let create () = {instances=[]; components=[];rules=[]}
+   let config () = {conns=[]}
    let add_component c comp qty = 
    	let rec make_inst cid qty = 
    		match qty with
@@ -55,4 +79,10 @@ struct
    		c.components <- comp::c.components;
    		c.instances <- (make_inst cid qty) @ c.instances;
    		c
+
+   let add_rule c r =
+      c.rules <- r::c.rules; c
+
+   let config2str c = 
+      ""
 end
