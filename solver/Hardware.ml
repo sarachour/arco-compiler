@@ -28,6 +28,7 @@ type hwrel =
 type hwcomp = {
 	mutable inputs: hwid list;
 	mutable output: hwid list;
+   mutable params: hwid list;
 	mutable relations: hwrel list;
 	id: hwid
 }

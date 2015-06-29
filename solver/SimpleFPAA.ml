@@ -6,6 +6,7 @@ let mid x = (x, None)
 let i_integrator: hwcomp = {
 	inputs  = [(mid 0)];
 	output = [(mid 1)];
+	params = [];
 	relations = [
 		Eq(Deriv(Literal(OCurrent(mid 1))),Literal(ICurrent(mid 0)))
 	]; 
@@ -15,6 +16,7 @@ let i_integrator: hwcomp = {
 let i_multiplier: hwcomp = {
 	inputs  = [(0,None); (1,None)];
 	output = [(2,None)];
+	params = [];
 	relations = [
 		Eq(
 			Literal(OCurrent(mid(2))), 
@@ -28,6 +30,7 @@ let i_multiplier: hwcomp = {
 let i_exponential: hwcomp = {
 	inputs  = [(mid 0)];
 	output = [(mid 1)];
+	params = [];
 	relations = [
 		Eq(
 			Literal(OCurrent(mid 1)), 
