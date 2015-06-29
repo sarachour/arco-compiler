@@ -1,6 +1,6 @@
 open Util
 
-type hwid = int*(string maybe)
+type hwid = id
 type decimal = float 
 
 type hwliteral = 
@@ -22,8 +22,16 @@ type hwexpr =
 	| Literal of hwliteral
 	| Deriv of hwexpr
 
+
+type hwcond = 
+   | Eq of hwid
+   | And of hwcond list
+   | Or of hwcond list
+
 type hwrel = 
-	| Eq of hwexpr*hwexpr
+	| Eq of hwexpr*hwexpr (*Equality with effects*)
+   | Set of hwliteral*hwexpr (* Set the output to something equivalent *)
+   | Switch of (hwcond*hwrel) list 
 
 type hwcomp = {
 	mutable inputs: hwid list;
@@ -48,6 +56,7 @@ type hwconn = {
 }
 
 type hwchip = {
+   mutable st: SymbolTable.symtable;
 	mutable components: hwcomp list;
 	mutable instances: hwinst list;
    mutable rules: hwrule list;
@@ -62,7 +71,7 @@ sig
 
 end =
 struct
-   let create () = {instances=[]; components=[];rules=[]}
+   let create () = {instances=[]; components=[];rules=[];st=SymbolTable.create()}
    let add_component c comp qty = 
    	let rec make_inst cid qty = 
    		match qty with

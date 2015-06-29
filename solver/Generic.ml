@@ -1,6 +1,6 @@
 open Util
 
-type gid = int*(string maybe)
+type gid = id
 type gdecimal = float
 
 type gliteral = 

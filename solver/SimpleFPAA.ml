@@ -3,43 +3,90 @@ open Util
 
 let mid x = (x, None)
 
-let i_integrator: hwcomp = {
-	inputs  = [(mid 0)];
-	output = [(mid 1)];
-	params = [];
-	relations = [
-		Eq(Deriv(Literal(OCurrent(mid 1))),Literal(ICurrent(mid 0)))
-	]; 
-	id= (0,Some("current_integrator"));
-}
+let simpleFPAAChip = Chip.create()
 
-let i_multiplier: hwcomp = {
-	inputs  = [(0,None); (1,None)];
-	output = [(2,None)];
+
+let i_integrator = let 
+	inp1 = SymbolTable.make simpleFPAAChip.st and
+	inp2 = SymbolTable.make simpleFPAAChip.st and
+	outp1 = SymbolTable.make simpleFPAAChip.st and
+	outp2 = SymbolTable.make simpleFPAAChip.st 
+	in
+	{
+		inputs  = [inp1,inp2];
+		output = [outp1,outp2];
+		params = [];
+		relations = [
+			Eq(Deriv(Literal(OCurrent(outp))),Literal(ICurrent(inp)))
+		]; 
+		id= (0,Some("current_integrator"));
+	}
+
+let i_multiplier: hwcomp = let
+	a = SymbolTable.make simpleFPAAChip.st and
+	b = SymbolTable.make simpleFPAAChip.st and
+	o = SymbolTable.make simpleFPAAChip.st 
+	in
+{
+	inputs  = [a;b];
+	output = [o];
 	params = [];
 	relations = [
 		Eq(
-			Literal(OCurrent(mid(2))), 
-			Mult([Deriv(Literal(ICurrent(mid(0)))); Literal(ICurrent(mid(1)))])
+			Literal(OCurrent o), 
+			Mult([Deriv(Literal(ICurrent a)); Literal(ICurrent b)])
 		);
-		Eq(Literal(OVoltage(mid(2))), Wildcard)
+		Eq(Literal(OVoltage(o)), Wildcard)
 	];
 	id= (0,Some("current_multiplier"));
 }
 
-let i_exponential: hwcomp = {
-	inputs  = [(mid 0)];
-	output = [(mid 1)];
+let i_exponential: hwcomp = let 
+	inp = SymbolTable.make simpleFPAAChip.st and
+	outp = SymbolTable.make simpleFPAAChip.st 
+	in
+	{
+		inputs  = [inp];
+		output = [outp];
+		params = [];
+		relations = [
+		Eq(
+			Literal(OCurrent outp), 
+			NatExp(Literal(ICurrent inp))
+		);
+		Eq(Literal(OVoltage outp), Wildcard)
+	];
+	id= (0,Some("current_exp_e"));
+}
+(**)
+let i_fanout: hwcomp = 
+	let
+	cn1 = SymbolTable.make simpleFPAAChip.st and
+	cn2 = SymbolTable.make simpleFPAAChip.st and
+	cn3 = SymbolTable.make simpleFPAAChip.st and
+	cn4 = SymbolTable.make simpleFPAAChip.st and
+{
+	inputs  =[cn4];
+	output = [cn1,cn2,cn3];
 	params = [];
 	relations = [
-		Eq(
-			Literal(OCurrent(mid 1)), 
-			NatExp(Literal(ICurrent(mid 0)))
+		Set(
+			Literal(OCurrent cn1), 
+			Literal(OCurrent cn4)
+		);
+		Set(
+			Literal(OCurrent cn2), 
+			Literal(OCurrent cn4)
+		);
+		Set(
+			Literal(OCurrent cn3), 
+			Literal(OCurrent cn4)
 		);
 		Eq(Literal(OVoltage(mid(1))), Wildcard)
 	];
-	id= (0,Some("current_multiplier"));
+	id= (0,Some("current_fanout"));
 }
+
 
 
 let simpleFPAAChip = Chip.create()
