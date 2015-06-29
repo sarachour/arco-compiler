@@ -56,8 +56,8 @@ let main () =
           Literal(Symbol(2, Some "Z"))]
         )
       ) in
-      let config = HWConvAlgorithm.convert hw expr in
-      Format.printf "%s\n" (Chip.config2str config)
+      let config = HWConvAlgorithm.convert hw expr Current in
+      Format.printf "%s\n" (HWConvAlgorithm.config2str config)
    end
 ;;
 

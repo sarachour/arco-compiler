@@ -52,23 +52,16 @@ type hwchip = {
    mutable rules: hwrule list;
 }
 
-type hwconfig = {
-   mutable conns: hwconn list; 
-}
-
 
 module Chip :
 sig
    val create : unit -> hwchip
-   val config : unit -> hwconfig
    val add_component: hwchip -> hwcomp -> int -> hwchip
    val add_rule: hwchip -> hwrule -> hwchip
-   val config2str : hwconfig -> string
 
 end =
 struct
    let create () = {instances=[]; components=[];rules=[]}
-   let config () = {conns=[]}
    let add_component c comp qty = 
    	let rec make_inst cid qty = 
    		match qty with
@@ -83,6 +76,4 @@ struct
    let add_rule c r =
       c.rules <- r::c.rules; c
 
-   let config2str c = 
-      ""
 end
