@@ -38,13 +38,14 @@ struct
       | "in" -> InputPin(i, Some ("in_"^name))
       | "out" -> OutputPin(i, Some ("out_"^name))
       | "comp" -> Component(i, Some ("comp_"^name))
-      | "aggcomp" -> AggregateComponent(i, Some ("acomp_"^name))
-      | "switchcomp" -> SwitchComponent(i, Some ("swcomp_"^name))
+      | "agg" -> AggregateComponent(i, Some ("acomp_"^name))
+      | "switch" -> SwitchComponent(i, Some ("swcomp_"^name))
       | "wire" -> Wire(i, Some ("w_"^name))
       | "param" -> Parameter(i, Some ("p_"^name))
       | "schem" -> Schematic(i, Some ("schem_"^name))
       | "gin" -> AnalogInput(i, Some ("gin_"^name))
       | "gout" -> AnalogOutput(i, Some ("gout_"^name))
+      | _ -> raise (HWDataException ("Unknown kind: "^kind))
    
   let get_id (id:hwid) : id = match id with
       | InputPin(x) -> x
@@ -59,7 +60,6 @@ struct
       | AnalogOutput(x) -> x
 
   let add s kind name = 
-    
     let fid = s.fid in
     let id = gen kind name (!fid) in
     match get_id id with

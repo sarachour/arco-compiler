@@ -10,7 +10,7 @@ Install the ocaml base packages
 
 make sure you have the following installed:
 
-   ocamlfind batteries oasis extlib yojson zarith
+   ocamlfind batteries oasis extlib yojson zarith core
 
 ## Installing Hascall
 install haskell and hackage for the z3 bindings.
