@@ -12,6 +12,7 @@ type id = int*(string maybe)
 
 module StringMap = Map.Make (String)
 
+(*
 module SymbolTable : 
 sig
   type symtable = {
@@ -41,7 +42,7 @@ struct
   let get s name = StringMap.find name !(s.map)
 
 end
-
+*)
 
 
 let sanitize s : string = 

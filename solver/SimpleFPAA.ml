@@ -1,6 +1,10 @@
-open Hardware
+open HWLib
 open Util
 
+let _A = HWArch.create()
+
+let simpleFPAAChip = _A
+(*
 let mid x = (x, None)
 
 let simpleFPAAChip = Chip.create()
@@ -93,3 +97,5 @@ let simpleFPAAChip = Chip.create()
 let simpleFPAAChip = Chip.add_component simpleFPAAChip i_integrator 80
 let simpleFPAAChip = Chip.add_component simpleFPAAChip i_multiplier 80
 let simpleFPAAChip = Chip.add_component simpleFPAAChip i_exponential 16
+
+*)
