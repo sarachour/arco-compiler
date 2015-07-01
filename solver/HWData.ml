@@ -101,18 +101,21 @@ type hwcomp_switch = {
    mutable subcomps : hwcomp list;
    mutable id: string*hwid;
 }
+type hwterm = 
+   |Wire of string
+   |Port of string*string
 
 type hwire = {
-   id : hwid;
-   conns: hwid list;
+   id : string*hwid;
+   mutable conns: hwterm list;
 }
 
 type 'a hwschemT = {
    mutable elems : (string*'a) list;
    mutable wires : hwire list;
-   mutable inputs: hwid list;
-   mutable outputs: hwid list;
-   mutable id : hwid;
+   mutable inputs: (string*hwid) list;
+   mutable outputs: (string*hwid) list;
+   mutable id : string*hwid;
 }
 
 type hwinput = {

@@ -14,12 +14,13 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 %}
 
 
+
 %token <string> TOKEN
 %token <float> DECIMAL
 %token BEGIN
 %token COLON EOF SEMICOLON OBRACE CBRACE VBAR DOT OPARAN CPARAN
-%token COMPONENT SCHEMATIC AGG_COMPONENT SWITCH_COMPONENT WIRE JOIN ELEM
-%token RELATION INPUT_PIN OUTPUT_PIN PARAM
+%token COMPONENT SCHEMATIC AGG_COMPONENT SWITCH_COMPONENT WIRE JOIN ELEM TO
+%token RELATION INPUT_PIN OUTPUT_PIN PARAM 
 
 %token MULT DIV ADD SUB EXP
 %token EQ ASSIGN
@@ -36,7 +37,9 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 %type <string*HWData.hwelem> elem
 
 %type <HWData.hwire> wire
-%type <unit> join
+%type <hwterm> entry
+%type <hwterm list> entrylist
+%type <hwterm*(hwterm list)> join
 
 %type <HWData.hwrel> rel
 %type <HWData.hwexpr> expr_pe
@@ -155,7 +158,7 @@ component:
 ;
 
 wire:
-   WIRE TOKEN SEMICOLON { let name = $2 in let hid = HWSymTbl.add st name in {id=hid;conns=[]} }
+   WIRE TOKEN SEMICOLON { let name = $2 in let hid = HWSymTbl.add st name in {id=(name,hid);conns=[]} }
 ;
 
 elem:
@@ -168,15 +171,32 @@ elem:
    }
 ;
 
+entry:
+   | TOKEN DOT TOKEN {let ename = $1 and eport = $3 in Port(ename,eport)}
+   | TOKEN {let wname = $1 in Wire(wname)}
+
+entrylist:
+   |entry entrylist {let h = $1 and t = $2 in h::t}
+   |entry {let h = $1 in [h]}
+;
+
 join:
-   | JOIN TOKEN DOT TOKEN TOKEN {}
-   | JOIN TOKEN TOKEN DOT TOKEN {}
-   | JOIN TOKEN TOKEN {}
+   | JOIN entry TO entrylist {let src = $2 and dest = $4 in 
+      match (src,dest) with
+      |(Wire(_),_) -> (src,dest)
+      |(Port(_,_),[Wire(x)]) -> (Wire(x),[src])
+      |_ -> raise (ParserError "cannot connect port to multiple wires with join command.") 
+   }
 
 schem:
-   SCHEMATIC TOKEN OBRACE {let name = $2 in let hid = HWSymTbl.add st name in HWSchem.create hid}
+   SCHEMATIC TOKEN OBRACE {let name = $2 in let hid = HWSymTbl.add st name in HWSchem.create name hid}
    | schem wire {let w = $2 and sc = $1 in HWSchem.add_wire sc w}
    | schem elem {let (n,e) = $2 and sc = $1 in HWSchem.add_elem sc n e}
-   | schem join {let s = $1 in s}
+   | schem join {
+      let s = $1 and (src,dest) = $2 in 
+         match src with
+         | Wire(wire_name) -> HWSchem.add_joins s wire_name dest
+         | _ -> raise (ParserError "cannot connect port to multiple wires with join command.") 
+   }
    | schem CBRACE {$1}
 ;

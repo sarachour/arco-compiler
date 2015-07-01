@@ -27,6 +27,7 @@ rule main = parse
    | "param" {PARAM}
    | "map" {MAP}
    | "cond" {COND}
+   | "to" {TO}
    | ['A'-'Z' 'a'-'z' '_' '0'-'9']+ as word {TOKEN(word)}
    | ['0'-'9']+('.'['0'-'9']*)? as dec {DECIMAL(float_of_string dec)}
    | ['.'] {DOT}

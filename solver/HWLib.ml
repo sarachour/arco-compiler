@@ -126,14 +126,15 @@ end
 
 module HWSchem :
 sig
-   val create : hwid -> hwschem
+   val create : string->hwid -> hwschem
    val schem2str: hwschem -> string
    val add_wire: hwschem -> hwire -> hwschem
+   val add_joins: hwschem -> string -> hwterm list -> hwschem
    val add_elem: hwschem -> string -> hwelem -> hwschem
 end = 
 struct
-   let create hwid : hwschem = 
-      {inputs=[];outputs=[];elems=[];wires=[];id=hwid}
+   let create name hwid : hwschem = 
+      {inputs=[];outputs=[];elems=[];wires=[];id=(name,hwid)}
 
    let add_wire sc w =
       sc.wires <- w::sc.wires; sc
@@ -141,16 +142,30 @@ struct
    let add_elem sc n e =
       sc.elems <- (n,e)::sc.elems; sc
 
+   let add_joins sc wire_name js = 
+      let results = List.filter (fun {id=(n,i);conns=lst} -> n = wire_name) sc.wires in
+            match results with
+            | [wire] -> wire.conns <- js @ wire.conns; sc
+            | [] -> raise (HWLibException ("no wires with name "^wire_name^" exist in schematic."))
+            | _ ->raise (HWLibException ("too many wires with name "^wire_name^" exist in schematic."))
+
    let schem2str h = 
-      let wire2str ws = match ws with
-         | {id=idx,Some(name); conns=clst} -> "wire "^name^"=[]\n"
-         | _ -> raise (HWLibException "unexpected type for wire.")
-      in
-      let elem2str (n,e) = n^" -> "^HWElem.elem2str e in
       let rec list2str func ws = match ws with
          | h::t -> (func h )^(list2str func t)
          | [] -> ""
       in 
+      let join2str js = match js with
+         | Wire(wn) -> wn^" "
+         | Port(en,pn) -> en^"."^pn^" "
+      in
+      let wire2str ws = match ws with
+         | {id=(name,(idx,Some(nid))); conns=clst} -> 
+            let join_str = list2str join2str clst in
+            "wire "^name^"=["^join_str^"]\n"
+         | _ -> raise (HWLibException "unexpected type for wire.")
+      in
+      let elem2str (n,e) = n^" -> "^HWElem.elem2str e in
+      
          "schematic:\n"^
          (list2str wire2str h.wires)^
          (list2str elem2str h.elems)
@@ -168,7 +183,7 @@ struct
    let create () = 
       let st = HWSymTbl.create() in
       let sid = HWSymTbl.add st "root" in
-      {schem=HWSchem.create(sid); st=st}
+      {schem=HWSchem.create "root" (sid); st=st}
    let create_config () = Constraints([])
    let config2str c = ""
    let arch2str a = HWSchem.schem2str a.schem
