@@ -25,7 +25,7 @@ sig
    val create : hwid -> hwschem
    val schem2str: hwschem -> string
    val add_wire: hwschem -> hwire -> hwschem
-
+   val add_elem: hwschem -> hwelem -> hwschem
 end = 
 struct
    let create hwid : hwschem = 
@@ -33,6 +33,9 @@ struct
 
    let add_wire sc w =
       sc.wires <- w::sc.wires; sc
+
+   let add_elem sc e =
+      sc.elems <- e::sc.elems; sc
 
    let schem2str h = 
       let wire2str ws = match ws with

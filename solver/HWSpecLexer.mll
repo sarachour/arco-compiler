@@ -10,6 +10,7 @@ rule main = parse
    | ['{'] {OBRACE}
    | ['}'] {CBRACE}
    | [';'] {SEMICOLON}
+   | "begin" {BEGIN}
    | "aggregate-component" {AGG_COMPONENT}
    | "switch-component" {SWITCH_COMPONENT}
    | "component" {COMPONENT}
@@ -17,6 +18,7 @@ rule main = parse
    | "join" {JOIN}
    | "schematic" {SCHEMATIC}
    | "enforce" {RELATION}
+   | "elem" {ELEM}
    | "pinin" {INPUT_PIN}
    | "pinout" {OUTPUT_PIN}
    | "param" {PARAM}
