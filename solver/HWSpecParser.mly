@@ -68,8 +68,8 @@ literal:
    | TOKEN DOT TOKEN {
       let prop = $3 and vname = $1 in
       match prop with
-         |"V" -> Voltage (Wire(0,None))
-         |"I" -> Current (Wire(0,None))
+         |"V" -> Voltage (vname)
+         |"I" -> Current (vname)
          | _ -> raise (ParserError ("Unknown property "^prop))
    }
    | TOKEN {
@@ -145,7 +145,11 @@ component:
       let newc = HWComp.add_param c n (Some v) in
       (name,newc)
    }
-   | component RELATION VBAR rel SEMICOLON {let c = $1 in c}
+   | component RELATION VBAR rel SEMICOLON {
+      let (name,c) = $1 and r = $4 in 
+      let newc = HWComp.add_constraint c r in
+      (name,newc)
+   }
    | component CBRACE {let (name,c) = $1 in (name,c)}  
 ;
 wire:

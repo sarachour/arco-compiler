@@ -94,8 +94,8 @@ type hwparam = string*(decimal maybe)
 (* Hardware Logic *)
 
 type hwliteral = 
-	| Voltage of hwid
-	| Current of hwid
+	| Voltage of string
+	| Current of string
    | Parameter of string
 
 type hwexpr = 
@@ -105,9 +105,6 @@ type hwexpr =
 	| Mult of hwexpr list
 	| Add of hwexpr list
 	| Sub of hwexpr list
-	| CVoltage of decimal
-	| CCurrent of decimal
-	| Wildcard
 	| Literal of hwliteral
 	| Deriv of hwexpr
 
@@ -136,7 +133,7 @@ type hwcomp = {
 	mutable inputs: (string*hwid) list;
 	mutable outputs: (string*hwid) list;
    mutable params: hwparam list;
-	mutable behavior: hwrel list;
+	mutable constraints: hwrel list;
    id: hwid;
 }
 

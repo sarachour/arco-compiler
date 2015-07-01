@@ -6,12 +6,42 @@ exception HWLibException of string;;
 module HWUtil :
 sig
    val hwid2str : hwid -> string
+   val hwlit2str : hwliteral -> string
+   val hwexpr2str : hwexpr -> string 
+   val hwrel2str : hwrel -> string
 end =
 struct 
    let hwid2str h = match HWSymTbl.get_id h with
-   |(i,Some(n)) -> (string_of_int i)^"."^n
-   |(i,None) -> (string_of_int i)
+      |(i,Some(n)) -> (string_of_int i)^"."^n
+      |(i,None) -> (string_of_int i)
+   
+   let hwlit2str h = match h with
+      | Parameter(p) -> p 
+      | Voltage(v) -> "V("^v^")"
+      | Current(v) -> "I("^v^")"
 
+   let rec hwexpr2str h = 
+      let hwexprlst2str lst delim =
+            begin
+            match lst with
+               | h::t -> List.fold_right (fun x y -> y^delim^(hwexpr2str x)) t (hwexpr2str h)
+               | [] -> raise (HWLibException ("cannot print operation "^delim^" with no arguments."))
+            end
+      in
+      match h with   
+      | Add(lst) -> hwexprlst2str lst "+"
+      | Sub(lst) -> hwexprlst2str lst "-"
+      | Div(x,y) -> "\\frac{"^(hwexpr2str x)^"}{"^(hwexpr2str y)^"}"
+      | Mult(lst) -> hwexprlst2str lst "\\cdot"
+      | Literal(l) -> hwlit2str l
+      | Deriv(x) -> "\\frac{\\partial}{\\partial t}"^(hwexpr2str x)
+      | Exp(x,y) -> "{"^(hwexpr2str x)^"}^{"^(hwexpr2str y)^"}"
+      | NatExp(x) ->"e^{"^(hwexpr2str x)^"}"
+
+   let rec hwrel2str r = 
+      match r with
+      | Eq(a,b) -> (hwexpr2str a)^"="^(hwexpr2str b)
+      | Set(a,b) -> (hwlit2str a)^":="^(hwexpr2str b)
 end
 
 
@@ -21,11 +51,12 @@ sig
    val add_input : hwcomp -> string-> hwid -> hwcomp
    val add_output : hwcomp -> string-> hwid -> hwcomp
    val add_param : hwcomp -> string -> decimal maybe-> hwcomp
+   val add_constraint: hwcomp -> hwrel -> hwcomp
    val comp2str : hwcomp -> string
 end = 
 struct
    let create hwid : hwcomp = 
-      {inputs=[];outputs=[];params=[];behavior=[];id=hwid}
+      {inputs=[];outputs=[];params=[];constraints=[];id=hwid}
    
    let add_input (c:hwcomp) name hwid : hwcomp = 
       c.inputs <- (name,hwid)::c.inputs; c
@@ -36,13 +67,18 @@ struct
    let add_param (c:hwcomp) name value = 
       c.params <- (name,value)::c.params; c
 
+   let add_constraint (c:hwcomp) rel = 
+      c.constraints <- rel::c.constraints; c
+
+
    let comp2str (c:hwcomp) : string = 
       let print_param p = match p with
          |(n, Some(v)) -> "    param "^n^" = "^(string_of_float v)^"\n"
          |(n, None) -> "   param "^n^" = ?\n"
       in
-      let print_input (n,i) = "   in "^n^":="^(HWUtil.hwid2str i)^"\n" in
-      let print_output (n,i) = "   out "^n^":="^(HWUtil.hwid2str i)^"\n" in
+      let print_input (n,i) = "   in "^n^" := "^(HWUtil.hwid2str i)^"\n" in
+      let print_output (n,i) = "   out "^n^" := "^(HWUtil.hwid2str i)^"\n" in
+      let print_relation r = "   rel "^(HWUtil.hwrel2str r)^"\n" in
       let rec print_list func lst = match lst with
          |h::t -> (func h)^(print_list func t)
          |[] -> ""
@@ -50,7 +86,8 @@ struct
       (HWUtil.hwid2str c.id)^"\n"^
       (print_list (print_param) c.params)^
       (print_list (print_input) c.inputs)^
-      (print_list (print_output) c.outputs)
+      (print_list (print_output) c.outputs)^
+      (print_list (print_relation) c.constraints)
 end
 
 module HWElem :

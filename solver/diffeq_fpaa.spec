@@ -17,7 +17,7 @@ component vmul2 {
    in A;
    out B;
    param C;
-   enforce | C*deriv(A.V - B.V) = B.I;
+   enforce | B.I = C*deriv(A.V - B.V);
    enforce | A.I = B.I;
 }
 
