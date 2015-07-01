@@ -33,7 +33,7 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 
 %type <HWData.hwschem> schem
 %type <string*HWData.hwcomp> component
-%type <HWData.hwelem> elem
+%type <string*HWData.hwelem> elem
 
 %type <HWData.hwire> wire
 
@@ -161,13 +161,14 @@ elem:
       let kind = $4 in
       let name = $2 in
       let elem = Util.StringMap.find kind !(cmap) in
-      HWElem.clone (fun (n:string) -> HWSymTbl.add st n) elem
+      let newelem = HWElem.clone (fun (n:string) -> HWSymTbl.add st n) elem in 
+      (name,newelem)
    }
 ;
 
 schem:
    SCHEMATIC TOKEN OBRACE {let name = $2 in let hid = HWSymTbl.add st name in HWSchem.create hid}
    | schem wire {let w = $2 and sc = $1 in HWSchem.add_wire sc w}
-   | schem elem {let e = $2 and sc = $1 in HWSchem.add_elem sc e}
+   | schem elem {let (n,e) = $2 and sc = $1 in HWSchem.add_elem sc n e}
    | schem CBRACE {$1}
 ;

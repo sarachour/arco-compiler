@@ -129,7 +129,7 @@ sig
    val create : hwid -> hwschem
    val schem2str: hwschem -> string
    val add_wire: hwschem -> hwire -> hwschem
-   val add_elem: hwschem -> hwelem -> hwschem
+   val add_elem: hwschem -> string -> hwelem -> hwschem
 end = 
 struct
    let create hwid : hwschem = 
@@ -138,15 +138,15 @@ struct
    let add_wire sc w =
       sc.wires <- w::sc.wires; sc
 
-   let add_elem sc e =
-      sc.elems <- e::sc.elems; sc
+   let add_elem sc n e =
+      sc.elems <- (n,e)::sc.elems; sc
 
    let schem2str h = 
       let wire2str ws = match ws with
          | {id=idx,Some(name); conns=clst} -> "wire "^name^"=[]\n"
          | _ -> raise (HWLibException "unexpected type for wire.")
       in
-      let elem2str e = HWElem.elem2str e in
+      let elem2str (n,e) = n^" -> "^HWElem.elem2str e in
       let rec list2str func ws = match ws with
          | h::t -> (func h )^(list2str func t)
          | [] -> ""

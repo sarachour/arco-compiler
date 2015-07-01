@@ -108,7 +108,7 @@ type hwire = {
 }
 
 type 'a hwschemT = {
-   mutable elems : 'a list;
+   mutable elems : (string*'a) list;
    mutable wires : hwire list;
    mutable inputs: hwid list;
    mutable outputs: hwid list;
