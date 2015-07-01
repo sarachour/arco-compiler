@@ -128,6 +128,8 @@ module HWSchem :
 sig
    val create : string->hwid -> hwschem
    val schem2str: hwschem -> string
+   val add_input: hwschem -> string -> hwid -> hwschem
+   val add_output: hwschem -> string -> hwid -> hwschem
    val add_wire: hwschem -> hwire -> hwschem
    val add_joins: hwschem -> string -> hwterm list -> hwschem
    val add_elem: hwschem -> string -> hwelem -> hwschem

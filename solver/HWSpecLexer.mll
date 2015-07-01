@@ -4,7 +4,6 @@
 
 rule main = parse
    "/*" _* "*/" {main lexbuf}
-   | "//" [^'\n'] {main lexbuf}
    |[' ''\t''\n'] {main lexbuf}
    | [':'] {COLON}
    | ['{'] {OBRACE}

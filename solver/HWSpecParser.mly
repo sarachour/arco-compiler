@@ -181,7 +181,7 @@ entrylist:
 ;
 
 join:
-   | JOIN entry TO entrylist {let src = $2 and dest = $4 in 
+   | JOIN entry TO entrylist SEMICOLON {let src = $2 and dest = $4 in 
       match (src,dest) with
       |(Wire(_),_) -> (src,dest)
       |(Port(_,_),[Wire(x)]) -> (Wire(x),[src])
@@ -190,6 +190,8 @@ join:
 
 schem:
    SCHEMATIC TOKEN OBRACE {let name = $2 in let hid = HWSymTbl.add st name in HWSchem.create name hid}
+   | schem INPUT_PIN TOKEN SEMICOLON {let sc = $1 and name = $3 in sc}
+   | schem OUTPUT_PIN TOKEN SEMICOLON {let sc = $1 and name = $3 in sc}
    | schem wire {let w = $2 and sc = $1 in HWSchem.add_wire sc w}
    | schem elem {let (n,e) = $2 and sc = $1 in HWSchem.add_elem sc n e}
    | schem join {
