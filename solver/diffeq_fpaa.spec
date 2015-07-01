@@ -27,7 +27,7 @@ schematic toplevel {
    wire w1_3;
 
    elem va0: vadd2;
-   elem va1: vadd2;
+   elem va1: vmul2;
 
    
 }
