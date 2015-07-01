@@ -3,18 +3,8 @@ open Util
 
 exception HWDataException of string;;
 (* Hardware Identifiers *)
-type hwid = 
-   |InputPin of id
-   |OutputPin of id
-   |Component of id
-   |AggregateComponent of id
-   |SwitchComponent of id
-   |Wire of id
-   |Parameter of id
-   |Schematic of id
-   |AnalogInput of id
-   |AnalogOutput of id 
-   |Null 
+type hwid = id
+let nullid : hwid = (0,None)
 
 module HWSymTbl : 
 sig
@@ -23,67 +13,24 @@ sig
     mutable map: hwid StringMap.t ref;
   }
   val create : unit -> symtable 
-  val get_id : hwid -> id
-  val get_by_name : symtable -> string -> string -> hwid maybe
-  val get_by_id : symtable -> string -> int -> hwid maybe
-  val add : symtable -> string -> string -> hwid 
-  val make : symtable -> string -> hwid 
+  val add : symtable -> string -> hwid 
+  val make : symtable -> hwid 
 end = 
 struct
   type symtable = {
     mutable fid: int ref;
     mutable map: hwid StringMap.t ref;
   }
-  let create() = {fid=(ref 0); map=(ref StringMap.empty)}
-  
-  let gen (kind:string) (name:string) (i:int) : hwid = match kind with
-      | "in" -> InputPin(i, Some ("in_"^name))
-      | "out" -> OutputPin(i, Some ("out_"^name))
-      | "comp" -> Component(i, Some ("comp_"^name))
-      | "agg" -> AggregateComponent(i, Some ("acomp_"^name))
-      | "switch" -> SwitchComponent(i, Some ("swcomp_"^name))
-      | "wire" -> Wire(i, Some ("w_"^name))
-      | "param" -> Parameter(i, Some ("p_"^name))
-      | "schem" -> Schematic(i, Some ("schem_"^name))
-      | "gin" -> AnalogInput(i, Some ("gin_"^name))
-      | "gout" -> AnalogOutput(i, Some ("gout_"^name))
-      | _ -> raise (HWDataException ("Unknown kind: "^kind))
-   
-  let get_id (id:hwid) : id = match id with
-      | InputPin(x) -> x
-      | OutputPin(x) -> x
-      | Component(x) -> x
-      | AggregateComponent(x) -> x
-      | SwitchComponent(x) -> x
-      | Wire(x) -> x
-      | Parameter(x) -> x
-      | Schematic(x) -> x
-      | AnalogInput(x) -> x
-      | AnalogOutput(x) -> x
-      | Null -> (-1,None)
+  let create() = {fid=(ref 1); map=(ref StringMap.empty)}
 
-  let add s kind name = 
-    let fid = s.fid in
-    let id = gen kind name (!fid) in
-    match get_id id with
-      | (_, Some(n)) ->
-         begin
-          fid := !fid + 1;
-          s.map := StringMap.add n id !(s.map);
-          id
-         end 
-      | _ -> raise (HWDataException "Must have name.")
+  let add (s:symtable) (n:string) = 
+   let fid = s.fid in
+   let id = (!fid,Some(n)) in
+   fid := !fid + 1;
+   s.map := StringMap.add (string_of_int (!fid)) id !(s.map);
+   id
 
-  let make s = add s ("v"^(string_of_int !(s.fid)))
-  let get_by_name s kind name : hwid maybe = 
-      match get_id (gen kind name 0) with
-         | (_, Some(kname)) -> Some(StringMap.find kname !(s.map))
-         | _ -> None
-
-  let get_by_id s kind id : hwid maybe = 
-      match get_id (gen kind ("v"^(string_of_int id)) 0) with
-         | (_, Some(kname)) -> Some(StringMap.find kname !(s.map))
-         | _ -> None
+  let make s = add s ("v"^(string_of_int (!(s.fid)) ) )
 
 end
 
@@ -134,7 +81,7 @@ type hwcomp = {
 	mutable outputs: (string*hwid) list;
    mutable params: hwparam list;
 	mutable constraints: hwrel list;
-   id: hwid;
+   mutable id: string*hwid;
 }
 
 type hwcomp_agg = {
@@ -143,7 +90,7 @@ type hwcomp_agg = {
    mutable params: hwparam list;
    mutable conns : (string*string) list;
    mutable subcomps : hwcomp list;
-   id: hwid;
+   mutable id: string*hwid;
 }
 
 type hwcomp_switch = {
@@ -152,7 +99,7 @@ type hwcomp_switch = {
    mutable params: hwparam list;
    mutable conns : (hwcond*(hwid*hwid)) list;
    mutable subcomps : hwcomp list;
-   id: hwid;
+   mutable id: string*hwid;
 }
 
 type hwire = {
@@ -165,7 +112,7 @@ type 'a hwschemT = {
    mutable wires : hwire list;
    mutable inputs: hwid list;
    mutable outputs: hwid list;
-   id : hwid;
+   mutable id : hwid;
 }
 
 type hwinput = {

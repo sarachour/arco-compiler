@@ -11,7 +11,7 @@ sig
    val hwrel2str : hwrel -> string
 end =
 struct 
-   let hwid2str h = match HWSymTbl.get_id h with
+   let hwid2str h = match h with
       |(i,Some(n)) -> (string_of_int i)^"."^n
       |(i,None) -> (string_of_int i)
    
@@ -47,16 +47,18 @@ end
 
 module HWComp :
 sig
-   val create : hwid -> hwcomp 
+   val create : string -> hwid -> hwcomp 
    val add_input : hwcomp -> string-> hwid -> hwcomp
    val add_output : hwcomp -> string-> hwid -> hwcomp
    val add_param : hwcomp -> string -> decimal maybe-> hwcomp
+   val bind : hwcomp -> string -> hwid -> hwcomp
+   val clone :(string -> hwid) -> hwcomp-> hwcomp
    val add_constraint: hwcomp -> hwrel -> hwcomp
    val comp2str : hwcomp -> string
 end = 
 struct
-   let create hwid : hwcomp = 
-      {inputs=[];outputs=[];params=[];constraints=[];id=hwid}
+   let create name hwid : hwcomp = 
+      {inputs=[];outputs=[];params=[];constraints=[];id=(name,hwid)}
    
    let add_input (c:hwcomp) name hwid : hwcomp = 
       c.inputs <- (name,hwid)::c.inputs; c
@@ -70,6 +72,21 @@ struct
    let add_constraint (c:hwcomp) rel = 
       c.constraints <- rel::c.constraints; c
 
+   let bind (c:hwcomp) (name) (id) = 
+      let bind_to_var (n,x) = if n == name then (n,id) else (n,x) in
+      c.inputs <- List.map bind_to_var c.inputs;
+      c.outputs <- List.map bind_to_var c.outputs;
+      c.id <- bind_to_var c.id;
+      c
+
+   let clone (genid: string->hwid)  (c:hwcomp)=
+      let (name, id) = c.id in
+      let prefix = "comp_"^name^"_" in
+      let copy_var (n,x) = let newx = genid (prefix^n) in (n,newx) in
+      c.inputs <- List.map copy_var c.inputs;
+      c.outputs <- List.map copy_var c.outputs;
+      c.id <- copy_var c.id;
+      c
 
    let comp2str (c:hwcomp) : string = 
       let print_param p = match p with
@@ -83,7 +100,8 @@ struct
          |h::t -> (func h)^(print_list func t)
          |[] -> ""
       in
-      (HWUtil.hwid2str c.id)^"\n"^
+      let (name,nid) = c.id in
+      name^":="^(HWUtil.hwid2str nid)^"\n"^
       (print_list (print_param) c.params)^
       (print_list (print_input) c.inputs)^
       (print_list (print_output) c.outputs)^
@@ -93,11 +111,17 @@ end
 module HWElem :
 sig
    val elem2str : hwelem -> string
+   val clone :  (string->hwid) -> hwelem-> hwelem
 end = 
 struct 
    let elem2str e = match e with
       | Component(x) -> HWComp.comp2str x
       | _ -> "unsupported.\n"
+
+   let clone f e = match e with
+      |Component(x) -> Component (HWComp.clone f x)
+      | _ -> raise (HWLibException "cloning other elements unsupported.")
+
 end
 
 module HWSchem :
@@ -119,7 +143,7 @@ struct
 
    let schem2str h = 
       let wire2str ws = match ws with
-         | {id=Wire(idx,Some(name)); conns=clst} -> "wire "^name^"=[]\n"
+         | {id=idx,Some(name); conns=clst} -> "wire "^name^"=[]\n"
          | _ -> raise (HWLibException "unexpected type for wire.")
       in
       let elem2str e = HWElem.elem2str e in
@@ -143,7 +167,7 @@ end =
 struct
    let create () = 
       let st = HWSymTbl.create() in
-      let sid = HWSymTbl.add st "schem" "root" in
+      let sid = HWSymTbl.add st "root" in
       {schem=HWSchem.create(sid); st=st}
    let create_config () = Constraints([])
    let config2str c = ""

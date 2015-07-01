@@ -121,18 +121,18 @@ rel:
 component:
    | COMPONENT TOKEN OBRACE {
       let name = $2 in
-      let hid = HWSymTbl.add st "comp" name in 
-      let c = HWComp.create hid in
+      let hid = HWSymTbl.add st name in 
+      let c = HWComp.create name hid in
       (name, c)
    }
    | component INPUT_PIN TOKEN SEMICOLON {
       let (name,c) = $1 and n = $3 in 
-      let newc = HWComp.add_input c n Null in
+      let newc = HWComp.add_input c n nullid in
       (name,newc)
    }
    | component OUTPUT_PIN TOKEN SEMICOLON {
       let (name,c) = $1 and n = $3 in 
-      let newc = HWComp.add_output c n Null in
+      let newc = HWComp.add_output c n nullid in
       (name,newc)
    }
    | component PARAM TOKEN SEMICOLON {
@@ -153,20 +153,20 @@ component:
    | component CBRACE {let (name,c) = $1 in (name,c)}  
 ;
 wire:
-   WIRE TOKEN SEMICOLON { let hid = HWSymTbl.add st "wire" $2 in {id=hid;conns=[]} }
+   WIRE TOKEN SEMICOLON { let name = $2 in let hid = HWSymTbl.add st name in {id=hid;conns=[]} }
 ;
 
 elem:
    ELEM TOKEN COLON TOKEN SEMICOLON {
       let kind = $4 in
       let name = $2 in
-      let comp = Util.StringMap.find kind !(cmap) in
-      comp
+      let elem = Util.StringMap.find kind !(cmap) in
+      HWElem.clone (fun (n:string) -> HWSymTbl.add st n) elem
    }
 ;
 
 schem:
-   SCHEMATIC TOKEN OBRACE {let hid = HWSymTbl.add st "schem" $2 in HWSchem.create hid}
+   SCHEMATIC TOKEN OBRACE {let name = $2 in let hid = HWSymTbl.add st name in HWSchem.create hid}
    | schem wire {let w = $2 and sc = $1 in HWSchem.add_wire sc w}
    | schem elem {let e = $2 and sc = $1 in HWSchem.add_elem sc e}
    | schem CBRACE {$1}
