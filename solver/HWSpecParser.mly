@@ -82,6 +82,7 @@ expr_pe:
    | TOKEN OPARAN expr_as CPARAN {let name = $1 and arg = $3 in
       match name with
       |"exp" -> NatExp(arg)
+      |"deriv" -> Deriv(arg)
       |_ -> raise (ParserError ("operand 1 function "^name^" not supported"))
    }
    | OPARAN expr_as CPARAN {let e = $2 in e}
@@ -114,7 +115,7 @@ expr_as:
 ;
 
 rel:
-   | literal EQ literal {let e1 = $1 and e2 = $3 in Eq(Literal(e1),Literal(e2))}
+   | expr_as EQ expr_as {let e1 = $1 and e2 = $3 in Eq(e1,e2)}
 ;
 
 component:

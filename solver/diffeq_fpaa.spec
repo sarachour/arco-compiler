@@ -3,7 +3,7 @@ component vadd2 {
    in A;
    in B;
    out C;
-   enforce | A.V = B;
+   enforce | C.V = B.V + A.V;
 }
 
 component vmul2 {
@@ -11,6 +11,14 @@ component vmul2 {
    in B;
    out C;
    param K;
+   enforce | C.V = K*B.V*A.V;
+}
+component vmul2 {
+   in A;
+   out B;
+   param C;
+   enforce | C*deriv(A.V - B.V) = B.I;
+   enforce | A.I = B.I;
 }
 
 schematic toplevel {

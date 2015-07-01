@@ -12,7 +12,6 @@ rule main = parse
    | ['('] {OPARAN}
    | [')'] {CPARAN}
    | [';'] {SEMICOLON}
-   | ['.'] {SEMICOLON}
    | ['|'] {VBAR}
    | "begin" {BEGIN}
    | "aggregate-component" {AGG_COMPONENT}
