@@ -18,8 +18,8 @@ end
 module HWComp :
 sig
    val create : hwid -> hwcomp 
-   val add_input : hwcomp -> hwid -> hwcomp
-   val add_output : hwcomp -> hwid -> hwcomp
+   val add_input : hwcomp -> string-> hwid -> hwcomp
+   val add_output : hwcomp -> string-> hwid -> hwcomp
    val add_param : hwcomp -> string -> decimal maybe-> hwcomp
    val comp2str : hwcomp -> string
 end = 
@@ -27,11 +27,11 @@ struct
    let create hwid : hwcomp = 
       {inputs=[];outputs=[];params=[];behavior=[];id=hwid}
    
-   let add_input (c:hwcomp) hwid : hwcomp = 
-      c.inputs <- hwid::c.inputs; c
+   let add_input (c:hwcomp) name hwid : hwcomp = 
+      c.inputs <- (name,hwid)::c.inputs; c
 
-   let add_output (c:hwcomp) hwid : hwcomp = 
-      c.outputs <- hwid::c.outputs; c
+   let add_output (c:hwcomp) name hwid : hwcomp = 
+      c.outputs <- (name,hwid)::c.outputs; c
 
    let add_param (c:hwcomp) name value = 
       c.params <- (name,value)::c.params; c
@@ -41,8 +41,8 @@ struct
          |(n, Some(v)) -> "param "^n^" = "^(string_of_float v)^"\n"
          |(n, None) -> "param "^n^" = ?\n"
       in
-      let print_input i = "in "^(HWUtil.hwid2str i)^"\n" in
-      let print_output i = "out "^(HWUtil.hwid2str i)^"\n" in
+      let print_input (n,i) = "   in "^n^":="^(HWUtil.hwid2str i)^"\n" in
+      let print_output (n,i) = "   out "^n^":="^(HWUtil.hwid2str i)^"\n" in
       let rec print_list func lst = match lst with
          |h::t -> (func h)^(print_list func t)
          |[] -> ""

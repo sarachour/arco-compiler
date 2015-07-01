@@ -14,6 +14,7 @@ type hwid =
    |Schematic of id
    |AnalogInput of id
    |AnalogOutput of id 
+   |Null 
 
 module HWSymTbl : 
 sig
@@ -59,6 +60,7 @@ struct
       | Schematic(x) -> x
       | AnalogInput(x) -> x
       | AnalogOutput(x) -> x
+      | Null -> (-1,None)
 
   let add s kind name = 
     let fid = s.fid in
@@ -131,25 +133,25 @@ type hwcond =
 
 
 type hwcomp = {
-	mutable inputs: hwid list;
-	mutable outputs: hwid list;
+	mutable inputs: (string*hwid) list;
+	mutable outputs: (string*hwid) list;
    mutable params: hwparam list;
 	mutable behavior: hwrel list;
    id: hwid;
 }
 
 type hwcomp_agg = {
-   mutable inputs: hwid list;
-   mutable outputs: hwid list;
+   mutable inputs: (string*hwid) list;
+   mutable outputs: (string*hwid) list;
    mutable params: hwparam list;
-   mutable conns : (hwid*hwid) list;
+   mutable conns : (string*string) list;
    mutable subcomps : hwcomp list;
    id: hwid;
 }
 
 type hwcomp_switch = {
-   mutable inputs: hwid list;
-   mutable outputs: hwid list;
+   mutable inputs: (string*hwid) list;
+   mutable outputs: (string*hwid) list;
    mutable params: hwparam list;
    mutable conns : (hwcond*(hwid*hwid)) list;
    mutable subcomps : hwcomp list;

@@ -125,10 +125,26 @@ component:
       let c = HWComp.create hid in
       (name, c)
    }
-   | component INPUT_PIN TOKEN SEMICOLON {let c = $1 in c}
-   | component OUTPUT_PIN TOKEN SEMICOLON {let c = $1 in c}
-   | component PARAM TOKEN SEMICOLON {let c = $1 in c}
-   | component PARAM TOKEN DECIMAL SEMICOLON {let c = $1 in c}
+   | component INPUT_PIN TOKEN SEMICOLON {
+      let (name,c) = $1 and n = $3 in 
+      let newc = HWComp.add_input c n Null in
+      (name,newc)
+   }
+   | component OUTPUT_PIN TOKEN SEMICOLON {
+      let (name,c) = $1 and n = $3 in 
+      let newc = HWComp.add_output c n Null in
+      (name,newc)
+   }
+   | component PARAM TOKEN SEMICOLON {
+      let (name,c) = $1 and n = $3 in 
+      let newc = HWComp.add_param c n None in
+      (name,newc)
+   }
+   | component PARAM TOKEN DECIMAL SEMICOLON {
+      let (name,c) = $1 and n = $3 and v = $4 in 
+      let newc = HWComp.add_param c n (Some v) in
+      (name,newc)
+   }
    | component RELATION VBAR rel SEMICOLON {let c = $1 in c}
    | component CBRACE {let (name,c) = $1 in (name,c)}  
 ;
