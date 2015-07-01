@@ -38,8 +38,8 @@ struct
 
    let comp2str (c:hwcomp) : string = 
       let print_param p = match p with
-         |(n, Some(v)) -> "param "^n^" = "^(string_of_float v)^"\n"
-         |(n, None) -> "param "^n^" = ?\n"
+         |(n, Some(v)) -> "    param "^n^" = "^(string_of_float v)^"\n"
+         |(n, None) -> "   param "^n^" = ?\n"
       in
       let print_input (n,i) = "   in "^n^":="^(HWUtil.hwid2str i)^"\n" in
       let print_output (n,i) = "   out "^n^":="^(HWUtil.hwid2str i)^"\n" in
