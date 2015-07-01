@@ -3,7 +3,7 @@ component vadd2 {
    in A;
    in B;
    out C;
-   enforce | A = B;
+   enforce | A.V = B;
 }
 
 component vmul2 {
