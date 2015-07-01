@@ -94,6 +94,7 @@ type hwparam = string*(decimal maybe)
 type hwliteral = 
 	| Voltage of hwid
 	| Current of hwid
+   | Parameter of string
 
 type hwexpr = 
 	| NatExp of hwexpr

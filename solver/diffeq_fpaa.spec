@@ -1,14 +1,25 @@
-component X {
-   
+
+component vadd2 {
+   in A;
+   in B;
+   out C;
+   enforce | A = B;
 }
 
-component Y {
-   
+component vmul2 {
+   in A;
+   in B;
+   out C;
+   param K;
 }
 
 schematic toplevel {
-   wire a1;
-   wire a2;
-   elem b1:comp;
-   elem b2:comp;
+   wire w1_1;
+   wire w1_2;
+   wire w1_3;
+
+   elem va0: vadd2;
+   elem va1: vadd2;
+
+   
 }

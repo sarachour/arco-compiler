@@ -15,10 +15,15 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 
 
 %token <string> TOKEN
+%token <float> DECIMAL
 %token BEGIN
-%token COLON EOF SEMICOLON OBRACE CBRACE
+%token COLON EOF SEMICOLON OBRACE CBRACE VBAR DOT OPARAN CPARAN
 %token COMPONENT SCHEMATIC AGG_COMPONENT SWITCH_COMPONENT WIRE JOIN ELEM
 %token RELATION INPUT_PIN OUTPUT_PIN PARAM
+
+%token MULT DIV ADD SUB EXP
+%token EQ ASSIGN
+
 %token COND MAP
 
 
@@ -27,10 +32,16 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 %type <unit> toplevel
 
 %type <HWData.hwschem> schem
-%type <HWData.hwcomp> component
+%type <string*HWData.hwcomp> component
 %type <HWData.hwelem> elem
 
 %type <HWData.hwire> wire
+
+%type <HWData.hwrel> rel
+%type <HWData.hwexpr> expr_pe
+%type <HWData.hwexpr> expr_md
+%type <HWData.hwexpr> expr_as
+%type <HWData.hwliteral> literal
 
 
 %start main
@@ -45,17 +56,80 @@ main:
 
 toplevel:
    | component {
-      let c = $1 in 
-         cmap := Util.StringMap.add "comp" (Component c) !(cmap); 
+      let (name,c) = $1 in
+         cmap := Util.StringMap.add name (Component c) !(cmap); 
    }
    | schem {
       let s = $1 in
       arch.schem <- s;
    }
 
+literal:
+   | TOKEN DOT TOKEN {
+      let prop = $3 and vname = $1 in
+      match prop with
+         |"V" -> Voltage (Wire(0,None))
+         |"I" -> Current (Wire(0,None))
+         | _ -> raise (ParserError ("Unknown property "^prop))
+   }
+   | TOKEN {
+      let name = $1 in
+      Parameter(name)
+   }
+;
+
+expr_pe:
+   | TOKEN OPARAN expr_as CPARAN {let name = $1 and arg = $3 in
+      match name with
+      |"exp" -> NatExp(arg)
+      |_ -> raise (ParserError ("operand 1 function "^name^" not supported"))
+   }
+   | OPARAN expr_as CPARAN {let e = $2 in e}
+   | expr_pe EXP expr_pe {let e1 = $1 and e2 = $3 in Exp(e1,e2)}
+   | literal {let l = $1 in Literal(l)}
+;
+
+expr_md:
+   | expr_md MULT expr_pe {let e1 = $1 and e2 = $3 in 
+      match e1 with 
+         | Mult(a) -> Mult(e2::a)
+         | _ -> Mult([e1;e2])
+      } 
+   | expr_pe DIV expr_pe {let e1 = $1 and e2 = $3 in Div(e1,e2)}
+   | expr_pe {let e = $1 in e}
+;
+
+expr_as:
+   | expr_md {let e = $1 in e}
+   | expr_as ADD expr_md {let e1 = $1 and e2 = $3 in 
+      match e1 with 
+         | Add(a) -> Add(e2::a)
+         | _ -> Add([e1;e2])
+      } 
+   | expr_as SUB expr_md {let e1 = $1 and e2 = $3 in 
+      match e1 with 
+         | Add(a) -> Add(e2::a)
+         | _ -> Add([e1;e2])
+      } 
+;
+
+rel:
+   | literal EQ literal {let e1 = $1 and e2 = $3 in Eq(Literal(e1),Literal(e2))}
+;
+
 component:
-   | COMPONENT TOKEN OBRACE {let hid = HWSymTbl.add st "comp" $2 in HWComp.create hid}
-   | component CBRACE {let c = $1 in c}  
+   | COMPONENT TOKEN OBRACE {
+      let name = $2 in
+      let hid = HWSymTbl.add st "comp" name in 
+      let c = HWComp.create hid in
+      (name, c)
+   }
+   | component INPUT_PIN TOKEN SEMICOLON {let c = $1 in c}
+   | component OUTPUT_PIN TOKEN SEMICOLON {let c = $1 in c}
+   | component PARAM TOKEN SEMICOLON {let c = $1 in c}
+   | component PARAM TOKEN DECIMAL SEMICOLON {let c = $1 in c}
+   | component RELATION VBAR rel SEMICOLON {let c = $1 in c}
+   | component CBRACE {let (name,c) = $1 in (name,c)}  
 ;
 wire:
    WIRE TOKEN SEMICOLON { let hid = HWSymTbl.add st "wire" $2 in {id=hid;conns=[]} }
