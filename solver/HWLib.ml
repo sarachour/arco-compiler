@@ -3,21 +3,64 @@ open Util
 
 exception HWLibException of string;;
 
+module HWUtil :
+sig
+   val hwid2str : hwid -> string
+end =
+struct 
+   let hwid2str h = match HWSymTbl.get_id h with
+   |(i,Some(n)) -> (string_of_int i)^"."^n
+   |(i,None) -> (string_of_int i)
+
+end
+
+
 module HWComp :
 sig
    val create : hwid -> hwcomp 
-   val create_agg : hwid -> hwcomp_agg
-   val create_switch : hwid -> hwcomp_switch
+   val add_input : hwcomp -> hwid -> hwcomp
+   val add_output : hwcomp -> hwid -> hwcomp
+   val add_param : hwcomp -> string -> decimal maybe-> hwcomp
+   val comp2str : hwcomp -> string
 end = 
 struct
    let create hwid : hwcomp = 
       {inputs=[];outputs=[];params=[];behavior=[];id=hwid}
-   let create_agg hwid : hwcomp_agg = 
-      {inputs=[];outputs=[];params=[];subcomps=[];conns=[];id=hwid}
-   let create_switch hwid : hwcomp_switch = 
-      {inputs=[];outputs=[];params=[];subcomps=[];conns=[];id=hwid}
+   
+   let add_input (c:hwcomp) hwid : hwcomp = 
+      c.inputs <- hwid::c.inputs; c
 
+   let add_output (c:hwcomp) hwid : hwcomp = 
+      c.outputs <- hwid::c.outputs; c
 
+   let add_param (c:hwcomp) name value = 
+      c.params <- (name,value)::c.params; c
+
+   let comp2str (c:hwcomp) : string = 
+      let print_param p = match p with
+         |(n, Some(v)) -> "param "^n^" = "^(string_of_float v)^"\n"
+         |(n, None) -> "param "^n^" = ?\n"
+      in
+      let print_input i = "in "^(HWUtil.hwid2str i)^"\n" in
+      let print_output i = "out "^(HWUtil.hwid2str i)^"\n" in
+      let rec print_list func lst = match lst with
+         |h::t -> (func h)^(print_list func t)
+         |[] -> ""
+      in
+      (HWUtil.hwid2str c.id)^"\n"^
+      (print_list (print_param) c.params)^
+      (print_list (print_input) c.inputs)^
+      (print_list (print_output) c.outputs)
+end
+
+module HWElem :
+sig
+   val elem2str : hwelem -> string
+end = 
+struct 
+   let elem2str e = match e with
+      | Component(x) -> HWComp.comp2str x
+      | _ -> "unsupported.\n"
 end
 
 module HWSchem :
@@ -42,12 +85,14 @@ struct
          | {id=Wire(idx,Some(name)); conns=clst} -> "wire "^name^"=[]\n"
          | _ -> raise (HWLibException "unexpected type for wire.")
       in
-      let rec wires2str ws = match ws with
-         | h::t -> (wire2str h )^(wires2str t)
+      let elem2str e = HWElem.elem2str e in
+      let rec list2str func ws = match ws with
+         | h::t -> (func h )^(list2str func t)
          | [] -> ""
       in 
-         "schematic.\n"^
-         (wires2str h.wires)
+         "schematic:\n"^
+         (list2str wire2str h.wires)^
+         (list2str elem2str h.elems)
 
 end
 

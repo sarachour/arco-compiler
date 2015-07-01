@@ -22,6 +22,7 @@ sig
     mutable map: hwid StringMap.t ref;
   }
   val create : unit -> symtable 
+  val get_id : hwid -> id
   val get_by_name : symtable -> string -> string -> hwid maybe
   val get_by_id : symtable -> string -> int -> hwid maybe
   val add : symtable -> string -> string -> hwid 
@@ -86,7 +87,7 @@ end
 
 
 type decimal = float 
-type hwparam = hwid*decimal
+type hwparam = string*(decimal maybe)
 
 (* Hardware Logic *)
 
