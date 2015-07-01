@@ -36,6 +36,7 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 %type <string*HWData.hwelem> elem
 
 %type <HWData.hwire> wire
+%type <unit> join
 
 %type <HWData.hwrel> rel
 %type <HWData.hwexpr> expr_pe
@@ -152,6 +153,7 @@ component:
    }
    | component CBRACE {let (name,c) = $1 in (name,c)}  
 ;
+
 wire:
    WIRE TOKEN SEMICOLON { let name = $2 in let hid = HWSymTbl.add st name in {id=hid;conns=[]} }
 ;
@@ -166,9 +168,15 @@ elem:
    }
 ;
 
+join:
+   | JOIN TOKEN DOT TOKEN TOKEN {}
+   | JOIN TOKEN TOKEN DOT TOKEN {}
+   | JOIN TOKEN TOKEN {}
+
 schem:
    SCHEMATIC TOKEN OBRACE {let name = $2 in let hid = HWSymTbl.add st name in HWSchem.create hid}
    | schem wire {let w = $2 and sc = $1 in HWSchem.add_wire sc w}
    | schem elem {let (n,e) = $2 and sc = $1 in HWSchem.add_elem sc n e}
+   | schem join {let s = $1 in s}
    | schem CBRACE {$1}
 ;
