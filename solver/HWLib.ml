@@ -163,6 +163,8 @@ struct
          | h::t -> (func h )^(list2str func t)
          | [] -> ""
       in 
+      let in2str (n,id) = "in "^n^" := "^(Util.hwid2str id)^"\n" in
+      let out2str (n,id) = "out "^n^" := "^(Util.hwid2str id)^"\n" in 
       let join2str js = match js with
          | Wire(wn) -> wn^" "
          | Port(en,pn) -> en^"."^pn^" "
@@ -176,6 +178,8 @@ struct
       let elem2str (n,e) = n^" -> "^HWElem.elem2str e in
       
          "schematic:\n"^
+         (list2str in2str h.inputs)^
+         (list2str out2str h.outputs)^
          (list2str wire2str h.wires)^
          (list2str elem2str h.elems)
 
