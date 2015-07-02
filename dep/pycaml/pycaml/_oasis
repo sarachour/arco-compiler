@@ -1,0 +1,16 @@
+OASISFormat: 0.4
+Name:        pycaml
+Version:     0.82
+Synopsis:    pycaml
+Authors:     sachour@mit.edu
+License:     BSD-4-clause
+Plugins:     StdFiles (0.4), META (0.4)
+
+Library pycaml
+  Path:       .
+  BuildTools: ocamlbuild
+  Modules:    Pycaml
+  CSources: pycaml_ml.c
+  CCLib: -lpython
+  CCOpt: -I /opt/local/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7 -O2 -Wall -Wextra -Wno-unused-parameter # Better safe than sorry.
+  

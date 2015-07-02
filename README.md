@@ -2,7 +2,7 @@ BioCadance
 =====
 make sure you have the following packages installed
 
-	mercurial gcc-4.8 g++-4.8 wget sbt graphviz
+	mercurial gcc-4.8 g++-4.8 wget sbt graphviz pycaml python2.7-dev 
 
 Install the ocaml base packages
 
@@ -10,7 +10,11 @@ Install the ocaml base packages
 
 make sure you have the following installed:
 
-   ocamlfind batteries oasis extlib yojson zarith core
+   ocamlfind batteries oasis extlib yojson zarith core omake camlidl oasis2opam oasis
+
+and also the following
+
+	sympy
 
 ## Installing Hascall
 install haskell and hackage for the z3 bindings.

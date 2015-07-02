@@ -1,0 +1,2 @@
+true: package(yojson,extlib,core,pycaml)
+true: thread,debug

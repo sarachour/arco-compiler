@@ -15,7 +15,6 @@ component vmul2 {
 }
 
 
-
 schematic main {
    wire v1; 
    wire v2;

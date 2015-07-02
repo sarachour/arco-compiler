@@ -163,8 +163,8 @@ struct
          | h::t -> (func h )^(list2str func t)
          | [] -> ""
       in 
-      let in2str (n,id) = "in "^n^" := "^(Util.hwid2str id)^"\n" in
-      let out2str (n,id) = "out "^n^" := "^(Util.hwid2str id)^"\n" in 
+      let in2str (n,id) = "in "^n^" := "^(HWUtil.hwid2str id)^"\n" in
+      let out2str (n,id) = "out "^n^" := "^(HWUtil.hwid2str id)^"\n" in 
       let join2str js = match js with
          | Wire(wn) -> wn^" "
          | Port(en,pn) -> en^"."^pn^" "
