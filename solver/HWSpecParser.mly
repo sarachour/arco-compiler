@@ -32,7 +32,7 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 %type <HWData.hwarch> main
 %type <unit> toplevel
 
-%type <HWData.hwschem> schem
+%type <string*HWData.hwschem> schem
 %type <string*HWData.hwcomp> component
 %type <string*HWData.hwelem> elem
 
@@ -64,8 +64,11 @@ toplevel:
          cmap := Util.StringMap.add name (Component c) !(cmap); 
    }
    | schem {
-      let s = $1 in
-      arch.schem <- s;
+      let (name,s) = $1 in
+      if name = "main" then
+         arch.schem <- s
+      else
+         cmap := Util.StringMap.add name (Schematic s) !(cmap);
    }
 
 literal:
@@ -189,16 +192,40 @@ join:
    }
 
 schem:
-   SCHEMATIC TOKEN OBRACE {let name = $2 in let hid = HWSymTbl.add st name in HWSchem.create name hid}
-   | schem INPUT_PIN TOKEN SEMICOLON {let sc = $1 and name = $3 in sc}
-   | schem OUTPUT_PIN TOKEN SEMICOLON {let sc = $1 and name = $3 in sc}
-   | schem wire {let w = $2 and sc = $1 in HWSchem.add_wire sc w}
-   | schem elem {let (n,e) = $2 and sc = $1 in HWSchem.add_elem sc n e}
+   SCHEMATIC TOKEN OBRACE {
+      let name = $2 in 
+      let hid = HWSymTbl.add st name in 
+      let nsc = HWSchem.create name hid in 
+      (name,nsc)}
+   | schem wire {
+      let w = $2 and (n,sc) = $1 in 
+      let nsc = HWSchem.add_wire sc w in
+      (n,nsc)
+   }
+   | schem elem {
+      let (name_elem,e) = $2 and (name_sch,sc) = $1 in 
+      let nsc = HWSchem.add_elem sc name_elem e in 
+      (name_sch,nsc)
+   }
+
+   | schem INPUT_PIN TOKEN SEMICOLON {
+      let (name,sc) = $1 and n = $3 in 
+      let nsc = HWSchem.add_input sc n nullid in
+      (name,nsc)
+   }
+
+   | schem OUTPUT_PIN TOKEN SEMICOLON {
+      let (name,sc) = $1 and n = $3 in 
+      let nsc = HWSchem.add_output sc n nullid in
+      (name,nsc)
+   }
+
    | schem join {
-      let s = $1 and (src,dest) = $2 in 
+      let (n,sc) = $1 and (src,dest) = $2 in 
          match src with
-         | Wire(wire_name) -> HWSchem.add_joins s wire_name dest
+         | Wire(wire_name) -> let nsc =  HWSchem.add_joins sc wire_name dest in 
+            (n,nsc)
          | _ -> raise (ParserError "cannot connect port to multiple wires with join command.") 
    }
-   | schem CBRACE {$1}
+   | schem CBRACE {let (n,sc) = $1 in (n,sc)}
 ;

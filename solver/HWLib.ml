@@ -144,6 +144,13 @@ struct
    let add_elem sc n e =
       sc.elems <- (n,e)::sc.elems; sc
 
+   let add_input (c:hwschem) name hwid : hwschem = 
+      c.inputs <- (name,hwid)::c.inputs; c
+
+   let add_output (c:hwschem) name hwid : hwschem = 
+      c.outputs <- (name,hwid)::c.outputs; c
+
+
    let add_joins sc wire_name js = 
       let results = List.filter (fun {id=(n,i);conns=lst} -> n = wire_name) sc.wires in
             match results with
