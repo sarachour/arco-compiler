@@ -16,7 +16,8 @@ sig
    val define_expr : string -> spy_expr -> unit
    val expand : spy_expr_or_var -> unit
    val print_var : string -> unit
-   val get_var : string -> unit
+   val get_var : string -> spy_expr
+   val clear : unit -> unit
 end = 
 struct 
    let print_info () = 
@@ -29,17 +30,20 @@ struct
       Printf.printf "version: %s\n" (py_getversion());
       Printf.printf "----------"
 
+   let _env (n:string) : string = "env[\""^n^"\"]"
+
    let init () =
       let modulename = "sympy" in 
       py_setprogramname("sympy.interp");
       py_initialize();
       pyrun_simplestring("from sympy import *"); 
+       pyrun_simplestring("env = {}"); 
       ()
 
-   let define_symbol (x:string) =
-       pyrun_simplestring(x^"= Symbol(\""^x^"\");"); Symbol(x)
+   let clear () = 
+       pyrun_simplestring("env = {}"); ()
 
-
+   
    let rec expr2py (e:spy_expr) : string= 
       let exprlst2py (fn:'a -> string -> string) (lst:'a list) : string =
          match lst with
@@ -47,7 +51,7 @@ struct
          | [] -> ""
       in
       match e with
-      | Symbol(s) -> s
+      | Symbol(s) -> (_env s)
       | Integral(e,s) -> "Integral("^(expr2py e)^","^(s)^")"
       | Cos(e) -> "cos("^(expr2py e)^")"
       | Sin(e) -> "sin("^(expr2py e)^")"
@@ -61,20 +65,24 @@ struct
       | Number(x) -> string_of_float x
       | Integer(x) -> string_of_int x
 
+   let define_symbol (x:string) : spy_expr =
+       pyrun_simplestring((_env x)^"= Symbol(\""^x^"\");"); (Symbol x)
+
+
    let define_expr (x:string) (e:spy_expr) = 
       let expr  =(expr2py e) in 
       Printf.printf "printed:%s\n" expr;
-      pyrun_simplestring(x^"="^expr); ()
+      pyrun_simplestring((_env x)^"="^expr); ()
    
    let expand (e:spy_expr_or_var) = match e with
-      | Var(v) -> pyrun_simplestring(v^"="^v^".expand()"); ()
+      | Var(v) -> pyrun_simplestring((_env v)^"="^(_env v)^".expand()"); ()
       | Expr(e) -> pyrun_simplestring((expr2py (Paren e))^".expand()"); ()
 
    let get_var (x:string) : spy_expr = 
       Symbol(x)
 
    let print_var (x:string) = 
-      pyrun_simplestring("print "^x); ()
+      pyrun_simplestring("print "^(_env x)); ()
    
 end
 
