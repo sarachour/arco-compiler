@@ -4,13 +4,19 @@ open Printf
 open SymCamlData
 (* Check out sympy *)
 
+type spy_expr_or_var = 
+   | Var of string 
+   | Expr of spy_expr
+
 module SymCaml : 
 sig
    val init : unit -> unit
    val print_info : unit -> unit
-   val define_symbol : string -> unit
+   val define_symbol : string -> spy_expr
    val define_expr : string -> spy_expr -> unit
+   val expand : spy_expr_or_var -> unit
    val print_var : string -> unit
+   val get_var : string -> unit
 end = 
 struct 
    let print_info () = 
@@ -31,7 +37,7 @@ struct
       ()
 
    let define_symbol (x:string) =
-       pyrun_simplestring(x^"= Symbol(\"x\");"); ()
+       pyrun_simplestring(x^"= Symbol(\""^x^"\");"); Symbol(x)
 
 
    let rec expr2py (e:spy_expr) : string= 
@@ -57,9 +63,16 @@ struct
 
    let define_expr (x:string) (e:spy_expr) = 
       let expr  =(expr2py e) in 
-      Printf.printf "%s\n" expr;
+      Printf.printf "printed:%s\n" expr;
       pyrun_simplestring(x^"="^expr); ()
    
+   let expand (e:spy_expr_or_var) = match e with
+      | Var(v) -> pyrun_simplestring(v^"="^v^".expand()"); ()
+      | Expr(e) -> pyrun_simplestring((expr2py (Paren e))^".expand()"); ()
+
+   let get_var (x:string) : spy_expr = 
+      Symbol(x)
+
    let print_var (x:string) = 
       pyrun_simplestring("print "^x); ()
    
@@ -71,6 +84,11 @@ let main () =
    SymCaml.define_symbol "b";
    SymCaml.define_symbol "c";
    SymCaml.define_expr "e" (Exp(Add([Symbol("a");Symbol("b");Symbol("c")]), Integer(3)));
+   Printf.printf "-------\n";
+   SymCaml.expand (Var "e");
+   SymCaml.print_var "a";
+   SymCaml.print_var "b";
+   SymCaml.print_var "c";
    SymCaml.print_var "e"
 ;;
 
