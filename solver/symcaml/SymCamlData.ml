@@ -1,5 +1,9 @@
 
+exception SymCamlParserError of string;;
+exception SymCamlException of string;;
+
 type spy_sym = string
+
 
 type spy_expr = 
    | Symbol of spy_sym
@@ -13,6 +17,7 @@ type spy_expr =
    | NatExp of spy_expr
    | Sub of spy_expr list
    | Paren of spy_expr
-   | Number of float
+   | Decimal of float
    | Integer of int
+
 
