@@ -9,6 +9,10 @@ type spy_expr =
    | Tan of spy_expr
    | Mult of spy_expr list
    | Add of spy_expr list
-   | Exp of spy_expr
+   | Exp of spy_expr*spy_expr
+   | NatExp of spy_expr
    | Sub of spy_expr list
+   | Paren of spy_expr
+   | Number of float
+   | Integer of int
 
