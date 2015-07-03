@@ -7,6 +7,7 @@ build:
 	cd dreal; make
 	cd leon; make
 	cd z3overlay; make
+	cd pycaml; make
 
 
 clean:
@@ -14,3 +15,4 @@ clean:
 	cd z3overlay; make clean
 	cd dreal; make clean
 	cd leon; make clean
+	cd pycaml; make clean

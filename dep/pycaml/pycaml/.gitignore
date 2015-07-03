@@ -1,0 +1,11 @@
+INSTALL.txt
+META
+AUTHORS.txt
+README.txt
+_tags
+opam
+libpycaml_stubs.clib
+myocamlbuild.ml
+pycaml.mldylib
+pycaml.mllib
+setup.ml

@@ -10,7 +10,7 @@ Install the ocaml base packages
 
 make sure you have the following installed:
 
-   ocamlfind batteries oasis extlib yojson zarith core omake camlidl oasis2opam oasis
+   ocamlfind batteries oasis extlib yojson zarith core oasis2opam oasis
 
 and also the following
 

@@ -904,7 +904,54 @@ typedef struct _python_func_table {
     int format;
     char *desc;
 } python_func_table;
-    
+
+
+PyAPI_FUNC(int) F_PyRun_AnyFile(FILE * f, const char * name){
+   return PyRun_AnyFile(f, name);
+}
+PyAPI_FUNC(int) F_PyRun_SimpleFile(FILE * f, const char * p){
+   return PyRun_SimpleFile(f, p);
+}
+PyAPI_FUNC(int) F_PyRun_InteractiveOne(FILE * f, const char * p){
+   return PyRun_InteractiveOne(f, p);
+}
+PyAPI_FUNC(int) F_PyRun_InteractiveLoop(FILE * f, const char * p){
+   return PyRun_InteractiveLoop(f, p);
+}
+PyAPI_FUNC(int) F_PyRun_AnyFileEx(FILE * f, const char * name, int closeit){
+   return PyRun_AnyFileEx(f, name, closeit);
+}
+PyAPI_FUNC(int) F_PyRun_SimpleFileEx(FILE * f, const char * name, int closeit){
+   return PyRun_SimpleFileEx(f, name, closeit);
+}
+PyAPI_FUNC(int) F_PyRun_String(const char * p, int s, PyObject * g, PyObject * l){
+   return PyRun_String(p,s,g,l);
+}
+PyAPI_FUNC(int) F_PyRun_SimpleString(const char * str){
+   return PyRun_SimpleString(str);
+}
+
+PyAPI_FUNC(int) F_PyRun_File(FILE * fp, const char * p, int s, PyObject * g, PyObject * l){
+   return PyRun_File(fp, p, s, g, l);
+}
+PyAPI_FUNC(int) F_PyRun_FileEx(FILE * fp, const char * p, int s, PyObject * g, PyObject * l, int c){
+   return PyRun_FileEx(fp, p, s, g, l,c);
+}
+
+PyAPI_FUNC(int) F_Py_CompileString(const char * f, const char * s, int c){
+   return Py_CompileString(f,s,c);
+}
+
+PyAPI_FUNC(int) F_PyEval_CallObject(PyObject * o, PyObject * a){
+   return PyEval_CallObject(o,a);
+}
+
+PyAPI_FUNC(int) F_PyRange_New(){
+   return 0;
+}
+/*
+
+*/
 python_func_table the_python_func_table[] = {
 /* 1 */
     { (void *)Py_Initialize, 1, "Py_Initialize" },
@@ -919,16 +966,16 @@ python_func_table the_python_func_table[] = {
 /* 4 */
     { (void *)Py_IsInitialized, 4, "Py_IsInitialized" },
 /* 5 */
-    //{ (void *)PyRun_SimpleString, 5, "PyRun_SimpleString" },
+    { (void *)F_PyRun_SimpleString, 5, "PyRun_SimpleString" },
 /* 6 */
-    //{ (void *)PyRun_AnyFile, 6, "PyRun_AnyFile" },
-    //{ (void *)PyRun_SimpleFile, 6, "PyRun_SimpleFile" },
-    //{ (void *)PyRun_InteractiveOne, 6, "PyRun_InteractiveOne" },
-    //{ (void *)PyRun_InteractiveLoop, 6, "PyRun_InteractiveLoop" },
+    { (void *)F_PyRun_AnyFile, 6, "PyRun_AnyFile" },
+    { (void *)F_PyRun_SimpleFile, 6, "PyRun_SimpleFile" },
+    { (void *)F_PyRun_InteractiveOne, 6, "PyRun_InteractiveOne" },
+    { (void *)F_PyRun_InteractiveLoop, 6, "PyRun_InteractiveLoop" },
     { (void *)Py_FdIsInteractive, 6, "Py_FdIsInteractive" },
 /* 7 */
-    //{ (void *)PyRun_AnyFileEx, 7, "PyRun_AnyFileEx" },
-    //{ (void *)PyRun_SimpleFileEx, 7, "PyRun_SimpleFileEx" },
+    { (void *)F_PyRun_AnyFileEx, 7, "PyRun_AnyFileEx" },
+    { (void *)F_PyRun_SimpleFileEx, 7, "PyRun_SimpleFileEx" },
 /* 8 */
     { (void *)Py_GetProgramName, 8, "Py_GetProgramName" },
     { (void *)Py_GetPythonHome, 8, "Py_GetPythonHome" },
@@ -942,13 +989,13 @@ python_func_table the_python_func_table[] = {
     { (void *)Py_GetCompiler, 8, "Py_GetCompiler" },
     { (void *)Py_GetBuildInfo, 8, "Py_GetBuildInfo" },
 /* 9 */
-    //{ (void *)PyRun_String, 9, "PyRun_String" },
+    { (void *)F_PyRun_String, 9, "PyRun_String" },
 /* 10 */
-    //{ (void *)PyRun_File, 10, "PyRun_File" },
+    { (void *)F_PyRun_File, 10, "PyRun_File" },
 /* 11 */
-    //{ (void *)PyRun_FileEx, 11, "PyRun_FileEx" },
+    { (void *)F_PyRun_FileEx, 11, "PyRun_FileEx" },
 /* 12 */
-    //{ (void *)Py_CompileString, 12, "Py_CompileString" },
+    { (void *)F_Py_CompileString, 12, "Py_CompileString" },
 
 /* Object */
 /* 13 */
@@ -1063,7 +1110,7 @@ python_func_table the_python_func_table[] = {
 /* 43 */
     { (void *)PySlice_GetIndices, 43, "PySlice_GetIndices" },
 /* 44 */
-    //{ (void *)PyRange_New, 44, "PyRange_New" },
+    { (void *)F_PyRange_New, 44, "PyRange_New" },
 
 /* Error handling definitions */
 
@@ -1139,7 +1186,7 @@ python_func_table the_python_func_table[] = {
 /* 42 */
 { (void *)PyEval_CallObjectWithKeywords, 42, "PyEval_CallObjectWithKeywords" },
 /* 17 */
-//{ (void *)PyEval_CallObject, 17, "PyEval_CallObject" },
+{ (void *)F_PyEval_CallObject, 17, "PyEval_CallObject" },
 
 /* 29 */
 { (void *)PyEval_GetBuiltins, 29, "PyEval_GetBuiltins" },
