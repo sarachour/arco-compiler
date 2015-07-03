@@ -39,21 +39,21 @@ arg:
    if name = "Symbol" then
       Symbol(varname)
    else 
-      raise (SymCamlParserError "unexpected function or number of arguments")
+      raise (SymCamlParserError "only symbols can have token arguments")
   }
   | TOKEN OPARAN INTEGER CPARAN {
    let name = $1 and value = $3 in
    if name = "Integer" then
       Integer(value)
    else 
-      raise (SymCamlParserError "unexpected function or number of arguments")
+      raise (SymCamlParserError "only integers can have int arguments")
   }
   | TOKEN OPARAN DECIMAL CPARAN {
    let name = $1 and value = $3 in
    if name = "XXX" then
       Decimal(value)
    else 
-      raise (SymCamlParserError "unexpected function or number of arguments")
+      raise (SymCamlParserError "only XXX can have decimal arguments")
   }
   | TOKEN OPARAN arglist CPARAN {
    let name = $1 and lst = $3 in
@@ -61,7 +61,8 @@ arg:
    | ("Pow",2) -> Exp(List.nth lst 0,List.nth lst 1)
    | ("Add",_) -> Add(lst)
    | ("Mul",_) -> Mult(lst)
-   | _ -> raise (SymCamlParserError "unexpected function or number of arguments")
+   | (n,l) -> raise (SymCamlParserError 
+      ("unexpected function "^n^" or number of arguments "^(string_of_int l)))
   }
 ;
 
