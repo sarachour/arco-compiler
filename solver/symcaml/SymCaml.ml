@@ -1,5 +1,6 @@
 open Pycaml
 open Sys
+open Printf
 (* Check out sympy *)
 
 module SymCaml : 
@@ -7,7 +8,7 @@ sig
    val init : unit -> unit
 end = 
 struct 
-   let init () = py_initialize()
+   let init () = Printf.printf("testing\n"); pyrun_simplestring("print \"hello world\""); ()
 
 end
 

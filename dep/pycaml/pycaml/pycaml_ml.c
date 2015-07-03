@@ -945,13 +945,13 @@ PyAPI_FUNC(int) F_Py_CompileString(const char * f, const char * s, int c){
 PyAPI_FUNC(int) F_PyEval_CallObject(PyObject * o, PyObject * a){
    return PyEval_CallObject(o,a);
 }
-
 PyAPI_FUNC(int) F_PyRange_New(){
    return 0;
 }
-/*
+PyAPI_FUNC(int) F_PyImport_ImportModuleEx(char *name, PyObject *globals, PyObject *locals, PyObject *fromlist){
+   return PyImport_ImportModuleEx(name,globals,locals,fromlist);
+}
 
-*/
 python_func_table the_python_func_table[] = {
 /* 1 */
     { (void *)Py_Initialize, 1, "Py_Initialize" },
@@ -1172,7 +1172,7 @@ python_func_table the_python_func_table[] = {
 { (void *)PyImport_AddModule, 28, "PyImport_AddModule" },
 { (void *)PyImport_ImportModule, 28, "PyImport_ImportModule" },
 /* 51 */
-//{ (void *)PyImport_ImportModuleEx, 51, "PyImport_ImportModuleEx" },
+{ (void *)F_PyImport_ImportModuleEx, 51, "PyImport_ImportModuleEx" },
 /* 28 */
 { (void *)PyImport_Import, 28, "PyImport_Import" },
 /* 14 */
@@ -1311,11 +1311,11 @@ value pygetfuncarray( value unit ) {
     retv = alloc(total_funcs,0);
 
     for( i = 0; i < total_funcs; i++ ) {
-	tuplev = alloc_tuple( 3 );
-	Store_field(tuplev,0,funcwrap((void *)the_python_func_table[i].func));
-	Store_field(tuplev,1,Val_int(the_python_func_table[i].format));
-	Store_field(tuplev,2,Val_int(i));
-	Store_field(retv,i,tuplev);
+   tuplev = alloc_tuple( 3 );
+   Store_field(tuplev,0,funcwrap((void *)the_python_func_table[i].func));
+   Store_field(tuplev,1,Val_int(the_python_func_table[i].format));
+   Store_field(tuplev,2,Val_int(i));
+   Store_field(retv,i,tuplev);
     }
 
     CAMLreturn(retv);
@@ -1373,9 +1373,9 @@ value pytuple_fromarray( value array ) {
     int x;
 
     for( i = 0; i < Wosize_val(array); i++ ) {
-	elt = pyunwrap(Field(array,i));
-	Py_INCREF(elt); /* PyTuple_SetItem will steal a reference */
-	x = PyTuple_SetItem(tuple,i,elt);
+   elt = pyunwrap(Field(array,i));
+   Py_INCREF(elt); /* PyTuple_SetItem will steal a reference */
+   x = PyTuple_SetItem(tuple,i,elt);
     }
 
     CAMLreturn(pywrap(tuple));
@@ -1390,7 +1390,7 @@ value pytuple_toarray( value array ) {
     rv = alloc_tuple( PySequence_Size(obj) );
 
     for( i = 0; i < PySequence_Size(obj); i++ )
-	Store_field(rv,i,pywrap(PySequence_GetItem(obj,i)));
+   Store_field(rv,i,pywrap(PySequence_GetItem(obj,i)));
 
     CAMLreturn(rv);
 }
@@ -1413,17 +1413,17 @@ value pymodule_initmodule( value name, value funclist ) {
     CAMLparam2(name,funclist);
     int i;
     PyMethodDef *methods = malloc( sizeof( PyMethodDef ) * 
-				   Wosize_val(funclist) );
+               Wosize_val(funclist) );
     CAMLlocal1(item);
 
     PyImport_AddModule( String_val(name) );
 
     for( i = 0; i < Wosize_val(funclist); i++ ) {
-	item = Field(funclist,i);
-	methods[i].ml_name = String_val(Field(item,0));
-	methods[i].ml_meth = pywrap_closure(Field(item,1));
-	methods[i].ml_flags = Int_val(Field(item,2));
-	methods[i].ml_doc = String_val(Field(item,3));
+   item = Field(funclist,i);
+   methods[i].ml_name = String_val(Field(item,0));
+   methods[i].ml_meth = pywrap_closure(Field(item,1));
+   methods[i].ml_flags = Int_val(Field(item,2));
+   methods[i].ml_doc = String_val(Field(item,3));
     }
 
     Py_InitModule( String_val(name), methods );

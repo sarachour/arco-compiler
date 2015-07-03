@@ -14,5 +14,8 @@ install:
 	oasis2opam --local 
 	opam pin add pycaml .
 
+uninstall:
+	opam remove pycaml
+
 clean:
 	ocaml setup.ml -clean 
