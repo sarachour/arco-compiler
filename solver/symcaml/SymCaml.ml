@@ -102,25 +102,7 @@ struct
       else
          let arr = Array.of_list lst in 
          let tup = pytuple_fromarray arr in 
-         Printf.printf "%d\n" (pytuple_size tup);
          tup
-   (*
-      let tup = pytuple_new (List.length lst) in
-      let rec populate (l:pyobject list) (i:int) = match l with 
-         | h::t -> 
-            pytuple_setitem(tup,i,h); 
-            handle_err(); 
-            populate t (i+1)
-         | [] -> ()
-      in
-      Printf.printf "making tuple\n";
-      handle_err();
-      Printf.printf "populating tuple\n";
-      populate lst 0; 
-      Printf.printf "populated tuple\n";
-      Printf.printf "%s\n" (pystring_asstring (pyobject_str tup));
-      tup
-   **)
 
    let report w : unit =
       run("print repr(env);"); 
@@ -193,7 +175,6 @@ struct
 
    let _invoke (w:wrapper ref) (callee:pyobject) (fxnname:string) (args:pyobject list) (kwargs:(string*pyobject) list) : pyobject spy_maybe =
       let fargs =  list2tuple args in
-      Printf.printf "%s args:%s\n" fxnname (pyobj2str (pyobj2repr fargs));  
       if is_null callee then
          raise (PyCamlWrapperException ("callee is null on invocation of "^fxnname))
       else if is_null fargs then
