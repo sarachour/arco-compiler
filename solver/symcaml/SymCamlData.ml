@@ -1,6 +1,7 @@
 
 exception SymCamlParserError of string;;
 exception SymCamlException of string;;
+exception PyCamlWrapperException of string;;
 
 type spy_sym = string
 
