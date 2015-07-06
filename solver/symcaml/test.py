@@ -12,6 +12,9 @@ n = Wild("n")
 
 e1 = x**2/(x**2+1)
 e2 = (a/b)**n/((a/b)**n + 1) 
+e3 = (x**2/(x**2+x**2))
+
+print apply(e3.doit, [])
 
 res = e1.match(e2)
 
@@ -24,6 +27,4 @@ res = e1.match(e2)
 
 print res
 
-print expand
 print e1.match
-print Basic.doit
