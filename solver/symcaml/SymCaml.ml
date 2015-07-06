@@ -11,15 +11,14 @@ sig
    type wrapper = {
       mutable main: pyobject;
       mutable venv: pyobject;
-      mutable menv: pyobject;
       mutable tmp: pyobject;
       mutable def: (string*pyobject) list;
    }
    val print_info : unit -> unit
    val init: string list -> wrapper 
    val define: wrapper ref -> string -> string -> pyobject
-   val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject
-   val invoke_from: wrapper ref -> pyobject -> string -> pyobject list -> (string*pyobject) list -> pyobject
+   val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject spy_maybe
+   val invoke_from: wrapper ref -> pyobject -> string -> pyobject list -> (string*pyobject) list -> pyobject spy_maybe
    val clear: wrapper ref -> unit 
    val eval: wrapper ref -> string -> pyobject 
    val get_var : wrapper ref -> string -> (string*pyobject)
@@ -27,13 +26,13 @@ sig
    val pyobj2str: pyobject -> string 
    val pyobj2repr: pyobject -> pyobject
    val report: wrapper ref -> unit
+   val is_null : pyobject -> bool
 
 end =
 struct 
    type wrapper = {
       mutable main: pyobject;
       mutable venv: pyobject;
-      mutable menv: pyobject;
       mutable tmp: pyobject;
       mutable def: (string*pyobject) list;
    }
@@ -54,11 +53,12 @@ struct
       let menv = pymodule_getdict(mdl) in
       let venv = pydict_getitemstring(menv,"env") in 
       let tmp = pydict_getitemstring(menv,"tmp") in
-      let nw = {venv=venv; menv=menv; tmp=tmp; main=mdl; def=(!w).def} in 
+      let nw = {venv=venv; tmp=tmp; main=mdl; def=(!w).def} in 
       w := nw
 
    let _clrtmp w = pyrun_simplestring("tmp = {}"); _upd w
 
+   let is_null e = e = null
 
    let print_info () = 
       Printf.printf "At least python 3.1 required.";
@@ -99,7 +99,7 @@ struct
       let menv = pymodule_getdict(mdl) in
       let venv = pydict_getitemstring(menv,"env") in 
       let tmp = pydict_getitemstring(menv,"tmp") in
-      {main=mdl;venv=venv; menv=menv; tmp=tmp; def=[]} 
+      {main=mdl;venv=venv; tmp=tmp; def=[]} 
 
    let eval (w:wrapper ref) (cmd) : pyobject = 
       let _ = _clrtmp w in
@@ -132,19 +132,22 @@ struct
       (_uw w).def <- (vname,obj)::(_uw w).def;
       obj
 
-   let _invoke (w:wrapper ref) (callee:pyobject) (fxnname:string) (args:pyobject list) (kwargs:(string*pyobject) list) : pyobject =
+   let _invoke (w:wrapper ref) (callee:pyobject) (fxnname:string) (args:pyobject list) (kwargs:(string*pyobject) list) : pyobject spy_maybe =
       let fargs =  list2tuple args in 
-      let pyfxn = pydict_getitemstring(callee, fxnname) in
-      if callee = null then
+      if is_null callee then
          raise (PyCamlWrapperException ("callee is null on invocation of "^fxnname))
-      else if pyfxn = null then
-         raise (PyCamlWrapperException ("could not find function '"^fxnname^"'." ))
+      else if is_null fargs then
+         raise (PyCamlWrapperException ("null object passed in as args for "^fxnname))
       else
-            let result = pyeval_callobjectwithkeywords(pyfxn,fargs,null) in
-            result
+         let pyfxn = pyobject_getattrstring(callee, fxnname) in
+         if is_null pyfxn then
+            raise (PyCamlWrapperException ("could not find function '"^fxnname^"'." ))
+         else
+               let result = pyeval_callobjectwithkeywords(pyfxn,fargs,null) in
+               if result = null then None else Some(result)
 
-   let invoke (w:wrapper ref) n args kwargs : pyobject =  _invoke w (_uw w).menv n args kwargs
-   let invoke_from (w:wrapper ref) o n args kwargs : pyobject =  _invoke w o n (o::args) kwargs
+   let invoke (w:wrapper ref) n args kwargs : pyobject spy_maybe =  _invoke w (_uw w).main n args kwargs
+   let invoke_from (w:wrapper ref) o n args kwargs : pyobject spy_maybe =  _invoke w o n (o::args) kwargs
 
 end
 
@@ -161,7 +164,7 @@ sig
    val expr2py : symcaml -> spy_expr -> string
 
    val expand : symcaml -> spy_expr -> spy_expr
-   val doit : symcaml -> spy_expr -> spy_expr
+   val eval : symcaml -> spy_expr -> spy_expr
    val simpl : symcaml -> spy_expr -> spy_expr
    val pattern: symcaml -> spy_expr -> spy_expr -> (string*spy_expr) list
 (*
@@ -276,30 +279,38 @@ struct
       Symbol(x)
 
    let _pyobj2expr (s:symcaml) (p:pyobject) : spy_expr = 
-      let res = PyCamlWrapper.invoke (_wr s) "srepr" [p] [] in 
-      let strrep = PyCamlWrapper.pyobj2str res in 
-      try
-         let lexbuf = Lexing.from_string strrep in
-         let result = SymCamlParser.main SymCamlLexer.main lexbuf in
-         result
-      with  
-         |SymCamlData.SymCamlParserError(msg) -> raise (SymCamlException ("parse error:"^msg))
-         |e -> Printf.printf "%s\n----\n" strrep; raise e
-
+      match PyCamlWrapper.invoke (_wr s) "srepr" [p] [] with 
+         | Some(res) -> 
+            let strrep = PyCamlWrapper.pyobj2str res in 
+            begin
+            try
+               let lexbuf = Lexing.from_string strrep in
+               let result = SymCamlParser.main SymCamlLexer.main lexbuf in
+               result
+            with  
+               |SymCamlData.SymCamlParserError(msg) -> raise (SymCamlException ("parse error:"^msg))
+               |e -> Printf.printf "%s\n----\n" strrep; raise e
+            end
+         | None -> raise (SymCamlFunctionException("pyobj2expr/srepr","unexpected: null result."))
 
    let expand (s:symcaml) (e:spy_expr) =
       let cmd = (expr2py s (Paren e)) in 
       let callee = PyCamlWrapper.eval  (_wr s) cmd in 
-      let res = PyCamlWrapper.invoke (_wr s)  "expand" [callee] [] in 
-      let repr = _pyobj2expr s res in 
-      repr
+      match PyCamlWrapper.invoke (_wr s)  "expand" [callee] [] with
+         | Some(res) -> let repr = _pyobj2expr s res in repr
+         | None ->  raise (SymCamlFunctionException("eval","unexpected: null result."))
+      
+         
 
-   let doit (s:symcaml) (e:spy_expr) =
+   let eval (s:symcaml) (e:spy_expr) =
       let cmd = (expr2py s (Paren e)) in 
-      let callee = PyCamlWrapper.eval  (_wr s) cmd in 
-      let res = PyCamlWrapper.invoke_from (_wr s) callee  "doit" [] [] in 
-      Printf.printf "%s\n" (PyCamlWrapper.pyobj2str (PyCamlWrapper.pyobj2repr callee));
-      Symbol("null")
+      let callee = PyCamlWrapper.eval (_wr s) cmd in 
+      match PyCamlWrapper.invoke_from (_wr s) callee  "doit" [] [] with
+      | Some(res) -> 
+         Printf.printf "%s\n" (PyCamlWrapper.pyobj2str (PyCamlWrapper.pyobj2repr res));
+         Symbol("null")
+      | None -> raise (SymCamlFunctionException("eval","unexpected: null result."))
+         
       (*
       let repr = _pyobj2expr s res in 
       repr
@@ -308,17 +319,19 @@ struct
    let simpl (s:symcaml) (e:spy_expr) =
       let cmd = (expr2py s (Paren e)) in 
       let callee = PyCamlWrapper.eval  (_wr s) cmd in 
-      let res = PyCamlWrapper.invoke (_wr s)  "simplify" [callee] [] in 
-      let repr = _pyobj2expr s res in 
-      repr
+      match PyCamlWrapper.invoke (_wr s)  "simplify" [callee] [] with
+         | Some(res) ->  let repr = _pyobj2expr s res in repr
+         | None -> raise (SymCamlFunctionException("simpl","unexpected: null result."))
 
    let pattern (s:symcaml) (e:spy_expr) (targ: spy_expr) : (string*spy_expr) list =
       let ecmd = (expr2py s (Paren e)) in 
       let tcmd = (expr2py s (Paren targ)) in
       let eobj = PyCamlWrapper.eval  (_wr s) ecmd in 
       let tobj = PyCamlWrapper.eval  (_wr s) tcmd in 
-      let res = PyCamlWrapper.invoke (_wr s)  "match" [eobj;tobj] [] in 
-      []
+      match PyCamlWrapper.invoke_from (_wr s)  eobj "match" [tobj] [] with
+         | Some(res) -> []
+         | None -> raise (SymCamlFunctionException("pattern","unexpected: null result."))
+      
       (*
       let ntmp = "__tmp__" in
       let tmp = _env ntmp in 
@@ -395,6 +408,8 @@ let main () =
    Printf.printf "simpl: %s\n" (SymCaml.expr2py s res);
    let res = SymCaml.expand s e in
    Printf.printf "expand: %s\n" (SymCaml.expr2py s res);
+   let res = SymCaml.eval s e in
+   Printf.printf "doit: %s\n" (SymCaml.expr2py s res);
    let res = SymCaml.pattern s (Exp(c,Integer(3))) ex in 
    Printf.printf "pattern: %s\n" (List.fold_right 
       (fun ((n,e):string*spy_expr) (r:string) -> r^"\n"^n^":"^(SymCaml.expr2py s e))

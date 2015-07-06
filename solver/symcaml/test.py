@@ -25,5 +25,5 @@ res = e1.match(e2)
 print res
 
 print expand
-print Basic.match
+print e1.match
 print Basic.doit
