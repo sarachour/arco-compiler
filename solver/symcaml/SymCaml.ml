@@ -378,7 +378,6 @@ let main () =
    let ex = SymCaml.define_expr s "ex" (Exp(Add([x;x;y]), Integer(3))) in
    PyCamlWrapper.report ((s.w));
    Printf.printf "-------\n";
-   (*
    let res = SymCaml.simpl s e in
    Printf.printf "simpl: %s\n" (SymCaml.expr2py s res);
    let res = SymCaml.expand s e in
@@ -387,7 +386,6 @@ let main () =
    Printf.printf "pattern: %s\n" (List.fold_right 
       (fun ((n,e):string*spy_expr) (r:string) -> r^"\n"^n^":"^(SymCaml.expr2py s e))
       res "assignments:");
-   *)
    let res = SymCaml.eval s e in
    Printf.printf "doit: %s\n" (SymCaml.expr2py s res);
    ()
