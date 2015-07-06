@@ -7,9 +7,6 @@ open SymCamlLexer
 
 (* Check out sympy *)
 
-type spy_expr_or_var = 
-   | Var of string 
-   | Expr of spy_expr
 
 module SymCaml : 
 sig
@@ -21,15 +18,17 @@ sig
    val print_info : unit -> unit
    val define_symbol : symcaml ->  string -> spy_expr
    val define_expr : symcaml -> string -> spy_expr -> spy_expr
+   val define_wildcard: symcaml -> string -> spy_expr list -> spy_expr
    val print_var : symcaml ->  string -> unit
    val get_var : symcaml ->  string -> spy_expr
    val clear : symcaml -> unit
    val expr2py : spy_expr -> string
 
 
-   val expand : symcaml -> spy_expr_or_var -> spy_expr
-   val simpl : symcaml -> spy_expr_or_var -> spy_expr
-   val eval : symcaml -> spy_expr_or_var -> spy_expr
+   val expand : symcaml -> spy_expr -> spy_expr
+   val simpl : symcaml -> spy_expr -> spy_expr
+   val eval : symcaml -> spy_expr -> spy_expr
+   val pattern: symcaml -> spy_expr -> spy_expr -> (string*spy_expr) list
 end = 
 struct 
    type symcaml = {
@@ -52,7 +51,7 @@ struct
       let _ = pyrun_simplestring("__token__=srepr("^(_env n)^")") in
       let canonical = pydict_getitemstring(s.env, "__token__") in
       let cstr = pystring_asstring (pyobject_repr canonical) in 
-      (*Printf.printf "[%s]\n" cstr; *)
+      Printf.printf "[%s]\n" cstr; 
       try
          let lexbuf = Lexing.from_string cstr in
          let result = SymCamlParser.main SymCamlLexer.main lexbuf in
@@ -97,9 +96,7 @@ struct
       | Decimal(x) -> string_of_float x
       | Integer(x) -> string_of_int x
 
-   let _rslv_var_expr f e : string = match e with
-         | Var(v) -> f (_env v)
-         | Expr(e) -> f (expr2py (Paren e))
+   let _rslv_expr f e : string = f (expr2py (Paren e))
 
    let define_symbol (s:symcaml) (x:string) : spy_expr =
       let _ = pyrun_simplestring((_env x)^"= Symbol(\""^x^"\");"); in 
@@ -111,6 +108,15 @@ struct
       let _ = pyrun_simplestring((_env x)^"="^expr) in 
       Symbol(x)
 
+   let define_wildcard (s:symcaml) (x:string) (exns:spy_expr list) : spy_expr = 
+      let opt_arg = match exns with
+         | h::t -> "["^(List.fold_right (fun x r -> r^","^(expr2py x)) t (expr2py h))^"]"
+         | [] -> "[]"
+      in 
+      let _ = pyrun_simplestring((_env x)^"= Wild(\""^x^"\",exceptions="^opt_arg^")") in 
+      Symbol(x)
+
+
    let get_var (s:symcaml) (x:string) : spy_expr = 
      _toexpr s x
 
@@ -118,42 +124,60 @@ struct
       let _ = pyrun_simplestring("print srepr("^(_env x)^")") in 
       ()
 
+   let pattern (s:symcaml) (e:spy_expr) (targ: spy_expr) : (string*spy_expr) list =
+      let ntmp = "__tmp__" in
+      let tmp = _env ntmp in 
+      let arg = _rslv_expr (fun x -> "("^x^")") targ in 
+      let cmd = _rslv_expr (fun x -> tmp^"="^x^".match"^arg) e in
+      let _ = pyrun_simplestring(cmd) in
+      _toexpr s ntmp;
+      []
 
-   let expand (s:symcaml) (e:spy_expr_or_var) =
+   let expand (s:symcaml) (e:spy_expr) =
       let ntmp = "__tmp__" in
       let tmp = _env ntmp in
-      let cmd = _rslv_var_expr (fun x -> tmp^"="^x^".expand()") e in
-      pyrun_simplestring(cmd);
+      let cmd = _rslv_expr (fun x -> tmp^"="^x^".expand()") e in
+      let _ = pyrun_simplestring(cmd) in
       _toexpr s ntmp
 
-   let eval (s:symcaml) (e:spy_expr_or_var) = 
+   let eval (s:symcaml) (e:spy_expr) = 
       let ntmp = "__tmp__" in
       let tmp = _env ntmp in
-      let cmd = _rslv_var_expr (fun x -> tmp^"="^x^".doit()") e in
-      pyrun_simplestring(cmd);
+      let cmd = _rslv_expr (fun x -> tmp^"="^x^".doit()") e in
+      let _ = pyrun_simplestring(cmd) in
       _toexpr s ntmp
    
-   let simpl (s:symcaml) (e:spy_expr_or_var) = 
+   let simpl (s:symcaml) (e:spy_expr) = 
       let ntmp = "__tmp__" in
       let tmp = _env ntmp in
-      let cmd = _rslv_var_expr (fun x -> tmp^"=simplify("^x^")") e in
-      pyrun_simplestring(cmd);
+      let cmd = _rslv_expr (fun x -> tmp^"=simplify("^x^")") e in
+      let _ = pyrun_simplestring(cmd) in
       _toexpr s ntmp
 end
 
 let main () = 
    let s = SymCaml.init() in
-   SymCaml.define_symbol s "a";
-   SymCaml.define_symbol s "b";
-   SymCaml.define_symbol s "c";
-   SymCaml.define_expr s "e" (Exp(Add([Symbol("a");Symbol("a");Symbol("c")]), Integer(3)));
+   let a = SymCaml.define_symbol s "a" in 
+   let b = SymCaml.define_symbol s "b" in 
+   let c = SymCaml.define_symbol s "c" in 
+   let x = SymCaml.define_wildcard s "x" [a] in
+   let y = SymCaml.define_wildcard s "y" [a] in
+   let e = SymCaml.define_expr s "e" (Exp(Add([a;a;c]), Integer(3))) in
+   let ex = SymCaml.define_expr s "e" (Exp(Add([x;x;y]), Integer(3))) in
+   (*
    Printf.printf "-------\n";
    let res = SymCaml.get_var s "e" in
    Printf.printf "%s\n" (SymCaml.expr2py res);
-   let res = SymCaml.expand s (Var "e") in
+   let res = SymCaml.expand s e in
    Printf.printf "%s\n" (SymCaml.expr2py res);
-   let res = SymCaml.simpl s (Var "e") in
-   Printf.printf "%s\n" (SymCaml.expr2py res)
+   let res = SymCaml.simpl s e in
+   Printf.printf "%s\n" (SymCaml.expr2py res);
+   *)
+   let res = SymCaml.pattern s (Exp(c,Integer(3))) ex in 
+   Printf.printf "%s\n" (List.fold_right 
+      (fun ((n,e):string*spy_expr) (r:string) -> r^"\n"^n^":"^(SymCaml.expr2py e))
+      res "assignments:")
+
 ;;
 
 if !Sys.interactive then () else main ();;

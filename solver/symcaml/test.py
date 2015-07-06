@@ -4,9 +4,22 @@ from sympy import *
 import sympy
 import sys
 
-print sympy.__file__
-print sys.path
+x = Symbol("x")
+y = Symbol("y")
+a = Wild("a")
+b = Wild("b", exclude=[x])
+n = Wild("n")
 
-r = Symbol("x")
+e1 = x**2/(x**2+1)
+e2 = (a/b)**n/((a/b)**n + 1) 
 
-print r
+res = e1.match(e2)
+
+print res
+e1 = x
+
+e2 = (a/b)**n
+
+res = e1.match(e2)
+
+print res
