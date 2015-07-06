@@ -25,7 +25,8 @@ open SymCamlData
 %%
 
 main:
-   QUOTE arg QUOTE {let c = $2 in c}
+  | QUOTE arg QUOTE {let c = $2 in c}
+  | arg {let c = $1 in c}
 ;
 
 arglist:
