@@ -131,9 +131,13 @@ struct
 
    let _invoke (w:wrapper ref) (callee:pyobject) (fxnname:string) (args:pyobject list) : pyobject = 
       let pyfxn = pydict_getitemstring(callee, fxnname) in
+      Printf.printf ("found function: %s\n") (pyobj2str pyfxn);
+      callee
+      (*
       let result = pyeval_callobject(pyfxn,list2tuple args) in
       result   
-
+      *)
+   
    let glbl_invoke (w:wrapper ref) n args : pyobject =  _invoke w (_uw w).menv n args  
    let obj_invoke (w:wrapper ref) o n args : pyobject =  _invoke w o n (o::args)  
 
@@ -273,7 +277,8 @@ struct
       let cmd = (expr2py s (Paren e)) in 
       let callee = PyCamlWrapper.eval  (_wr s) cmd in 
       Printf.printf "succ invoke callee: %s\n" (PyCamlWrapper.pyobj2str (PyCamlWrapper.pyobj2repr callee));
-      
+      let res = PyCamlWrapper.obj_invoke (_wr s) callee  "expand" [] in 
+      Printf.printf "%s\n" ("successfully invoked expand");
       Symbol("null")
       (*
       let res = PyCamlWrapper.obj_invoke (_wr s) callee  "expand" [] in 
