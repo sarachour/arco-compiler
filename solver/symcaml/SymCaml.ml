@@ -26,6 +26,7 @@ sig
    val list2tuple: pyobject list -> pyobject
    val pyobj2str: pyobject -> string 
    val pyobj2repr: pyobject -> pyobject
+   val pydict2ml: pyobject -> (pyobject*pyobject -> 'a*'b) -> (('a*'b) list)
    val report: wrapper ref -> unit
    val is_null : pyobject -> bool
 
@@ -92,18 +93,28 @@ struct
 
 
    let pyobj2str (o:pyobject):string = 
-      pystring_asstring o
+      let x = pystring_asstring o in 
+      handle_err();
+      x
 
    let pyobj2repr (o:pyobject):pyobject = 
-      pyobject_repr o
+      let x = pyobject_repr o in 
+      handle_err();
+      x
 
    let list2tuple (lst:pyobject list): pyobject =
       if List.length lst  = 0 then pytuple_empty
       else
          let arr = Array.of_list lst in 
          let tup = pytuple_fromarray arr in 
+         handle_err();
          tup
 
+   let pydict2ml (obj:pyobject) (fxn:(pyobject*pyobject)->('a*'b)) : ('a*'b) list = 
+         let keys = Array.to_list (pylist_toarray (pydict_keys obj)) in 
+         let elems = List.map (fun k -> let v = pydict_getitem(obj,k) in handle_err(); (k,v)) keys in 
+         List.map fxn elems
+      
    let report w : unit =
       run("print repr(env);"); 
       run("print repr(tmp);")
@@ -338,6 +349,12 @@ struct
          | None-> raise (SymCamlFunctionException("simpl","unexpected: null callee."))
       
    let pattern (s:symcaml) (e:spy_expr) (pat: spy_expr) : (string*spy_expr) list =
+      let transform (key,v) : (string*spy_expr) = 
+         let nk = _rprint key in 
+         let expr = _pyobj2expr s v in 
+         Printf.printf "F: %s %s\n" (nk) (_rprint v);
+         (nk,expr)
+      in
       let ecmd = (expr2py s (Paren e)) in 
       let patcmd = (expr2py s (Paren pat)) in
       let eobj = PyCamlWrapper.eval  (_wr s) ecmd in 
@@ -345,11 +362,10 @@ struct
          match (eobj,patobj) with
          | (Some(texpr),Some(tpat)) -> 
             begin
-            Printf.printf ("%s : %s  = %s : %s \n") ecmd patcmd (_rprint texpr) (_rprint tpat);
             match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
             | Some(res) -> 
-               Printf.printf "REPR:%s\n" (_rprint res);
-               []
+               Printf.printf "STRUCTURE: %s\n" (_rprint res);
+               let assigns = PyCamlWrapper.pydict2ml res transform in Printf.printf "-------\n"; assigns
             | None -> raise (SymCamlFunctionException("pattern","unexpected: null result."))
             end
          | _ -> raise (SymCamlFunctionException("pattern","unexpected: null callee or argument."))

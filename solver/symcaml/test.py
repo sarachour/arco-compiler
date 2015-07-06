@@ -17,8 +17,12 @@ e3 = (x**2/(x**2+x**2))
 print apply(e3.doit, [])
 
 res = e1.match(e2)
-
+print type(res)
 print res
+for k in res:
+   print k
+print res[a]
+
 e1 = x
 
 e2 = (a/b)**n

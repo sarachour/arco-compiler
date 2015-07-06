@@ -49,6 +49,15 @@ arg:
    else 
       raise (SymCamlParserError "only integers can have int arguments")
   }
+  | TOKEN OPARAN INTEGER COMMA INTEGER CPARAN {
+   let name = $1 and numer = $3 and denom = $5 in
+   if name = "Rational" then
+      let fnumer : float = float(numer) and fdenom : float = float(denom) in
+      let res : float = fnumer /. fdenom in
+      Decimal(res)
+   else 
+      raise (SymCamlParserError "only numerators can have two int arguments")
+  }
   | TOKEN OPARAN DECIMAL CPARAN {
    let name = $1 and value = $3 in
    if name = "XXX" then
