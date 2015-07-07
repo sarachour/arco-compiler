@@ -4,23 +4,21 @@ exception SymCamlException of string;;
 exception SymCamlFunctionException of string*string;;
 exception PyCamlWrapperException of string;;
 
-type spy_sym = string
+type symvar = string
 
-type 'a spy_maybe = 
-   | Some of 'a
-   | None 
-type spy_expr = 
-   | Symbol of spy_sym
-   | Integral of spy_expr*spy_sym
-   | Cos of spy_expr
-   | Sin of spy_expr
-   | Tan of spy_expr
-   | Mult of spy_expr list
-   | Add of spy_expr list
-   | Exp of spy_expr*spy_expr
-   | NatExp of spy_expr
-   | Sub of spy_expr list
-   | Paren of spy_expr
+
+type symexpr = 
+   | Symbol of symvar
+   | Integral of symexpr*symvar
+   | Cos of symexpr
+   | Sin of symexpr
+   | Tan of symexpr
+   | Mult of symexpr list
+   | Add of symexpr list
+   | Exp of symexpr*symexpr
+   | NatExp of symexpr
+   | Sub of symexpr list
+   | Paren of symexpr
    | Decimal of float
    | Integer of int
 

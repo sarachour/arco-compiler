@@ -15,9 +15,9 @@ open SymCamlData
 
 
 
-%type <SymCamlData.spy_expr> main
-%type <SymCamlData.spy_expr list> arglist
-%type <SymCamlData.spy_expr> arg
+%type <SymCamlData.symexpr> main
+%type <SymCamlData.symexpr list> arglist
+%type <SymCamlData.symexpr> arg
 
 
 %start main

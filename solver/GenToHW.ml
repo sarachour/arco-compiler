@@ -10,7 +10,8 @@ sig
    val convert : hwarch -> grel -> cvanalogy -> hwconfig
 end =
 struct
-   let convert c r algy= 
+
+   let convert c rel algy= 
       let c = HWArch.create_config() in
       c
 

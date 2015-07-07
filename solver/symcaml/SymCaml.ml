@@ -12,16 +12,16 @@ sig
       w : PyCamlWrapper.wrapper ref;
    }
    val init : unit -> symcaml
-   val define_symbol : symcaml ->  string -> spy_expr
-   val define_expr : symcaml -> string -> spy_expr -> spy_expr
-   val define_wildcard: symcaml -> string -> spy_expr list -> spy_expr
+   val define_symbol : symcaml ->  string -> symexpr
+   val define_expr : symcaml -> string -> symexpr -> symexpr
+   val define_wildcard: symcaml -> string -> symexpr list -> symexpr
    val clear : symcaml -> unit
-   val expr2py : symcaml -> spy_expr -> string
+   val expr2py : symcaml -> symexpr -> string
 
-   val expand : symcaml -> spy_expr -> spy_expr
-   val eval : symcaml -> spy_expr -> spy_expr
-   val simpl : symcaml -> spy_expr -> spy_expr
-   val pattern: symcaml -> spy_expr -> spy_expr -> (string*spy_expr) list
+   val expand : symcaml -> symexpr -> symexpr
+   val eval : symcaml -> symexpr -> symexpr
+   val simpl : symcaml -> symexpr -> symexpr
+   val pattern: symcaml -> symexpr -> symexpr -> (string*symexpr) list
 end = 
 struct 
    type symcaml = {
@@ -40,8 +40,8 @@ struct
       PyCamlWrapper.clear (_wr s)
 
    
-   let expr2py (s:symcaml) (e:spy_expr) : string= 
-      let rec _expr2py (e:spy_expr) : string = 
+   let expr2py (s:symcaml) (e:symexpr) : string= 
+      let rec _expr2py (e:symexpr) : string = 
          let exprlst2py (fn:'a -> string -> string) (lst:'a list) : string =
             match lst with
             | h::t -> List.fold_right fn  t (_expr2py h)
@@ -64,16 +64,16 @@ struct
       in 
          _expr2py e
 
-   let define_symbol (s:symcaml) (x:string) : spy_expr =
+   let define_symbol (s:symcaml) (x:string) : symexpr =
       let _ = PyCamlWrapper.define (_wr s) x ("Symbol(\""^x^"\")") in 
       (Symbol x)
 
 
-   let define_expr (s:symcaml) (x:string) (e:spy_expr) = 
+   let define_expr (s:symcaml) (x:string) (e:symexpr) = 
       let _ = PyCamlWrapper.define (_wr s) x (expr2py s e) in 
       Symbol(x)
 
-   let define_wildcard (s:symcaml) (x:string) (exns:spy_expr list) : spy_expr = 
+   let define_wildcard (s:symcaml) (x:string) (exns:symexpr list) : symexpr = 
       let opt_arg = match exns with
          | h::t -> "["^(List.fold_right (fun x r -> r^","^(expr2py s x)) t (expr2py s h))^"]"
          | [] -> "[]"
@@ -81,7 +81,7 @@ struct
       let _ = PyCamlWrapper.define (_wr s) x (" Wild(\""^x^"\",exclude="^opt_arg^")") in 
       Symbol(x)
 
-   let _pyobj2expr (s:symcaml) (p:pyobject) : spy_expr = 
+   let _pyobj2expr (s:symcaml) (p:pyobject) : symexpr = 
       match PyCamlWrapper.invoke (_wr s) "srepr" [p] [] with 
          | Some(res) -> 
             let strrep = PyCamlWrapper.pyobj2str res in 
@@ -101,7 +101,7 @@ struct
       let repr = _pyobj2expr s obj in
       repr
 
-   let expand (s:symcaml) (e:spy_expr) =
+   let expand (s:symcaml) (e:symexpr) =
       let cmd = (expr2py s (Paren e)) in 
       let callee = PyCamlWrapper.eval  (_wr s) cmd in
       match callee with
@@ -113,7 +113,7 @@ struct
             end
          | None -> raise (SymCamlFunctionException("expand","unexpected: null callee."))
 
-   let eval (s:symcaml) (e:spy_expr) =
+   let eval (s:symcaml) (e:symexpr) =
       let cmd = (expr2py s (Paren e)) in 
       match PyCamlWrapper.eval (_wr s) cmd with 
          | Some(callee) ->
@@ -128,7 +128,7 @@ struct
       repr
       *)
 
-   let simpl (s:symcaml) (e:spy_expr) =
+   let simpl (s:symcaml) (e:symexpr) =
       let cmd = (expr2py s (Paren e)) in 
       let callee = PyCamlWrapper.eval  (_wr s) cmd in 
          match callee with
@@ -140,8 +140,8 @@ struct
             end
          | None-> raise (SymCamlFunctionException("simpl","unexpected: null callee."))
       
-   let pattern (s:symcaml) (e:spy_expr) (pat: spy_expr) : (string*spy_expr) list =
-      let transform (key,v) : (string*spy_expr) = 
+   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) : (string*symexpr) list =
+      let transform (key,v) : (string*symexpr) = 
          let nk = _rprint key in 
          let expr = _pyobj2expr s v in 
          let realname = PyCamlWrapper.find_var (_wr s) key in

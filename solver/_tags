@@ -1,2 +1,2 @@
-true: package(yojson,extlib,threads,core)
+true: package(yojson,extlib,threads,core,symcaml)
 true: thread,debug

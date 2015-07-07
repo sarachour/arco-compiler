@@ -14,10 +14,10 @@ sig
    val init: string list -> wrapper 
    val define: wrapper ref -> string -> string -> pyobject
    val define_tmp_var: wrapper ref -> string -> string -> pyobject
-   val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject spy_maybe
-   val invoke_from: wrapper ref -> pyobject -> string -> pyobject list -> (string*pyobject) list -> pyobject spy_maybe
+   val invoke: wrapper ref -> string -> pyobject list -> (string*pyobject) list -> pyobject option
+   val invoke_from: wrapper ref -> pyobject -> string -> pyobject list -> (string*pyobject) list -> pyobject option
    val clear: wrapper ref -> unit 
-   val eval: wrapper ref -> string -> pyobject spy_maybe
+   val eval: wrapper ref -> string -> pyobject option
    val get_var : wrapper ref -> string -> (string*pyobject)
    val get_tmp_var : wrapper ref -> string -> (string*pyobject)
    val list2tuple: pyobject list -> pyobject
@@ -55,15 +55,15 @@ struct
    let _env x = "env[\""^x^"\"]"
    let _tmp x = "tmp[\""^x^"\"]"
    let _uw w = !w
-   let _get_dict_val (d:pyobject) (k:string) : pyobject spy_maybe = let x = pydict_getitemstring(d,k) in
+   let _get_dict_val (d:pyobject) (k:string) : pyobject option = let x = pydict_getitemstring(d,k) in
       handle_err();
       if x = null then None else Some(x)
 
-   let _get_obj_val (o:pyobject) (attr:string) : pyobject spy_maybe = let x = pyobject_getattrstring(o,attr) in 
+   let _get_obj_val (o:pyobject) (attr:string) : pyobject option = let x = pyobject_getattrstring(o,attr) in 
       handle_err();
       if x = null then None else Some(x)
 
-   let _throw_if_null (tag:string) (s:'a spy_maybe) : 'a = match s with
+   let _throw_if_null (tag:string) (s:'a option) : 'a = match s with
       | Some(x) -> x
       | None -> raise (PyCamlWrapperException (tag^": unexpected null value."))
 
@@ -132,7 +132,7 @@ struct
       let tmp = _throw_if_null "init tmp" (_get_obj_val mdl "tmp") in
       {main=mdl;venv=venv; tmp=tmp} 
 
-   let eval (w:wrapper ref) (cmd) : pyobject spy_maybe = 
+   let eval (w:wrapper ref) (cmd) : pyobject option = 
       let _ = _clrtmp w in
       let tvar = "__tmp__" in 
       let cmd = (_tmp tvar)^"="^cmd in 
@@ -198,7 +198,7 @@ struct
       in 
       obj
 
-   let _invoke (w:wrapper ref) (callee:pyobject) (fxnname:string) (args:pyobject list) (kwargs:(string*pyobject) list) : pyobject spy_maybe =
+   let _invoke (w:wrapper ref) (callee:pyobject) (fxnname:string) (args:pyobject list) (kwargs:(string*pyobject) list) : pyobject option =
       let fargs =  list2tuple args in
       if is_null callee then
          raise (PyCamlWrapperException ("callee is null on invocation of "^fxnname))
@@ -218,7 +218,7 @@ struct
                end
             
          end
-   let invoke (w:wrapper ref) n args kwargs : pyobject spy_maybe =  _invoke w (_uw w).main n args kwargs
-   let invoke_from (w:wrapper ref) o n args kwargs : pyobject spy_maybe =  _invoke w o n (args) kwargs
+   let invoke (w:wrapper ref) n args kwargs : pyobject option =  _invoke w (_uw w).main n args kwargs
+   let invoke_from (w:wrapper ref) o n args kwargs : pyobject option =  _invoke w o n (args) kwargs
 
 end
