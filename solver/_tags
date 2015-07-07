@@ -1,2 +1,3 @@
-true: package(yojson,extlib,threads,core,symcaml)
+true: package(yojson,extlib,threads,core)
 true: thread,debug
+<symcaml>: include
