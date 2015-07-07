@@ -5,8 +5,8 @@ EXTERN_REPO_ROOT=git-repo/symcaml
 all: symcaml_test
 
 symcaml_test: $(DEPS)
-	$(ARGS) ocamlbuild -use-ocamlfind SymCaml.native
-	mv SymCaml.native symcaml_test
+	$(ARGS) ocamlbuild -use-ocamlfind SymCamlTest.native
+	mv SymCamlTest.native symcaml_test
 	chmod +x symcaml_test
 
 clean:
