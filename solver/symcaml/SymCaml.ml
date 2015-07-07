@@ -15,6 +15,7 @@ sig
    val define_symbol : symcaml ->  string -> symexpr
    val define_expr : symcaml -> string -> symexpr -> symexpr
    val define_wildcard: symcaml -> string -> symexpr list -> symexpr
+   val define_function: symcaml -> string -> symexpr
    val clear : symcaml -> unit
    val expr2py : symcaml -> symexpr -> string
 
@@ -68,6 +69,9 @@ struct
       let _ = PyCamlWrapper.define (_wr s) x ("Symbol(\""^x^"\")") in 
       (Symbol x)
 
+   let define_function (s:symcaml) (x:string) : symexpr =
+      let _ = PyCamlWrapper.define (_wr s) x ("Function(\""^x^"\")") in 
+      (Symbol x)
 
    let define_expr (s:symcaml) (x:string) (e:symexpr) = 
       let _ = PyCamlWrapper.define (_wr s) x (expr2py s e) in 

@@ -19,7 +19,7 @@ sig
       ns: string
    }
    val hwcomp2symenv : hwcomp -> string -> bool -> symenv
-   val load_env : symenv -> unit 
+   val load_env : (SymCaml.symcaml maybe) -> symenv -> SymCaml.symcaml 
 end = 
 struct
    type symenv = {
@@ -29,8 +29,17 @@ struct
       ns: string
    }
 
-   let load_env (s:symenv) : unit = 
-      ()
+   let load_env (w:SymCaml.symcaml maybe) (s:symenv) : SymCaml.symcaml =
+      let env = match w with
+         | None -> 
+            let e = SymCaml.init() in 
+            let _ = SymCaml.define_function e s.ns in
+            let _ = SymCaml.define_function e "V" in
+            let _ = SymCaml.define_function e "I" in
+            e
+         | Some(x) -> x
+      in
+      env
 
 
    let rec hwcomp2symenv (h:hwcomp) ns is_virt =
