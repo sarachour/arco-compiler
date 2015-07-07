@@ -35,15 +35,16 @@ struct
 end
 
 
-type decimal = float 
-type hwparam = string*(decimal maybe)
+type hwdecimal = float 
+type hwint = int 
+type hwparam = string*(hwdecimal maybe)
 
 (* Hardware Logic *)
 
 type hwliteral = 
 	| Voltage of string
 	| Current of string
-   | Parameter of string
+  | Parameter of string
 
 type hwexpr = 
 	| NatExp of hwexpr
@@ -54,6 +55,8 @@ type hwexpr =
 	| Sub of hwexpr list
 	| Literal of hwliteral
 	| Deriv of hwexpr
+  | Decimal of hwdecimal 
+  | Integer of hwint
 
 type hwrel = 
    | Eq of hwexpr*hwexpr (*Equality with effects*)
@@ -65,9 +68,9 @@ type hwcond_digital =
    | LOW of hwid 
 
 type hwcond_analog = 
-   |GreaterThanEq of hwid*decimal
-   |LessThanEq of hwid*decimal
-   |Between of hwid*decimal*decimal
+   |GreaterThanEq of hwid*hwdecimal
+   |LessThanEq of hwid*hwdecimal
+   |Between of hwid*hwdecimal*hwdecimal
 
 type hwcond = 
    | Digital of hwcond_digital
@@ -138,7 +141,7 @@ type hwschem = hwelem hwschemT
 type hwconfig = 
    | Constraints of hwconfig list
    | Fuse of hwid*hwid
-   | Set of hwid*decimal
+   | Set of hwid*hwdecimal
 
 
 type hwarch = {

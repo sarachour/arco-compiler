@@ -1,12 +1,12 @@
 open Util
 
-type gid = id
 type gdecimal = float
+type gint = int
 
 type gliteral = 
-	| Symbol of gid
-	| Number of gdecimal
-
+	| Symbol of string
+	| Parameter of string
+	
 type gexpr = 
 	| Literal of gliteral
 	| Div of gexpr*gexpr
@@ -16,6 +16,8 @@ type gexpr =
 	| Exp of gexpr*gexpr
 	| NatExp of gexpr
 	| Deriv of gexpr
+	| Decimal of gdecimal
+	| Integer of gint
 
 type grel = 
 	| Eq of gexpr*gexpr

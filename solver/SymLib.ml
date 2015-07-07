@@ -18,7 +18,6 @@ sig
       mutable rels: symrel list;
    }
    val hwcomp2symenv : hwcomp -> bool -> symenv
-   val gexpr2symenv : genv -> bool -> symenv
 end = 
 struct
    type symenv = {
@@ -37,15 +36,15 @@ struct
          | Add(lst) -> Add(exprlst2symexprlst lst)
          | Sub(lst) -> Sub(exprlst2symexprlst lst)
          | Mult(lst) -> Mult(exprlst2symexprlst lst)
-         | _ -> raise (SymLibException "unhandled expr")
+         | _ -> raise (SymLibException "unhandled symlib expr")
       in 
       let hwrel2symrel (r:hwrel) : symrel = match r with 
          |Eq(a,b) -> Eq((hwexpr2symexpr a),(hwexpr2symexpr b))
          |Set(a,b) -> Set((hwexpr2symexpr (Literal a)),(hwexpr2symexpr b))
       in
-      let rec hwparam2symlst (r:(string*decimal maybe) list) : string list = match r with 
-         |(n,Some(vl))::t -> (hwparam2symlst r)
-         |(n,None)::t -> n::(hwparam2symlst r)
+      let rec hwparam2symlst (r:(string*hwdecimal maybe) list) : string list = match r with 
+         |(n,Some(vl))::t -> (hwparam2symlst t)
+         |(n,None)::t -> n::(hwparam2symlst t)
          |[] -> []
       in
       let rec hwidstrlst2symlst (r:(string*hwid) list) : string list = match r with
@@ -62,8 +61,6 @@ struct
       s.rels <- List.map hwrel2symrel h.constraints;
       s
 
-   let rec gexpr2symenv g is_virt = 
-      let s = {vars=[];wildcards=[];rels=[]} in
-      s
+   
 
 end

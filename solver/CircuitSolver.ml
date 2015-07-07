@@ -22,10 +22,10 @@ let compile_hwspec f : hwarch =
       
 let process specname formula = 
   let relexpr : grel= Eq(
-    Deriv(Literal(Symbol(0, Some "X"))),
+    Deriv(Literal(Symbol("X"))),
     Add(
-      [Literal(Symbol(1, Some "Y"));
-      Literal(Symbol(2, Some "Z"))]
+      [Literal(Symbol("Y"));
+      Literal(Symbol("Z"))]
     )
   ) 
   in

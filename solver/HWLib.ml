@@ -50,7 +50,7 @@ sig
    val create : string -> hwid -> hwcomp 
    val add_input : hwcomp -> string-> hwid -> hwcomp
    val add_output : hwcomp -> string-> hwid -> hwcomp
-   val add_param : hwcomp -> string -> decimal maybe-> hwcomp
+   val add_param : hwcomp -> string -> hwdecimal maybe-> hwcomp
    val bind : hwcomp -> string -> hwid -> hwcomp
    val clone :(string -> hwid) -> hwcomp-> hwcomp
    val add_constraint: hwcomp -> hwrel -> hwcomp

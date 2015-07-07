@@ -21,8 +21,8 @@ sig
       mutable comps : hsentry list;
    }
    val init : unit -> hsmatcher 
-   val add : hsmatcher ref -> hwcomp -> unit
-   val find : hsmatcher ref -> genv -> unit 
+   val add_comp : hsmatcher ref -> hwcomp -> unit
+   val find : hsmatcher ref -> hwcomp -> unit 
 end = 
 struct 
    type hsentry = {
@@ -36,13 +36,13 @@ struct
       let s = {comps=[]} in 
       s
 
-   let add (h:hsmatcher ref) (comp:hwcomp) : unit = 
+   let add_comp (h:hsmatcher ref) (comp:hwcomp) : unit = 
       let se = SymLib.hwcomp2symenv comp true in 
       let cmp = {sym=se;comp=comp} in
       let cmps = cmp::((!h).comps) in 
       h := {comps=cmps};
       ()
 
-   let find (h:hsmatcher ref) (genv:genv) : unit = 
+   let find (h:hsmatcher ref) (query:hwcomp) : unit = 
       ()
 end
