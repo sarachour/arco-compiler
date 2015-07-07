@@ -41,18 +41,26 @@ struct
 
    let rec genv2hwcomp ana (ge:genv) : hwcomp = 
       let rec gexpr2hwexpr (expr:gexpr) : hwexpr = 
+         let gexprlst2hwexprlst lst = List.map (fun x -> gexpr2hwexpr x) lst in
          match expr with
          | Literal(Symbol(x)) -> 
             if ana = Current 
             then Literal(Current(x)) 
             else Literal(Voltage(x))
-         | Decimal(n) -> Decimal(n)
          | Literal(Parameter(x)) -> Literal(Parameter(x))
+         | Decimal(n) -> Decimal(n)
+         | Integer(n) -> Integer(n)
          | Div(a,b) -> Div(gexpr2hwexpr a, gexpr2hwexpr b)
+         | Exp(a,b) -> Exp(gexpr2hwexpr a, gexpr2hwexpr b)
+         | Add(lst) -> Add(gexprlst2hwexprlst lst)
+         | Sub(lst) -> Sub(gexprlst2hwexprlst lst)
+         | Mult(lst) -> Sub(gexprlst2hwexprlst lst)
+         | Deriv(expr) -> Deriv(gexpr2hwexpr expr)
          | _ -> raise (HWGenException "unimplemented gexpr2hwexpr")
       in 
       let grel2hwrel (rel:grel) : hwrel = 
          match rel with 
+         | Eq(a,b) -> Eq(gexpr2hwexpr a, gexpr2hwexpr b)
          | _ -> raise (HWGenException "unimplemented grel2hwrel")
       in
       let rec strlst2hwidlst (l:string list) : (string*hwid) list =

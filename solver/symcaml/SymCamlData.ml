@@ -16,10 +16,11 @@ type symexpr =
    | Mult of symexpr list
    | Add of symexpr list
    | Exp of symexpr*symexpr
+   | Div of symexpr*symexpr
    | NatExp of symexpr
    | Sub of symexpr list
    | Paren of symexpr
    | Decimal of float
    | Integer of int
-
+   | Function of symvar*(symexpr list)
 

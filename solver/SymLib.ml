@@ -36,6 +36,17 @@ struct
          | Add(lst) -> Add(exprlst2symexprlst lst)
          | Sub(lst) -> Sub(exprlst2symexprlst lst)
          | Mult(lst) -> Mult(exprlst2symexprlst lst)
+         | Div(n,d) -> Div(hwexpr2symexpr n, hwexpr2symexpr d)
+         | Exp(b,e) -> Exp(hwexpr2symexpr b, hwexpr2symexpr e)
+         | NatExp(e) -> NatExp(hwexpr2symexpr e) 
+         | Literal(Current(x)) -> Function("I",[Symbol(x)])
+         | Literal(Voltage(x)) -> Function("V",[Symbol(x)])
+         | Literal(Parameter(x)) -> 
+            match List.filter (fun (n,v) -> n = x) h.params with
+            | [(n,Some(v))] -> Decimal(v)
+            | [(n,None)] -> Symbol(n)
+            | [] -> raise (SymLibException ("no parameter with name "^x))
+            | _ -> raise (SymLibException ("too many parameters with name "^x))
          | _ -> raise (SymLibException "unhandled symlib expr")
       in 
       let hwrel2symrel (r:hwrel) : symrel = match r with 
