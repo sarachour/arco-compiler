@@ -38,8 +38,8 @@ struct
             let _ = SymCaml.define_function e "I" in
             e
          | Some(x) -> x
-            let _ = SymCaml.define_function e s.ns in
       in
+      let _ = SymCaml.define_function env s.ns in
       env
 
 
