@@ -27,6 +27,7 @@ sig
    val pyobj2str: pyobject -> string 
    val pyobj2repr: pyobject -> pyobject
    val pydict2ml: pyobject -> (pyobject*pyobject -> 'a*'b) -> (('a*'b) list)
+   val find_var : wrapper ref -> pyobject -> string
    val report: wrapper ref -> unit
    val is_null : pyobject -> bool
 
@@ -159,6 +160,22 @@ struct
       in
       (n,obj)
 
+   let find_var (w:wrapper ref) (obj: pyobject) =
+      let compose ((k,v):pyobject*pyobject) : string*pyobject = 
+         let key = pyobj2str k in 
+         let vl = v in 
+         (key,vl)
+      in
+      let cmpobjs (name,inst) = 
+         let r = pyobject_richcomparebool(inst,obj,(opid2int Py_EQ)) in
+         r <> 0
+      in 
+      let evl = pydict2ml (_uw w).venv compose in
+      match List.filter cmpobjs evl with
+         |[(name,_)] -> name 
+         | [] -> raise (PyCamlWrapperException ("variable resembling argument not found in environment."))
+         | _ -> raise (PyCamlWrapperException ("argument has multiple variable names."))
+
    let clear (w:wrapper ref) = 
       run("env = {}");
       run("tmp = {}"); 
@@ -225,11 +242,6 @@ sig
    val eval : symcaml -> spy_expr -> spy_expr
    val simpl : symcaml -> spy_expr -> spy_expr
    val pattern: symcaml -> spy_expr -> spy_expr -> (string*spy_expr) list
-(*
-   val simpl : symcaml -> spy_expr -> spy_expr
-   val eval : symcaml -> spy_expr -> spy_expr
-   val pattern: symcaml -> spy_expr -> spy_expr -> (string*spy_expr) list
-*)
 end = 
 struct 
    type symcaml = {
@@ -352,8 +364,8 @@ struct
       let transform (key,v) : (string*spy_expr) = 
          let nk = _rprint key in 
          let expr = _pyobj2expr s v in 
-         Printf.printf "F: %s %s\n" (nk) (_rprint v);
-         (nk,expr)
+         let realname = PyCamlWrapper.find_var (_wr s) key in
+         (realname,expr)
       in
       let ecmd = (expr2py s (Paren e)) in 
       let patcmd = (expr2py s (Paren pat)) in
@@ -364,7 +376,6 @@ struct
             begin
             match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
             | Some(res) -> 
-               Printf.printf "STRUCTURE: %s\n" (_rprint res);
                let assigns = PyCamlWrapper.pydict2ml res transform in Printf.printf "-------\n"; assigns
             | None -> raise (SymCamlFunctionException("pattern","unexpected: null result."))
             end
@@ -400,7 +411,7 @@ let main () =
    Printf.printf "expand: %s\n" (SymCaml.expr2py s res);
    let res = SymCaml.pattern s (Exp(c,Integer(3))) ex in 
    Printf.printf "pattern: %s\n" (List.fold_right 
-      (fun ((n,e):string*spy_expr) (r:string) -> r^"\n"^n^":"^(SymCaml.expr2py s e))
+      (fun ((n,e):string*spy_expr) (r:string) -> r^"\n    "^n^":"^(SymCaml.expr2py s e))
       res "assignments:");
    let res = SymCaml.eval s e in
    Printf.printf "doit: %s\n" (SymCaml.expr2py s res);
