@@ -3,10 +3,10 @@ open Core
 open Core.Std
 
 open Util
-open Generic 
+open GenericData
 open HWData
 open HWLib
-open GenToHW
+open HWConfigGenerator
 
 open HWSpecParser
 open HWSpecLexer
@@ -21,7 +21,7 @@ let compile_hwspec f : hwarch =
    
       
 let process specname formula = 
-  let expr : grel= Eq(
+  let relexpr : grel= Eq(
     Deriv(Literal(Symbol(0, Some "X"))),
     Add(
       [Literal(Symbol(1, Some "Y"));
@@ -29,8 +29,16 @@ let process specname formula =
     )
   ) 
   in
+  let relenv : genv = {
+    rel=relexpr;
+    inputs=["Y";"Z"];
+    outputs=["X"];
+    params=[];
+  }
+  in
   let hw = compile_hwspec specname in 
-  let config = HWConv.convert hw expr Current in
+  let cenv = HWConfigGenerator.init Current hw in 
+  let config = HWConfigGenerator.convert cenv relenv in
   Format.printf "%s\n" (HWArch.arch2str hw);
   Format.printf "%s\n" (HWArch.config2str config)
 

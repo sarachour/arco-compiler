@@ -79,9 +79,9 @@ type hwcond =
 type hwcomp = {
 	mutable inputs: (string*hwid) list;
 	mutable outputs: (string*hwid) list;
-   mutable params: hwparam list;
+  mutable params: hwparam list;
 	mutable constraints: hwrel list;
-   mutable id: string*hwid;
+  mutable id: string*hwid;
 }
 
 type hwcomp_agg = {
