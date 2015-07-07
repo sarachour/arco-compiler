@@ -31,9 +31,9 @@ struct
 
    let mangle ns (l:hwliteral) = 
       match l with 
-         | Current(x) -> ns^"_"^x^"."^"I"
-         | Voltage(x) -> ns^"_"^x^"."^"V"
-         | Parameter(x) -> ns^"_"^x^"."^"P"
+         | Current(x) -> ns^"|"^x^"."^"I"
+         | Voltage(x) -> ns^"|"^x^"."^"V"
+         | Parameter(x) -> ns^"|"^x^"."^"P"
 
    let load_env (w:SymCaml.symcaml maybe) (s:symenv) : SymCaml.symcaml =
       let env = match w with
@@ -45,6 +45,7 @@ struct
       in
       List.iter (fun x -> SymCaml.define_wildcard env x; ()) s.wildcards;
       List.iter (fun x -> SymCaml.define_symbol env x; ()) s.vars;
+      SymCaml.report env;
       env
 
 

@@ -23,6 +23,7 @@ sig
    val eval : symcaml -> symexpr -> symexpr
    val simpl : symcaml -> symexpr -> symexpr
    val pattern: symcaml -> symexpr -> symexpr -> (string*symexpr) list
+   val report : symcaml -> unit
 end = 
 struct 
    type symcaml = {
@@ -165,15 +166,7 @@ struct
             end
          | _ -> raise (SymCamlFunctionException("pattern","unexpected: null callee or argument."))
       
-      (*
-      let ntmp = "__tmp__" in
-      let tmp = _env ntmp in 
-      let arg = _rslv_expr (fun x -> "("^x^")") targ in 
-      let cmd = _rslv_expr (fun x -> tmp^"="^x^".match"^arg) e in
-      Printf.printf "CMD: %s\n" cmd;
-      let _ = pyrun_simplestring(cmd) in
-      _toexprstruct s ntmp;
-      []
-      *)
+   let report (s:symcaml) : unit =
+      PyCamlWrapper.report (_wr s)
 
 end
