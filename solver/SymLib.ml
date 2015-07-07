@@ -32,12 +32,13 @@ struct
    let load_env (w:SymCaml.symcaml maybe) (s:symenv) : SymCaml.symcaml =
       let env = match w with
          | None -> 
-            let e = SymCaml.init() in 
-            let _ = SymCaml.define_function e s.ns in
+            let e = SymCaml.init() in
+            let _ = SymCaml.clear e in
             let _ = SymCaml.define_function e "V" in
             let _ = SymCaml.define_function e "I" in
             e
          | Some(x) -> x
+            let _ = SymCaml.define_function e s.ns in
       in
       env
 
