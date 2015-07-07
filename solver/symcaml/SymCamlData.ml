@@ -17,6 +17,7 @@ type symexpr =
    | Add of symexpr list
    | Exp of symexpr*symexpr
    | Div of symexpr*symexpr
+   | Deriv of symexpr*((symvar*int) list)
    | NatExp of symexpr
    | Sub of symexpr list
    | Paren of symexpr

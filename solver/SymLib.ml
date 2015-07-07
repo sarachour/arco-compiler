@@ -16,18 +16,24 @@ sig
       mutable vars: string list; 
       mutable wildcards: string list;
       mutable rels: symrel list;
+      ns: string
    }
-   val hwcomp2symenv : hwcomp -> bool -> symenv
+   val hwcomp2symenv : hwcomp -> string -> bool -> symenv
+   val load_env : symenv -> unit 
 end = 
 struct
    type symenv = {
       mutable vars: string list; 
       mutable wildcards: string list;
       mutable rels: symrel list;
+      ns: string
    }
 
+   let load_env (s:symenv) : unit = 
+      ()
 
-   let rec hwcomp2symenv (h:hwcomp) is_virt =
+
+   let rec hwcomp2symenv (h:hwcomp) ns is_virt =
       let rec hwexpr2symexpr (e:hwexpr) : symexpr = 
          let exprlst2symexprlst lst = 
             List.map (fun x -> hwexpr2symexpr x) lst 
@@ -39,12 +45,13 @@ struct
          | Div(n,d) -> Div(hwexpr2symexpr n, hwexpr2symexpr d)
          | Exp(b,e) -> Exp(hwexpr2symexpr b, hwexpr2symexpr e)
          | NatExp(e) -> NatExp(hwexpr2symexpr e) 
-         | Literal(Current(x)) -> Function("I",[Symbol(x)])
-         | Literal(Voltage(x)) -> Function("V",[Symbol(x)])
+         | Deriv(e) -> Deriv(hwexpr2symexpr e, [("t",1)])
+         | Literal(Current(x)) -> let nsx = Function(ns,[Symbol(x)]) in Function("I",[nsx])
+         | Literal(Voltage(x)) -> let nsx = Function(ns,[Symbol(x)]) in Function("V",[nsx])
          | Literal(Parameter(x)) -> 
             match List.filter (fun (n,v) -> n = x) h.params with
             | [(n,Some(v))] -> Decimal(v)
-            | [(n,None)] -> Symbol(n)
+            | [(n,None)] -> Function(ns,[Symbol(n)])
             | [] -> raise (SymLibException ("no parameter with name "^x))
             | _ -> raise (SymLibException ("too many parameters with name "^x))
          | _ -> raise (SymLibException "unhandled symlib expr")
@@ -62,7 +69,7 @@ struct
          |(n,id)::t -> n::(hwidstrlst2symlst t)
          | [] -> []
       in
-      let s : symenv = {vars=[];wildcards=[];rels=[]} in
+      let s : symenv = {vars=[];wildcards=[];rels=[];ns=ns} in
       if is_virt then 
          s.wildcards <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs)
       else

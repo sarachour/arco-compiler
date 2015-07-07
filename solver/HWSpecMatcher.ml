@@ -37,12 +37,25 @@ struct
       s
 
    let add_comp (h:hsmatcher ref) (comp:hwcomp) : unit = 
-      let se = SymLib.hwcomp2symenv comp true in 
+      let se = SymLib.hwcomp2symenv comp "tmpl" true in 
       let cmp = {sym=se;comp=comp} in
       let cmps = cmp::((!h).comps) in 
-      h := {comps=cmps};
+      (!h).comps <- cmps;
+      ()
+
+   let match_elem (template:SymLib.symenv) (expr:SymLib.symenv) : unit = 
+      let _ = SymLib.load_env template in
+      let _ = SymLib.load_env expr in
       ()
 
    let find (h:hsmatcher ref) (query:hwcomp) : unit = 
+      let qsym : SymLib.symenv = SymLib.hwcomp2symenv query "qry" false in
+      let match_all x = 
+         let (name, _) = x.comp.id in
+         Printf.printf "matching: %s\n" name; 
+         match_elem x.sym qsym in 
+      let comps : hsentry list = (!h).comps in
+      Printf.printf "%d elems\n" (List.length comps);
+      List.iter comps match_all;
       ()
 end
