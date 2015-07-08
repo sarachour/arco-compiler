@@ -1,29 +1,16 @@
 
-DIFFEQ=../diffeq
-DEPS=Util.cmo Rule.cmo Relation.cmo TypeSystem.cmo \
-	MetaLanguageAST.cmo DiffEqAST.cmo AnalogAST.cmo Visitor.cmo \
-	DiffEqCompiler.cmo CircuitCompiler.cmo
+DEPS=*.ml
+ARGS=C_INCLUDE_PATH=/opt/local/include LIBRARY_PATH=/opt/local/lib CC=gcc-mp-4.8 
 
-LIBS=-package extlib  -package yojson
+#LIBS=-package extlib  -package yojson -package z3 -package z3overlay
+LIBS=-package extlib  -package yojson 
 
 all: biology
 
-biology: $(DEPS) Biology.cmo 
-	 ocamlfind ocamlc -g $(LIBS) -linkpkg -o biology \
-	 	$(DEPS) Biology.cmo
+biology: $(DEPS)
+	 $(ARGS) ocamlbuild -use-ocamlfind Biology.native && mv Biology.native biology
 	 chmod +x biology
 
-%.ml: %.mll 
-	ocamllex $< -o $@
-	
-
-%.mli: %.mly
-	ocamlyacc $<
-
-
-%.cmo: %.ml
-	ocamlfind ocamlc $(LIBS) -c $< -o $@
-
-
 clean:
-	rm -f *.cmo *.cmi *.mli biology &> /dev/null
+	ocamlbuild -clean
+	rm biology
