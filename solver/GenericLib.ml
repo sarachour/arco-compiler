@@ -2,7 +2,40 @@ open GenericData
 open HWData
 exception GenericLibException of string;;
 
+module GenericUtils :
+sig 
+   val gliteral2str : gliteral -> string 
+   val gexpr2str : gexpr -> string 
+   val grel2str : grel -> string
+end = 
+struct 
+   let gliteral2str (e:gliteral) = match e with 
+      | Parameter(x) -> x 
+      | Symbol(x) -> x
 
+   let rec gexpr2str (e:gexpr) = 
+      let gexprlst2str fx lst = 
+         match lst with 
+            | h::t -> List.fold_right (fun x r -> r^(fx (gexpr2str x))) t (gexpr2str h) 
+            | [] -> ""
+      in
+      match e with
+      | Literal(x) -> gliteral2str(x)
+      | Add(lst) -> gexprlst2str (fun x -> "+"^x) lst
+      | Sub(lst) -> gexprlst2str (fun x -> "-"^x) lst
+      | Mult(lst) -> gexprlst2str (fun x -> "*"^x) lst
+      | Decimal(a) -> (string_of_float a)
+      | Integer(a) -> (string_of_int a)
+      | Deriv(a) -> "deriv"^(gexpr2str (Paren a))
+      | Paren(a) -> "("^(gexpr2str a)^")"
+      | _ -> raise (GenericLibException "gexpr2str: unknown op")
+
+   let grel2str (e:grel) = match e with 
+      | Eq(a,b) -> (gexpr2str a)^"=="^(gexpr2str b)
+
+
+
+end
 
 module GenericHWLib : 
 sig 

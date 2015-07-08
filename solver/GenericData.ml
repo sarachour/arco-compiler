@@ -18,6 +18,7 @@ type gexpr =
 	| Deriv of gexpr
 	| Decimal of gdecimal
 	| Integer of gint
+	| Paren of gexpr
 
 type grel = 
 	| Eq of gexpr*gexpr

@@ -3,6 +3,7 @@ open Core
 
 open Util
 open GenericData
+open GenericLib
 open HWData
 open HWLib
 open ConfigSearch
@@ -35,6 +36,7 @@ let process specname formula =
     params=[];
   }
   in
+  Printf.printf "Relation: %s\n" (GenericUtils.grel2str relenv.rel); 
   let hw = compile_hwspec specname in 
   let cenv = ConfigSearch.init Voltage hw in 
   let config = ConfigSearch.convert cenv relenv in
