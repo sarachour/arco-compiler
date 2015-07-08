@@ -60,13 +60,13 @@ struct
             e
          |Some(e) -> e
       in
-      SymCaml.set_debug env true;
       SymCaml.report env;
       let proc i x j y = 
          let ni = mangle_expr qry.ns i in 
          let nj = mangle_expr tmpl.ns j in
-         let res = SymCaml.pattern env (Symbol ni) (Symbol nj) in 
-         Printf.printf ("%s : %s\n") ni nj  
+         match SymCaml.pattern env (Symbol ni) (Symbol nj) with 
+            | Some(x) -> Printf.printf "solution exists\n"
+            | None -> Printf.printf "no solution\n"
       in
       List.iteri (
          fun i x ->

@@ -24,7 +24,7 @@ sig
    val expand : symcaml -> symexpr -> symexpr
    val eval : symcaml -> symexpr -> symexpr
    val simpl : symcaml -> symexpr -> symexpr
-   val pattern: symcaml -> symexpr -> symexpr -> (string*symexpr) list
+   val pattern: symcaml -> symexpr -> symexpr -> ((string*symexpr) list) option
    val report : symcaml -> unit
 end = 
 struct 
@@ -170,7 +170,7 @@ struct
             end
          | None-> raise (SymCamlFunctionException("simpl","unexpected: null callee."))
       
-   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) : (string*symexpr) list =
+   let pattern (s:symcaml) (e:symexpr) (pat: symexpr) : ((string*symexpr) list) option =
       let transform (key,v) : (string*symexpr) = 
          let nk = _rprint key in 
          let expr = _pyobj2expr s v in 
@@ -187,8 +187,8 @@ struct
             begin
             match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
             | Some(res) -> 
-               let assigns = PyCamlWrapper.pydict2ml res transform in Printf.printf "-------\n"; assigns
-            | None -> raise (SymCamlFunctionException("pattern","unexpected: null result."))
+               let assigns = PyCamlWrapper.pydict2ml res transform in Some assigns
+            | None -> None
             end
          | _ -> raise (SymCamlFunctionException("pattern","unexpected: null callee or argument."))
       
