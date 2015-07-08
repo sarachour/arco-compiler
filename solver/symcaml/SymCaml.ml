@@ -93,20 +93,27 @@ struct
 
    let define_function (s:symcaml) (x:string) : symexpr =
       let cmd = "Function(\""^x^"\")" in
+      dbg s (fun () -> Printf.printf "define_function: %s\n" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in 
       (Symbol x)
 
    let define_expr (s:symcaml) (x:string) (e:symexpr) = 
       let stre = expr2py s e in
       let _ = PyCamlWrapper.define (_wr s) x stre in 
+      dbg s (fun () -> Printf.printf "define_expr: %s\n" stre);
       Symbol(x)
 
    let define_wildcard (s:symcaml) (x:string) (exns:symvar list) : symexpr = 
       let opt_arg = match exns with
-         | h::t -> "["^(List.fold_right (fun x r -> r^","^(x)) t h)^"]"
+         | h::t -> 
+            let (hn,_) = PyCamlWrapper.get_var (_wr s) h in 
+            let fn x r = let (n,_) = PyCamlWrapper.get_var (_wr s) x in  r^","^n in 
+
+            "["^(List.fold_right fn t hn)^"]"
          | [] -> "[]"
       in 
       let cmd ="Wild(\""^x^"\",exclude="^opt_arg^")" in 
+      dbg s (fun () -> Printf.printf "define_wildcard: %s\n" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in 
       Symbol(x)
 
@@ -114,7 +121,7 @@ struct
       match PyCamlWrapper.invoke (_wr s) "srepr" [p] [] with 
          | Some(res) -> 
             let strrep = PyCamlWrapper.pyobj2str res in 
-            dbg s (fun () -> Printf.printf "%s\n" strrep);
+            dbg s (fun () -> Printf.printf "pyobj2expr: %s\n" strrep);
             begin
             try
                let lexbuf = Lexing.from_string strrep in

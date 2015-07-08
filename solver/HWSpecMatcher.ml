@@ -57,12 +57,14 @@ struct
       let nwc = List.map tmpl.wildcards handle_param_vars in 
       let ntmpl : SymLib.symenv={
          ns=tmpl.ns;
-         wildcards=tmpl.wildcards; 
+         wildcards=nwc; 
          vars=tmpl.vars; 
          exprs=tmpl.exprs
       } in
       let env = SymLib.load_env None expr in
-      let env = SymLib.load_env (Some env) tmpl in
+      SymCaml.set_debug env true;
+      let env = SymLib.load_env (Some env) ntmpl in
+      SymCaml.set_debug env false;
       SymLib.find_matches (Some env) ntmpl expr;
       ()
 
@@ -71,10 +73,12 @@ struct
       let match_all x = 
          let (name, _) = x.comp.id in
          Printf.printf "matching: %s\n" name; 
-         match_elem x.sym qsym in 
+         match_elem x.sym qsym 
+      in 
       let comps : hsentry list = (!h).comps in
       Printf.printf "%d elems\n" (List.length comps);
       List.iter comps match_all;
+      Printf.printf "Finished: %d elems\n" (List.length comps);
       ()
 
    

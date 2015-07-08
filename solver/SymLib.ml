@@ -61,12 +61,18 @@ struct
          |Some(e) -> e
       in
       SymCaml.report env;
+      let rec matches2str (lst:(string*symexpr) list): string =
+         match lst with 
+         | (name,e)::t ->name^" = "^(SymCaml.expr2py env e)^"\n"^(matches2str t)
+         | [] -> ""
+      in
       let proc i x j y = 
          let ni = mangle_expr qry.ns i in 
          let nj = mangle_expr tmpl.ns j in
+         Printf.printf "...running..\n";
          match SymCaml.pattern env (Symbol ni) (Symbol nj) with 
-            | Some(x) -> Printf.printf "solution exists\n"
-            | None -> Printf.printf "no solution\n"
+            | Some(x) -> Printf.printf "SOLUTION:\n%s\n" (matches2str x)
+            | None -> Printf.printf "NO SOLUTION\n"
       in
       List.iteri (
          fun i x ->
