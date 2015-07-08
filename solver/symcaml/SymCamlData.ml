@@ -24,4 +24,5 @@ type symexpr =
    | Decimal of float
    | Integer of int
    | Function of symvar*(symexpr list)
+   | Eq of symexpr*symexpr
 

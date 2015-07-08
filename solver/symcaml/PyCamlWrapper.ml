@@ -55,11 +55,13 @@ struct
    let _env x = "env[\""^x^"\"]"
    let _tmp x = "tmp[\""^x^"\"]"
    let _uw w = !w
-   let _get_dict_val (d:pyobject) (k:string) : pyobject option = let x = pydict_getitemstring(d,k) in
+   let _get_dict_val (d:pyobject) (k:string) : pyobject option = 
+      let x = pydict_getitemstring(d,k) in
       handle_err();
       if x = null then None else Some(x)
 
-   let _get_obj_val (o:pyobject) (attr:string) : pyobject option = let x = pyobject_getattrstring(o,attr) in 
+   let _get_obj_val (o:pyobject) (attr:string) : pyobject option = 
+      let x = pyobject_getattrstring(o,attr) in 
       handle_err();
       if x = null then None else Some(x)
 
@@ -182,7 +184,8 @@ struct
 
    let define (w:wrapper ref) (vname:string) (cmd:string) : (pyobject) =
       let evname = (_env vname) in
-      let _ = eval w (evname^"="^cmd) in
+      let _ = eval w (evname^"="^cmd) in 
+      _upd w;
       let obj = match _get_dict_val (_uw w).venv vname with
          | Some(x) -> x
          | None -> raise (PyCamlWrapperException ("variable "^vname^" could not be defined. not found."))
@@ -191,7 +194,8 @@ struct
 
    let define_tmp_var (w:wrapper ref) (vname:string) (cmd:string) : (pyobject) =
       let evname = (_tmp vname) in
-      let _ = eval w (evname^"="^cmd) in
+      let _ = eval w (evname^"="^cmd) in 
+      _upd w;
       let obj = match _get_dict_val (_uw w).tmp vname with
          | Some(x) -> x
          | None -> raise (PyCamlWrapperException ("variable "^vname^" could not be defined. not found."))

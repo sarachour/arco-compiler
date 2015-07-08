@@ -4,10 +4,6 @@ open HWData
 open Util
 open GenericData
 
-type symrel =
-   | Eq of symexpr*symexpr
-   | Set of symexpr*symexpr
-
 exception SymLibException of string;;
 
 module SymLib:
@@ -15,7 +11,7 @@ sig
    type symenv = {
       mutable vars: string list; 
       mutable wildcards: string list;
-      mutable rels: symrel list;
+      mutable exprs: symexpr list;
       ns: string
    }
    val hwcomp2symenv : hwcomp -> string -> bool -> symenv
@@ -25,27 +21,31 @@ struct
    type symenv = {
       mutable vars: string list; 
       mutable wildcards: string list;
-      mutable rels: symrel list;
+      mutable exprs: symexpr list;
       ns: string
    }
 
    let mangle ns (l:hwliteral) = 
+      let delim1 = "|" in 
+      let delim2 = "|" in
       match l with 
-         | Current(x) -> ns^"|"^x^"."^"I"
-         | Voltage(x) -> ns^"|"^x^"."^"V"
-         | Parameter(x) -> ns^"|"^x^"."^"P"
+         | Current(x) -> ns^delim1^x^delim2^"I"
+         | Voltage(x) -> ns^delim1^x^delim2^"V"
+         | Parameter(x) -> ns^delim1^x^delim2^"P"
 
    let load_env (w:SymCaml.symcaml maybe) (s:symenv) : SymCaml.symcaml =
       let env = match w with
          | None -> 
             let e = SymCaml.init() in
             let _ = SymCaml.clear e in
+            SymCaml.define_symbol e "t";
             e
          | Some(x) -> x
       in
-      List.iter (fun x -> SymCaml.define_wildcard env x; ()) s.wildcards;
+      List.iter (fun x -> SymCaml.define_wildcard env x []; ()) s.wildcards;
       List.iter (fun x -> SymCaml.define_symbol env x; ()) s.vars;
       SymCaml.report env;
+      List.iter (fun x -> SymCaml.define_expr env "rel" x; ()) s.exprs;
       env
 
 
@@ -62,7 +62,6 @@ struct
          | Exp(b,e) -> Exp(hwexpr2symexpr b, hwexpr2symexpr e)
          | NatExp(e) -> NatExp(hwexpr2symexpr e) 
          | Deriv(e) -> Deriv(hwexpr2symexpr e, [("t",1)])
-         | Literal(Voltage(x)) -> let nsx = Function(ns,[Symbol(x)]) in Function("V",[nsx])
          | Literal(Parameter(x)) -> 
             begin
             match List.filter (fun (n,v) -> n = x) h.params with
@@ -74,9 +73,9 @@ struct
          | Literal(x) -> (Symbol(mangle ns x))
          | _ -> raise (SymLibException "unhandled symlib expr")
       in 
-      let hwrel2symrel (r:hwrel) : symrel = match r with 
+      let hwrel2symrel (r:hwrel) : symexpr = match r with 
          |Eq(a,b) -> Eq((hwexpr2symexpr a),(hwexpr2symexpr b))
-         |Set(a,b) -> Set((hwexpr2symexpr (Literal a)),(hwexpr2symexpr b))
+         |Set(a,b) -> Eq((hwexpr2symexpr (Literal a)),(hwexpr2symexpr b))
       in
       let rec hwparam2symlst (r:(string*hwdecimal maybe) list) : string list = match r with 
          |(n,Some(vl))::t -> (hwparam2symlst t)
@@ -87,14 +86,14 @@ struct
          |(n,id)::t -> (mangle ns (Voltage n))::(mangle ns (Current n))::(hwidstrlst2symlst t)
          | [] -> []
       in
-      let s : symenv = {vars=[];wildcards=[];rels=[];ns=ns} in
+      let s : symenv = {vars=[];wildcards=[];exprs=[];ns=ns} in
       if is_virt then 
          s.wildcards <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs)
       else
          s.vars <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs)
       ;
       s.vars <- s.vars @ (hwparam2symlst h.params);
-      s.rels <- List.map hwrel2symrel h.constraints;
+      s.exprs <- List.map hwrel2symrel h.constraints;
       s
 
    

@@ -6,12 +6,16 @@ import sys
 
 x = Symbol("x")
 y = Symbol("y")
+z = Symbol("z")
+t = Symbol("t")
+
 a = Wild("a")
 b = Wild("b", exclude=[x])
+c = Wild("c")
 n = Wild("n")
 
-e1 = x**2/(x**2+1)
-e2 = (a/b)**n/((a/b)**n + 1) 
+e1 = Eq(Derivative(z,t,1),x**2/(x**2+1))
+e2 = Eq(Derivative(c,t,1),(a/b)**n/((a/b)**n + 1))
 e3 = (x**2/(x**2+x**2))
 
 print apply(e3.doit, [])

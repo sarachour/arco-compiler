@@ -63,19 +63,32 @@ struct
          | Paren(e) -> "("^(_expr2py e)^")" 
          | Decimal(x) -> string_of_float x
          | Integer(x) -> string_of_int x
+         | Div(n,d) -> (_expr2py (Paren n))^"/"^(_expr2py (Paren d))
+         | Function(x,lst) -> x^"("^(exprlst2py (fun x r -> r^","^(_expr2py x)) lst)^")"
+         | Deriv(e,lst) -> "Derivative("^(_expr2py e)^
+            (List.fold_right (
+               fun (v,n) r -> 
+                  let (sv,_) = PyCamlWrapper.get_var (_wr s) v in
+                  let sn = string_of_int n in
+                  r^","^sv^","^sn
+            ) lst "")^")"
+         | Eq(lhs,rhs) -> "Eq("^(_expr2py lhs)^","^(_expr2py rhs)^")"
       in 
          _expr2py e
 
    let define_symbol (s:symcaml) (x:string) : symexpr =
-      let _ = PyCamlWrapper.define (_wr s) x ("Symbol(\""^x^"\")") in 
+      let cmd = "Symbol(\""^x^"\")" in
+      let _ = PyCamlWrapper.define (_wr s) x cmd in 
       (Symbol x)
 
    let define_function (s:symcaml) (x:string) : symexpr =
-      let _ = PyCamlWrapper.define (_wr s) x ("Function(\""^x^"\")") in 
+      let cmd = "Function(\""^x^"\")" in
+      let _ = PyCamlWrapper.define (_wr s) x cmd in 
       (Symbol x)
 
    let define_expr (s:symcaml) (x:string) (e:symexpr) = 
-      let _ = PyCamlWrapper.define (_wr s) x (expr2py s e) in 
+      let stre = expr2py s e in
+      let _ = PyCamlWrapper.define (_wr s) x stre in 
       Symbol(x)
 
    let define_wildcard (s:symcaml) (x:string) (exns:symexpr list) : symexpr = 
@@ -83,7 +96,8 @@ struct
          | h::t -> "["^(List.fold_right (fun x r -> r^","^(expr2py s x)) t (expr2py s h))^"]"
          | [] -> "[]"
       in 
-      let _ = PyCamlWrapper.define (_wr s) x (" Wild(\""^x^"\",exclude="^opt_arg^")") in 
+      let cmd ="Wild(\""^x^"\",exclude="^opt_arg^")" in 
+      let _ = PyCamlWrapper.define (_wr s) x cmd in 
       Symbol(x)
 
    let _pyobj2expr (s:symcaml) (p:pyobject) : symexpr = 
