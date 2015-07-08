@@ -37,7 +37,7 @@ end
 
 type hwdecimal = float 
 type hwint = int 
-type hwparam = string*(hwdecimal maybe)
+type hwparam = string*(hwdecimal option)
 
 (* Hardware Logic *)
 

@@ -28,7 +28,7 @@ sig
    val get_descendent_types: ts -> typ -> typ list
    val get_child_types: ts -> typ -> typ list
    val get_parent_types: ts -> typ -> typ list
-   val get: ts->string->typ maybe
+   val get: ts->string->typ option
    val create: unit->ts
    val has: ts->typ->bool
    val add: ts->typ->ts
@@ -80,7 +80,7 @@ module TypeSystem : TypeSystemSig = struct
          _get_parent_types root.hierarchy t
 
    
-   let get (t:ts) (e:string) : typ maybe =
+   let get (t:ts) (e:string) : typ option =
       let rec _get (r:typ list) (e:string) =
          begin
          match r with

@@ -2,12 +2,8 @@ open ExtString
 open Map
 
 
-type 'a maybe = 
-   Some of 'a 
-   | None
-;;
 
-type id = int*(string maybe)
+type id = int*(string option)
 
 
 module StringMap = Map.Make (String)

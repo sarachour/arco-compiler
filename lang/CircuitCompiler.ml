@@ -18,7 +18,7 @@ type tbl = {
 module CircuitTable :
 sig
    val create : unit -> tbl
-   val get_circuit: tbl -> id -> circuit maybe
+   val get_circuit: tbl -> id -> circuit option
    val add_circuit: tbl -> circuit -> tbl
    val update_circuit: tbl -> circuit -> tbl
    val add_wire: tbl -> wire -> tbl

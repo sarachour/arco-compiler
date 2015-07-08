@@ -26,5 +26,5 @@ type genv = {
 	rel: grel;
 	inputs: string list;
 	outputs: string list;
-	params: (string*(gdecimal maybe)) list
+	params: (string*(gdecimal option)) list
 }

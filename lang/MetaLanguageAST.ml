@@ -42,9 +42,9 @@ sig
    val define : env->typ->env
    val extend : env -> typ -> typ -> env
    
-   val get_action: env->string->action maybe
-   val get_state: env->string->state maybe 
-   val get_parameter: env->string->parameter maybe
+   val get_action: env->string->action option
+   val get_state: env->string->state option 
+   val get_parameter: env->string->parameter option
 
    val add_state: env->string->string->env
    val add_action: env->string->string->(string*string) list->(string*string) list->env
@@ -71,7 +71,7 @@ struct
    let add_parameter env nm v =
       env.g.params <- {name=nm; value=v;t=Parameter}::env.g.params; env
    
-   let get_action env nm : action maybe = 
+   let get_action env nm : action option = 
       let rec _get_action (l: action list) = match l with
          | h::t -> 
             begin
@@ -82,7 +82,7 @@ struct
       in
          _get_action env.g.actions
 
-   let get_parameter env nm : parameter maybe = 
+   let get_parameter env nm : parameter option = 
       let rec _get_parameter l = match l with
          | h::t -> 
             begin
@@ -94,7 +94,7 @@ struct
          _get_parameter env.g.params
     
     
-   let get_state (env:env) (nm:string) : state maybe= 
+   let get_state (env:env) (nm:string) : state option= 
       let rec _get_state (l: state list) = match l with
          | h::t -> 
             begin
@@ -130,12 +130,12 @@ struct
    let add_action (env:env) (name:string) (kind:string) (ins:(string*string) list) (outs:(string*string) list) : env =
       match TypeSystem.get env.ts kind with
          | Some(Action(name,inputs,rel,rules,outputs)) -> 
-            let rec find_rel_typ (s:string) (lst:(string*typ) list) : typ maybe = 
+            let rec find_rel_typ (s:string) (lst:(string*typ) list) : typ option = 
                match lst with
                | (nm,ty)::t -> if s = nm then Some(ty) else find_rel_typ s t 
                | [] -> None
             in
-            let rec find_env_type (s:string) : typ maybe = 
+            let rec find_env_type (s:string) : typ option = 
                match (get_state env s, get_parameter env s, get_action env s) with
                   |(Some(s),_,_) -> Some(s.t)
                   |(_,Some(s),_) -> Some(s.t)

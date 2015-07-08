@@ -55,7 +55,7 @@ sig
    val create : string -> hwid -> hwcomp 
    val add_input : hwcomp -> string-> hwid -> hwcomp
    val add_output : hwcomp -> string-> hwid -> hwcomp
-   val add_param : hwcomp -> string -> hwdecimal maybe-> hwcomp
+   val add_param : hwcomp -> string -> hwdecimal option-> hwcomp
    val bind : hwcomp -> string -> hwid -> hwcomp
    val clone :(string -> hwid) -> hwcomp-> hwcomp
    val add_constraint: hwcomp -> hwrel -> hwcomp
@@ -256,7 +256,7 @@ struct
          |Eq(a,b) -> Eq((hwexpr2symexpr a),(hwexpr2symexpr b))
          |Set(a,b) -> Eq((hwexpr2symexpr (Literal a)),(hwexpr2symexpr b))
       in
-      let rec hwparam2symlst (r:(string*hwdecimal maybe) list) : string list = match r with 
+      let rec hwparam2symlst (r:(string*hwdecimal option) list) : string list = match r with 
          |(n,Some(vl))::t -> (hwparam2symlst t)
          |(n,None)::t -> (mangle ns (Parameter n))::(hwparam2symlst t)
          |[] -> []

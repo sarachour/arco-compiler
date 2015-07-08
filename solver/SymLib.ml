@@ -15,8 +15,8 @@ sig
       ns: string
    }
    type wctype = int*string*(string list)
-   val load_env : (SymCaml.symcaml maybe) -> symenv -> SymCaml.symcaml 
-   val find_matches : SymCaml.symcaml maybe -> symenv -> symenv -> unit
+   val load_env : (SymCaml.symcaml option) -> symenv -> SymCaml.symcaml 
+   val find_matches : SymCaml.symcaml option -> symenv -> symenv -> unit
 end = 
 struct
    type symenv = {
@@ -34,7 +34,7 @@ struct
 
 
    
-   let load_env (w:SymCaml.symcaml maybe) (s:symenv) : SymCaml.symcaml =
+   let load_env (w:SymCaml.symcaml option) (s:symenv) : SymCaml.symcaml =
       let env = match w with
          | None -> 
             let e = SymCaml.init() in
@@ -52,7 +52,7 @@ struct
          ) s.exprs;
       env
 
-   let find_matches (e:SymCaml.symcaml maybe) (tmpl:symenv) (qry:symenv) : unit = 
+   let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) : unit = 
       let env = match e with 
          |None -> 
             let w = load_env None tmpl in

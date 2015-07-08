@@ -16,10 +16,14 @@ let main () =
    Printf.printf "simpl: %s\n" (SymCaml.expr2py s res);
    let res = SymCaml.expand s e in
    Printf.printf "expand: %s\n" (SymCaml.expr2py s res);
-   let res = SymCaml.pattern s (Exp(c,Integer(3))) ex in 
-   Printf.printf "pattern: %s\n" (List.fold_right 
-      (fun ((n,e):string*symexpr) (r:string) -> r^"\n    "^n^":"^(SymCaml.expr2py s e))
-      res "assignments:");
+   match SymCaml.pattern s (Exp(c,Integer(3))) ex with
+   | Some(res) ->
+         Printf.printf "pattern: %s\n" (List.fold_right 
+         (fun ((n,e):string*symexpr) (r:string) -> 
+            r^"\n    "^n^":"^(SymCaml.expr2py s e) 
+         )
+         res "assignments:");
+   | None -> "pattern: no solution.";
    let res = SymCaml.eval s e in
    Printf.printf "doit: %s\n" (SymCaml.expr2py s res);
    ()

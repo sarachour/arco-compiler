@@ -5,12 +5,12 @@ open Util
 type marker = Input|Output;;
 type hint = Adder | Multiplier;;
 
-type id = int*string maybe
+type id = int*string option
 
 exception AnalogASTException of string;;
 
 type 'a block= 
-   | SMTHole of id*((id*string) list)*relation*((id*string) list)*(hint maybe)
+   | SMTHole of id*((id*string) list)*relation*((id*string) list)*(hint option)
    | Capacitor of id*float
    | Ground of id
    | Joint of id*('a list)
@@ -38,8 +38,8 @@ module Circuit :
 sig
    val create : id -> circuit
    (*get elements*)
-   val get_wire : circuit -> id -> wire maybe
-   val get_block : circuit -> id -> wire block maybe
+   val get_wire : circuit -> id -> wire option
+   val get_block : circuit -> id -> wire block option
    (*add elements*)
    val add_wire : circuit -> wire -> circuit
    val add_wires : circuit -> wire list -> circuit
@@ -176,9 +176,9 @@ sig
    val create : id -> system
    (*get elements*)
    val add_wire : system -> wire -> system
-   val get_circuit : system -> id -> circuit maybe
+   val get_circuit : system -> id -> circuit option
    (*add elements*)
-   val get_wire : system -> id -> wire maybe
+   val get_wire : system -> id -> wire option
    val add_circuit : system -> circuit -> system
    (*export as string*)
    val to_string : system -> string

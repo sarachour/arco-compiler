@@ -24,18 +24,18 @@ type expr =
 
 type stmt = 
   | Eq of expr*expr
-  | Decl of string*string*(expr maybe)
+  | Decl of string*string*(expr option)
 
 
    
 let rec expr2conc (e:expr) : expr = 
-  let rec _expr2conc (e:expr) : expr maybe = 
+  let rec _expr2conc (e:expr) : expr option = 
       let red_lst (lst:expr list) (elem: expr) : expr list = 
         match _expr2conc elem with
           |Some(e) -> e::lst
           |None -> lst
       in
-      let pair_lst (e1:expr) (e2:expr) (f:expr->expr->expr maybe) =
+      let pair_lst (e1:expr) (e2:expr) (f:expr->expr->expr option) =
           match (_expr2conc e1, _expr2conc e2) with
           | (Some(x1),Some(x2)) -> f x1 x2
           | _ -> raise (DiffEQASTException "can't concretize pairwise arguments. Misplaced hole.")
