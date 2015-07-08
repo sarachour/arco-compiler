@@ -16,6 +16,7 @@ sig
    }
    val hwcomp2symenv : hwcomp -> string -> bool -> symenv
    val load_env : (SymCaml.symcaml maybe) -> symenv -> SymCaml.symcaml 
+   val find_matches : symenv -> symenv -> unit
 end = 
 struct
    type symenv = {
@@ -33,6 +34,11 @@ struct
          | Voltage(x) -> ns^delim1^x^delim2^"V"
          | Parameter(x) -> ns^delim1^x^delim2^"P"
 
+   let mangle_expr ns idx =
+      let delim1 = "|" in 
+      let delim2 = "|" in
+      ns^delim1^"expr"^delim2^(string_of_int idx)
+
    let load_env (w:SymCaml.symcaml maybe) (s:symenv) : SymCaml.symcaml =
       let env = match w with
          | None -> 
@@ -45,9 +51,29 @@ struct
       List.iter (fun x -> SymCaml.define_wildcard env x []; ()) s.wildcards;
       List.iter (fun x -> SymCaml.define_symbol env x; ()) s.vars;
       SymCaml.report env;
-      List.iter (fun x -> SymCaml.define_expr env "rel" x; ()) s.exprs;
+      List.iteri (
+         fun idx x -> 
+            let nm = mangle_expr s.ns idx in 
+            SymCaml.define_expr env nm x; ()
+         ) s.exprs;
       env
 
+   let find_matches (tmpl:symenv) (qry:symenv) : unit = 
+      let w = load_env None tmpl in
+      let env = load_env (Some w) qry in
+      let proc i x j y = 
+         let ni = mangle_expr qry.ns i in 
+         let nj = mangle_expr tmpl.ns j in
+         let res = SymCaml.pattern env (Symbol ni) (Symbol nj) in 
+         Printf.printf ("%s : %s\n") ni nj  
+      in
+      List.iteri (
+         fun i x ->
+            List.iteri (
+               fun j y ->
+                  proc i x j y; ()
+            ) tmpl.exprs 
+      ) qry.exprs
 
    let rec hwcomp2symenv (h:hwcomp) ns is_virt =
       let rec hwexpr2symexpr (e:hwexpr) : symexpr = 

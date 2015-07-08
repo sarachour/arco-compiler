@@ -10,8 +10,10 @@ module SymCaml :
 sig
    type symcaml = {
       w : PyCamlWrapper.wrapper ref;
+      debug: bool ref;
    }
    val init : unit -> symcaml
+   val set_debug : symcaml -> bool -> unit
    val define_symbol : symcaml ->  string -> symexpr
    val define_expr : symcaml -> string -> symexpr -> symexpr
    val define_wildcard: symcaml -> string -> symexpr list -> symexpr
@@ -28,20 +30,28 @@ end =
 struct 
    type symcaml = {
       w : PyCamlWrapper.wrapper ref;
+      debug: bool ref;
    }
    let _wr (s:symcaml) : PyCamlWrapper.wrapper ref = (s.w)
    let _wrc (s:symcaml) : PyCamlWrapper.wrapper = (!(_wr s))
    let _print (o:pyobject) : string = (PyCamlWrapper.pyobj2str o)
    let _rprint (o:pyobject) : string = (PyCamlWrapper.pyobj2str (PyCamlWrapper.pyobj2repr o))
+   let dbg (s:symcaml) (fx: unit->unit) : unit = 
+      if !(s.debug) = true then fx()
+      else ()
+
    let init () =
       let w = PyCamlWrapper.init ["sympy"] in
       let wr : PyCamlWrapper.wrapper ref = ref w in 
-      {w=wr}
+      let dr : bool ref = ref (false) in
+      {w=wr; debug=dr}
 
    let clear s =
       PyCamlWrapper.clear (_wr s)
 
-   
+   let set_debug s b = 
+      s.debug := b; ()
+      
    let expr2py (s:symcaml) (e:symexpr) : string= 
       let rec _expr2py (e:symexpr) : string = 
          let exprlst2py (fn:'a -> string -> string) (lst:'a list) : string =
@@ -104,6 +114,7 @@ struct
       match PyCamlWrapper.invoke (_wr s) "srepr" [p] [] with 
          | Some(res) -> 
             let strrep = PyCamlWrapper.pyobj2str res in 
+            dbg s (fun () -> Printf.printf "%s\n" strrep);
             begin
             try
                let lexbuf = Lexing.from_string strrep in

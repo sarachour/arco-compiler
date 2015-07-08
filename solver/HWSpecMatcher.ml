@@ -44,8 +44,7 @@ struct
       ()
 
    let match_elem (template:SymLib.symenv) (expr:SymLib.symenv) : unit = 
-      let w = SymLib.load_env None template in
-      let w = SymLib.load_env (Some w) expr in
+      SymLib.find_matches template expr;
       ()
 
    let find (h:hsmatcher ref) (query:hwcomp) : unit = 
