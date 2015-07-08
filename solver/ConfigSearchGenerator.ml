@@ -15,63 +15,63 @@ type hwexpr = HWData.hwexpr
 type symenv = SymLib.symenv
 type wctype = SymLib.wctype
 
-module HWSpecMatcher : 
+module ConfigSearchGenerator : 
 sig
-   type hmentry = {
+   type cgen_entry = {
       sym : symenv;
       comp: hwcomp;
    }
-   type hmresult = {
+   type cgen_result = {
       assigns: (hwliteral*(hwexpr)) list;
    }
-   type hmentryresult = {
-      results: hmresult list;
-      entry: hmentry;
+   type cgen_entryresult = {
+      results: cgen_result list;
+      entry: cgen_entry;
    }
-   type hmentryresults = {
-      results: hmentryresult list
+   type cgen_entryresults = {
+      results: cgen_entryresult list
    }
 
-   type hsmatcher = {
-      mutable comps : hmentry list;
+   type cgen_searchspace = {
+      mutable comps : cgen_entry list;
    }
-   val init : unit -> hsmatcher 
-   val add_comp : hsmatcher ref -> hwcomp -> unit
-   val find : hsmatcher ref -> hwcomp -> hmentryresults option 
+   val init : unit -> cgen_searchspace 
+   val add_comp : cgen_searchspace ref -> hwcomp -> unit
+   val find : cgen_searchspace ref -> hwcomp -> cgen_entryresults option 
 end = 
 struct 
 
-   type hmentry = {
+   type cgen_entry = {
       sym : symenv;
       comp: hwcomp;
    }
 
-   type hmresult = {
+   type cgen_result = {
       assigns: (hwliteral*(hwexpr)) list;
    }
-   type hmentryresult = {
-      results: hmresult list;
-      entry: hmentry;
+   type cgen_entryresult = {
+      results: cgen_result list;
+      entry: cgen_entry;
    }
-   type hmentryresults = {
-      results: hmentryresult list
+   type cgen_entryresults = {
+      results: cgen_entryresult list
    }
 
-   type hsmatcher = {
-      mutable comps : hmentry list;
+   type cgen_searchspace = {
+      mutable comps : cgen_entry list;
    }
    
-   let init () : hsmatcher= 
+   let init () : cgen_searchspace= 
       let s = {comps=[]} in 
       s
 
-   let results2str (r:hmentryresults) : string= 
+   let results2str (r:cgen_entryresults) : string= 
       let spacing = "  " in
       let assign2str pfx (r:hwliteral*hwexpr):string = 
          let (lit,expr) = r in 
          pfx^(HWUtil.hwlit2str lit)^" = "^(HWUtil.hwexpr2str expr)
       in
-      let result2str pfx idx (r:hmresult) =
+      let result2str pfx idx (r:cgen_result) =
          let npfx = pfx^spacing in
          let wrap (x:hwliteral*hwexpr) (r:string) = 
             let s = assign2str npfx x in r^s^"\n" 
@@ -79,9 +79,9 @@ struct
          let results = List.fold_right wrap r.assigns "" in 
          pfx^"result "^(string_of_int idx)^":\n"^results
       in
-      let comp2str pfx (c:hmentryresult) = 
+      let comp2str pfx (c:cgen_entryresult) = 
          let npfx = pfx^spacing in
-         let wrap (x:hmresult) (v:int*string) =
+         let wrap (x:cgen_result) (v:int*string) =
             let (i,r) = v in 
             let s = result2str npfx i x in (i+1,r^s)
          in
@@ -95,7 +95,7 @@ struct
       in
       List.fold_right wrap r.results ""
 
-   let add_comp (h:hsmatcher ref) (comp:hwcomp) : unit = 
+   let add_comp (h:cgen_searchspace ref) (comp:hwcomp) : unit = 
       let se = HWSymLib.hwcomp2symenv comp "tmpl" true in 
       let cmp = {sym=se;comp=comp} in
       let cmps = cmp::((!h).comps) in 
@@ -128,7 +128,7 @@ struct
       let result = SymLib.find_matches (Some env) ntmpl expr in
       result
       
-   let match_all (x:hmentry) qsym : hmentryresult option = 
+   let match_all (x:cgen_entry) qsym : cgen_entryresult option = 
       let rec conv_assign (x:(string*symexpr) list) : (hwliteral*hwexpr) list = 
          match x with 
          | (n,e)::t -> 
@@ -137,7 +137,7 @@ struct
             (name,expr)::(conv_assign t)
          | [] -> []
       in
-      let conv_assign2res (x:(string*symexpr) list) : hmresult =
+      let conv_assign2res (x:(string*symexpr) list) : cgen_result =
          let l = conv_assign x in 
          {assigns=l} 
       in
@@ -150,9 +150,9 @@ struct
          | None -> None
    
 
-   let find (h:hsmatcher ref) (query:hwcomp) : hmentryresults option = 
+   let find (h:cgen_searchspace ref) (query:hwcomp) : cgen_entryresults option = 
       let qsym : symenv = HWSymLib.hwcomp2symenv query "qry" false in
-      let comps : hmentry list = (!h).comps in
+      let comps : cgen_entry list = (!h).comps in
       let rec conc l = match l with 
          |Some(x)::t -> x::(conc t) 
          |None::t -> (conc t)

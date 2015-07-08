@@ -5,7 +5,7 @@ open Util
 open GenericData
 open HWData
 open HWLib
-open HWConfigGenerator
+open ConfigSearch
 
 open HWSpecParser
 open HWSpecLexer
@@ -36,8 +36,8 @@ let process specname formula =
   }
   in
   let hw = compile_hwspec specname in 
-  let cenv = HWConfigGenerator.init Voltage hw in 
-  let config = HWConfigGenerator.convert cenv relenv in
+  let cenv = ConfigSearch.init Voltage hw in 
+  let config = ConfigSearch.convert cenv relenv in
   (**Format.printf "%s\n" (HWArch.arch2str hw);*)
   Format.printf "%s\n" (HWArch.config2str config)
 
