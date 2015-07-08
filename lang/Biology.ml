@@ -237,6 +237,11 @@ let main () =
 
       let diffeq_tbl = DiffEqCompiler.visit_env env in
       let diffeq_str = DiffEqTable.to_tex diffeq_tbl in
+      (*
+      let analog_tbl = CircuitCompiler.visit_env env in
+      let analog_str = CircuitTable.to_string analog_tbl in
+      let analog_json = CircuitTable.to_json analog_tbl in
+      *)
          Format.printf "%s\n" diffeq_str
    end
 ;;
