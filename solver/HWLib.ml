@@ -1,5 +1,8 @@
 open HWData
 open Util
+open SymCaml
+open SymCamlData
+open SymLib 
 
 exception HWLibException of string;;
 
@@ -20,7 +23,7 @@ struct
       | Voltage(v) -> "V("^v^")"
       | Current(v) -> "I("^v^")"
 
-   let rec hwexpr2str h = 
+   let rec hwexpr2str (h:hwexpr) = 
       let hwexprlst2str lst delim =
             begin
             match lst with
@@ -37,8 +40,10 @@ struct
       | Deriv(x) -> "\\frac{\\partial}{\\partial t}"^(hwexpr2str x)
       | Exp(x,y) -> "{"^(hwexpr2str x)^"}^{"^(hwexpr2str y)^"}"
       | NatExp(x) ->"e^{"^(hwexpr2str x)^"}"
+      | Decimal(x) -> string_of_float x 
+      | Integer(x) -> string_of_int x 
 
-   let rec hwrel2str r = 
+   let rec hwrel2str (r:hwrel) = 
       match r with
       | Eq(a,b) -> (hwexpr2str a)^"="^(hwexpr2str b)
       | Set(a,b) -> (hwlit2str a)^":="^(hwexpr2str b)
@@ -202,4 +207,82 @@ struct
    let arch2str a = HWSchem.schem2str a.schem
 end
 
+module HWSymLib :
+sig
+   type wildtype = Param | Var 
 
+   val wildtype_of_int : int -> wildtype
+   val hwcomp2symenv : hwcomp -> string -> bool -> SymLib.symenv
+end = 
+struct
+   type wildtype = Param | Var 
+   let int_of_wildtype w = match w with Param -> 0 | Var -> 1
+   let wildtype_of_int w = match w with 0 -> Param | 1 -> Var
+
+   let mangle ns (l:hwliteral) = 
+      let delim1 = "|" in 
+      let delim2 = "|" in
+      match l with 
+         | Current(x) -> ns^delim1^x^delim2^"I"
+         | Voltage(x) -> ns^delim1^x^delim2^"V"
+         | Parameter(x) -> ns^delim1^x^delim2^"P"
+
+   
+   let rec hwcomp2symenv (h:hwcomp) ns is_virt =
+      let rec hwexpr2symexpr (e:hwexpr) : symexpr = 
+         let exprlst2symexprlst lst = 
+            List.map (fun x -> hwexpr2symexpr x) lst 
+         in
+         match e with 
+         | Add(lst) -> Add(exprlst2symexprlst lst)
+         | Sub(lst) -> Sub(exprlst2symexprlst lst)
+         | Mult(lst) -> Mult(exprlst2symexprlst lst)
+         | Div(n,d) -> Div(hwexpr2symexpr n, hwexpr2symexpr d)
+         | Exp(b,e) -> Exp(hwexpr2symexpr b, hwexpr2symexpr e)
+         | NatExp(e) -> NatExp(hwexpr2symexpr e) 
+         | Deriv(e) -> Deriv(hwexpr2symexpr e, [("t",1)])
+         | Literal(Parameter(x)) -> 
+            begin
+            match List.filter (fun (n,v) -> n = x) h.params with
+            | [(n,Some(v))] -> Decimal(v)
+            | [(n,None)] -> Symbol(mangle ns (Parameter x))
+            | [] -> raise (SymLibException ("no parameter with name "^x))
+            | _ -> raise (SymLibException ("too many parameters with name "^x))
+            end
+         | Literal(x) -> (Symbol(mangle ns x))
+         | _ -> raise (SymLibException "unhandled symlib expr")
+      in 
+      let hwrel2symrel (r:hwrel) : symexpr = match r with 
+         |Eq(a,b) -> Eq((hwexpr2symexpr a),(hwexpr2symexpr b))
+         |Set(a,b) -> Eq((hwexpr2symexpr (Literal a)),(hwexpr2symexpr b))
+      in
+      let rec hwparam2symlst (r:(string*hwdecimal maybe) list) : string list = match r with 
+         |(n,Some(vl))::t -> (hwparam2symlst t)
+         |(n,None)::t -> (mangle ns (Parameter n))::(hwparam2symlst t)
+         |[] -> []
+      in
+      let rec hwidstrlst2symlst (r:(string*hwid) list)  : string list = match r with
+         |(n,id)::t -> 
+            let vn = (mangle ns (Voltage n)) in 
+            let cn = (mangle ns (Current n)) in
+            vn::cn::(hwidstrlst2symlst t)
+         | [] -> []
+      in
+      let rec symlst2symexlst (r:string list) (fn : string -> SymLib.wctype): SymLib.wctype list = 
+         match r with
+         | n::t -> let x = fn n in x::(symlst2symexlst t fn)
+         | [] -> []
+      in
+      let s : SymLib.symenv = {vars=[];wildcards=[];exprs=[];ns=ns} in
+      if is_virt then 
+         let vars = (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs) in
+         let params = (hwparam2symlst h.params) in 
+         let vvars = symlst2symexlst vars (fun x -> (int_of_wildtype Var,x,[])) in
+         let vparams = symlst2symexlst params (fun x -> (int_of_wildtype Param,x,[])) in
+         s.wildcards <- vvars @ vparams
+      else
+         s.vars <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs) @ (hwparam2symlst h.params)
+      ;
+      s.exprs <- List.map hwrel2symrel h.constraints;
+      s
+end
