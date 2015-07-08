@@ -16,7 +16,7 @@ sig
    }
    type wctype = int*string*(string list)
    val load_env : (SymCaml.symcaml option) -> symenv -> SymCaml.symcaml 
-   val find_matches : SymCaml.symcaml option -> symenv -> symenv -> unit
+   val find_matches : SymCaml.symcaml option -> symenv -> symenv -> (((string*symexpr) list) list) option
 end = 
 struct
    type symenv = {
@@ -39,20 +39,21 @@ struct
          | None -> 
             let e = SymCaml.init() in
             let _ = SymCaml.clear e in
-            SymCaml.define_symbol e "t";
+            let _ = SymCaml.define_symbol e "t" in
             e
          | Some(x) -> x
       in
-      List.iter (fun x -> SymCaml.define_symbol env x; ()) s.vars;
-      List.iter (fun (i,x,v) -> SymCaml.define_wildcard env x v; ()) s.wildcards;
-      List.iteri (
+      let _ = List.iter (fun x -> let _ = SymCaml.define_symbol env x in ()) s.vars in
+      let _ = List.iter (fun (i,x,v) -> let _ =  SymCaml.define_wildcard env x v in ()) s.wildcards in
+      let _ = List.iteri (
          fun idx x -> 
             let nm = mangle_expr s.ns idx in 
             SymCaml.define_expr env nm x; ()
-         ) s.exprs;
+         ) s.exprs 
+      in
       env
 
-   let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) : unit = 
+   let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) : (((string*symexpr) list) list) option = 
       let env = match e with 
          |None -> 
             let w = load_env None tmpl in
@@ -69,18 +70,38 @@ struct
       let proc i x j y = 
          let ni = mangle_expr qry.ns i in 
          let nj = mangle_expr tmpl.ns j in
-         Printf.printf "...running..\n";
-         match SymCaml.pattern env (Symbol ni) (Symbol nj) with 
-            | Some(x) -> Printf.printf "SOLUTION:\n%s\n" (matches2str x)
-            | None -> Printf.printf "NO SOLUTION\n"
+         SymCaml.pattern env (Symbol ni) (Symbol nj)
       in
-      List.iteri (
-         fun i x ->
-            List.iteri (
-               fun j y ->
-                  proc i x j y; ()
-            ) tmpl.exprs 
-      ) qry.exprs
+      let unify lst = 
+         let rec _unify (lst: ('a option) list) : ('a list) option =
+            match lst with 
+            |Some(x)::t -> 
+               begin
+               match _unify t with 
+                  | Some(l) -> Some(x::l)
+                  | None -> None 
+               end
+            | None::t -> None
+            |[] -> Some([])
+         in 
+         _unify lst 
+      in
+      let rec conc lst = 
+         match lst with 
+         |Some(x)::t -> x::(conc t)
+         |None::t -> conc t
+         | [] -> []
+      in
+      let twodlist = 
+         (*TODO - find multiple arg use case*)
+         conc (List.mapi (
+         fun i x -> unify (List.mapi ( fun j y -> proc i x j y ) qry.exprs)
+         ) tmpl.exprs)
+      in
+      let onedlist = List.fold_right (fun x r -> x @ r) twodlist [] in
+      match onedlist with 
+         | h::t -> Some(h::t)
+         | [] -> None
 
 
 
