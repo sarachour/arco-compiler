@@ -50,7 +50,6 @@ struct
       in
       List.iter (fun x -> SymCaml.define_wildcard env x []; ()) s.wildcards;
       List.iter (fun x -> SymCaml.define_symbol env x; ()) s.vars;
-      SymCaml.report env;
       List.iteri (
          fun idx x -> 
             let nm = mangle_expr s.ns idx in 
@@ -61,6 +60,8 @@ struct
    let find_matches (tmpl:symenv) (qry:symenv) : unit = 
       let w = load_env None tmpl in
       let env = load_env (Some w) qry in
+      SymCaml.set_debug w true;
+      SymCaml.report env;
       let proc i x j y = 
          let ni = mangle_expr qry.ns i in 
          let nj = mangle_expr tmpl.ns j in
@@ -114,11 +115,13 @@ struct
       in
       let s : symenv = {vars=[];wildcards=[];exprs=[];ns=ns} in
       if is_virt then 
-         s.wildcards <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs)
+         s.wildcards <- 
+            (hwidstrlst2symlst h.outputs) @ 
+            (hwidstrlst2symlst h.inputs) @ 
+            (hwparam2symlst h.params)
       else
-         s.vars <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs)
+         s.vars <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs) @ (hwparam2symlst h.params)
       ;
-      s.vars <- s.vars @ (hwparam2symlst h.params);
       s.exprs <- List.map hwrel2symrel h.constraints;
       s
 
