@@ -4,6 +4,8 @@ open SymCaml
 open SymCamlData
 open SymLib 
 
+open Str
+
 exception HWLibException of string;;
 
 module HWUtil :
@@ -231,13 +233,32 @@ struct
          | Voltage(x) -> ns^delim1^x^delim2^"V"
          | Parameter(x) -> ns^delim1^x^delim2^"P"
 
-   let symvar2hwliteral n = Current("a")
+   let symvar2hwliteral n = 
+      match Str.split (Str.regexp "|") n with 
+      | [ns;name;"V"] -> Voltage(name)
+      | [ns;name;"I"] -> Current(name)
+      | [ns;name;"P"] -> Parameter(name)
+      | _ -> raise (HWLibException ("Unknown literal "^n))
 
-   let symexpr2hwrel e : hwrel = 
-      Eq(Literal(Current("a")), Literal(Current("b")))
+   let rec symexpr2hwexpr (e:symexpr) : hwexpr = 
+      let symexprlst2hwexprlst lst = 
+            List.map (fun x -> symexpr2hwexpr x) lst 
+      in
+      match e with 
+         | Add(lst) -> Add (symexprlst2hwexprlst lst)
+         | Sub(lst) -> Add (symexprlst2hwexprlst lst)
+         | Mult(lst) -> Add (symexprlst2hwexprlst lst)
+         | Div(a,b) -> Div(symexpr2hwexpr a,symexpr2hwexpr b)
+         | Exp(a,b) -> Exp (symexpr2hwexpr a,symexpr2hwexpr b)
+         | NatExp(a) -> NatExp (symexpr2hwexpr a)
+         | Symbol(e) -> Literal (symvar2hwliteral e)
+         | Deriv(e,dlst) -> Deriv(symexpr2hwexpr e)
+         | Integer(i) -> Integer(i)
+         | Decimal(d) -> Decimal(d)
+         | _ -> Literal(Current("?"))
    
-   let symexpr2hwexpr e : hwexpr= 
-      Literal(Current("a"))
+   let symexpr2hwrel e : hwrel= 
+      Eq(Literal(Current("?")), Literal(Current("?")))
 
    let rec hwcomp2symenv (h:hwcomp) ns is_virt =
       let rec hwexpr2symexpr (e:hwexpr) : symexpr = 

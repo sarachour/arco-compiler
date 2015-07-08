@@ -61,7 +61,6 @@ struct
             e
          |Some(e) -> e
       in
-      SymCaml.report env;
       let rec matches2str (lst:(string*symexpr) list): string =
          match lst with 
          | (name,e)::t ->name^" = "^(SymCaml.expr2py env e)^"\n"^(matches2str t)
