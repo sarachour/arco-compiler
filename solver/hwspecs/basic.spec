@@ -14,6 +14,13 @@ component vmul2 {
    enforce | O.V = K*B.V*A.V;
 }
 
+component vinteg {
+   in A;
+   out O;
+   param C;
+   enforce | deriv(O.V) = A.V;
+}
+
 
 schematic main {
    wire v1; 
@@ -31,6 +38,7 @@ schematic main {
 
    elem add0: vadd2;
    elem mul0: vmul2;
+   elem integ0: vinteg;
 
    join v1 to add0.A;
    join v2 to add0.B;
