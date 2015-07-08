@@ -213,11 +213,15 @@ sig
 
    val wildtype_of_int : int -> wildtype
    val hwcomp2symenv : hwcomp -> string -> bool -> SymLib.symenv
+   val symvar2hwliteral : string -> hwliteral
+   val symexpr2hwexpr : symexpr -> hwexpr 
+   val symexpr2hwrel : symexpr -> hwrel
 end = 
 struct
    type wildtype = Param | Var 
    let int_of_wildtype w = match w with Param -> 0 | Var -> 1
-   let wildtype_of_int w = match w with 0 -> Param | 1 -> Var
+   let wildtype_of_int w = match w with 0 -> Param | 1 -> Var 
+      | _ -> raise (HWLibException "unexpected int to wildtype")
 
    let mangle ns (l:hwliteral) = 
       let delim1 = "|" in 
@@ -227,7 +231,14 @@ struct
          | Voltage(x) -> ns^delim1^x^delim2^"V"
          | Parameter(x) -> ns^delim1^x^delim2^"P"
 
+   let symvar2hwliteral n = Current("a")
+
+   let symexpr2hwrel e : hwrel = 
+      Eq(Literal(Current("a")), Literal(Current("b")))
    
+   let symexpr2hwexpr e : hwexpr= 
+      Literal(Current("a"))
+
    let rec hwcomp2symenv (h:hwcomp) ns is_virt =
       let rec hwexpr2symexpr (e:hwexpr) : symexpr = 
          let exprlst2symexprlst lst = 

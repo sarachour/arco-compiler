@@ -1,6 +1,5 @@
 open Sys
 open Core
-open Core.Std
 
 open SymCaml
 open SymLib
@@ -66,6 +65,35 @@ struct
       let s = {comps=[]} in 
       s
 
+   let results2str (r:hmentryresults) : string= 
+      let spacing = "  " in
+      let assign2str pfx (r:hwliteral*hwexpr):string = 
+         let (lit,expr) = r in 
+         pfx^(HWUtil.hwlit2str lit)^" = "^(HWUtil.hwexpr2str expr)
+      in
+      let result2str pfx idx (r:hmresult) =
+         let npfx = pfx^spacing in
+         let wrap (x:hwliteral*hwexpr) (r:string) = 
+            let s = assign2str npfx x in r^s^"\n" 
+         in
+         let results = List.fold_right wrap r.assigns "" in 
+         pfx^"result "^(string_of_int idx)^":\n"^results
+      in
+      let comp2str pfx (c:hmentryresult) = 
+         let npfx = pfx^spacing in
+         let wrap (x:hmresult) (v:int*string) =
+            let (i,r) = v in 
+            let s = result2str npfx i x in (i+1,r^s)
+         in
+         let (_,results) = List.fold_right wrap c.results (0,"") in
+         let (n,id) = c.entry.comp.id in
+         pfx^"comp "^n^" ("^(HWUtil.hwid2str id)^"):\n"^results^"\n"
+      in
+      let wrap x r = 
+         let s = comp2str "" x in 
+         r^s 
+      in
+      List.fold_right wrap r.results ""
 
    let add_comp (h:hsmatcher ref) (comp:hwcomp) : unit = 
       let se = HWSymLib.hwcomp2symenv comp "tmpl" true in 
@@ -83,7 +111,7 @@ struct
          else
             (id,name,excepts)
       in
-      let nwc = List.map tmpl.wildcards handle_param_vars in 
+      let nwc = List.map handle_param_vars tmpl.wildcards  in 
       let ntmpl : symenv={
          ns=tmpl.ns;
          wildcards=nwc; 
@@ -91,15 +119,16 @@ struct
          exprs=tmpl.exprs
       } in
       let env = SymLib.load_env None expr in
-      SymCaml.set_debug env true;
       let env = SymLib.load_env (Some env) ntmpl in
-      SymCaml.set_debug env false;
       SymLib.find_matches (Some env) ntmpl expr 
       
    let match_all (x:hmentry) qsym : hmentryresult option = 
       let rec conv_assign (x:(string*symexpr) list) : (hwliteral*hwexpr) list = 
          match x with 
-         | h::t -> conv_assign t 
+         | (n,e)::t -> 
+            let name = HWSymLib.symvar2hwliteral n in
+            let expr = HWSymLib.symexpr2hwexpr e in
+            (name,expr)::(conv_assign t)
          | [] -> []
       in
       let conv_assign2res (x:(string*symexpr) list) : hmresult =
@@ -110,7 +139,7 @@ struct
       Printf.printf "matching: %s\n" name; 
       match match_elem x.sym qsym with
          | Some(res) -> 
-            let all_assigns = List.map res conv_assign2res  in 
+            let all_assigns = List.map conv_assign2res res in 
             Some({entry=x; results=all_assigns})
          | None -> None
    
@@ -123,11 +152,19 @@ struct
          |None::t -> (conc t)
          |[] -> [] 
       in
-      let abslist = List.map comps (fun x -> match_all x qsym) in 
+      let abslist = List.map (fun x -> match_all x qsym) comps in 
       let conclist = conc abslist in
       match conclist with
-         |h::t -> Some({results=h::t})
-         |[] -> None 
-
+         |h::t ->
+            begin
+            let res = {results=h::t} in
+            Printf.printf "%s\n" (results2str res);
+            Some(res)
+            end
+         |[] -> 
+            begin
+            Printf.printf "No Results..\n";
+            None 
+            end
    
 end

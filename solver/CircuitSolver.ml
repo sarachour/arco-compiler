@@ -1,6 +1,5 @@
 open Sys
 open Core
-open Core.Std
 
 open Util
 open GenericData
