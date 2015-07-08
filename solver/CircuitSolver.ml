@@ -36,7 +36,7 @@ let process specname formula =
   }
   in
   let hw = compile_hwspec specname in 
-  let cenv = HWConfigGenerator.init Current hw in 
+  let cenv = HWConfigGenerator.init Voltage hw in 
   let config = HWConfigGenerator.convert cenv relenv in
   (**Format.printf "%s\n" (HWArch.arch2str hw);*)
   Format.printf "%s\n" (HWArch.config2str config)

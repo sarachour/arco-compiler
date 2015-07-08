@@ -103,15 +103,19 @@ struct
       ()
 
    let match_elem (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option =
-      let handle_param_vars (v:wctype) : wctype = 
-         let (id,name,excepts) = v in
-         if (HWSymLib.wildtype_of_int id) = HWSymLib.Param then
-            let nexcepts = excepts @ expr.vars in 
-            (id,name,nexcepts)
-         else
-            (id,name,excepts)
+      let handle_wcs (v:wctype) (conc:symenv) : wctype = 
+         let (id,name,excepts) = v in 
+         let typ = HWSymLib.symvar2hwliteral name in 
+         let filti x = match HWSymLib.symvar2hwliteral x with Current(x) -> true | _ -> false in 
+         let filtv x = match HWSymLib.symvar2hwliteral x with Voltage(x) -> true | _ -> false in 
+         let vvars = List.filter filtv conc.vars in
+         let ivars = List.filter filti conc.vars in
+         match typ with 
+         | Current(x) -> (id,name,excepts@vvars)
+         | Voltage(x) -> (id,name,excepts@ivars)
+         | Parameter(x) -> (id,name,excepts@conc.vars)
       in
-      let nwc = List.map handle_param_vars tmpl.wildcards  in 
+      let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in 
       let ntmpl : symenv={
          ns=tmpl.ns;
          wildcards=nwc; 
@@ -120,7 +124,9 @@ struct
       } in
       let env = SymLib.load_env None expr in
       let env = SymLib.load_env (Some env) ntmpl in
-      SymLib.find_matches (Some env) ntmpl expr 
+      SymCaml.report env;
+      let result = SymLib.find_matches (Some env) ntmpl expr in
+      result
       
    let match_all (x:hmentry) qsym : hmentryresult option = 
       let rec conv_assign (x:(string*symexpr) list) : (hwliteral*hwexpr) list = 

@@ -36,7 +36,8 @@ struct
       mutable tmp: pyobject;
    }
    let null = pynull()
-
+   let none = pynone()
+   
    let run x = 
       let _ = pyrun_simplestring(x) in 
       ()
@@ -218,7 +219,7 @@ struct
                begin
                let result = pyeval_callobjectwithkeywords(fn,fargs,null) in
                   handle_err();
-                  if result = null then None else Some(result)
+                  if result = null || result = none then None else Some(result)
                end
             
          end
