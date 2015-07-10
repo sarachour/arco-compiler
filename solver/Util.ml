@@ -8,38 +8,37 @@ type id = int*(string option)
 
 module StringMap = Map.Make (String)
 
-(*
-module SymbolTable : 
-sig
-  type symtable = {
-    mutable fid: int ref;
-    mutable map: id StringMap.t ref;
-  }
-  val create : unit -> symtable 
-  val add : symtable -> string -> id 
-  val get: symtable -> string -> id
-  val make : symtable -> id 
-
+module OptUtils : sig 
+  val conc : ('a option) list -> 'a list
+  val unify_all : ('a option) list -> ('a list) option
+  val unify_atleast_one : ('a option) list -> ('a list) option
 end = 
 struct
-  type symtable = {
-    mutable fid: int ref;
-    mutable map: id StringMap.t ref;
-  }
-  let create() = {fid=(ref 0); map=(ref StringMap.empty)}
-  let add s name = 
-    let fid = s.fid in
-    let id = (!fid, Some name) in
-    fid := !fid + 1;
-    s.map := StringMap.add name id !(s.map);
-    id
+  let rec conc l = match l with 
+    |Some(x)::t -> x::(conc t) 
+    |None::t -> (conc t)
+    |[] -> [] 
 
-  let make s = add s ("_var"^(string_of_int !(s.fid)))
-  let get s name = StringMap.find name !(s.map)
+  let rec unify_all l = match l with 
+    |Some(x)::t -> 
+      begin
+      match unify_all t with 
+      | Some(y) -> Some(x::y)
+      | None -> None
+      end
+    |None::t -> None
+    |[] -> Some([]) 
 
+  let rec unify_atleast_one l = match l with 
+    |Some(x)::t -> 
+      begin
+      match unify_atleast_one t with 
+      | Some(y) -> Some(x::y)
+      | None -> Some([x])
+      end
+    |None::t -> None
+    |[] -> None
 end
-*)
-
 
 let sanitize s : string = 
   let rec _sanitize (lst: char list) (cap:bool): char list = 

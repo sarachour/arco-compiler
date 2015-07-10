@@ -1,6 +1,7 @@
 open Sys
 open Core
 
+open Util
 open SymCaml
 open SymLib
 open GenericData
@@ -38,14 +39,15 @@ sig
    val init : unit -> cgen_searchspace 
    val add_comp : cgen_searchspace ref -> hwcomp -> unit
    val find : cgen_searchspace ref -> hwcomp -> cgen_entryresults option 
+   val results2str : cgen_entryresults -> string
 end = 
 struct 
 
+   
    type cgen_entry = {
-      sym : symenv;
+      sym: symenv;
       comp: hwcomp;
    }
-
    type cgen_result = {
       assigns: (hwliteral*(hwexpr)) list;
    }
@@ -153,13 +155,8 @@ struct
    let find (h:cgen_searchspace ref) (query:hwcomp) : cgen_entryresults option = 
       let qsym : symenv = HWSymLib.hwcomp2symenv query "qry" false in
       let comps : cgen_entry list = (!h).comps in
-      let rec conc l = match l with 
-         |Some(x)::t -> x::(conc t) 
-         |None::t -> (conc t)
-         |[] -> [] 
-      in
       let abslist = List.map (fun x -> match_all x qsym) comps in 
-      let conclist = conc abslist in
+      let conclist = OptUtils.conc abslist in
       match conclist with
          |h::t ->
             begin

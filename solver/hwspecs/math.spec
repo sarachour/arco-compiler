@@ -21,6 +21,13 @@ component vinteg {
    enforce | deriv(O.V) = A.V;
 }
 
+component vintegsum {
+   in A;
+   in B;
+   out O;
+   enforce | deriv(O.V) = A.V + B.V;
+}
+
 
 schematic main {
    wire v1; 
@@ -39,6 +46,7 @@ schematic main {
    elem add0: vadd2;
    elem mul0: vmul2;
    elem integ0: vinteg;
+   elem integsum: vintegsum;
 
    join v1 to add0.A;
    join v2 to add0.B;
