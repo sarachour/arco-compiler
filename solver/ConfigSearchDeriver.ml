@@ -91,7 +91,6 @@ struct
             ()
       in
       let rec _traverse (g:goalnode) : goalnode = 
-         rep "debug" g;
          match g with 
          | GUnsolvedNode(x) -> 
             rep "unsolved node" g;
@@ -100,12 +99,10 @@ struct
             wait();
             _traverse g
          | GSolutionNode(g,d,lst) ->
-            let nlst = lst in 
-            (*let nlst = List.map (fun x -> _traverse x ) lst in*) 
+            let nlst = List.map (fun x -> _traverse x ) lst in
             GSolutionNode(g,d,nlst)
          | GMultipleSolutionNode(lst) -> 
-            let nlst = lst in 
-            (*let nlst = List.map (fun x -> _traverse x ) lst in*) 
+            let nlst = List.map (fun x -> _traverse x ) lst in
             begin
             match List.filter (fun x -> match x with GNoSolutionNode -> false | _ -> true) nlst with 
                | [] -> GNoSolutionNode 
