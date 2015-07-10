@@ -14,6 +14,10 @@ sig
    val hwlit2str : hwliteral -> string
    val hwexpr2str : hwexpr -> string 
    val hwrel2str : hwrel -> string
+
+   val hwexpr2literals : hwexpr -> hwliteral list 
+   val hwrel2literals : hwrel -> hwliteral list 
+   
 end =
 struct 
    let hwid2str h = match h with
@@ -36,12 +40,12 @@ struct
       match h with   
       | Add(lst) -> hwexprlst2str lst "+"
       | Sub(lst) -> hwexprlst2str lst "-"
-      | Div(x,y) -> "\\frac{"^(hwexpr2str x)^"}{"^(hwexpr2str y)^"}"
       | Mult(lst) -> hwexprlst2str lst "\\cdot"
-      | Literal(l) -> hwlit2str l
-      | Deriv(x) -> "\\frac{\\partial}{\\partial t}"^(hwexpr2str x)
+      | Div(x,y) -> "\\frac{"^(hwexpr2str x)^"}{"^(hwexpr2str y)^"}"
       | Exp(x,y) -> "{"^(hwexpr2str x)^"}^{"^(hwexpr2str y)^"}"
+      | Deriv(x) -> "\\frac{\\partial}{\\partial t}"^(hwexpr2str x)
       | NatExp(x) ->"e^{"^(hwexpr2str x)^"}"
+      | Literal(l) -> hwlit2str l
       | Decimal(x) -> string_of_float x 
       | Integer(x) -> string_of_int x 
 
@@ -49,6 +53,27 @@ struct
       match r with
       | Eq(a,b) -> (hwexpr2str a)^"="^(hwexpr2str b)
       | Set(a,b) -> (hwlit2str a)^":="^(hwexpr2str b)
+
+   let rec hwexpr2literals (h:hwexpr) : hwliteral list = 
+      let hwexprlst2literals lst : hwliteral list = 
+         List.fold_right (fun x r -> (hwexpr2literals x) @ r) lst []
+      in
+      match h with 
+      |Add(lst) -> hwexprlst2literals lst
+      |Sub(lst) -> hwexprlst2literals lst
+      |Mult(lst) -> hwexprlst2literals lst
+      |Literal(l) -> [l]
+      |Deriv(x) -> hwexpr2literals x
+      |NatExp(x) -> hwexpr2literals x
+      |Exp(x,y) -> (hwexpr2literals x) @ (hwexpr2literals y)
+      |Div(x,y) -> (hwexpr2literals x) @ (hwexpr2literals y)
+      | _ -> []
+      
+
+   let hwrel2literals (r:hwrel) : hwliteral list = 
+      match r with 
+      |Eq(a,b) -> (hwexpr2literals a) @ (hwexpr2literals b)
+      |Set(a,b) -> a::(hwexpr2literals b)
 
 end
 

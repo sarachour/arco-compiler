@@ -3,77 +3,68 @@ open HWData
 open GenericData
 open GenericLib
 open ConfigSearchGenerator
-open ConfigSearchPruner
+open ConfigSearchDeriver
 
 open Util
 
 exception ConfigSearchException of string;;
 
-type analogy  = GenericHWLib.analogy
-type cgen_entryresults = ConfigSearchGenerator.cgen_entryresults
-type cgen_entryresult = ConfigSearchGenerator.cgen_entryresult
-type cgen_entry = ConfigSearchGenerator.cgen_entry
-type cgen_result = ConfigSearchGenerator.cgen_result
 
 module ConfigSearch : 
 sig
+   type analogy  = GenericHWLib.analogy
+   type goaltree  = ConfigSearchDeriver.goaltree
+
    type gencfg = {
       analogy: analogy;
       arch: hwarch; 
-      searcher: ConfigSearchGenerator.cgen_searchspace; 
+      components: hwcomp list; 
+      mutable goals: goaltree;
       mutable config: hwconfig; 
    }
+
    val init : analogy -> hwarch -> gencfg
    val convert : gencfg -> genv -> hwconfig
 end =
 struct
+   type analogy  = GenericHWLib.analogy
+   type goaltree  = ConfigSearchDeriver.goaltree
+   type goal  = ConfigSearchDeriver.goal
+   type goalnode  = ConfigSearchDeriver.goalnode
+
    type gencfg = {
       analogy: analogy;
       arch: hwarch; 
-      searcher: ConfigSearchGenerator.cgen_searchspace; 
+      components: hwcomp list; 
+      mutable goals: goaltree;
       mutable config: hwconfig; 
    }
+   
+
    let init anlgy arch : gencfg = 
-      let c = HWArch.create_config() in
-      let m = ConfigSearchGenerator.init() in
-      let rm = ref m in 
-      let rec proc_comps (e:hwelem) : unit = match e with
-         | Component(c) -> ConfigSearchGenerator.add_comp rm c
+      let rec proc_comps (e:hwelem) : hwcomp list = match e with
+         | Component(c) -> c::[]
          | Schematic(s) -> 
-            List.iter (fun (n,x) -> (proc_comps x)) s.elems
+            List.fold_right (fun (n,x) r -> (proc_comps x) @ r) s.elems []
          | _ -> raise (ConfigSearchException "unimplemented proc_comps")
       in
-      proc_comps (Schematic arch.schem);
-      {analogy=anlgy; arch=arch; config=c; searcher=m}
+      let c = HWArch.create_config() in
+      let comps = proc_comps (Schematic arch.schem) in 
+      let g : goaltree = GNoSolutionNode in
+      {analogy=anlgy; arch=arch; config=c; components=comps; goals=g}
 
-
-   let rec explore (c:gencfg) (rel:hwcomp) = 
-      let per_assign (h:cgen_entry)  (lit,expr) : cgen_entryresults option = 
-         Printf.printf "%s = %s\n" (HWUtil.hwlit2str lit) (HWUtil.hwexpr2str expr);
-         None
+   let traverse (c:gencfg) = 
+      let traverse_elem (gl:goal) : goalnode = 
+         let res = ConfigSearchGenerator.find c.components gl in 
+         res
       in
-      let per_result (h:cgen_entry) (c:cgen_result) : (cgen_entryresults list) option = 
-         let sols = List.map (per_assign h) c.assigns in
-         OptUtils.unify_all sols
-
-      in
-      let per_comp (c:cgen_entryresult) : ((cgen_entryresults list) list) option  = 
-         let results = List.map (per_result c.entry) c.results in
-         OptUtils.unify_atleast_one results
-      in
-      let comps = ConfigSearchGenerator.find (ref (c.searcher)) rel in
-      match comps with 
-         | Some x -> 
-            begin
-               Printf.printf "%s\n" (ConfigSearchGenerator.results2str x);
-               let sols = List.map per_comp x.results in
-               OptUtils.unify_atleast_one sols
-            end
-         | None -> Printf.printf "no solution."; None
+      ConfigSearchDeriver.traverse c.goals traverse_elem
 
    let convert (c:gencfg) (rel:genv)= 
       let hrel = GenericHWLib.genv2hwcomp (c.analogy) rel in
-      let _ = explore c hrel in 
+      let initial_goal =  ConfigSearchDeriver.make_goal None hrel in
+      c.goals <- GUnsolvedNode(initial_goal);
+      let _ = traverse c in 
       c.config
 
 
