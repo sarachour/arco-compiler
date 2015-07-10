@@ -79,7 +79,7 @@ struct
       let t_lits = List.map (fun lb -> let ty = get_vtype lb in (lb,ty)) lits in 
       let t_ins = List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "output" | _ -> false ) t_lits in
       let t_outs = List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "input" | _ -> false ) t_lits in
-      let t_params = List.filter (fun (lb,d) -> match lb with Parameter(x) -> true ) t_lits in 
+      let t_params = List.filter (fun (lb,d) -> match lb with Parameter(x) -> true | _ -> false) t_lits in 
       let f_ins : (string*hwid) list= 
          List.map (fun (lb,d) -> match d with Some(x) -> x | _ -> raise (HWLibException "must have id.")) t_ins 
       in

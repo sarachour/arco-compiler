@@ -58,7 +58,7 @@ struct
          let res = ConfigSearchGenerator.find c.components gl in 
          res
       in
-      ConfigSearchDeriver.traverse c.goals traverse_elem
+      ConfigSearchDeriver.traverse c.goals traverse_elem true
 
    let convert (c:gencfg) (rel:genv)= 
       let hrel = GenericHWLib.genv2hwcomp (c.analogy) rel in
