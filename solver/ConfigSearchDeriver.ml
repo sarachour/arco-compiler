@@ -77,13 +77,21 @@ struct
       let rep pref g = if interactive then Printf.printf "%s: %s\n" pref (goaltree2str g) else ()
       in
       let wait () =  
-            if interactive then 
+            if interactive then  
+               begin
+               Printf.printf "press any key to continue (q to quit):\n";
+               flush_all();
                let line = input_line stdin in
-               Printf.printf "inputted: %s\n" line
+               if line = "q" then 
+                  exit 0 
+               else
+                  ()
+               end
             else 
             ()
       in
       let rec _traverse (g:goalnode) : goalnode = 
+         rep "debug" g;
          match g with 
          | GUnsolvedNode(x) -> 
             rep "unsolved node" g;
@@ -92,10 +100,12 @@ struct
             wait();
             _traverse g
          | GSolutionNode(g,d,lst) ->
-            let nlst = List.map (fun x -> _traverse x ) lst in 
+            let nlst = lst in 
+            (*let nlst = List.map (fun x -> _traverse x ) lst in*) 
             GSolutionNode(g,d,nlst)
          | GMultipleSolutionNode(lst) -> 
-            let nlst = List.map (fun x -> _traverse x) lst in
+            let nlst = lst in 
+            (*let nlst = List.map (fun x -> _traverse x ) lst in*) 
             begin
             match List.filter (fun x -> match x with GNoSolutionNode -> false | _ -> true) nlst with 
                | [] -> GNoSolutionNode 
