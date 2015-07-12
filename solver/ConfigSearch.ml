@@ -45,7 +45,7 @@ struct
       let rec proc_comps (e:hwelem) : hwcomp list = match e with
          | Component(c) -> c::[]
          | Schematic(s) -> 
-            List.fold_right (fun (n,x) r -> (proc_comps x) @ r) s.elems []
+            List.fold_right (fun x r -> (proc_comps x) @ r) s.elems []
          | _ -> raise (ConfigSearchException "unimplemented proc_comps")
       in
       let c = HWArch.create_config() in
@@ -55,8 +55,11 @@ struct
 
    let traverse (c:gencfg) = 
       let traverse_elem (gl:goal) : goalnode = 
-         let res = ConfigSearchGenerator.find c.components gl in 
-         res
+         match ConfigSearchGenerator.is_trivial gl with 
+         | Some(c) -> c
+         |None -> 
+            let res = ConfigSearchGenerator.find c.components gl in 
+            res
       in
       ConfigSearchDeriver.traverse c.goals traverse_elem true
 

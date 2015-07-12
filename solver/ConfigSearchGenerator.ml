@@ -21,6 +21,7 @@ sig
 
    val find_one : hwcomp -> goal -> goalnode
    val find : hwcomp list -> goal -> goalnode
+   val is_trivial :  goal -> goalnode option
    val hwexpr2comp : hwcomp list -> hwliteral -> hwexpr -> hwcomp
 end = 
 struct 
@@ -34,9 +35,34 @@ struct
 
    
 
-   let rec hwexpr2comp (tmpls:hwcomp list) (lbl:hwliteral) (expr:hwexpr) = 
+   let rec hwexpr2comp (tmpls:hwcomp list) (lbl:hwliteral) (expr:hwexpr) =
+      let rec flip_sym (x:hwsymbol): hwsymbol = match x with 
+         | Input(v) -> Output(v)
+         | Output(v) -> Input(v)
+         | Param(v) -> Param(v)
+         | FixedParam(v,n) -> FixedParam(v,n)
+         | Namespace(ns,v) -> Namespace(ns,flip_sym v)
+      in
+      let flip_expr (x:hwexpr) : hwexpr option = match x with 
+         | Literal(Voltage(x)) -> Some (Literal(Voltage(flip_sym x)))
+         | Literal(Current(x)) -> Some (Literal(Current(flip_sym x)))
+         | _ -> None
+      in
+      let lhs = Literal lbl in 
+      let rhs = expr in 
+      let nexpr = Eq(HWUtil.map2expr lhs flip_expr,rhs) in 
+      let nports = HWUtil.hwrel2symbols nexpr in 
+      let nm = List.fold_right (fun (x:hwcomp) r-> r^"."^(x.ns)) tmpls "interim" in 
+      let c = {
+         ports=nports;
+         constraints=[nexpr];
+         ns=nm
+      } 
+      in 
+      c
+   (*
       let lits = lbl::(HWUtil.hwexpr2literals expr) in
-      let get_vtype_from_one (x:hwliteral) (y:hwcomp) : (string*hwid) option = 
+      let get_vtype_from_one (x:hwliteral) (ns:string) (y:hwcomp) : (string*(string*hwid)) option = 
          let check_lst (fn:'a -> string) (name:string) (lst:'a list) : 'a option =
             let proc x r = 
                let cnm = fn x in 
@@ -45,14 +71,14 @@ struct
             in
             List.fold_right proc lst None
          in 
-         let check_both x : (string*hwid) option = 
+         let check_both name : (string*(string*hwid)) option = 
             let inp : ((string*hwid) option) = 
-               check_lst (fun (a,b) -> a) x y.inputs in
+               check_lst (fun (tag,b) -> HWSymLib.symbolname2ns ns tag) name y.inputs in
             let outp : ((string*hwid) option) = 
-               check_lst (fun (a,b) -> a) x y.outputs in
+               check_lst (fun (tag,b) -> HWSymLib.symbolname2ns ns tag) name y.outputs in
             match (inp,outp) with 
-            |(Some(_,x),None) -> Some ("input",x)
-            |(None,Some(_,x)) -> Some ("output",x)
+            |(Some(x),None) -> Some ("input",x)
+            |(None,Some(x)) -> Some ("output",x)
             |(Some(_),Some(_)) -> raise (HWLibException "duplicate variable name.")
             |(None,None) -> None
          in
@@ -61,12 +87,9 @@ struct
          |Current(x) -> check_both x
          |Parameter(x) -> None
       in
-      let get_vtype (lb:hwliteral) : (string*hwid) option = 
-         let proc cmp r = match get_vtype_from_one lb cmp with 
-         | Some x -> x::r 
-         | None -> r
-         in
-         match List.fold_right proc tmpls [] with
+      let get_vtype (lb:hwliteral) : (string*(string*hwid)) option = 
+         let proc c = let (ns,cmp) = c in get_vtype_from_one lb ns cmp in 
+         match OptUtils.conc (List.map proc tmpls) with
             |[h] -> Some(h) 
             |[] -> 
                begin
@@ -74,119 +97,112 @@ struct
                | Parameter(x) -> None 
                | _ -> raise (HWLibException "not defined anywhere...")
                end 
-            |h1::h2::t -> raise (HWLibException "too many declarations...")
+            |h1::h2::t -> raise (HWLibException (
+               "too many declarations: "^
+               (List.fold_right (fun (t,(name,id)) r -> r^","^name ) (h1::h2::t) ""))
+            )
       in 
-      let t_lits = List.map (fun lb -> let ty = get_vtype lb in (lb,ty)) lits in 
-      let t_ins = List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "output" | _ -> false ) t_lits in
-      let t_outs = List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "input" | _ -> false ) t_lits in
-      let t_params = List.filter (fun (lb,d) -> match lb with Parameter(x) -> true | _ -> false) t_lits in 
+      Printf.printf "--- COMPS ---\n%s\n--------\n"  
+         (List.fold_right ( fun (v,x) r -> r^v^":"^(HWComp.comp2str x) ) tmpls "" );
+      let t_lits : (hwliteral*((string*(string*hwid))) option) list = 
+         List.map (fun lb -> let ty = get_vtype lb in (lb,ty)) lits in 
+      let t_ins = 
+         List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "output" | _ -> false ) t_lits 
+      in
+      let t_outs = 
+         List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "input" | _ -> false ) t_lits 
+      in
+      let t_params = 
+         List.filter (fun (lb,d) -> match lb with Parameter(x) -> true | _ -> false) t_lits 
+      in 
       let f_ins : (string*hwid) list= 
-         List.map (fun (lb,d) -> match d with Some(x) -> x | _ -> raise (HWLibException "must have id.")) t_ins 
+         List.map (
+            fun (lb,d) -> 
+            match d with Some(ty,(lbl,id)) -> (lbl,id) 
+            | _ -> raise (HWLibException "must have id.")
+         ) t_ins 
       in
       let f_outs : (string*hwid) list = 
-         List.map (fun (lb,d) -> match d with Some(x) -> x | _ -> raise (HWLibException "must have id.")) t_outs
+         List.map (
+            fun (lb,d) -> 
+            match d with Some(ty,(lbl,id)) -> (lbl,id) 
+            | _ -> raise (HWLibException "must have id.")
+         ) t_outs 
       in
       let f_params : hwparam list = 
          List.map (fun (lb,d) -> match lb with Parameter(x) -> (x,None) | _ -> raise (HWLibException "must be param.")) t_params
       in
-      {
+      let c = {
          inputs=f_ins;
          outputs=f_outs;
          params=f_params;
-         constraints=[(Eq(Literal(lbl),expr))];
+         constraints=[HWSymLib.rmns4rel (Eq(Literal(lbl),expr))];
          id=("none",nullid)
-      }
-
-   (*
-   let init () : cgen_searchspace= 
-      let s = {comps=[]} in 
-      s
-
-   let results2str (r:cgen_entryresults) : string= 
-      let spacing = "  " in
-      let assign2str pfx (r:hwliteral*hwexpr):string = 
-         let (lit,expr) = r in 
-         pfx^(HWUtil.hwlit2str lit)^" = "^(HWUtil.hwexpr2str expr)
-      in
-      let result2str pfx idx (r:cgen_result) =
-         let npfx = pfx^spacing in
-         let wrap (x:hwliteral*hwexpr) (r:string) = 
-            let s = assign2str npfx x in r^s^"\n" 
-         in
-         let results = List.fold_right wrap r.assigns "" in 
-         pfx^"result "^(string_of_int idx)^":\n"^results
-      in
-      let comp2str pfx (c:cgen_entryresult) = 
-         let npfx = pfx^spacing in
-         let wrap (x:cgen_result) (v:int*string) =
-            let (i,r) = v in 
-            let s = result2str npfx i x in (i+1,r^s)
-         in
-         let (_,results) = List.fold_right wrap c.results (0,"") in
-         let (n,id) = c.entry.comp.id in
-         pfx^"comp "^n^" ("^(HWUtil.hwid2str id)^"):\n"^results^"\n"
-      in
-      let wrap x r = 
-         let s = comp2str "" x in 
-         r^s 
-      in
-      List.fold_right wrap r.results ""
-
-   let add_comp (h:cgen_searchspace ref) (comp:hwcomp) : unit = 
-      let se = HWSymLib.hwcomp2symenv comp "tmpl" true in 
-      let cmp = {sym=se;comp=comp} in
-      let cmps = cmp::((!h).comps) in 
-      (!h).comps <- cmps;
-      ()
+      } 
+      in 
+      Printf.printf  "%s\n" (HWComp.comp2str c);
+      c
    *)
+
+   let is_trivial (g:goal) : goalnode option = 
+      match List.nth (g.value.constraints) 0 with 
+         |Eq(Literal(x),Literal(v)) -> Some GTrivialNode 
+         |Eq(Literal(x),Integer(v)) -> Some GTrivialNode 
+         |Eq(Literal(x),Decimal(v)) -> Some GTrivialNode 
+         | _ -> None
+
    let find_one (t:hwcomp) (g:goal) : goalnode =
-      let tmpl = HWSymLib.hwcomp2symenv t "tmpl" true in 
-      let expr = HWSymLib.hwcomp2symenv (g.value) "expr" false in 
-      let handle_wcs (v:wctype) (conc:symenv) : wctype = 
-         let (id,name,excepts) = v in 
-         let typ = HWSymLib.symvar2hwliteral name in 
-         let filti x = match HWSymLib.symvar2hwliteral x with Current(x) -> true | _ -> false in 
-         let filtv x = match HWSymLib.symvar2hwliteral x with Voltage(x) -> true | _ -> false in 
-         let vvars = List.filter filtv conc.vars in
-         let ivars = List.filter filti conc.vars in
-         match typ with 
-         | Current(x) -> (id,name,excepts@vvars)
-         | Voltage(x) -> (id,name,excepts@ivars)
-         | Parameter(x) -> (id,name,excepts@conc.vars)
-      in
-      let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in 
-      let ntmpl : symenv={
-         ns=tmpl.ns;
-         wildcards=nwc; 
-         vars=tmpl.vars; 
-         exprs=tmpl.exprs
-      } in
-      let env = SymLib.load_env None expr in
-      let env = SymLib.load_env (Some env) ntmpl in
-      (*SymCaml.report env;*)
-      let result : (((string*symexpr) list) list) option= SymLib.find_matches (Some env) ntmpl expr in
-      match result with
-         | Some(sol) ->
-            let subgoals2nodelist (n,e) : goalnode= 
-               let name = HWSymLib.symvar2hwliteral n in
-               let expr = HWSymLib.symexpr2hwexpr e in
-               let comp = hwexpr2comp [t;g.value] name expr in
-               let gl = ConfigSearchDeriver.make_goal (Some name) comp in
-               GUnsolvedNode(gl) 
-            in
-            let goals2nodelist lst  : goalnode= 
-               let nlst = List.map subgoals2nodelist lst in 
-               let dlt : delta = DUseComponent(t) in
-               GSolutionNode(g,dlt,nlst)
-            in
-            let nlst : goalnode list = List.map goals2nodelist sol in 
-            begin
-            match nlst with
-            | [h] -> h 
-            | h::t -> GMultipleSolutionNode(h::t)
-            | [] -> GNoSolutionNode
-            end
-         | None -> GNoSolutionNode
+      match is_trivial g with
+      | Some(x) -> x 
+      | None -> 
+         begin
+         let tmpl = HWSymLib.hwcomp2symenv t true in 
+         let expr = HWSymLib.hwcomp2symenv (g.value) false in 
+         let handle_wcs (v:wctype) (conc:symenv) : wctype = 
+            let (id,name,excepts) = v in 
+            let typ = HWSymLib.symvar2hwliteral name in 
+            let filti x = match HWSymLib.symvar2hwliteral x with Current(x) -> true | _ -> false in 
+            let filtv x = match HWSymLib.symvar2hwliteral x with Voltage(x) -> true | _ -> false in 
+            let vvars = List.filter filtv conc.vars in
+            let ivars = List.filter filti conc.vars in
+            match typ with 
+            | Current(x) -> (id,name,excepts@vvars)
+            | Voltage(x) -> (id,name,excepts@ivars)
+         in
+         let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in 
+         let ntmpl : symenv={
+            ns=tmpl.ns;
+            wildcards=nwc; 
+            vars=tmpl.vars; 
+            exprs=tmpl.exprs
+         } in
+         let env = SymLib.load_env None expr in
+         let env = SymLib.load_env (Some env) ntmpl in
+         let result : (((string*symexpr) list) list) option= SymLib.find_matches (Some env) ntmpl expr in
+         match result with
+            | Some(sol) ->
+               let subgoals2nodelist (n,e) : goalnode= 
+                  let name = HWSymLib.symvar2hwliteral n in
+                  let expr = HWSymLib.symexpr2hwexpr e in
+                  let comp = hwexpr2comp [t;g.value] name expr in
+                  let gl = ConfigSearchDeriver.make_goal (Some name) comp in
+                  GUnsolvedNode(gl) 
+               in
+               let goals2nodelist lst  : goalnode= 
+                  let nlst = List.map subgoals2nodelist lst in 
+                  let dlt : delta = DUseComponent(t) in
+                  GSolutionNode(g,dlt,nlst)
+               in
+               let nlst : goalnode list = List.map goals2nodelist sol in 
+               begin
+               match nlst with
+               | [h] -> h 
+               | h::t -> GMultipleSolutionNode(h::t)
+               | [] -> GNoSolutionNode
+               end
+            | None -> GNoSolutionNode
+         end
+
 
    let find (t:hwcomp list) (g:goal) : goalnode =
       let clump_goals (c:hwcomp) (y:goalnode) : goalnode = 
@@ -203,45 +219,5 @@ struct
       in
       let search_sol = List.fold_right clump_goals t GNoSolutionNode in 
       search_sol
-   (*
-   let match_all (x:cgen_entry) qsym : cgen_entryresult option = 
-      let rec conv_assign (x:(string*symexpr) list) : (hwliteral*hwexpr) list = 
-         match x with 
-         | (n,e)::t -> 
-            let name = HWSymLib.symvar2hwliteral n in
-            let expr = HWSymLib.symexpr2hwexpr e in
-            (name,expr)::(conv_assign t)
-         | [] -> []
-      in
-      let conv_assign2res (x:(string*symexpr) list) : cgen_result =
-         let l = conv_assign x in 
-         {assigns=l} 
-      in
-      let (name, _) = x.comp.id in
-      Printf.printf "matching: %s\n" name; 
-      match match_elem x.sym qsym with
-         | Some(res) -> 
-            let all_assigns = List.map conv_assign2res res in 
-            Some({entry=x; results=all_assigns})
-         | None -> None
    
-
-   let find (h:cgen_searchspace ref) (query:hwcomp) : cgen_entryresults option = 
-      let qsym : symenv = HWSymLib.hwcomp2symenv query "qry" false in
-      let comps : cgen_entry list = (!h).comps in
-      let abslist = List.map (fun x -> match_all x qsym) comps in 
-      let conclist = OptUtils.conc abslist in
-      match conclist with
-         |h::t ->
-            begin
-            let res = {results=h::t} in
-            Printf.printf "%s\n" (results2str res);
-            Some(res)
-            end
-         |[] -> 
-            begin
-            Printf.printf "No Results..\n";
-            None 
-            end
-   *)
 end

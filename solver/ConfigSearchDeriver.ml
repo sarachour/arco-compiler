@@ -30,6 +30,7 @@ sig
       | GUnsolvedNode of goal 
       | GMultipleSolutionNode of goalnode list
       | GNoSolutionNode
+      | GTrivialNode
 
    type goaltree = goalnode
 
@@ -63,14 +64,15 @@ struct
       | GUnsolvedNode of goal 
       | GMultipleSolutionNode of goalnode list
       | GNoSolutionNode
+      | GTrivialNode
 
    type goaltree = goalnode
 
    let __spacing = "  "
 
    let rec _delta2str (prefix:string) (d:delta) : string = match d with 
-      | DUseComponent(hwcomp) -> let (n,id) = hwcomp.id in
-         prefix^"use component "^n^"("^(HWUtil.hwid2str id)^")"
+      | DUseComponent(hwcomp) -> let ns = hwcomp.ns in
+         prefix^"use component "^ns
       | DAddWire(expr,src,Some(sink)) ->
          let sexpr = HWUtil.hwexpr2str expr in 
          prefix^sexpr^" : "^src^" -> "^sink
@@ -100,7 +102,7 @@ struct
       | GMultipleSolutionNode(lst) -> 
          prefix^"multiple solutions:\n"^
          (_goallist2str lst)
-      | _ -> prefix^"unhandled\n"
+      | GTrivialNode -> prefix^"trivial.\n"
 
    let delta2str (d:delta) : string = _delta2str "" d 
    let goal2str (d:goal) : string = _goal2str "" d
@@ -153,6 +155,7 @@ struct
                | h::t -> GMultipleSolutionNode(h::t)
             end
          | GNoSolutionNode -> GNoSolutionNode
+         | GTrivialNode -> GTrivialNode
       in 
          _traverse gt
 

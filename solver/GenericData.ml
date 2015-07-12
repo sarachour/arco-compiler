@@ -2,10 +2,17 @@ open Util
 
 type gdecimal = float
 type gint = int
+type gvar = string
+
+type gsymbol = 
+  | Param of string 
+  | FixedParam of string*gdecimal 
+  | Input of string 
+  | Output of string
+
 
 type gliteral = 
-	| Symbol of string
-	| Parameter of string
+	| Symbol of gsymbol
 	
 type gexpr = 
 	| Literal of gliteral
@@ -25,7 +32,6 @@ type grel =
 
 type genv = {
 	rel: grel;
-	inputs: string list;
-	outputs: string list;
-	params: (string*(gdecimal option)) list
+	ports: gsymbol list;
+	ns: string
 }

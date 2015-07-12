@@ -7,9 +7,38 @@ open Util
 
 exception ParserError of string;;
 
+type meta = {
+   mutable syms: hwsymbol list;
+   ns: string
+}
 let arch = HWLib.HWArch.create()
-let st = arch.st
 let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
+
+let meta_data: meta = {syms=[]; ns=""}
+
+let _meta : meta ref = ref meta_data
+
+let meta_clear ns = 
+   _meta := {syms=[]; ns=ns}
+
+let meta_put (n:hwsymbol) =
+   (!_meta).syms <- (Namespace ((!_meta).ns,n))::(!_meta).syms 
+
+let meta_get (n:string) : hwsymbol option= 
+   let rec names_match e = match e with
+   | Input(x) -> x = n
+   | Output(x) -> x = n
+   | Param(x) -> x = n
+   | FixedParam(x,v) -> x = n
+   | Namespace(v,x) -> names_match x 
+   in
+   match List.filter names_match (!_meta).syms with 
+      |[] -> None 
+      |[h] -> Some(h)
+      |_ -> raise (ParserError "too many defined symbols.")
+
+let meta_ns () =
+   (!_meta).ns
 
 %}
 
@@ -36,10 +65,6 @@ let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 %type <string*HWData.hwcomp> component
 %type <string*HWData.hwelem> elem
 
-%type <HWData.hwire> wire
-%type <hwterm> entry
-%type <hwterm list> entrylist
-%type <hwterm*(hwterm list)> join
 
 %type <HWData.hwrel> rel
 %type <HWData.hwexpr> expr_pe
@@ -74,14 +99,21 @@ toplevel:
 literal:
    | TOKEN DOT TOKEN {
       let prop = $3 and vname = $1 in
-      match prop with
-         |"V" -> Voltage (vname)
-         |"I" -> Current (vname)
-         | _ -> raise (ParserError ("Unknown property "^prop))
+      match meta_get vname with 
+      | Some(x) ->
+         begin
+         match prop with
+            |"V" -> Voltage (x)
+            |"I" -> Current (x)
+            | _ -> raise (ParserError ("Unknown property "^prop))
+         end
+      | None -> raise (ParserError ("Symbol not found "^vname)) 
    }
    | TOKEN {
       let name = $1 in
-      Parameter(name)
+      match meta_get name with 
+      | Some(x) -> Voltage (x)
+      | None -> raise (ParserError ("Symbol not found "^name)) 
    }
 ;
 
@@ -128,28 +160,32 @@ rel:
 component:
    | COMPONENT TOKEN OBRACE {
       let name = $2 in
-      let hid = HWSymTbl.add st name in 
-      let c = HWComp.create name hid in
+      let c = HWComp.create name in
+      meta_clear name;
       (name, c)
    }
    | component INPUT_PIN TOKEN SEMICOLON {
       let (name,c) = $1 and n = $3 in 
-      let newc = HWComp.add_input c n nullid in
+      let newc = HWComp.add_input c n in
+      meta_put (Input n);
       (name,newc)
    }
    | component OUTPUT_PIN TOKEN SEMICOLON {
       let (name,c) = $1 and n = $3 in 
-      let newc = HWComp.add_output c n nullid in
+      let newc = HWComp.add_output c n in
+      meta_put (Output n);
       (name,newc)
    }
    | component PARAM TOKEN SEMICOLON {
       let (name,c) = $1 and n = $3 in 
       let newc = HWComp.add_param c n None in
+      meta_put (Param n);
       (name,newc)
    }
    | component PARAM TOKEN DECIMAL SEMICOLON {
       let (name,c) = $1 and n = $3 and v = $4 in 
       let newc = HWComp.add_param c n (Some v) in
+      meta_put (FixedParam(n,v));
       (name,newc)
    }
    | component RELATION VBAR rel SEMICOLON {
@@ -160,47 +196,22 @@ component:
    | component CBRACE {let (name,c) = $1 in (name,c)}  
 ;
 
-wire:
-   WIRE TOKEN SEMICOLON { let name = $2 in let hid = HWSymTbl.add st name in {id=(name,hid);conns=[]} }
-;
-
 elem:
    ELEM TOKEN COLON TOKEN SEMICOLON {
       let kind = $4 in
       let name = $2 in
       let elem = Util.StringMap.find kind !(cmap) in
-      let newelem = HWElem.clone (fun (n:string) -> HWSymTbl.add st n) elem in 
+      let newelem = HWElem.clone elem in 
       (name,newelem)
    }
 ;
 
-entry:
-   | TOKEN DOT TOKEN {let ename = $1 and eport = $3 in Port(ename,eport)}
-   | TOKEN {let wname = $1 in Wire(wname)}
-
-entrylist:
-   |entry entrylist {let h = $1 and t = $2 in h::t}
-   |entry {let h = $1 in [h]}
-;
-
-join:
-   | JOIN entry TO entrylist SEMICOLON {let src = $2 and dest = $4 in 
-      match (src,dest) with
-      |(Wire(_),_) -> (src,dest)
-      |(Port(_,_),[Wire(x)]) -> (Wire(x),[src])
-      |_ -> raise (ParserError "cannot connect port to multiple wires with join command.") 
-   }
 
 schem:
    SCHEMATIC TOKEN OBRACE {
       let name = $2 in 
-      let hid = HWSymTbl.add st name in 
-      let nsc = HWSchem.create name hid in 
-      (name,nsc)}
-   | schem wire {
-      let w = $2 and (n,sc) = $1 in 
-      let nsc = HWSchem.add_wire sc w in
-      (n,nsc)
+      let nsc = HWSchem.create name in 
+      (name,nsc)
    }
    | schem elem {
       let (name_elem,e) = $2 and (name_sch,sc) = $1 in 
@@ -210,22 +221,14 @@ schem:
 
    | schem INPUT_PIN TOKEN SEMICOLON {
       let (name,sc) = $1 and n = $3 in 
-      let nsc = HWSchem.add_input sc n nullid in
+      let nsc = HWSchem.add_input sc n in
       (name,nsc)
    }
 
    | schem OUTPUT_PIN TOKEN SEMICOLON {
       let (name,sc) = $1 and n = $3 in 
-      let nsc = HWSchem.add_output sc n nullid in
+      let nsc = HWSchem.add_output sc n in
       (name,nsc)
-   }
-
-   | schem join {
-      let (n,sc) = $1 and (src,dest) = $2 in 
-         match src with
-         | Wire(wire_name) -> let nsc =  HWSchem.add_joins sc wire_name dest in 
-            (n,nsc)
-         | _ -> raise (ParserError "cannot connect port to multiple wires with join command.") 
    }
    | schem CBRACE {let (n,sc) = $1 in (n,sc)}
 ;

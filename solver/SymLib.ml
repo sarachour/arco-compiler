@@ -28,7 +28,7 @@ struct
    type wctype = int*string*(string list)
    
    let mangle_expr ns idx =
-      let delim1 = "|" in 
+      let delim1 = "$" in 
       let delim2 = "|" in
       ns^delim1^"expr"^delim2^(string_of_int idx)
 

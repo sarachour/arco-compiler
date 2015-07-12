@@ -11,12 +11,24 @@ exception HWLibException of string;;
 module HWUtil :
 sig
    val hwid2str : hwid -> string
+   val hwsym2str : hwsymbol -> string
    val hwlit2str : hwliteral -> string
    val hwexpr2str : hwexpr -> string 
    val hwrel2str : hwrel -> string
 
-   val hwexpr2literals : hwexpr -> hwliteral list 
-   val hwrel2literals : hwrel -> hwliteral list 
+   val hwexpr2symbols : hwexpr -> hwsymbol list 
+   val hwrel2symbols  : hwrel -> hwsymbol list 
+
+   val scrubns4literal : hwliteral -> string option -> hwliteral 
+   val scrubns4expr : hwexpr -> string option -> hwexpr 
+   val scrubns4rel : hwrel -> string option -> hwrel
+
+   val wrapns4literal : hwliteral -> string -> hwliteral
+   val wrapns4expr : hwexpr -> string -> hwexpr 
+   val wrapns4rel : hwrel -> string -> hwrel
+
+   val map2expr : hwexpr -> (hwexpr -> hwexpr option) -> hwexpr 
+   val map2rel : hwrel -> (hwexpr -> hwexpr option) -> hwrel
    
 end =
 struct 
@@ -24,10 +36,16 @@ struct
       |(i,Some(n)) -> (string_of_int i)^"."^n
       |(i,None) -> (string_of_int i)
    
-   let hwlit2str h = match h with
-      | Parameter(p) -> p 
-      | Voltage(v) -> "V("^v^")"
-      | Current(v) -> "I("^v^")"
+   let rec hwsym2str h = match h with
+      |Input(x) -> "i:"^x
+      |Output(x) -> "o:"^x
+      |Param(x) -> "p:"^x 
+      |FixedParam(x,d) -> x^":"^(string_of_float d)
+      |Namespace(x,v) -> x^"."^(hwsym2str v)
+
+   let rec hwlit2str h = match h with
+      | Voltage(v) -> "V("^(hwsym2str v)^")"
+      | Current(v) -> "I("^(hwsym2str v)^")"
 
    let rec hwexpr2str (h:hwexpr) = 
       let hwexprlst2str lst delim =
@@ -54,57 +72,175 @@ struct
       | Eq(a,b) -> (hwexpr2str a)^"="^(hwexpr2str b)
       | Set(a,b) -> (hwlit2str a)^":="^(hwexpr2str b)
 
-   let rec hwexpr2literals (h:hwexpr) : hwliteral list = 
-      let hwexprlst2literals lst : hwliteral list = 
-         List.fold_right (fun x r -> (hwexpr2literals x) @ r) lst []
+   let _make_symbols_unique (lst: hwsymbol list) : hwsymbol list =
+      match lst with 
+         | a::b -> 
+            let tl = List.filter (fun x -> x <> a) b in a::tl 
+         | [] -> []
+
+   let hwexpr2symbols (h:hwexpr) : hwsymbol list = 
+      let rec _hwexpr2symbols (h:hwexpr) : hwsymbol list = 
+         let hwexprlst2symbols lst : hwsymbol list = 
+            List.fold_right (fun x r -> (_hwexpr2symbols x) @ r) lst []
+         in
+         match h with 
+         |Add(lst) -> hwexprlst2symbols lst
+         |Sub(lst) -> hwexprlst2symbols lst
+         |Mult(lst) -> hwexprlst2symbols lst
+         |Literal(Voltage(l)) -> [l]
+         |Literal(Current(l)) -> [l]
+         |Deriv(x) -> _hwexpr2symbols x
+         |NatExp(x) -> _hwexpr2symbols x
+         |Exp(x,y) -> (_hwexpr2symbols x) @ (_hwexpr2symbols y)
+         |Div(x,y) -> (_hwexpr2symbols x) @ (_hwexpr2symbols y)
+         | _ -> []
       in
-      match h with 
-      |Add(lst) -> hwexprlst2literals lst
-      |Sub(lst) -> hwexprlst2literals lst
-      |Mult(lst) -> hwexprlst2literals lst
-      |Literal(l) -> [l]
-      |Deriv(x) -> hwexpr2literals x
-      |NatExp(x) -> hwexpr2literals x
-      |Exp(x,y) -> (hwexpr2literals x) @ (hwexpr2literals y)
-      |Div(x,y) -> (hwexpr2literals x) @ (hwexpr2literals y)
-      | _ -> []
-      
+      let hunc = _hwexpr2symbols h in 
+      _make_symbols_unique hunc 
 
-   let hwrel2literals (r:hwrel) : hwliteral list = 
+   let hwrel2symbols (r:hwrel) : hwsymbol list = 
       match r with 
-      |Eq(a,b) -> (hwexpr2literals a) @ (hwexpr2literals b)
-      |Set(a,b) -> a::(hwexpr2literals b)
+      |Eq(a,b) -> _make_symbols_unique ((hwexpr2symbols a) @ (hwexpr2symbols b))
+      |Set(Voltage(a),b) -> _make_symbols_unique (a::(hwexpr2symbols b))
+      |Set(Current(a),b) -> _make_symbols_unique (a::(hwexpr2symbols b))
 
+
+   let scrubns4literal (l:hwliteral) (ns: string option) : hwliteral = 
+      let rec scrubns4symbols (s:hwsymbol) : hwsymbol = match s with 
+         | Namespace(n,e) -> 
+            begin
+            match (n,ns) with 
+            |(curr_name, Some(ns)) -> if curr_name = ns then (scrubns4symbols e) else s
+            |(_, None) -> scrubns4symbols e
+            end
+         | _ -> s
+      in
+      match l with 
+      | Current(s) -> Current (scrubns4symbols s) 
+      | Voltage(s) -> Current (scrubns4symbols s)
+
+   let scrubns4expr (e:hwexpr) (ns:string option) =
+      let rec _scrubsns4expr (h:hwexpr) : hwexpr = 
+         let scrubsns4exprlst lst : hwexpr list = 
+            List.fold_right (fun x r -> (_scrubsns4expr x)::r) lst []
+         in
+         match h with 
+         |Add(lst) -> Add (scrubsns4exprlst lst)
+         |Sub(lst) -> Sub (scrubsns4exprlst lst)
+         |Mult(lst) -> Mult (scrubsns4exprlst lst)
+         |Literal(l) -> Literal(scrubns4literal l ns)
+         |Deriv(x) -> Deriv (_scrubsns4expr x)
+         |NatExp(x) -> NatExp (_scrubsns4expr x)
+         |Exp(x,y) -> Exp (_scrubsns4expr x,_scrubsns4expr y)
+         |Div(x,y) -> Div (_scrubsns4expr x,_scrubsns4expr y)
+         | a -> a
+      in
+      let nunc = _scrubsns4expr e in 
+      nunc
+
+   let scrubns4rel (r:hwrel) (ns:string option) : hwrel = 
+      match r with 
+      |Eq(a,b) -> Eq(scrubns4expr a ns, scrubns4expr b ns)
+      |Set(a,b) -> Set(scrubns4literal a ns, scrubns4expr b ns)
+
+   let wrapns4literal l ns = 
+      match l with 
+      | Voltage(s) -> Voltage(Namespace(ns,s))
+      | Current(s) -> Current(Namespace(ns,s))
+
+   let wrapns4expr ex ns = 
+      let rec _wrapns4expr (h:hwexpr) : hwexpr = 
+         let wrapns4exprlst lst : hwexpr list = 
+            List.fold_right (fun x r -> (_wrapns4expr x)::r) lst []
+         in
+         match h with 
+         |Add(lst) -> Add (wrapns4exprlst lst)
+         |Sub(lst) -> Sub (wrapns4exprlst lst)
+         |Mult(lst) -> Mult (wrapns4exprlst lst)
+         |Literal(l) -> Literal(wrapns4literal l ns)
+         |Deriv(x) -> Deriv (_wrapns4expr x)
+         |NatExp(x) -> NatExp (_wrapns4expr x)
+         |Exp(x,y) -> Exp (_wrapns4expr x,_wrapns4expr y)
+         |Div(x,y) -> Div (_wrapns4expr x,_wrapns4expr y)
+         | a -> a
+      in
+      let nunc = _wrapns4expr ex in 
+      nunc
+   let wrapns4rel (r:hwrel) (ns:string) : hwrel = 
+      match r with 
+      |Eq(a,b) -> Eq(wrapns4expr a ns, wrapns4expr b ns)
+      |Set(a,b) -> Set(wrapns4literal a ns, wrapns4expr b ns)
+
+   let map2expr (ex:hwexpr) (fn:hwexpr -> hwexpr option) : hwexpr = 
+      let rec _map2expr (h:hwexpr) : hwexpr = 
+      let map2exprlst lst : hwexpr list = 
+            List.map _map2expr lst
+         in
+         let res = fn h in 
+         match res with 
+         | None ->
+            begin
+            match h with 
+            |Add(lst) -> Add (map2exprlst lst)
+            |Sub(lst) -> Sub (map2exprlst lst)
+            |Mult(lst) -> Mult (map2exprlst lst)
+            |Deriv(x) -> Deriv (_map2expr x)
+            |NatExp(x) -> NatExp (_map2expr x)
+            |Exp(x,y) -> Exp (_map2expr x,_map2expr y)
+            |Div(x,y) -> Div (_map2expr x,_map2expr y)
+            | other -> other
+            end
+         |Some(x) -> x
+      in 
+      _map2expr ex
+
+   let map2rel (r:hwrel) (fn: hwexpr -> hwexpr option) : hwrel = 
+      match r with 
+      |Eq(a,b) -> Eq(map2expr a fn, map2expr b fn)
+      |Set(a,b) -> 
+         begin 
+         let y = map2expr b fn in 
+         match fn (Literal a) with 
+         | Some(Literal(x)) -> Set(x, y)
+         | _ -> Set(a, y)
+         end
 end
 
 
 module HWComp :
 sig
-   val create : string -> hwid -> hwcomp 
-   val add_input : hwcomp -> string-> hwid -> hwcomp
-   val add_output : hwcomp -> string-> hwid -> hwcomp
+   val create : string -> hwcomp 
+   val add_input : hwcomp -> string -> hwcomp
+   val add_output : hwcomp -> string-> hwcomp
    val add_param : hwcomp -> string -> hwdecimal option-> hwcomp
-   val bind : hwcomp -> string -> hwid -> hwcomp
-   val clone :(string -> hwid) -> hwcomp-> hwcomp
    val add_constraint: hwcomp -> hwrel -> hwcomp
+   (*
+   val bind : hwcomp -> string -> hwid -> hwcomp
+   *)
    val comp2str : hwcomp -> string
+   val clone : hwcomp-> hwcomp
 end = 
 struct
-   let create name hwid : hwcomp = 
-      {inputs=[];outputs=[];params=[];constraints=[];id=(name,hwid)}
+   let create ns : hwcomp = 
+      {ports=[];constraints=[];ns=ns}
    
-   let add_input (c:hwcomp) name hwid : hwcomp = 
-      c.inputs <- (name,hwid)::c.inputs; c
+   let add_input (c:hwcomp) (name:string) : hwcomp = 
+      c.ports <- (Namespace(c.ns,(Input name)))::c.ports; c
 
-   let add_output (c:hwcomp) name hwid : hwcomp = 
-      c.outputs <- (name,hwid)::c.outputs; c
+   let add_output (c:hwcomp) (name:string) : hwcomp = 
+      c.ports <- (Namespace(c.ns,(Output name)))::c.ports; c
 
    let add_param (c:hwcomp) name value = 
-      c.params <- (name,value)::c.params; c
+      let new_id = match value with 
+         |Some(v) -> Namespace(c.ns,(FixedParam(name,v) ))
+         |None -> Namespace(c.ns,(Param name))
+      in
+      c.ports <-new_id::c.ports; c
 
    let add_constraint (c:hwcomp) rel = 
       c.constraints <- rel::c.constraints; c
 
+   (*
    let bind (c:hwcomp) (name) (id) = 
       let bind_to_var (n,x) = if n == name then (n,id) else (n,x) in
       c.inputs <- List.map bind_to_var c.inputs;
@@ -112,90 +248,86 @@ struct
       c.id <- bind_to_var c.id;
       c
 
-   let clone (genid: string->hwid)  (c:hwcomp)=
-      let (name, id) = c.id in
-      let prefix = "comp_"^name^"_" in
-      let copy_var (n,x) = let newx = genid (prefix^n) in (n,newx) in
-      c.inputs <- List.map copy_var c.inputs;
-      c.outputs <- List.map copy_var c.outputs;
-      c.id <- copy_var c.id;
-      c
+   *)
+   let clone (c:hwcomp) : hwcomp =
+      {ns=c.ns; ports=c.ports; constraints=c.constraints}
 
    let comp2str (c:hwcomp) : string = 
-      let print_param p = match p with
-         |(n, Some(v)) -> "    param "^n^" = "^(string_of_float v)^"\n"
-         |(n, None) -> "   param "^n^" = ?\n"
-      in
-      let print_input (n,i) = "   in "^n^" := "^(HWUtil.hwid2str i)^"\n" in
-      let print_output (n,i) = "   out "^n^" := "^(HWUtil.hwid2str i)^"\n" in
+      let print_port i = "   port "^(HWUtil.hwsym2str i)^"\n" in
       let print_relation r = "   rel "^(HWUtil.hwrel2str r)^"\n" in
       let rec print_list func lst = match lst with
          |h::t -> (func h)^(print_list func t)
          |[] -> ""
       in
-      let (name,nid) = c.id in
-      name^":="^(HWUtil.hwid2str nid)^"\n"^
-      (print_list (print_param) c.params)^
-      (print_list (print_input) c.inputs)^
-      (print_list (print_output) c.outputs)^
+      let name = c.ns in
+      name^";\n"^
+      (print_list (print_port) c.ports)^
       (print_list (print_relation) c.constraints)
 end
 
 module HWElem :
 sig
    val elem2str : hwelem -> string
-   val clone :  (string->hwid) -> hwelem-> hwelem
+   val clone :  hwelem-> hwelem
 end = 
 struct 
    let elem2str e = match e with
       | Component(x) -> HWComp.comp2str x
       | _ -> "unsupported.\n"
 
-   let clone f e = match e with
-      |Component(x) -> Component (HWComp.clone f x)
+   let clone e = match e with
+      |Component(x) -> Component (HWComp.clone x)
       | _ -> raise (HWLibException "cloning other elements unsupported.")
 
 end
 
 module HWSchem :
 sig
-   val create : string->hwid -> hwschem
-   val schem2str: hwschem -> string
-   val add_input: hwschem -> string -> hwid -> hwschem
-   val add_output: hwschem -> string -> hwid -> hwschem
+   val create : string -> hwschem
+   val add_input: hwschem -> string -> hwschem
+   val add_output: hwschem -> string -> hwschem
+   (*
    val add_wire: hwschem -> hwire -> hwschem
+
    val add_joins: hwschem -> string -> hwterm list -> hwschem
+   *)
    val add_elem: hwschem -> string -> hwelem -> hwschem
+   val schem2str: hwschem -> string
 end = 
 struct
-   let create name hwid : hwschem = 
-      {inputs=[];outputs=[];elems=[];wires=[];id=(name,hwid)}
+   let create name : hwschem = 
+      {ports=[];elems=[];ns=name}
 
+   (*
    let add_wire sc w =
       sc.wires <- w::sc.wires; sc
+   *)
 
    let add_elem sc n e =
-      sc.elems <- (n,e)::sc.elems; sc
+      sc.elems <- e::sc.elems; sc
 
-   let add_input (c:hwschem) name hwid : hwschem = 
-      c.inputs <- (name,hwid)::c.inputs; c
+   let add_input (c:hwschem) name : hwschem = 
+      let new_id = Namespace(c.ns, Input(name)) in
+      c.ports <- new_id::c.ports; c
 
-   let add_output (c:hwschem) name hwid : hwschem = 
-      c.outputs <- (name,hwid)::c.outputs; c
+   let add_output (c:hwschem) name : hwschem = 
+      let new_id = Namespace(c.ns, Output(name)) in
+      c.ports <- new_id::c.ports; c
 
-
+   (*
    let add_joins sc wire_name js = 
       let results = List.filter (fun {id=(n,i);conns=lst} -> n = wire_name) sc.wires in
             match results with
             | [wire] -> wire.conns <- js @ wire.conns; sc
             | [] -> raise (HWLibException ("no wires with name "^wire_name^" exist in schematic."))
             | _ ->raise (HWLibException ("too many wires with name "^wire_name^" exist in schematic."))
-
-   let schem2str h = 
+   *)
+   let schem2str (h:hwschem) : string = 
       let rec list2str func ws = match ws with
          | h::t -> (func h )^(list2str func t)
          | [] -> ""
       in 
+      (*
       let in2str (n,id) = "in "^n^" := "^(HWUtil.hwid2str id)^"\n" in
       let out2str (n,id) = "out "^n^" := "^(HWUtil.hwid2str id)^"\n" in 
       let join2str js = match js with
@@ -208,12 +340,12 @@ struct
             "wire "^name^"=["^join_str^"]\n"
          | _ -> raise (HWLibException "unexpected type for wire.")
       in
-      let elem2str (n,e) = n^" -> "^HWElem.elem2str e in
+      *)
+      let port2str e = HWUtil.hwsym2str e in 
+      let elem2str e = "unknown"^" -> "^HWElem.elem2str e in
       
-         "schematic:\n"^
-         (list2str in2str h.inputs)^
-         (list2str out2str h.outputs)^
-         (list2str wire2str h.wires)^
+         "schematic: "^h.ns^"\n"^
+         (list2str port2str h.ports)^
          (list2str elem2str h.elems)
 
 end
@@ -227,10 +359,8 @@ sig
 end =
 struct
    let create () = 
-      let st = HWSymTbl.create() in
-      let sid = HWSymTbl.add st "root" in
-      {schem=HWSchem.create "root" (sid); st=st}
-   let create_config () = Constraints([])
+      {schem=HWSchem.create "root"}
+   let create_config () = None
    let config2str c = ""
    let arch2str a = HWSchem.schem2str a.schem
 end
@@ -240,10 +370,13 @@ sig
    type wildtype = Param | Var 
 
    val wildtype_of_int : int -> wildtype
-   val hwcomp2symenv : hwcomp -> string -> bool -> SymLib.symenv
+   val hwcomp2symenv : hwcomp -> bool -> SymLib.symenv
+   
+
    val symvar2hwliteral : string -> hwliteral
-   val symexpr2hwexpr : symexpr -> hwexpr 
+   val symexpr2hwexpr : symexpr  -> hwexpr 
    val symexpr2hwrel : symexpr -> hwrel
+
 end = 
 struct
    type wildtype = Param | Var 
@@ -251,42 +384,70 @@ struct
    let wildtype_of_int w = match w with 0 -> Param | 1 -> Var 
       | _ -> raise (HWLibException "unexpected int to wildtype")
 
-   let mangle ns (l:hwliteral) = 
-      let delim1 = "|" in 
-      let delim2 = "|" in
-      match l with 
-         | Current(x) -> ns^delim1^x^delim2^"I"
-         | Voltage(x) -> ns^delim1^x^delim2^"V"
-         | Parameter(x) -> ns^delim1^x^delim2^"P"
-
-   let symvar2hwliteral n = 
-      match Str.split (Str.regexp "|") n with 
-      | [ns;name;"V"] -> Voltage(name)
-      | [ns;name;"I"] -> Current(name)
-      | [ns;name;"P"] -> Parameter(name)
-      | _ -> raise (HWLibException ("Unknown literal "^n))
-
-   let rec symexpr2hwexpr (e:symexpr) : hwexpr = 
-      let symexprlst2hwexprlst lst = 
-            List.map (fun x -> symexpr2hwexpr x) lst 
+   let rec mangle (l:hwliteral) = 
+      let pdelim = ":" in 
+      let sdelim = "$" in 
+      let iodelim = "|" in
+      let rec mangle_sym (s:hwsymbol) = 
+         match s with 
+         |Namespace(q,e) -> q^sdelim^(mangle_sym e)
+         |Input(x) -> "in"^iodelim^x
+         |Output(x) -> "out"^iodelim^x
+         |Param(x) -> "param"^iodelim^x
+         |FixedParam(x,n) -> raise (HWLibException ("fixed parameter not supported")) 
       in
-      match e with 
-         | Add(lst) -> Add (symexprlst2hwexprlst lst)
-         | Sub(lst) -> Add (symexprlst2hwexprlst lst)
-         | Mult(lst) -> Add (symexprlst2hwexprlst lst)
-         | Div(a,b) -> Div(symexpr2hwexpr a,symexpr2hwexpr b)
-         | Exp(a,b) -> Exp (symexpr2hwexpr a,symexpr2hwexpr b)
-         | NatExp(a) -> NatExp (symexpr2hwexpr a)
-         | Symbol(e) -> Literal (symvar2hwliteral e)
-         | Deriv(e,dlst) -> Deriv(symexpr2hwexpr e)
-         | Integer(i) -> Integer(i)
-         | Decimal(d) -> Decimal(d)
-         | _ -> Literal(Current("?"))
-   
-   let symexpr2hwrel e : hwrel= 
-      Eq(Literal(Current("?")), Literal(Current("?")))
+      match l with 
+         | Current(x) -> (mangle_sym x)^pdelim^"I"
+         | Voltage(x) -> (mangle_sym x)^pdelim^"V"
 
-   let rec hwcomp2symenv (h:hwcomp) ns is_virt =
+   let symvar2hwliteral n : hwliteral =
+      let delim = ":" in 
+      let sdelim = "\$" in 
+      let iodelim = "|" in
+      let parse_id str = 
+         let rec mkid lst = match lst with
+            | h::h2::t -> Namespace(h, mkid (h2::t))
+            | [h] -> 
+               begin 
+                  match (Str.split (Str.regexp iodelim) h) with 
+                  | ["in";name] -> Input(name)
+                  | ["out";name] -> Output(name)
+                  | ["param";name] -> Param(name)
+                  | _ -> raise (HWLibException ("kind: unknown literal {"^str^"}")) 
+               end
+            | [] -> raise (HWLibException ("ns: unknown literal {"^str^"}"))
+         in 
+         mkid (Str.split (Str.regexp sdelim) str)
+      in
+      match Str.split (Str.regexp delim) n with 
+      | [id;"V"] -> Voltage(parse_id id)
+      | [id;"I"] -> Current(parse_id id)
+      | _ -> raise (HWLibException ("t:unknown literal "^n))
+
+   let symexpr2hwexpr (e:symexpr): hwexpr = 
+      let rec _symexpr2hwexpr e : hwexpr =
+         let symexprlst2hwexprlst lst = 
+               List.map (fun x -> _symexpr2hwexpr x) lst 
+         in
+         match e with 
+            | Add(lst) -> Add (symexprlst2hwexprlst lst)
+            | Sub(lst) -> Add (symexprlst2hwexprlst lst)
+            | Mult(lst) -> Add (symexprlst2hwexprlst lst)
+            | Div(a,b) -> Div(_symexpr2hwexpr a,_symexpr2hwexpr b)
+            | Exp(a,b) -> Exp (_symexpr2hwexpr a,_symexpr2hwexpr b)
+            | NatExp(a) -> NatExp (_symexpr2hwexpr a)
+            | Symbol(e) -> Literal (symvar2hwliteral e)
+            | Deriv(e,dlst) -> Deriv(_symexpr2hwexpr e)
+            | Integer(i) -> Integer(i)
+            | Decimal(d) -> Decimal(d)
+            | _ -> Literal(Current(Input("?")))
+      in 
+      _symexpr2hwexpr e
+
+   let symexpr2hwrel e : hwrel= 
+      Eq(Literal(Current(Input("?"))), Literal(Current(Input("?"))))
+
+   let rec hwcomp2symenv (h:hwcomp) is_virt =
       let rec hwexpr2symexpr (e:hwexpr) : symexpr = 
          let exprlst2symexprlst lst = 
             List.map (fun x -> hwexpr2symexpr x) lst 
@@ -299,47 +460,41 @@ struct
          | Exp(b,e) -> Exp(hwexpr2symexpr b, hwexpr2symexpr e)
          | NatExp(e) -> NatExp(hwexpr2symexpr e) 
          | Deriv(e) -> Deriv(hwexpr2symexpr e, [("t",1)])
-         | Literal(Parameter(x)) -> 
-            begin
-            match List.filter (fun (n,v) -> n = x) h.params with
-            | [(n,Some(v))] -> Decimal(v)
-            | [(n,None)] -> Symbol(mangle ns (Parameter x))
-            | [] -> raise (SymLibException ("no parameter with name "^x))
-            | _ -> raise (SymLibException ("too many parameters with name "^x))
+         | Literal(l) -> 
+            begin 
+               match l with 
+               | Voltage(FixedParam(l,n)) -> Decimal(n)
+               | Current(FixedParam(l,n)) -> Decimal(n)
+               | x -> Symbol(mangle x)
             end
-         | Literal(x) -> (Symbol(mangle ns x))
+         | Literal(x) -> Symbol(mangle x)
          | _ -> raise (SymLibException "unhandled symlib expr")
       in 
       let hwrel2symrel (r:hwrel) : symexpr = match r with 
          |Eq(a,b) -> Eq((hwexpr2symexpr a),(hwexpr2symexpr b))
          |Set(a,b) -> Eq((hwexpr2symexpr (Literal a)),(hwexpr2symexpr b))
       in
-      let rec hwparam2symlst (r:(string*hwdecimal option) list) : string list = match r with 
-         |(n,Some(vl))::t -> (hwparam2symlst t)
-         |(n,None)::t -> (mangle ns (Parameter n))::(hwparam2symlst t)
+      let rec ports2symlst (r:hwsymbol list) : SymLib.wctype list = 
+         let proc (h:hwsymbol) : SymLib.wctype list= 
+            match h with 
+            |Param(_) -> 
+               let hid = int_of_wildtype Param in 
+               [(hid,mangle (Voltage h),[]);(hid,mangle (Current h),[])]
+            |_ ->
+               let hid = int_of_wildtype Var in 
+               [(hid,mangle (Voltage h),[]);(hid,mangle (Current h),[])]
+         in
+         match r with 
+         |FixedParam(n,s)::t -> (ports2symlst t)
+         |h::t -> (proc h)@(ports2symlst t)
          |[] -> []
       in
-      let rec hwidstrlst2symlst (r:(string*hwid) list)  : string list = match r with
-         |(n,id)::t -> 
-            let vn = (mangle ns (Voltage n)) in 
-            let cn = (mangle ns (Current n)) in
-            vn::cn::(hwidstrlst2symlst t)
-         | [] -> []
-      in
-      let rec symlst2symexlst (r:string list) (fn : string -> SymLib.wctype): SymLib.wctype list = 
-         match r with
-         | n::t -> let x = fn n in x::(symlst2symexlst t fn)
-         | [] -> []
-      in
-      let s : SymLib.symenv = {vars=[];wildcards=[];exprs=[];ns=ns} in
+      let s : SymLib.symenv = {vars=[];wildcards=[];exprs=[];ns=h.ns} in
+      let vars = (ports2symlst h.ports) in
       if is_virt then 
-         let vars = (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs) in
-         let params = (hwparam2symlst h.params) in 
-         let vvars = symlst2symexlst vars (fun x -> (int_of_wildtype Var,x,[])) in
-         let vparams = symlst2symexlst params (fun x -> (int_of_wildtype Param,x,[])) in
-         s.wildcards <- vvars @ vparams
+         s.wildcards <- vars
       else
-         s.vars <- (hwidstrlst2symlst h.outputs) @ (hwidstrlst2symlst h.inputs) @ (hwparam2symlst h.params)
+         s.vars <- List.map (fun (a,b,c) -> b) vars
       ;
       s.exprs <- List.map hwrel2symrel h.constraints;
       s

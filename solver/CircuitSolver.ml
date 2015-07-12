@@ -22,18 +22,17 @@ let compile_hwspec f : hwarch =
       
 let process specname formula = 
   let relexpr : grel= Eq(
-    Deriv(Literal(Symbol("X"))),
+    Deriv(Literal(Symbol(Output "X"))),
     Add(
-      [Literal(Symbol("Y"));
-      Literal(Symbol("Z"))]
+      [Literal(Symbol(Input "Y"));
+      Literal(Symbol(Input "Z"))]
     )
   ) 
   in
   let relenv : genv = {
     rel=relexpr;
-    inputs=["Y";"Z"];
-    outputs=["X"];
-    params=[];
+    ports=[Output "X"; Input "Y"; Input "Z"];
+    ns="ge"
   }
   in
   Printf.printf "Relation: %s\n" (GenericUtils.grel2str relenv.rel); 

@@ -9,9 +9,15 @@ sig
    val grel2str : grel -> string
 end = 
 struct 
-   let gliteral2str (e:gliteral) = match e with 
-      | Parameter(x) -> x 
-      | Symbol(x) -> x
+   let gliteral2str (e:gliteral) = 
+      let gsym2str (s:gsymbol) = match s with 
+      | Input(v) -> "in:"^v
+      | Output(v) -> "out:"^v
+      | Param(v) -> "param:"^v
+      | FixedParam(v,n) -> "param:"^v^"="^(string_of_float n)
+      in
+      match e with 
+      | Symbol(x) -> gsym2str x
 
    let rec gexpr2str (e:gexpr) = 
       let gexprlst2str fx lst = 
@@ -47,14 +53,20 @@ struct
    type analogy = Current | Voltage
 
    let rec genv2hwcomp (ana:analogy) (ge:genv) : hwcomp = 
+      let gsym2hwsym (s:gsymbol) : hwsymbol = 
+            match s with
+            |Input(x) -> Namespace(ge.ns, Input(x))
+            |Output(x) -> Namespace(ge.ns, Output(x))
+            |Param(x) -> Namespace(ge.ns, Param(x))
+            |FixedParam(x,v) -> Namespace(ge.ns, FixedParam(x,v))
+      in
       let rec gexpr2hwexpr (expr:gexpr) : hwexpr = 
          let gexprlst2hwexprlst lst = List.map (fun x -> gexpr2hwexpr x) lst in
          match expr with
          | Literal(Symbol(x)) -> 
             if ana = Current 
-            then Literal(Current(x)) 
-            else Literal(Voltage(x))
-         | Literal(Parameter(x)) -> Literal(Parameter(x))
+            then Literal(Current(gsym2hwsym x)) 
+            else Literal(Voltage(gsym2hwsym x))
          | Decimal(n) -> Decimal(n)
          | Integer(n) -> Integer(n)
          | Div(a,b) -> Div(gexpr2hwexpr a, gexpr2hwexpr b)
@@ -70,16 +82,18 @@ struct
          | Eq(a,b) -> Eq(gexpr2hwexpr a, gexpr2hwexpr b)
          | _ -> raise (GenericLibException "unimplemented grel2hwrel")
       in
-      let rec strlst2hwidlst (l:string list) : (string*hwid) list =
+      let rec gsymlst2hsymlst (l:gsymbol list) : hwsymbol list =
          match l with 
-         | n::t -> (n,nullid)::(strlst2hwidlst t)
+         | n::t ->  (gsym2hwsym n)::(gsymlst2hsymlst t)
          | [] -> []
       in
          let hr = grel2hwrel ge.rel in 
-         let inp = strlst2hwidlst ge.inputs in 
-         let outp = strlst2hwidlst ge.outputs in 
-         let params = ge.params in 
-         {inputs=inp;outputs=outp;params=params;id=("query",nullid); constraints=[hr]}
+         let ports = gsymlst2hsymlst ge.ports in 
+         {
+            ports=ports;
+            constraints=[hr];
+            ns=ge.ns
+         }
 
 
 end 

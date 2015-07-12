@@ -37,14 +37,19 @@ end
 
 type hwdecimal = float 
 type hwint = int 
-type hwparam = string*(hwdecimal option)
-
+type hwvar = string
 (* Hardware Logic *)
 
+type hwsymbol =
+  | Param of hwvar 
+  | FixedParam of hwvar*hwdecimal 
+  | Input of hwvar 
+  | Output of hwvar
+  | Namespace of hwvar*hwsymbol
+
 type hwliteral = 
-	| Voltage of string
-	| Current of string
-  | Parameter of string
+	| Voltage of hwsymbol
+	| Current of hwsymbol
 
 type hwexpr = 
 	| NatExp of hwexpr
@@ -62,7 +67,10 @@ type hwrel =
    | Eq of hwexpr*hwexpr (*Equality with effects*)
    | Set of hwliteral*hwexpr (* Set the output to something equivalent, treated as a new terminal *)
 
+
+
 (* Hardware Conditions *)
+(*
 type hwcond_digital = 
    | HIGH of hwid 
    | LOW of hwid 
@@ -77,16 +85,16 @@ type hwcond =
    | Analog of hwcond_analog
    | And of hwcond*hwcond
    | Or of hwcond*hwcond
-
+*)
 
 type hwcomp = {
-	mutable inputs: (string*hwid) list;
-	mutable outputs: (string*hwid) list;
-  mutable params: hwparam list;
+	mutable ports: hwsymbol list;
 	mutable constraints: hwrel list;
-  mutable id: string*hwid;
+  mutable ns: string;
 }
 
+
+(*
 type hwcomp_agg = {
    mutable inputs: (string*hwid) list;
    mutable outputs: (string*hwid) list;
@@ -112,15 +120,15 @@ type hwire = {
    id : string*hwid;
    mutable conns: hwterm list;
 }
+*)
 
 type 'a hwschemT = {
-   mutable elems : (string*'a) list;
-   mutable wires : hwire list;
-   mutable inputs: (string*hwid) list;
-   mutable outputs: (string*hwid) list;
-   mutable id : string*hwid;
+   mutable elems : 'a list;
+   (*mutable wires : hwire list;*)
+   mutable ports: hwsymbol list;
+   mutable ns: string;
 }
-
+(*
 type hwinput = {
    id:hwid   
 }
@@ -128,24 +136,25 @@ type hwinput = {
 type hwoutput = {
    id:hwid   
 }
+*)
 type hwelem = 
    | Component of hwcomp
+   (*
    | AggComponent of hwcomp_agg
    | SwitchComponent of hwcomp_switch
+    *)
    | Schematic of hwelem hwschemT
+   (*
    | AnalogInput of hwinput
    | AnalogOutput of hwoutput
-
+  *)
 type hwschem = hwelem hwschemT
 
 type hwconfig = 
-   | Constraints of hwconfig list
-   | Fuse of hwid*hwid
-   | Set of hwid*hwdecimal
+   | None
 
 
 type hwarch = {
-   mutable st: HWSymTbl.symtable;
    mutable schem: hwschem;
 
 }

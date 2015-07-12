@@ -9,9 +9,11 @@ open SymCamlData
 
 
 %token <string> TOKEN
+%token <string> QTOKEN
 %token <float> DECIMAL
 %token <int> INTEGER
-%token COMMA OPARAN CPARAN EOF APOS QUOTE
+%token COMMA OPARAN CPARAN EOF QUOTE
+
 
 
 
@@ -35,8 +37,8 @@ arglist:
 ;
 
 arg:
-  | TOKEN OPARAN APOS TOKEN APOS CPARAN {
-    let name = $1 and varname = $4 in
+  | TOKEN OPARAN QTOKEN CPARAN {
+    let name = $1 and varname = $3 in
     if name = "Symbol" then
       Symbol(varname)
     else 
