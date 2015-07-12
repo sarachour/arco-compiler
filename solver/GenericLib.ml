@@ -7,6 +7,7 @@ sig
    val gliteral2str : gliteral -> string 
    val gexpr2str : gexpr -> string 
    val grel2str : grel -> string
+   val genv2str : genv -> string
 end = 
 struct 
    let gliteral2str (e:gliteral) = 
@@ -38,6 +39,11 @@ struct
 
    let grel2str (e:grel) = match e with 
       | Eq(a,b) -> (gexpr2str a)^"=="^(gexpr2str b)
+
+   let genv2str (e:genv) = 
+      "namespace: "^e.ns^"\n"^
+      (List.fold_right (fun x r -> r^(gliteral2str (Symbol x))^"\n" ) e.ports "")^
+      (grel2str e.rel)^"\n"
 
 
 

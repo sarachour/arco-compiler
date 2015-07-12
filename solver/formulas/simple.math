@@ -1,0 +1,6 @@
+namespace smpl;
+in X;
+in Y;
+out Z;
+param Q; 
+Z = Q*X + Y;

@@ -61,7 +61,7 @@ struct
             let res = ConfigSearchGenerator.find c.components gl in 
             res
       in
-      ConfigSearchDeriver.traverse c.goals traverse_elem false
+      ConfigSearchDeriver.traverse c.goals traverse_elem true
 
    let convert (c:gencfg) (rel:genv)= 
       let print_sol sol = match sol with 

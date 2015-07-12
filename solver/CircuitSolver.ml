@@ -11,34 +11,29 @@ open ConfigSearch
 open HWSpecParser
 open HWSpecLexer
 
+open GenericParser
+open GenericLexer
+
+
 exception CircuitSolverException of string;;
 
 let compile_hwspec f : hwarch = 
-   let in_chan = open_in(f) in
-   let out = (Filename.chop_extension f) in
-   let lexbuf = Lexing.from_channel in_chan in
-    HWSpecParser.main HWSpecLexer.main lexbuf 
-   
+  let in_chan = open_in(f) in
+  let lexbuf = Lexing.from_channel in_chan in
+  HWSpecParser.main HWSpecLexer.main lexbuf 
+
+let compile_gexpr f : genv = 
+  let in_chan = open_in(f) in 
+  let lexbuf = Lexing.from_channel in_chan in
+  GenericParser.main GenericLexer.main lexbuf 
+
       
 let process specname formula = 
-  let relexpr : grel= Eq(
-    Deriv(Literal(Symbol(Output "X"))),
-    Add(
-      [Literal(Symbol(Input "Y"));
-      Literal(Symbol(Input "Z"))]
-    )
-  ) 
-  in
-  let relenv : genv = {
-    rel=relexpr;
-    ports=[Output "X"; Input "Y"; Input "Z"];
-    ns="ge"
-  }
-  in
-  Printf.printf "Relation: %s\n" (GenericUtils.grel2str relenv.rel); 
+  let form = compile_gexpr formula in 
+  Printf.printf "Relation: %s\n" (GenericUtils.genv2str form); 
   let hw = compile_hwspec specname in 
   let cenv = ConfigSearch.init Voltage hw in 
-  let config = ConfigSearch.convert cenv relenv in
+  let config = ConfigSearch.convert cenv form in
   (**Format.printf "%s\n" (HWArch.arch2str hw);*)
   Format.printf "%s\n" (HWArch.config2str config)
 
@@ -53,8 +48,8 @@ let command =
     (fun hwspec formula () -> 
       match (hwspec,formula) with
       | (Some(h),Some(f)) -> process h f 
-      | (Some(h),None) -> process h ""
       | (_,_) -> raise (CircuitSolverException "Must provide hwspec and formula"))
+
 let main () = Command.run command;;
 
 
