@@ -35,6 +35,7 @@ struct
       | Integer(a) -> (string_of_int a)
       | Deriv(a) -> "deriv"^(gexpr2str (Paren a))
       | Paren(a) -> "("^(gexpr2str a)^")"
+      | Div(a,b) -> "\frac {"^(gexpr2str a)^"} {"^(gexpr2str b)^"}"
       | _ -> raise (GenericLibException "gexpr2str: unknown op")
 
    let grel2str (e:grel) = match e with 

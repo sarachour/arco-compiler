@@ -52,6 +52,7 @@ let meta_get_rel () =
 
 %token <string> TOKEN
 %token <float> DECIMAL
+%token <int> INTEGER
 %token NAMESPACE INP OUTP PARAM
 %token SEMICOLON 
 
@@ -107,6 +108,7 @@ literal:
       | Some(x) -> Symbol(x)
       | None -> raise (ParserError ("Symbol not found "^name)) 
    }
+   
 ;
 
 expr_pe:
@@ -115,6 +117,12 @@ expr_pe:
       |"exp" -> NatExp(arg)
       |"deriv" -> Deriv(arg)
       |_ -> raise (ParserError ("operand 1 function "^name^" not supported"))
+   }
+   | INTEGER {
+      let value = $1 in Integer(value)
+   }
+   | DECIMAL {
+      let value = $1 in Decimal(value)
    }
    | OPARAN expr_as CPARAN {let e = $2 in e}
    | expr_pe EXP expr_pe {let e1 = $1 and e2 = $3 in Exp(e1,e2)}

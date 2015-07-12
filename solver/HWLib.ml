@@ -430,6 +430,8 @@ struct
                | x -> Symbol(mangle x)
             end
          | Literal(x) -> Symbol(mangle x)
+         | Integer(x) -> Integer(x)
+         | Decimal(x) -> Decimal(x)
          | _ -> raise (SymLibException "unhandled symlib expr")
       in 
       let hwrel2symrel (r:hwrel) : symexpr = match r with 

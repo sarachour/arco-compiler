@@ -12,8 +12,9 @@ rule main = parse
    | "in" {INP}
    | "out" {OUTP}
    | "param" {PARAM}
+   | ['-']?['0'-'9']+['.'](['0'-'9']*)? as dec {DECIMAL(float_of_string dec)}
+   | ['-']?['0'-'9'] as ing {INTEGER(int_of_string ing)}
    | ['A'-'Z' 'a'-'z' '_' '0'-'9']+ as word {TOKEN(word)}
-   | ['0'-'9']+('.'['0'-'9']*)? as dec {DECIMAL(float_of_string dec)}
    | ['*'] {MULT}
    | ['/'] {DIV}
    | ['+'] {ADD}
