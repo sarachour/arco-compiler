@@ -86,22 +86,22 @@ struct
    let _goal2str (prefix:string) (d:goal) : string = 
       let expr = HWUtil.hwrel2str (List.nth (d.value.constraints) 0) in 
       match d.name with 
-         | Some(name) -> prefix^"goal "^(HWUtil.hwlit2str name)^" := "^expr
-         | None ->  prefix^"goal _ := "^expr
+         | Some(name) -> prefix^"goal -> "^(HWUtil.hwlit2str name)^" | "^expr
+         | None ->  prefix^"goal -> _ | "^expr
 
    let rec _goaltree2str (prefix:string) (d:goaltree) : string = 
-      let _goallist2str lst = 
-         List.fold_right (fun x r -> r^(_goaltree2str (prefix^__spacing) x)) lst ""
+      let _goallist2str lst delim= 
+         List.fold_right (fun x r -> r^delim^(_goaltree2str (prefix^__spacing) x)) lst ""
       in 
       match d with 
       | GNoSolutionNode -> prefix^"no solution\n"
-      | GUnsolvedNode(g) -> prefix^"unsolved "^(_goal2str "" g)^"\n"
+      | GUnsolvedNode(g) -> prefix^(_goal2str (prefix^__spacing) g)^"\n"
       | GSolutionNode(g,d,subs) -> 
-         (_goal2str prefix g)^" // "^(_delta2str "" d)^"\n"^
-         (_goallist2str subs)
+         (_goal2str prefix g)^"\n"^(_delta2str (prefix^"-> ") d)^"\n\n"^
+         (_goallist2str subs "")
       | GMultipleSolutionNode(lst) -> 
-         prefix^"multiple solutions:\n"^
-         (_goallist2str lst)
+         prefix^"multiple solutions:\n\n"^
+         (_goallist2str lst "\n")
       | GTrivialNode -> prefix^"trivial.\n"
 
    let delta2str (d:delta) : string = _delta2str "" d 
@@ -111,11 +111,18 @@ struct
    let make_goal (hl:hwliteral option) (hc:hwcomp) : goal = 
       {name=hl; value=hc}
 
+   type traverse_meta = {
+      depth: int
+   }
    let traverse (gt:goaltree) (fn:goal->goalnode) (interactive:bool) : goaltree = 
-      let rep pref g = 
+      let new_meta () = {depth=0;} in 
+      let upd_meta d = {depth=d.depth+1} in
+      let rep pref g t = 
          if interactive then 
             begin
-            Printf.printf "%s: %s\n" pref (goaltree2str g);
+            Printf.printf " %s\n" pref;
+            Printf.printf " @ depth %d\n" (t.depth);
+            Printf.printf "%s\n" (_goaltree2str "    " g);
             flush_all()
             end
          else 
@@ -135,19 +142,24 @@ struct
             else 
             ()
       in
-      let rec _traverse (g:goalnode) : goalnode = 
+      let rec _traverse (g:goalnode) (t:traverse_meta) : goalnode = 
          match g with 
          | GUnsolvedNode(x) -> 
-            rep "unsolved node" g;
-            let newnode = fn x in 
-            rep "solved node" newnode;
+            rep "=> Processing Unsolved Node" g t;
             wait();
-            _traverse newnode
+            let newnode = fn x in 
+            rep "=> Generated Solved Node" newnode t;
+            wait();
+            Printf.printf "==========================\n";
+            let tnew = t in 
+            _traverse newnode tnew
          | GSolutionNode(g,d,lst) ->
-            let nlst = List.map (fun x -> _traverse x ) lst in
+            let tnew = t in 
+            let nlst = List.map (fun x -> _traverse x tnew) lst in
             GSolutionNode(g,d,nlst)
          | GMultipleSolutionNode(lst) -> 
-            let nlst = List.map (fun x -> _traverse x ) lst in
+            let tnew = upd_meta t in 
+            let nlst = List.map (fun x -> _traverse x tnew) lst in
             begin
             match List.filter (fun x -> match x with GNoSolutionNode -> false | _ -> true) nlst with 
                | [] -> GNoSolutionNode 
@@ -157,6 +169,6 @@ struct
          | GNoSolutionNode -> GNoSolutionNode
          | GTrivialNode -> GTrivialNode
       in 
-         _traverse gt
+         _traverse gt (new_meta())
 
 end

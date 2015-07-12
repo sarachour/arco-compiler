@@ -240,15 +240,7 @@ struct
    let add_constraint (c:hwcomp) rel = 
       c.constraints <- rel::c.constraints; c
 
-   (*
-   let bind (c:hwcomp) (name) (id) = 
-      let bind_to_var (n,x) = if n == name then (n,id) else (n,x) in
-      c.inputs <- List.map bind_to_var c.inputs;
-      c.outputs <- List.map bind_to_var c.outputs;
-      c.id <- bind_to_var c.id;
-      c
 
-   *)
    let clone (c:hwcomp) : hwcomp =
       {ns=c.ns; ports=c.ports; constraints=c.constraints}
 
@@ -286,22 +278,13 @@ sig
    val create : string -> hwschem
    val add_input: hwschem -> string -> hwschem
    val add_output: hwschem -> string -> hwschem
-   (*
-   val add_wire: hwschem -> hwire -> hwschem
 
-   val add_joins: hwschem -> string -> hwterm list -> hwschem
-   *)
    val add_elem: hwschem -> string -> hwelem -> hwschem
    val schem2str: hwschem -> string
 end = 
 struct
    let create name : hwschem = 
       {ports=[];elems=[];ns=name}
-
-   (*
-   let add_wire sc w =
-      sc.wires <- w::sc.wires; sc
-   *)
 
    let add_elem sc n e =
       sc.elems <- e::sc.elems; sc
@@ -314,33 +297,12 @@ struct
       let new_id = Namespace(c.ns, Output(name)) in
       c.ports <- new_id::c.ports; c
 
-   (*
-   let add_joins sc wire_name js = 
-      let results = List.filter (fun {id=(n,i);conns=lst} -> n = wire_name) sc.wires in
-            match results with
-            | [wire] -> wire.conns <- js @ wire.conns; sc
-            | [] -> raise (HWLibException ("no wires with name "^wire_name^" exist in schematic."))
-            | _ ->raise (HWLibException ("too many wires with name "^wire_name^" exist in schematic."))
-   *)
    let schem2str (h:hwschem) : string = 
       let rec list2str func ws = match ws with
          | h::t -> (func h )^(list2str func t)
          | [] -> ""
       in 
-      (*
-      let in2str (n,id) = "in "^n^" := "^(HWUtil.hwid2str id)^"\n" in
-      let out2str (n,id) = "out "^n^" := "^(HWUtil.hwid2str id)^"\n" in 
-      let join2str js = match js with
-         | Wire(wn) -> wn^" "
-         | Port(en,pn) -> en^"."^pn^" "
-      in
-      let wire2str ws = match ws with
-         | {id=(name,(idx,Some(nid))); conns=clst} -> 
-            let join_str = list2str join2str clst in
-            "wire "^name^"=["^join_str^"]\n"
-         | _ -> raise (HWLibException "unexpected type for wire.")
-      in
-      *)
+      
       let port2str e = HWUtil.hwsym2str e in 
       let elem2str e = "unknown"^" -> "^HWElem.elem2str e in
       

@@ -36,21 +36,27 @@ struct
    
 
    let rec hwexpr2comp (tmpls:hwcomp list) (lbl:hwliteral) (expr:hwexpr) =
-      let rec flip_sym (x:hwsymbol): hwsymbol = match x with 
-         | Input(v) -> Output(v)
-         | Output(v) -> Input(v)
+      let is_comp (nm:string) = 
+         match List.filter (fun (x:hwcomp) -> x.ns = nm) tmpls with 
+         | [] -> false 
+         | _ -> true
+      in
+      let rec flip_sym (x:hwsymbol) (doflip:bool): hwsymbol = match x with 
+         | Input(v) -> if doflip then Output(v) else x 
+         | Output(v) -> if doflip then Input(v) else x
          | Param(v) -> Param(v)
          | FixedParam(v,n) -> FixedParam(v,n)
-         | Namespace(ns,v) -> Namespace(ns,flip_sym v)
+         | Namespace(ns,v) -> let iscmp = is_comp ns in
+            Namespace(ns,flip_sym v iscmp)
       in
       let flip_expr (x:hwexpr) : hwexpr option = match x with 
-         | Literal(Voltage(x)) -> Some (Literal(Voltage(flip_sym x)))
-         | Literal(Current(x)) -> Some (Literal(Current(flip_sym x)))
+         | Literal(Voltage(x)) -> Some (Literal(Voltage(flip_sym x false)))
+         | Literal(Current(x)) -> Some (Literal(Current(flip_sym x false)))
          | _ -> None
       in
       let lhs = Literal lbl in 
       let rhs = expr in 
-      let nexpr = Eq(HWUtil.map2expr lhs flip_expr,rhs) in 
+      let nexpr = Eq(HWUtil.map2expr lhs flip_expr,HWUtil.map2expr rhs flip_expr) in 
       let nports = HWUtil.hwrel2symbols nexpr in 
       let nm = List.fold_right (fun (x:hwcomp) r-> r^"."^(x.ns)) tmpls "interim" in 
       let c = {
@@ -60,89 +66,7 @@ struct
       } 
       in 
       c
-   (*
-      let lits = lbl::(HWUtil.hwexpr2literals expr) in
-      let get_vtype_from_one (x:hwliteral) (ns:string) (y:hwcomp) : (string*(string*hwid)) option = 
-         let check_lst (fn:'a -> string) (name:string) (lst:'a list) : 'a option =
-            let proc x r = 
-               let cnm = fn x in 
-               let isnm = (name = cnm) in
-               if isnm then Some(x) else r
-            in
-            List.fold_right proc lst None
-         in 
-         let check_both name : (string*(string*hwid)) option = 
-            let inp : ((string*hwid) option) = 
-               check_lst (fun (tag,b) -> HWSymLib.symbolname2ns ns tag) name y.inputs in
-            let outp : ((string*hwid) option) = 
-               check_lst (fun (tag,b) -> HWSymLib.symbolname2ns ns tag) name y.outputs in
-            match (inp,outp) with 
-            |(Some(x),None) -> Some ("input",x)
-            |(None,Some(x)) -> Some ("output",x)
-            |(Some(_),Some(_)) -> raise (HWLibException "duplicate variable name.")
-            |(None,None) -> None
-         in
-         match x with
-         |Voltage(x) -> check_both x
-         |Current(x) -> check_both x
-         |Parameter(x) -> None
-      in
-      let get_vtype (lb:hwliteral) : (string*(string*hwid)) option = 
-         let proc c = let (ns,cmp) = c in get_vtype_from_one lb ns cmp in 
-         match OptUtils.conc (List.map proc tmpls) with
-            |[h] -> Some(h) 
-            |[] -> 
-               begin
-               match lb with 
-               | Parameter(x) -> None 
-               | _ -> raise (HWLibException "not defined anywhere...")
-               end 
-            |h1::h2::t -> raise (HWLibException (
-               "too many declarations: "^
-               (List.fold_right (fun (t,(name,id)) r -> r^","^name ) (h1::h2::t) ""))
-            )
-      in 
-      Printf.printf "--- COMPS ---\n%s\n--------\n"  
-         (List.fold_right ( fun (v,x) r -> r^v^":"^(HWComp.comp2str x) ) tmpls "" );
-      let t_lits : (hwliteral*((string*(string*hwid))) option) list = 
-         List.map (fun lb -> let ty = get_vtype lb in (lb,ty)) lits in 
-      let t_ins = 
-         List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "output" | _ -> false ) t_lits 
-      in
-      let t_outs = 
-         List.filter (fun (lb,d) -> match d with Some(t,h) -> t = "input" | _ -> false ) t_lits 
-      in
-      let t_params = 
-         List.filter (fun (lb,d) -> match lb with Parameter(x) -> true | _ -> false) t_lits 
-      in 
-      let f_ins : (string*hwid) list= 
-         List.map (
-            fun (lb,d) -> 
-            match d with Some(ty,(lbl,id)) -> (lbl,id) 
-            | _ -> raise (HWLibException "must have id.")
-         ) t_ins 
-      in
-      let f_outs : (string*hwid) list = 
-         List.map (
-            fun (lb,d) -> 
-            match d with Some(ty,(lbl,id)) -> (lbl,id) 
-            | _ -> raise (HWLibException "must have id.")
-         ) t_outs 
-      in
-      let f_params : hwparam list = 
-         List.map (fun (lb,d) -> match lb with Parameter(x) -> (x,None) | _ -> raise (HWLibException "must be param.")) t_params
-      in
-      let c = {
-         inputs=f_ins;
-         outputs=f_outs;
-         params=f_params;
-         constraints=[HWSymLib.rmns4rel (Eq(Literal(lbl),expr))];
-         id=("none",nullid)
-      } 
-      in 
-      Printf.printf  "%s\n" (HWComp.comp2str c);
-      c
-   *)
+
 
    let is_trivial (g:goal) : goalnode option = 
       match List.nth (g.value.constraints) 0 with 
@@ -161,13 +85,42 @@ struct
          let handle_wcs (v:wctype) (conc:symenv) : wctype = 
             let (id,name,excepts) = v in 
             let typ = HWSymLib.symvar2hwliteral name in 
-            let filti x = match HWSymLib.symvar2hwliteral x with Current(x) -> true | _ -> false in 
-            let filtv x = match HWSymLib.symvar2hwliteral x with Voltage(x) -> true | _ -> false in 
+            let filti x = 
+               match HWSymLib.symvar2hwliteral x with 
+                  Current(x) -> true 
+                  | _ -> false 
+            in 
+            let filtv x = 
+               match HWSymLib.symvar2hwliteral x with 
+                  Voltage(x) -> true 
+                  | _ -> false 
+            in 
+            let filtvar x = 
+               match HWSymLib.symvar2hwliteral x with 
+               | Voltage(Param(_)) -> false 
+               | Current(Param(_)) -> false 
+               | Voltage(FixedParam(_,_)) -> false 
+               | Current(FixedParam(_,_)) -> false 
+               | _ -> true 
+            in
+            let rec is_param x = match x with 
+               | Param(_) -> true 
+               | FixedParam(_) -> true
+               | Namespace(v,x) -> is_param x 
+               | _ -> false 
+            in
             let vvars = List.filter filtv conc.vars in
             let ivars = List.filter filti conc.vars in
+            let wcvars = List.filter filtvar conc.vars in
             match typ with 
-            | Current(x) -> (id,name,excepts@vvars)
-            | Voltage(x) -> (id,name,excepts@ivars)
+            | Current(x) -> 
+               if is_param x 
+               then (id,name,excepts@vvars@wcvars)
+               else (id,name,excepts@vvars)
+            | Voltage(x) -> 
+               if is_param x 
+               then (id,name,excepts@ivars@wcvars)
+               else (id,name,excepts@ivars)
          in
          let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in 
          let ntmpl : symenv={
@@ -184,7 +137,7 @@ struct
                let subgoals2nodelist (n,e) : goalnode= 
                   let name = HWSymLib.symvar2hwliteral n in
                   let expr = HWSymLib.symexpr2hwexpr e in
-                  let comp = hwexpr2comp [t;g.value] name expr in
+                  let comp = hwexpr2comp [t] name expr in
                   let gl = ConfigSearchDeriver.make_goal (Some name) comp in
                   GUnsolvedNode(gl) 
                in
