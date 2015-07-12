@@ -131,7 +131,7 @@ struct
          } in
          let env = SymLib.load_env None expr in
          let env = SymLib.load_env (Some env) ntmpl in
-         SymCaml.set_debug env true; 
+         (*SymCaml.set_debug env true;*)
          let result : (((string*symexpr) list) list) option= SymLib.find_matches (Some env) ntmpl expr in
          match result with
             | Some(sol) ->

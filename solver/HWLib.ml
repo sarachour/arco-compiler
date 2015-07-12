@@ -393,8 +393,8 @@ struct
          in
          match e with 
             | Add(lst) -> Add (symexprlst2hwexprlst lst)
-            | Sub(lst) -> Add (symexprlst2hwexprlst lst)
-            | Mult(lst) -> Add (symexprlst2hwexprlst lst)
+            | Sub(lst) -> Sub (symexprlst2hwexprlst lst)
+            | Mult(lst) -> Mult (symexprlst2hwexprlst lst)
             | Div(a,b) -> Div(_symexpr2hwexpr a,_symexpr2hwexpr b)
             | Exp(a,b) -> Exp (_symexpr2hwexpr a,_symexpr2hwexpr b)
             | NatExp(a) -> NatExp (_symexpr2hwexpr a)

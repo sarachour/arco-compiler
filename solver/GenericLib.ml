@@ -79,7 +79,7 @@ struct
          | Exp(a,b) -> Exp(gexpr2hwexpr a, gexpr2hwexpr b)
          | Add(lst) -> Add(gexprlst2hwexprlst lst)
          | Sub(lst) -> Sub(gexprlst2hwexprlst lst)
-         | Mult(lst) -> Sub(gexprlst2hwexprlst lst)
+         | Mult(lst) -> Mult(gexprlst2hwexprlst lst)
          | Deriv(expr) -> Deriv(gexpr2hwexpr expr)
          | _ -> raise (GenericLibException "unimplemented gexpr2hwexpr")
       in 
