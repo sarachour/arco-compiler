@@ -34,12 +34,15 @@ sig
 
    type goaltree = goalnode
 
+   type solution = string
+
    val make_goal : hwliteral option -> hwcomp -> goal
 
    val delta2str : delta -> string
    val goal2str : goal -> string
+   val get_solution: goaltree -> solution option
    val goaltree2str : goaltree -> string 
-
+   val solution2str : solution -> string 
    val traverse : goaltree -> (goal -> goalnode) -> bool -> goaltree
 
 end = 
@@ -67,6 +70,8 @@ struct
       | GTrivialNode
 
    type goaltree = goalnode
+
+   type solution = string
 
    let __spacing = "  "
 
@@ -114,9 +119,25 @@ struct
    type traverse_meta = {
       depth: int
    }
+
+   let get_solution (gt:goaltree) : solution option = 
+      Some("solution exists")
+
+   let solution2str (s:solution) : string = 
+      s
+
    let traverse (gt:goaltree) (fn:goal->goalnode) (interactive:bool) : goaltree = 
       let new_meta () = {depth=0;} in 
       let upd_meta d = {depth=d.depth+1} in
+      let pr str = 
+         if interactive then 
+            begin
+            Printf.printf " %s\n" str;
+            flush_all()
+            end
+         else 
+            ()
+      in
       let rep pref g t = 
          if interactive then 
             begin
@@ -142,7 +163,9 @@ struct
             else 
             ()
       in
+      let max_depth = 5 in
       let rec _traverse (g:goalnode) (t:traverse_meta) : goalnode = 
+         if t.depth = max_depth then GNoSolutionNode else 
          match g with 
          | GUnsolvedNode(x) -> 
             rep "=> Processing Unsolved Node" g t;
@@ -150,7 +173,7 @@ struct
             let newnode = fn x in 
             rep "=> Generated Solved Node" newnode t;
             wait();
-            Printf.printf "==========================\n";
+            pr "==========================\n";
             let tnew = t in 
             _traverse newnode tnew
          | GSolutionNode(g,d,lst) ->

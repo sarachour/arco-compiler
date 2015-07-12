@@ -61,13 +61,19 @@ struct
             let res = ConfigSearchGenerator.find c.components gl in 
             res
       in
-      ConfigSearchDeriver.traverse c.goals traverse_elem true
+      ConfigSearchDeriver.traverse c.goals traverse_elem false
 
    let convert (c:gencfg) (rel:genv)= 
+      let print_sol sol = match sol with 
+      | Some(s) -> Printf.printf "%s\n" (ConfigSearchDeriver.solution2str s)
+      | None -> Printf.printf "no component configuration.\n"
+      in
       let hrel = GenericHWLib.genv2hwcomp (c.analogy) rel in
       let initial_goal =  ConfigSearchDeriver.make_goal None hrel in
       c.goals <- GUnsolvedNode(initial_goal);
-      let _ = traverse c in 
+      let tree = traverse c in 
+      let sol = ConfigSearchDeriver.get_solution tree in 
+      print_sol sol;
       c.config
 
 
