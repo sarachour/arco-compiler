@@ -10,29 +10,51 @@ module SymLib:
 sig
    type symenv = {
       mutable vars: string list; 
-      mutable wildcards: (int*string*(string list)) list;
+      mutable wildcards: (string*(symexpr list)) list;
       mutable exprs: symexpr list;
       ns: string
    }
-   type wctype = int*string*(string list)
+   type wctype = string*(symexpr list)
    val load_env : (SymCaml.symcaml option) -> symenv -> SymCaml.symcaml 
+   val add_wildcard_ban : symenv -> string -> symexpr -> symenv
+   val has_wildcard : symenv -> string -> bool 
+   val has_var : symenv -> string -> bool
    val find_matches : SymCaml.symcaml option -> symenv -> symenv -> (((string*symexpr) list) list) option
 end = 
 struct
    type symenv = {
       mutable vars: string list; 
-      mutable wildcards: (int*string*(string list)) list;
+      mutable wildcards: (string*(symexpr list)) list;
       mutable exprs: symexpr list;
       ns: string
    }
-   type wctype = int*string*(string list)
+   type wctype = string*(symexpr list)
    
    let mangle_expr ns idx =
       let delim1 = "$" in 
       let delim2 = "|" in
       ns^delim1^"expr"^delim2^(string_of_int idx)
 
+   let add_wildcard_ban (s:symenv) (name:string) (exp:symexpr) = 
+      let rec _add_ban (wcs: wctype list)  : wctype list=
+         match wcs with
+            | (s,e)::t -> if s = name 
+               then (s,exp::e)::t
+               else (s,e)::(_add_ban t)
+            | [] -> []
+      in
+         s.wildcards <- _add_ban s.wildcards;
+         s
 
+   let has_wildcard (s:symenv) (n:string) = 
+      match List.filter (fun (x,z) -> x = n) s.wildcards with 
+      | h::t -> true 
+      | [] -> false 
+
+   let has_var (s:symenv) (n:string) =
+      match List.filter (fun x -> x = n) s.vars with 
+      | h::t -> true 
+      | [] -> false
    
    let load_env (w:SymCaml.symcaml option) (s:symenv) : SymCaml.symcaml =
       let env = match w with
@@ -44,7 +66,7 @@ struct
          | Some(x) -> x
       in
       let _ = List.iter (fun x -> let _ = SymCaml.define_symbol env x in ()) s.vars in
-      let _ = List.iter (fun (i,x,v) -> let _ =  SymCaml.define_wildcard env x v in ()) s.wildcards in
+      let _ = List.iter (fun (x,v) -> let _ =  SymCaml.define_wildcard env x v in ()) s.wildcards in
       let _ = List.iteri (
          fun idx x -> 
             let nm = mangle_expr s.ns idx in 

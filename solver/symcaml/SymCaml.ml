@@ -16,7 +16,7 @@ sig
    val set_debug : symcaml -> bool -> unit
    val define_symbol : symcaml ->  string -> symexpr
    val define_expr : symcaml -> string -> symexpr -> symexpr
-   val define_wildcard: symcaml -> string -> symvar list -> symexpr
+   val define_wildcard: symcaml -> string -> symexpr list -> symexpr
    val define_function: symcaml -> string -> symexpr
    val clear : symcaml -> unit
    val expr2py : symcaml -> symexpr -> string
@@ -103,12 +103,12 @@ struct
       dbg s (fun () -> Printf.printf "define_expr: %s\n" stre);
       Symbol(x)
 
-   let define_wildcard (s:symcaml) (x:string) (exns:symvar list) : symexpr = 
+   let define_wildcard (s:symcaml) (x:string) (exns:symexpr list) : symexpr = 
       let opt_arg = match exns with
          | h::t -> 
-            let (hn,_) = PyCamlWrapper.get_var (_wr s) h in 
-            let fn x r = let (n,_) = PyCamlWrapper.get_var (_wr s) x in  r^","^n in 
-
+            let get_arg (x:symexpr) = expr2py s x in
+            let hn = get_arg h in 
+            let fn x r = let n = get_arg x in  r^","^n in 
             "["^(List.fold_right fn t hn)^"]"
          | [] -> "[]"
       in 

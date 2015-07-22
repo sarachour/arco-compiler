@@ -10,9 +10,9 @@ z = Symbol("z")
 t = Symbol("t")
 
 a = Wild("a")
-b = Wild("b", exclude=[x])
+b = Wild("b", exclude=[x,x+y])
 c = Wild("c")
-k = Wild("k")
+k = Wild("k", exclude=[x+y])
 n = Wild("n")
 
 e3 = (x**2/(x**2+x**2))

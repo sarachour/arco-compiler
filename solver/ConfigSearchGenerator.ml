@@ -75,6 +75,31 @@ struct
          |Eq(Literal(x),Decimal(v)) -> Some GTrivialNode 
          | _ -> None
 
+   let rec get_solution (env) (ntmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option = 
+      let matches : (((string*symexpr) list) list) option = SymLib.find_matches (Some env) ntmpl expr in
+      match matches with
+         | Some(sol) -> 
+            let solve_one ((nm,assign):(string*symexpr)) : ((string*symexpr) list) list = 
+               let new_tmpl = SymLib.add_wildcard_ban ntmpl nm assign in 
+               (*let s = get_solution env new_tmpl expr in *)
+               []
+            in
+            let solve_set  (lst:(string*symexpr) list) : ((string*symexpr) list) list= 
+               List.fold_right (fun x r -> let arr = solve_one x in arr @ r) lst []   
+            in
+            let solve_sets (lst:((string*symexpr) list) list) = 
+               List.fold_right (fun x r -> let sols = solve_set x in sols @ r) lst [] 
+            in  
+            let children = solve_sets sol in
+               begin
+               match (children,sol) with
+               |([],[]) -> None 
+               |([],b) -> Some b 
+               |(a,[]) -> Some a 
+               |(a,b) -> Some (a @ b) 
+               end
+         | None -> None
+
    let find_one (t:hwcomp) (g:goal) : goalnode =
       match is_trivial g with
       | Some(x) -> x 
@@ -83,7 +108,7 @@ struct
          let tmpl = HWSymLib.hwcomp2symenv t true in 
          let expr = HWSymLib.hwcomp2symenv (g.value) false in 
          let handle_wcs (v:wctype) (conc:symenv) : wctype = 
-            let (id,name,excepts) = v in 
+            let (name,excepts) = v in 
             let typ = HWSymLib.symvar2hwliteral name in 
             let filti x = 
                match HWSymLib.symvar2hwliteral x with 
@@ -109,18 +134,19 @@ struct
                | Namespace(v,x) -> is_param x 
                | _ -> false 
             in
-            let vvars = List.filter filtv conc.vars in
-            let ivars = List.filter filti conc.vars in
-            let wcvars = List.filter filtvar conc.vars in
+            let str2var (x:string) : symexpr = Symbol(x) in
+            let vvars :symexpr list = List.map str2var (List.filter filtv conc.vars) in
+            let ivars :symexpr list = List.map str2var (List.filter filti conc.vars) in
+            let wcvars = List.map str2var (List.filter filtvar conc.vars) in
             match typ with 
             | Current(x) -> 
                if is_param x 
-               then (id,name,excepts@vvars@wcvars)
-               else (id,name,excepts@vvars)
+               then (name,excepts@vvars@wcvars)
+               else (name,excepts@vvars)
             | Voltage(x) -> 
                if is_param x 
-               then (id,name,excepts@ivars@wcvars)
-               else (id,name,excepts@ivars)
+               then (name,excepts@ivars@wcvars)
+               else (name,excepts@ivars)
          in
          let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in 
          let ntmpl : symenv={
@@ -132,7 +158,7 @@ struct
          let env = SymLib.load_env None expr in
          let env = SymLib.load_env (Some env) ntmpl in
          (*SymCaml.set_debug env true;*)
-         let result : (((string*symexpr) list) list) option= SymLib.find_matches (Some env) ntmpl expr in
+         let result : (((string*symexpr) list) list) option = get_solution env ntmpl expr in
          match result with
             | Some(sol) ->
                let subgoals2nodelist (n,e) : goalnode= 

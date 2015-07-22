@@ -443,10 +443,10 @@ struct
             match h with 
             |Param(_) -> 
                let hid = int_of_wildtype Param in 
-               [(hid,mangle (Voltage h),[]);(hid,mangle (Current h),[])]
+               [(mangle (Voltage h),[]);(mangle (Current h),[])]
             |_ ->
                let hid = int_of_wildtype Var in 
-               [(hid,mangle (Voltage h),[]);(hid,mangle (Current h),[])]
+               [(mangle (Voltage h),[]);(mangle (Current h),[])]
          in
          match r with 
          |FixedParam(n,s)::t -> (ports2symlst t)
@@ -458,7 +458,7 @@ struct
       if is_virt then 
          s.wildcards <- vars
       else
-         s.vars <- List.map (fun (a,b,c) -> b) vars
+         s.vars <- List.map (fun (b,c) -> b) vars
       ;
       s.exprs <- List.map hwrel2symrel h.constraints;
       s
