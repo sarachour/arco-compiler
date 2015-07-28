@@ -232,7 +232,12 @@ struct
             in
             handle_mult mst 
          | GLinkedNode(g) -> None
-         | GSolutionNode(g,d,assgns) -> Some "has solution"
+         | GSolutionNode(g,d,othr) -> 
+            let dlt = GoalData.delta2str d in 
+            Some(dlt)
+         | GTrivialNode(g) -> 
+            let gl = GoalData.goal2str g in 
+            Some(gl)
          | GNoSolutionNode(g) -> None
       in
          _get_solution gt
