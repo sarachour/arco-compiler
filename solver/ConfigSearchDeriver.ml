@@ -1,6 +1,8 @@
 open HWData
 open HWLib
 
+exception DerivationException of string;;
+
 type delta = 
    | DUseComponent of hwcomp
    | DAddWire of hwexpr*string*(string option) 
@@ -78,7 +80,7 @@ struct
          (_goallist2str lst "\n")
       | GTrivialNode(g) -> prefix^"trivial.\n"
       | GEmpty -> prefix^"empty.\n"
-      | GLinkedNode(g) -> prefix^"linked.\n"
+      | GLinkedNode(g) -> prefix^"linked:"^(_goal2str (prefix^__spacing) g)^"\n"
 
    let delta2str (d:delta) : string = _delta2str "" d 
    let goal2str (d:goal) : string = _goal2str "" d
@@ -130,10 +132,12 @@ struct
 end
 
 
+module SolutionSet = Util.Set(struct type t = goalnode end)
 module GoalTable : 
 sig   
+   type slnset = SolutionSet.set
    type goal_table = {
-      tbl: (goal*(goalnode list)) list
+      mutable tbl: (goal*slnset) list
    }
    val create : unit -> goal_table 
    val has_goal : goal_table -> goal -> bool
@@ -142,15 +146,47 @@ sig
    val remove_dups : goal_table -> goalnode -> goalnode
 end = 
 struct 
+   type slnset = SolutionSet.set
    type goal_table = {
-      tbl: (goal*(goalnode list)) list
+      mutable tbl: (goal*slnset) list
    }
    let create () = {tbl=[]}
-   let has_goal tbl g : bool = false 
-   let declare_goal tbl g : goal_table = tbl
-   let add_solution tbl g n: goal_table = tbl
-   let remove_dups tbl n: goalnode = n
+   let has_goal (tb:goal_table) (g:goal) : bool =  
+      let rec _has_goal l = match l with
+         | (h,_)::t ->  if h = g then true else (_has_goal t)
+         | [] -> false 
+      in
+      _has_goal tb.tbl
 
+   let declare_goal (tb:goal_table) (g:goal) : goal_table = 
+      if (has_goal tb g) = false then 
+         begin
+         tb.tbl <- (g,SolutionSet.create())::tb.tbl; 
+         tb 
+         end
+      else tb
+
+   let add_solution tb g n: goal_table = 
+      if (has_goal tb g) then 
+         let rec upd_tb x = match x with 
+            | (gl,s)::t -> if gl = g 
+               then 
+                  let ns = SolutionSet.add s n in 
+                  (gl,ns)::t
+               else 
+                  (gl,s)::(upd_tb t)
+            | [] -> [] 
+         in
+         tb.tbl <- upd_tb tb.tbl; tb 
+      else raise (DerivationException "goal does not exist in table.") 
+
+   let rec remove_dups tb (n:goalnode): goalnode = 
+      match n with 
+      | GUnsolvedNode(g) -> if has_goal tb g then GLinkedNode(g) else GUnsolvedNode(g)
+      | GMultipleSolutionNode(g,lst) -> 
+         let nlst = List.map (fun x -> remove_dups tb x) lst in 
+         GMultipleSolutionNode(g,nlst)
+      | _ -> n
 end
 
 module ConfigSearchDeriver : 
@@ -224,7 +260,8 @@ struct
    (*find identical goals in a multiple goal list*)
    let prune  (c:goalcache) (g:goalnode)= 
       let g_nodup = GoalData.remove_dups g in 
-      g_nodup
+      let g_noref = GoalTable.remove_dups c.tbl g_nodup in 
+      g_noref
 
    let incr_depth (t:goalcache) : goalcache = 
       let nd = t.depth + 1 in 
@@ -241,6 +278,7 @@ struct
    let traverse (gt:goaltree) (fn:goal->goalnode) (is_iactive:bool) : goaltree = 
       let max_depth = 5 in
       let rec _traverse (t:goalcache) (gnode:goalnode) : goalnode = 
+         let gnode = prune t gnode in
          match gnode with 
          | GUnsolvedNode(x) -> 
             let t = update_table t (fun v -> GoalTable.declare_goal v x) in
@@ -272,6 +310,9 @@ struct
                   nd
             end
          | GNoSolutionNode(g) -> GNoSolutionNode(g)
+         | GLinkedNode(g) ->  
+            rep "=> Found Linked Node" gnode t is_iactive;
+            GLinkedNode(g)
          | GTrivialNode(g) -> 
             let t = update_table t (fun v -> GoalTable.add_solution v g gnode) in
             GTrivialNode(g)
