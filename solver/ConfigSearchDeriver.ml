@@ -216,7 +216,27 @@ struct
    }
 
    let get_solution (gt:goaltree) : solution option = 
-      Some("solution exists")
+      let rec _get_solution (gt:goalnode) : solution option =
+         match gt with 
+         | GMultipleSolutionNode(g,lst) ->
+            let mst = List.map (fun x -> _get_solution x) lst in 
+            let rec handle_mult (l:(solution option) list) = match l with 
+            | None::t -> handle_mult t 
+            | Some(v)::t -> 
+               begin 
+               match handle_mult t with 
+               |Some(q) -> Some(v^","^q)
+               |None -> Some(v)
+               end
+            | [] -> None
+            in
+            handle_mult mst 
+         | GLinkedNode(g) -> None
+         | GSolutionNode(g,d,assgns) -> Some "has solution"
+         | GNoSolutionNode(g) -> None
+      in
+         _get_solution gt
+
 
    let solution2str (s:solution) : string = 
       s
