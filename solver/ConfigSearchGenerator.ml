@@ -19,8 +19,6 @@ that yields equivalent
 
 module ConfigSearchGenerator : 
 sig
-   type goal = ConfigSearchDeriver.goal
-   type goalnode = ConfigSearchDeriver.goalnode
 
    val find_one : hwcomp -> goal -> goalnode
    val find : hwcomp list -> goal -> goalnode
@@ -32,9 +30,6 @@ struct
    type hwexpr = HWData.hwexpr 
    type symenv = SymLib.symenv
    type wctype = SymLib.wctype
-   type goal = ConfigSearchDeriver.goal
-   type goalnode = ConfigSearchDeriver.goalnode
-   type delta = ConfigSearchDeriver.delta
 
    
 
@@ -73,9 +68,9 @@ struct
 
    let is_trivial (g:goal) : goalnode option = 
       match List.nth (g.value.constraints) 0 with 
-         |Eq(Literal(x),Literal(v)) -> Some GTrivialNode 
-         |Eq(Literal(x),Integer(v)) -> Some GTrivialNode 
-         |Eq(Literal(x),Decimal(v)) -> Some GTrivialNode 
+         |Eq(Literal(x),Literal(v)) -> Some (GTrivialNode g)
+         |Eq(Literal(x),Integer(v)) -> Some (GTrivialNode g)
+         |Eq(Literal(x),Decimal(v)) -> Some (GTrivialNode g)
          | _ -> None
    (*
    module SymAssignType : Util.Type = struct 
@@ -128,6 +123,10 @@ struct
          begin
          let tmpl = HWSymLib.hwcomp2symenv t true in 
          let expr = HWSymLib.hwcomp2symenv (g.value) false in 
+         (*
+            ban currents for voltages and voltages for currents. Constrain
+            variables to follow analogy defined. Ban parameters from being assigned variables
+         *)
          let handle_wcs (v:wctype) (conc:symenv) : wctype = 
             let (name,excepts) = v in 
             let typ = HWSymLib.symvar2hwliteral name in 
@@ -184,7 +183,7 @@ struct
                   let name = HWSymLib.symvar2hwliteral n in
                   let expr = HWSymLib.symexpr2hwexpr e in
                   let comp = hwexpr2comp [t] name expr in
-                  let gl = ConfigSearchDeriver.make_goal (Some name) comp in
+                  let gl = GoalData.make_goal (Some name) comp in
                   GUnsolvedNode(gl) 
                in
                let goals2nodelist lst  : goalnode= 
@@ -196,27 +195,28 @@ struct
                begin
                match nlst with
                | [h] -> h 
-               | h::t -> GMultipleSolutionNode(h::t)
-               | [] -> GNoSolutionNode
+               | h::t -> GMultipleSolutionNode(g,h::t)
+               | [] -> GNoSolutionNode(g)
                end
-            | None -> GNoSolutionNode
+            | None -> GNoSolutionNode(g)
          end
 
 
    let find (t:hwcomp list) (g:goal) : goalnode =
       let clump_goals (c:hwcomp) (y:goalnode) : goalnode = 
          let x : goalnode = find_one c g in 
+
          match (x,y) with
-         | (GMultipleSolutionNode(lst1),GMultipleSolutionNode(lst2)) ->
-            GMultipleSolutionNode(lst1 @ lst2)
-         | (x, GNoSolutionNode) -> x
-         | (GNoSolutionNode,x) -> x 
-         | (GNoSolutionNode,GNoSolutionNode) -> GNoSolutionNode
-         | (x, GMultipleSolutionNode(lst)) -> GMultipleSolutionNode(x::lst)
-         | (GMultipleSolutionNode(lst),x)  -> GMultipleSolutionNode(x::lst)
-         | (x,y) -> GMultipleSolutionNode([x;y])
+         | (GMultipleSolutionNode(_,lst1),GMultipleSolutionNode(_,lst2)) ->
+            GMultipleSolutionNode(g,lst1 @ lst2)
+         | (x, GNoSolutionNode(_)) -> x
+         | (GNoSolutionNode(_),x) -> x 
+         | (GNoSolutionNode(_),GNoSolutionNode(_)) -> GNoSolutionNode(g)
+         | (x, GMultipleSolutionNode(_,lst)) -> GMultipleSolutionNode(g,x::lst)
+         | (GMultipleSolutionNode(_,lst),x)  -> GMultipleSolutionNode(g,x::lst)
+         | (x,y) -> GMultipleSolutionNode(g,[x;y])
       in
-      let search_sol = List.fold_right clump_goals t GNoSolutionNode in 
+      let search_sol = List.fold_right clump_goals t (GNoSolutionNode g) in 
       search_sol
    
 end

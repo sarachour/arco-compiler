@@ -29,8 +29,6 @@ end =
 struct
    type analogy  = GenericHWLib.analogy
    type goaltree  = ConfigSearchDeriver.goaltree
-   type goal  = ConfigSearchDeriver.goal
-   type goalnode  = ConfigSearchDeriver.goalnode
 
    type gencfg = {
       analogy: analogy;
@@ -50,7 +48,7 @@ struct
       in
       let c = HWArch.create_config() in
       let comps = proc_comps (Schematic arch.schem) in 
-      let g : goaltree = GNoSolutionNode in
+      let g : goaltree = GEmpty in
       {analogy=anlgy; arch=arch; config=c; components=comps; goals=g}
 
    let traverse (c:gencfg) = 
@@ -69,7 +67,7 @@ struct
       | None -> Printf.printf "no component configuration.\n"
       in
       let hrel = GenericHWLib.genv2hwcomp (c.analogy) rel in
-      let initial_goal =  ConfigSearchDeriver.make_goal None hrel in
+      let initial_goal =  GoalData.make_goal None hrel in
       c.goals <- GUnsolvedNode(initial_goal);
       let tree = traverse c in 
       let sol = ConfigSearchDeriver.get_solution tree in 
