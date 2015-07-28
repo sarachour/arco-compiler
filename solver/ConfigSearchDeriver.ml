@@ -38,6 +38,8 @@ sig
    val goalnode2str : goalnode -> string 
    val _goalnode2str : string -> goalnode -> string 
    val make_goal : hwliteral option -> hwcomp -> goal
+   val is_eq : goalnode -> goalnode -> bool
+   val remove_dups : goalnode -> goalnode
 end = 
 struct 
 
@@ -84,6 +86,47 @@ struct
 
    let make_goal (hl:hwliteral option) (hc:hwcomp) : goal = 
       {name=hl; value=hc}
+
+   let rec is_eq a b = 
+      let has x a = match List.filter (fun r -> is_eq r x) a with 
+         | [] -> false 
+         | _ -> true
+      in
+      let eq_lsts a b = 
+         let rec _eq_lsts x y = match (x,y) with 
+            | (h1::t1,h2::t2) -> (has h1 b)&&(has h2 a)&&(_eq_lsts t1 t2)
+            | (h1::t1,[]) -> (has h1 b)&&(_eq_lsts t1 [])
+            | ([], h2::t2) -> (has h2 a)&&(_eq_lsts [] t2)
+            | ([],[]) -> true
+         in
+         _eq_lsts a b
+      in
+      match (a,b) with 
+      | (GNoSolutionNode(g1),GNoSolutionNode(g2)) -> g1 = g2 
+      | (GUnsolvedNode(g1),GUnsolvedNode(g2)) -> g1 = g2 
+      | (GTrivialNode(g1),GTrivialNode(g2)) -> g1 = g2 
+      | (GEmpty, GEmpty) -> true 
+      | (GLinkedNode(g1),GLinkedNode(g2)) -> g1 = g2 
+      | (GSolutionNode(g1,d1,s1),GSolutionNode(g2,d2,s2)) -> 
+         g1 = g2 && d1 = d2 && (eq_lsts s1 s2) 
+      | (GMultipleSolutionNode(g1,l1),GMultipleSolutionNode(g2,l2)) ->
+         g1 = g2 && (eq_lsts l1 l2)
+
+   (*removes duplicates on multiple solution nodes*)
+   let remove_dups m = match m with 
+   | GMultipleSolutionNode(g,lst) ->
+      let rec dedup lst = match lst with 
+         | h::t -> 
+            begin 
+            match List.filter (fun x -> is_eq x h) t with 
+            | [] -> h::(dedup t)
+            | _ -> dedup t
+            end
+         | [] -> []
+      in 
+      GMultipleSolutionNode(g, (dedup lst))
+   | _ -> m
+
 end
 
 
@@ -170,9 +213,9 @@ struct
    
 
    (*find identical goals in a multiple goal list*)
-   let prune (g:goalnode) (other:goalnode list)= 
-      match g with 
-      | _ -> g
+   let prune  (c:goalcache) (g:goalnode)= 
+      let g_nodup = GoalData.remove_dups g in 
+      g_nodup
 
    let incr_depth (t:goalcache) : goalcache = 
       let nd = t.depth + 1 in 
@@ -195,12 +238,13 @@ struct
                begin
                rep "=> Processing Unsolved Node" g t is_iactive;
                wait is_iactive;
-               let newnode = fn x in 
-               rep "=> Generated Solved Node" newnode t is_iactive;
+               let node = fn x in 
+               let pnode = prune t node in
+               rep "=> Generated Solved Node" pnode t is_iactive;
                wait is_iactive;
                pr "==========================\n" is_iactive;
                let tnew = t in 
-               _traverse newnode tnew
+               _traverse pnode tnew
                end
          | GSolutionNode(g,d,lst) ->
             let tnew = t in 
