@@ -38,13 +38,15 @@ struct
    let add_wildcard_ban (s:symenv) (name:string) (exp:symexpr) = 
       let rec _add_ban (wcs: wctype list)  : wctype list=
          match wcs with
-            | (s,e)::t -> if s = name 
+            | (s,e)::t -> 
+               if s = name 
                then (s,exp::e)::t
                else (s,e)::(_add_ban t)
             | [] -> []
       in
-         s.wildcards <- _add_ban s.wildcards;
-         s
+         let wcs = _add_ban s.wildcards in
+         (*List.iter (fun (s,e) -> Printf.printf "%s=%d\n" s (List.length e) ) s.wildcards;*)
+         {vars=s.vars; wildcards=wcs; exprs=s.exprs; ns=s.ns}
 
    let has_wildcard (s:symenv) (n:string) = 
       match List.filter (fun (x,z) -> x = n) s.wildcards with 

@@ -77,41 +77,49 @@ struct
          |Eq(Literal(x),Integer(v)) -> Some GTrivialNode 
          |Eq(Literal(x),Decimal(v)) -> Some GTrivialNode 
          | _ -> None
-
    (*
    module SymAssignType : Util.Type = struct 
       type t = string
    end
+
    module SymAssignSet = Set(SymAssignType);;
    type search_cache = {
       sols: SymAssignSet.set;
       bans: (string*symexpr) list;
    } 
    *)
-   let rec get_solution (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option = 
-      let matches : (((string*symexpr) list) list) option = SymLib.find_matches None tmpl expr in
-      match matches with
-         | Some(sol) -> 
-            let solve_one ((nm,assign):(string*symexpr)) : ((string*symexpr) list) list = 
-               let new_tmpl = SymLib.add_wildcard_ban tmpl nm assign in 
-               let s = get_solution new_tmpl expr in 
-               match s with Some(x) -> x | None -> []
-            in
-            let solve_set  (lst:(string*symexpr) list) : ((string*symexpr) list) list= 
-               List.fold_right (fun x r -> let arr = solve_one x in arr @ r) lst []   
-            in
-            let solve_sets (lst:((string*symexpr) list) list) = 
-               List.fold_right (fun x r -> let sols = solve_set x in sols @ r) lst [] 
-            in  
-            let children = solve_sets sol in
-               begin
-               match (children,sol) with
-               |([],[]) -> None 
-               |([],b) -> Some b 
-               |(a,[]) -> Some a 
-               |(a,b) -> Some (a @ b) 
-               end
-         | None -> None
+   let get_solution (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option = 
+      let rec _get_solution (prefix:string) (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option=
+         let matches : (((string*symexpr) list) list) option = SymLib.find_matches None tmpl expr in
+         match matches with
+            | Some(sol) -> 
+               let solve_one ((nm,assign):(string*symexpr)) : ((string*symexpr) list) list = 
+                  let new_tmpl = SymLib.add_wildcard_ban tmpl nm assign in 
+                  (*Printf.printf "%srecursing / ban %s = %s\n" prefix nm (SymExpr.expr2str assign);*)
+                  let s = _get_solution (prefix^"  ") new_tmpl expr in 
+                  match s with 
+                  | Some(x) -> 
+                     (*Printf.printf "%ssolution found\n" prefix;*)
+                     x 
+                  | None -> []
+               in
+               let solve_set  (lst:(string*symexpr) list) : ((string*symexpr) list) list= 
+                  List.fold_right (fun x r -> let arr = solve_one x in arr @ r) lst []   
+               in
+               let solve_sets (lst:((string*symexpr) list) list) = 
+                  List.fold_right (fun x r -> let sols = solve_set x in sols @ r) lst [] 
+               in  
+               let children = solve_sets sol in
+                  begin
+                  match (children,sol) with
+                  |([],[]) -> None 
+                  |([],b) -> Some b 
+                  |(a,[]) -> Some a 
+                  |(a,b) -> Some (a @ b) 
+                  end
+            | None -> None
+      in 
+         _get_solution "" tmpl expr
 
    let find_one (t:hwcomp) (g:goal) : goalnode =
       match is_trivial g with
