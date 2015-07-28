@@ -136,12 +136,21 @@ sig
       tbl: (goal*(goalnode list)) list
    }
    val create : unit -> goal_table 
+   val has_goal : goal_table -> goal -> bool
+   val declare_goal : goal_table -> goal -> goal_table
+   val add_solution : goal_table -> goal -> goalnode -> goal_table
+   val remove_dups : goal_table -> goalnode -> goalnode
 end = 
 struct 
    type goal_table = {
       tbl: (goal*(goalnode list)) list
    }
    let create () = {tbl=[]}
+   let has_goal tbl g : bool = false 
+   let declare_goal tbl g : goal_table = tbl
+   let add_solution tbl g n: goal_table = tbl
+   let remove_dups tbl n: goalnode = n
+
 end
 
 module ConfigSearchDeriver : 
@@ -221,8 +230,8 @@ struct
       let nd = t.depth + 1 in 
       {depth=nd; tbl=t.tbl}
 
-   let add_goal (t:goalcache) (g:goal): goalcache = 
-      t 
+   let update_table (t:goalcache) (fn:goal_table -> goal_table): goalcache = 
+      t.tbl <- fn t.tbl; t
 
    let create_cache () = 
       {depth=0; tbl=GoalTable.create()}
@@ -231,37 +240,42 @@ struct
       t 
    let traverse (gt:goaltree) (fn:goal->goalnode) (is_iactive:bool) : goaltree = 
       let max_depth = 5 in
-      let rec _traverse (g:goalnode) (t:goalcache) : goalnode = 
-         match g with 
+      let rec _traverse (t:goalcache) (gnode:goalnode) : goalnode = 
+         match gnode with 
          | GUnsolvedNode(x) -> 
-            if t.depth = max_depth then GNoSolutionNode(x) else 
-               begin
-               rep "=> Processing Unsolved Node" g t is_iactive;
-               wait is_iactive;
-               let node = fn x in 
-               let pnode = prune t node in
-               rep "=> Generated Solved Node" pnode t is_iactive;
-               wait is_iactive;
-               pr "==========================\n" is_iactive;
-               let tnew = t in 
-               _traverse pnode tnew
-               end
+            let t = update_table t (fun v -> GoalTable.declare_goal v x) in
+            rep "=> Processing Unsolved Node" gnode t is_iactive;
+            wait is_iactive;
+            let node = prune t (fn x) in 
+            rep "=> Generated Solved Node" node t is_iactive;
+            wait is_iactive;
+            pr "==========================\n" is_iactive;
+            _traverse t node
+
          | GSolutionNode(g,d,lst) ->
-            let tnew = t in 
-            let nlst = List.map (fun x -> _traverse x tnew) lst in
+            let t = update_table t (fun v -> GoalTable.add_solution v g gnode) in
+            let nlst = List.map (fun x -> _traverse t x) lst in
             GSolutionNode(g,d,nlst)
-         | GMultipleSolutionNode(x,lst) -> 
-            let tnew = incr_depth t in 
-            let nlst = List.map (fun x -> _traverse x tnew) lst in
+         | GMultipleSolutionNode(g,lst) -> 
+            let t = update_table t (fun v -> GoalTable.add_solution v g gnode) in
+            let t = incr_depth t in 
+            let nlst = List.map (fun x -> _traverse t x) lst in
             begin
             match List.filter (fun x -> match x with GNoSolutionNode(v) -> false | _ -> true) nlst with 
-               | [] -> GNoSolutionNode(x)
-               | [h] -> h 
-               | h::t -> GMultipleSolutionNode(x,h::t)
+               | [] -> GNoSolutionNode(g)
+               | [h] -> 
+                  let t = update_table t (fun v -> GoalTable.add_solution v g h) in
+                  h 
+               | h::tl -> 
+                  let nd = GMultipleSolutionNode(g,h::tl) in 
+                  let t = update_table t (fun v -> GoalTable.add_solution v g nd) in
+                  nd
             end
          | GNoSolutionNode(g) -> GNoSolutionNode(g)
-         | GTrivialNode(g) -> GTrivialNode(g)
+         | GTrivialNode(g) -> 
+            let t = update_table t (fun v -> GoalTable.add_solution v g gnode) in
+            GTrivialNode(g)
       in 
-         _traverse gt (create_cache())
+         _traverse (create_cache()) gt 
 
 end
