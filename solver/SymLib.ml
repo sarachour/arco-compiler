@@ -78,8 +78,8 @@ struct
    let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) : (((string*symexpr) list) list) option = 
       let env = match e with 
          |None -> 
-            let w = load_env None tmpl in
-            let e = load_env (Some w) qry in
+            let e = load_env None qry in
+            let e = load_env (Some e) tmpl in
             e
          |Some(e) -> e
       in

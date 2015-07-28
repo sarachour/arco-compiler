@@ -2,12 +2,15 @@ open Sys
 open Core
 
 open Util
+open SymCamlData
 open SymCaml
 open SymLib
 open GenericData
 open HWData
 open HWLib
 open ConfigSearchDeriver 
+
+type symcaml = SymCaml.symcaml
 
 (*
 Given a set of components, it finds all possible combinations of assignments
@@ -75,14 +78,24 @@ struct
          |Eq(Literal(x),Decimal(v)) -> Some GTrivialNode 
          | _ -> None
 
-   let rec get_solution (env) (ntmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option = 
-      let matches : (((string*symexpr) list) list) option = SymLib.find_matches (Some env) ntmpl expr in
+   (*
+   module SymAssignType : Util.Type = struct 
+      type t = string
+   end
+   module SymAssignSet = Set(SymAssignType);;
+   type search_cache = {
+      sols: SymAssignSet.set;
+      bans: (string*symexpr) list;
+   } 
+   *)
+   let rec get_solution (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option = 
+      let matches : (((string*symexpr) list) list) option = SymLib.find_matches None tmpl expr in
       match matches with
          | Some(sol) -> 
             let solve_one ((nm,assign):(string*symexpr)) : ((string*symexpr) list) list = 
-               let new_tmpl = SymLib.add_wildcard_ban ntmpl nm assign in 
-               (*let s = get_solution env new_tmpl expr in *)
-               []
+               let new_tmpl = SymLib.add_wildcard_ban tmpl nm assign in 
+               let s = get_solution new_tmpl expr in 
+               match s with Some(x) -> x | None -> []
             in
             let solve_set  (lst:(string*symexpr) list) : ((string*symexpr) list) list= 
                List.fold_right (fun x r -> let arr = solve_one x in arr @ r) lst []   
@@ -155,10 +168,8 @@ struct
             vars=tmpl.vars; 
             exprs=tmpl.exprs
          } in
-         let env = SymLib.load_env None expr in
-         let env = SymLib.load_env (Some env) ntmpl in
          (*SymCaml.set_debug env true;*)
-         let result : (((string*symexpr) list) list) option = get_solution env ntmpl expr in
+         let result : (((string*symexpr) list) list) option = get_solution ntmpl expr in
          match result with
             | Some(sol) ->
                let subgoals2nodelist (n,e) : goalnode= 
