@@ -68,9 +68,9 @@ struct
 
    let is_trivial (g:goal) : goalnode option = 
       match List.nth (g.value.constraints) 0 with 
-         |Eq(Literal(x),Literal(v)) -> Some (GTrivialNode g)
-         |Eq(Literal(x),Integer(v)) -> Some (GTrivialNode g)
-         |Eq(Literal(x),Decimal(v)) -> Some (GTrivialNode g)
+         |Eq(Literal(x),Literal(v)) -> Some ( GTrivialNode(g,DSetPort(x, Literal v)) )
+         |Eq(Literal(x),Integer(v)) -> Some ( GTrivialNode(g,DSetPort(x, Integer v)) )
+         |Eq(Literal(x),Decimal(v)) -> Some ( GTrivialNode(g,DSetPort(x, Decimal v)) )
          | _ -> None
    (*
    module SymAssignType : Util.Type = struct 

@@ -7,6 +7,7 @@ type delta =
    | DUseComponent of hwcomp
    | DAddWire of hwexpr*string*(string option) 
    | DAggregate of delta list
+   | DSetPort of hwliteral*hwexpr
    | DNone 
 
 
@@ -23,7 +24,7 @@ type goalnode =
    | GUnsolvedNode of goal 
    | GMultipleSolutionNode of goal*(goalnode list)
    | GNoSolutionNode of goal 
-   | GTrivialNode of goal
+   | GTrivialNode of goal*delta
    | GLinkedNode of goal
    | GEmpty
 
@@ -78,7 +79,7 @@ struct
       | GMultipleSolutionNode(g,lst) -> 
          prefix^"multiple solutions:\n\n"^
          (_goallist2str lst "\n")
-      | GTrivialNode(g) -> prefix^"trivial.\n"
+      | GTrivialNode(g,d) -> prefix^"trivial.\n"
       | GEmpty -> prefix^"empty.\n"
       | GLinkedNode(g) -> prefix^"linked:"^(_goal2str (prefix^__spacing) g)^"\n"
 
@@ -106,7 +107,7 @@ struct
       match (a,b) with 
       | (GNoSolutionNode(g1),GNoSolutionNode(g2)) -> g1 = g2 
       | (GUnsolvedNode(g1),GUnsolvedNode(g2)) -> g1 = g2 
-      | (GTrivialNode(g1),GTrivialNode(g2)) -> g1 = g2 
+      | (GTrivialNode(g1,d1),GTrivialNode(g2,d2)) -> g1 = g2 && d1 = d2
       | (GEmpty, GEmpty) -> true 
       | (GLinkedNode(g1),GLinkedNode(g2)) -> g1 = g2 
       | (GSolutionNode(g1,d1,s1),GSolutionNode(g2,d2,s2)) -> 
@@ -193,7 +194,10 @@ module ConfigSearchDeriver :
 sig 
    type goal_table = GoalTable.goal_table
    type goaltree = goalnode
-   type solution = string
+   
+   type solution =   
+      | SMultipleSolutions of solution list 
+      | SSolution of delta list
 
    type goalcache = {
       mutable depth: int;
@@ -208,43 +212,27 @@ end =
 struct 
    type goal_table = GoalTable.goal_table
    type goaltree = goalnode
-   type solution = string
-   
+
+   type solution =   
+      | SMultipleSolutions of solution list 
+      | SSolution of delta list
+
    type goalcache = {
       mutable depth: int;
       mutable tbl: goal_table;
    }
 
+
    let get_solution (gt:goaltree) : solution option = 
       let rec _get_solution (gt:goalnode) : solution option =
          match gt with 
-         | GMultipleSolutionNode(g,lst) ->
-            let mst = List.map (fun x -> _get_solution x) lst in 
-            let rec handle_mult (l:(solution option) list) = match l with 
-            | None::t -> handle_mult t 
-            | Some(v)::t -> 
-               begin 
-               match handle_mult t with 
-               |Some(q) -> Some(v^","^q)
-               |None -> Some(v)
-               end
-            | [] -> None
-            in
-            handle_mult mst 
-         | GLinkedNode(g) -> None
-         | GSolutionNode(g,d,othr) -> 
-            let dlt = GoalData.delta2str d in 
-            Some(dlt)
-         | GTrivialNode(g) -> 
-            let gl = GoalData.goal2str g in 
-            Some(gl)
-         | GNoSolutionNode(g) -> None
+         | _ -> None
       in
          _get_solution gt
 
 
    let solution2str (s:solution) : string = 
-      s
+      "none"
 
 
    let pr str interactive = 
@@ -338,9 +326,9 @@ struct
          | GLinkedNode(g) ->  
             rep "=> Found Linked Node" gnode t is_iactive;
             GLinkedNode(g)
-         | GTrivialNode(g) -> 
+         | GTrivialNode(g,d) -> 
             let t = update_table t (fun v -> GoalTable.add_solution v g gnode) in
-            GTrivialNode(g)
+            GTrivialNode(g,d)
       in 
          _traverse (create_cache()) gt 
 
