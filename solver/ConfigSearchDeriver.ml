@@ -56,6 +56,10 @@ struct
       | DAddWire(expr,src,None) ->
          let sexpr = HWUtil.hwexpr2str expr in 
          prefix^sexpr^" : "^src^" -> ?"
+      | DSetPort(n,e) ->
+         let nexpr = HWUtil.hwlit2str n in 
+         let expr = HWUtil.hwexpr2str e in 
+         nexpr^":="^expr 
       | DAggregate(lst) -> 
          List.fold_right (fun x r -> r^(_delta2str prefix x)^"\n") lst ""
       | DNone -> "none"
@@ -165,7 +169,9 @@ struct
 
    let get_goal (tb:goal_table) (g:goal) : slnset option =  
       let rec _get_goal l = match l with
-         | (h,v)::t ->  if h = g then Some(v) else (_get_goal t)
+         | (h,v)::t ->  if h = g 
+            then Some(v) 
+            else (_get_goal t)
          | [] -> None 
       in
       _get_goal tb.tbl
@@ -242,16 +248,27 @@ struct
    let get_solution (gt:goaltree) : solution option = 
       let rec _get_solution (gt:goalnode) : solution =
          match gt with 
-         | GTrivialNode(g,d) -> SSolution(d,[])
+         | GTrivialNode(g,d) -> 
+            SSolution(d,[])
          | GSolutionNode(g,d,chld) -> 
             let rest = List.map (fun x -> _get_solution x) chld in
             if List.length (List.filter (fun x -> x = SNoSolution) rest) = 0 then
                SSolution(d,rest)
             else 
-               SNoSolution 
-         | GMultipleSolutionNode(g,lst) -> SNoSolution
-         | GNoSolutionNode(g) -> SNoSolution
-         | GLinkedNode(g) -> SNoSolution
+               begin
+               print_string "holey solution node\n"; SNoSolution 
+            end
+         | GMultipleSolutionNode(g,chld) -> 
+            let rest = List.map (fun x -> _get_solution x) chld in
+            let rest = List.filter (fun x -> x <> SNoSolution) rest in
+            begin 
+               match rest with 
+               | [h] -> h 
+               | h::t -> SMultipleSolutions(h::t)
+               | [] -> print_string "empty multiple node\n"; SNoSolution
+            end
+         | GNoSolutionNode(g) -> print_string "no solution node\n"; SNoSolution
+         | GLinkedNode(g) -> print_string "linked node\n"; SNoSolution
          | GEmpty -> SNoSolution
       in
          match _get_solution gt with
@@ -260,12 +277,12 @@ struct
 
 
    let solution2str (sol:solution) : string = 
-      let sp = " " in
+      let sp = "   " in
       let rec _solution2str ind s = match s with 
          | SSolution(del, rest) -> ind^(GoalData.delta2str del)^"\n"^
             (List.fold_right (fun x r -> (_solution2str (ind^sp) x)^r) rest "")
-         | SMultipleSolutions(v) -> "multiple"
-         | SNoSolution -> "no solution"
+         | SMultipleSolutions(v) -> ind^"multiple\n"
+         | SNoSolution -> ind^"no solution\n"
       in
       _solution2str "" sol
 
@@ -320,35 +337,51 @@ struct
    let create_cache () = 
       {depth=0; tbl=GoalTable.create()}
 
-   let add_solution (t:goalcache) (g:goal) (n:goalnode): goalcache = 
-      t 
 
-   let rec replace_links (tb:goal_table) (g:goalnode) : goalnode = 
+   let replace_links (tb:goal_table) (g:goalnode) : goalnode = 
       let is_no_sol x = match x with
          | GNoSolutionNode(_) -> true
          | _ -> false
       in
-      let handle_list lst : goalnode list = List.map (fun x -> replace_links tb x) lst in
-      match g with 
-      | GMultipleSolutionNode(g,sols) ->
-         let rest = List.filter (fun x -> is_no_sol x) (handle_list sols) in
-         GMultipleSolutionNode(g,rest)
-      | GSolutionNode(g,d,sols) -> 
-         let rest = handle_list sols in
-         if List.length (List.filter (fun x -> is_no_sol x) rest) = 0 then 
-            GSolutionNode(g,d,rest)
-         else 
-            GNoSolutionNode(g)
-      | GLinkedNode(g) -> 
-         begin
-         match GoalTable.get_goal tb g with 
-            | Some([gn]) -> gn
-            | Some(gh::gt) -> GMultipleSolutionNode(g,gh::gt)
-            | Some([]) -> GNoSolutionNode(g);
-            | None -> GNoSolutionNode(g)
-         end
-      | _ -> g
-
+      let has e lst = List.length (List.filter (fun x -> x = e) lst) > 0 in 
+      let rec _replace_links stk g = 
+         let handle_list lst hd : goalnode list = 
+            List.map (fun x -> _replace_links (hd @ stk) x) lst 
+         in
+         match g with 
+         | GMultipleSolutionNode(g,sols) ->
+            if has g (stk) then 
+               GNoSolutionNode(g)
+            else
+               let rest = handle_list sols [] in
+               let rest = List.filter (fun x -> (is_no_sol x) = false) rest in
+               GMultipleSolutionNode(g,rest)
+         | GSolutionNode(g,d,sols) -> 
+            if has g (stk) then 
+               GNoSolutionNode(g)
+            else
+               let rest = handle_list sols [] in
+               if List.length (List.filter (fun x -> is_no_sol x) rest) = 0 then 
+                  GSolutionNode(g,d,rest)
+               else 
+                  GNoSolutionNode(g)
+         | GLinkedNode(g) ->
+            if has g (stk) then 
+               GNoSolutionNode(g)
+            else
+            (*
+               for now multiple solution node does not consider whole list, just first element
+            *)
+            begin
+               match GoalTable.get_goal tb g with 
+                  | Some([gn]) -> _replace_links (g::stk) gn
+                  | Some(gh::gt) ->  _replace_links (g::stk) gh
+                  | Some([]) -> GNoSolutionNode(g);
+                  | None -> GNoSolutionNode(g)
+            end
+         | g -> g
+      in
+         _replace_links [] g
    let traverse (gt:goaltree) (fn:goal->goalnode) (is_iactive:bool) : goaltree = 
       let max_depth = 5 in
       let cache = create_cache() in 
