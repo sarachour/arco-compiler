@@ -197,7 +197,9 @@ sig
    
    type solution =   
       | SMultipleSolutions of solution list 
-      | SSolution of delta list
+      | SSolution of delta*(solution list)
+      | SNoSolution
+
 
    type goalcache = {
       mutable depth: int;
@@ -215,7 +217,8 @@ struct
 
    type solution =   
       | SMultipleSolutions of solution list 
-      | SSolution of delta list
+      | SSolution of delta*(solution list)
+      | SNoSolution
 
    type goalcache = {
       mutable depth: int;
@@ -224,16 +227,34 @@ struct
 
 
    let get_solution (gt:goaltree) : solution option = 
-      let rec _get_solution (gt:goalnode) : solution option =
+      let rec _get_solution (gt:goalnode) : solution =
          match gt with 
-         | _ -> None
+         | GTrivialNode(g,d) -> SSolution(d,[])
+         | GSolutionNode(g,d,chld) -> 
+            let rest = List.map (fun x -> _get_solution x) chld in
+            if List.length (List.filter (fun x -> x = SNoSolution) rest) = 0 then
+               SSolution(d,rest)
+            else 
+               SNoSolution 
+         | GMultipleSolutionNode(g,lst) -> SNoSolution
+         | GNoSolutionNode(g) -> SNoSolution
+         | GLinkedNode(g) -> SNoSolution
+         | GEmpty -> SNoSolution
       in
-         _get_solution gt
+         match _get_solution gt with
+         | SNoSolution -> None 
+         | v -> Some v
 
 
-   let solution2str (s:solution) : string = 
-      "none"
-
+   let solution2str (sol:solution) : string = 
+      let sp = " " in
+      let rec _solution2str ind s = match s with 
+         | SSolution(del, rest) -> ind^(GoalData.delta2str del)^"\n"^
+            (List.fold_right (fun x r -> (_solution2str (ind^sp) x)^r) rest "")
+         | SMultipleSolutions(v) -> "multiple"
+         | SNoSolution -> "no solution"
+      in
+      _solution2str "" sol
 
    let pr str interactive = 
       if interactive then 
