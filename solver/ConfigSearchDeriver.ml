@@ -142,6 +142,7 @@ sig
    }
    val create : unit -> goal_table 
    val has_goal : goal_table -> goal -> bool
+   val get_goal : goal_table -> goal -> slnset option
    val declare_goal : goal_table -> goal -> goal_table
    val add_solution : goal_table -> goal -> goalnode -> goal_table
    val remove_dups : goal_table -> goalnode -> goalnode
@@ -152,12 +153,24 @@ struct
       mutable tbl: (goal*slnset) list
    }
    let create () = {tbl=[]}
+
    let has_goal (tb:goal_table) (g:goal) : bool =  
       let rec _has_goal l = match l with
          | (h,_)::t ->  if h = g then true else (_has_goal t)
          | [] -> false 
       in
       _has_goal tb.tbl
+
+   
+
+   let get_goal (tb:goal_table) (g:goal) : slnset option =  
+      let rec _get_goal l = match l with
+         | (h,v)::t ->  if h = g then Some(v) else (_get_goal t)
+         | [] -> None 
+      in
+      _get_goal tb.tbl
+
+   
 
    let declare_goal (tb:goal_table) (g:goal) : goal_table = 
       if (has_goal tb g) = false then 
@@ -309,8 +322,36 @@ struct
 
    let add_solution (t:goalcache) (g:goal) (n:goalnode): goalcache = 
       t 
+
+   let rec replace_links (tb:goal_table) (g:goalnode) : goalnode = 
+      let is_no_sol x = match x with
+         | GNoSolutionNode(_) -> true
+         | _ -> false
+      in
+      let handle_list lst : goalnode list = List.map (fun x -> replace_links tb x) lst in
+      match g with 
+      | GMultipleSolutionNode(g,sols) ->
+         let rest = List.filter (fun x -> is_no_sol x) (handle_list sols) in
+         GMultipleSolutionNode(g,rest)
+      | GSolutionNode(g,d,sols) -> 
+         let rest = handle_list sols in
+         if List.length (List.filter (fun x -> is_no_sol x) rest) = 0 then 
+            GSolutionNode(g,d,rest)
+         else 
+            GNoSolutionNode(g)
+      | GLinkedNode(g) -> 
+         begin
+         match GoalTable.get_goal tb g with 
+            | Some([gn]) -> gn
+            | Some(gh::gt) -> GMultipleSolutionNode(g,gh::gt)
+            | Some([]) -> GNoSolutionNode(g);
+            | None -> GNoSolutionNode(g)
+         end
+      | _ -> g
+
    let traverse (gt:goaltree) (fn:goal->goalnode) (is_iactive:bool) : goaltree = 
       let max_depth = 5 in
+      let cache = create_cache() in 
       let rec _traverse (t:goalcache) (gnode:goalnode) : goalnode = 
          let gnode = prune t gnode in
          match gnode with 
@@ -351,6 +392,8 @@ struct
             let t = update_table t (fun v -> GoalTable.add_solution v g gnode) in
             GTrivialNode(g,d)
       in 
-         _traverse (create_cache()) gt 
+         let weakref = _traverse cache gt in
+         let strongref = replace_links cache.tbl weakref in
+         strongref
 
 end
