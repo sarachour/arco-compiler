@@ -244,7 +244,10 @@ struct
       mutable tbl: goal_table;
    }
 
+   (*
+   handle multiple solutions. Ie -> propagate them downward.
 
+   *)
    let get_solution (gt:goaltree) : solution option = 
       let rec _get_solution (gt:goalnode) : solution =
          match gt with 
@@ -369,9 +372,6 @@ struct
             if has g (stk) then 
                GNoSolutionNode(g)
             else
-            (*
-               for now multiple solution node does not consider whole list, just first element
-            *)
             begin
                match GoalTable.get_goal tb g with 
                   | Some([gn]) -> _replace_links (g::stk) gn
