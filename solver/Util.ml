@@ -9,6 +9,28 @@ module type Type = sig
 end
 
 
+let rec cartesian_prod_2 (l1:'a list) (l2: 'b list) : ('a*'b) list =
+  match l1 with 
+  | h::t -> 
+    let add = List.fold_right (fun x r -> (h,x)::r) l2 [] in 
+    add @ cartesian_prod_2 t l2
+  | [] -> []
+
+let cartesian_prod_n (l1: ('a list) list) : ('a list) list = 
+  let rec cpn (specs: ('a list) list) (rest: ('a list) list) : (('a list) list) = 
+    match rest with 
+    |h::t -> 
+      let pairs : ('a*'a list) list = cartesian_prod_2 h specs in 
+      let new_specs : ('a list) list = List.map (fun (x,y) -> x::y) pairs in 
+      cpn new_specs t
+    | [] -> specs
+  in 
+    match l1 with 
+    | h::t -> cpn [h] t 
+    | [h] -> [h]
+    | [] -> []
+
+
 module Set (X:Type) : sig 
   type t = X.t
   type set = t list

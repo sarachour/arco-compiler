@@ -249,6 +249,29 @@ struct
 
    *)
    let get_solution (gt:goaltree) : solution option = 
+      let all_combos (prefix: solution list) (combos: (solution list) list) = 
+         let combos = Util.cartesian_prod_n combos in 
+         List.map (fun x -> prefix @ x) combos 
+      in
+      let rec get_norm_solns v = 
+         let _fun v r = 
+            match v with 
+            | SMultipleSolutions(v) -> r
+            | SSolution(d,v) -> (SSolution(d,v))::r 
+            | SNoSolution -> r
+         in
+         List.fold_right _fun v []
+      in
+      let rec get_mul_solns v = 
+         let _fun v r = 
+            match v with 
+            | SMultipleSolutions(v) -> v::r
+            | SSolution(d,v) -> r
+            | SNoSolution -> r
+         in
+         List.fold_right _fun v []
+      in
+      let rec has_mul_solns v = (List.length (get_mul_solns v)) > 0 in
       let rec _get_solution (gt:goalnode) : solution =
          match gt with 
          | GTrivialNode(g,d) -> 
@@ -256,11 +279,23 @@ struct
          | GSolutionNode(g,d,chld) -> 
             let rest = List.map (fun x -> _get_solution x) chld in
             if List.length (List.filter (fun x -> x = SNoSolution) rest) = 0 then
-               SSolution(d,rest)
-            else 
                begin
-               print_string "holey solution node\n"; SNoSolution 
-            end
+               if has_mul_solns rest then 
+                  begin
+                     let prefix = get_norm_solns rest in 
+                     let choices = get_mul_solns rest in
+                     Printf.printf "nsols: %d\n" (List.length choices); 
+                     match all_combos prefix choices with 
+                     | [h] -> SSolution(d,h)
+                     | h::t -> SMultipleSolutions(List.map (fun x -> SSolution(d,x)) (h::t))
+                     | [] -> SNoSolution  
+                  end
+               else 
+                  SSolution(d,rest)
+               end
+            else 
+               raise (DerivationException "Solution Node with unmet Subgoals")
+
          | GMultipleSolutionNode(g,chld) -> 
             let rest = List.map (fun x -> _get_solution x) chld in
             let rest = List.filter (fun x -> x <> SNoSolution) rest in
@@ -268,10 +303,10 @@ struct
                match rest with 
                | [h] -> h 
                | h::t -> SMultipleSolutions(h::t)
-               | [] -> print_string "empty multiple node\n"; SNoSolution
+               | [] -> SNoSolution
             end
-         | GNoSolutionNode(g) -> print_string "no solution node\n"; SNoSolution
-         | GLinkedNode(g) -> print_string "linked node\n"; SNoSolution
+         | GNoSolutionNode(g) -> SNoSolution
+         | GLinkedNode(g) -> raise (DerivationException "Linked Node not Expected.")
          | GEmpty -> SNoSolution
       in
          match _get_solution gt with
@@ -281,9 +316,19 @@ struct
 
    let solution2str (sol:solution) : string = 
       let sp = "   " in
+      let sort_by_kind lst = 
+         let order_by_kind a b = match (a,b) with 
+         | (SSolution(v,[]),_) -> -1 
+         | (_, SSolution(v,[])) -> 1
+         | (SMultipleSolutions(_),_) -> 1 
+         | (_,SMultipleSolutions(_)) -> -1
+         | _ -> 0 
+         in
+         List.sort order_by_kind lst
+      in
       let rec _solution2str ind s = match s with 
          | SSolution(del, rest) -> ind^(GoalData.delta2str del)^"\n"^
-            (List.fold_right (fun x r -> (_solution2str (ind^sp) x)^r) rest "")
+            (List.fold_right (fun x r -> (_solution2str (ind^sp) x)^r) (sort_by_kind rest) "")
          | SMultipleSolutions(v) -> ind^"multiple\n"
          | SNoSolution -> ind^"no solution\n"
       in
