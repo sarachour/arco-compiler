@@ -277,6 +277,7 @@ struct
          | GTrivialNode(g,d) -> 
             SSolution(d,[])
          | GSolutionNode(g,d,chld) -> 
+            let _ = Printf.printf "basic solution node %d\n" (List.length chld) in
             let rest = List.map (fun x -> _get_solution x) chld in
             if List.length (List.filter (fun x -> x = SNoSolution) rest) = 0 then
                begin
@@ -297,6 +298,7 @@ struct
                raise (DerivationException "Solution Node with unmet Subgoals")
 
          | GMultipleSolutionNode(g,chld) -> 
+            let _ = (Printf.printf "multiple solution node: %d\n" (List.length chld)) in
             let rest = List.map (fun x -> _get_solution x) chld in
             let rest = List.filter (fun x -> x <> SNoSolution) rest in
             begin 
@@ -307,7 +309,7 @@ struct
             end
          | GNoSolutionNode(g) -> SNoSolution
          | GLinkedNode(g) -> raise (DerivationException "Linked Node not Expected.")
-         | GEmpty -> SNoSolution
+         | GEmpty -> raise (DerivationException "Unexpected Node.")
       in
          match _get_solution gt with
          | SNoSolution -> None 
@@ -403,7 +405,12 @@ struct
             else
                let rest = handle_list sols [] in
                let rest = List.filter (fun x -> (is_no_sol x) = false) rest in
-               GMultipleSolutionNode(g,rest)
+               begin 
+               match rest with 
+               | [h] -> h
+               | h::t -> GMultipleSolutionNode(g,rest)
+               | [] -> GNoSolutionNode(g)
+               end
          | GSolutionNode(g,d,sols) -> 
             if has g (stk) then 
                GNoSolutionNode(g)
