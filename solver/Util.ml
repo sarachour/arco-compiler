@@ -8,6 +8,11 @@ module type Type = sig
   type t 
 end
 
+let rec make_conc (lst: ('a option) list) : 'a list = 
+  match lst with 
+  | Some(v)::t -> v::(make_conc t)
+  | None::t -> (make_conc t)
+  | [] -> []
 
 let rec cartesian_prod_2 (l1:'a list) (l2: 'b list) : ('a*'b) list =
   match l1 with 

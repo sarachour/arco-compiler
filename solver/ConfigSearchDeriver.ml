@@ -147,6 +147,7 @@ sig
    val create : unit -> goal_table 
    val has_goal : goal_table -> goal -> bool
    val get_goal : goal_table -> goal -> slnset option
+   val concretize : goal_table -> goal_table
    val declare_goal : goal_table -> goal -> goal_table
    val add_solution : goal_table -> goal -> goalnode -> goal_table
    val remove_dups : goal_table -> goalnode -> goalnode
@@ -207,6 +208,21 @@ struct
          let nlst = List.map (fun x -> remove_dups tb x) lst in 
          GMultipleSolutionNode(g,nlst)
       | _ -> n
+
+   let concretize (gt:goal_table): goal_table = 
+      let proc_sln (g:goal) (s:goalnode) : goalnode option= 
+         Some s
+      in
+      let proc_slns (g:goal) (s:slnset) : (goal*slnset) option = 
+         let nelems = Util.make_conc (List.map (fun x -> proc_sln g x) s) in 
+         match nelems with 
+         | h::t -> Some (g,nelems)
+         | [] -> None
+      in
+      gt.tbl <- Util.make_conc (List.map (fun (g,s) -> proc_slns g s) (gt.tbl) );
+      gt
+
+
 end
 
 module ConfigSearchDeriver : 
@@ -217,6 +233,7 @@ sig
    type solution =   
       | SMultipleSolutions of solution list 
       | SSolution of delta*(solution list)
+      | SLink of goal
       | SNoSolution
 
 
@@ -237,6 +254,7 @@ struct
    type solution =   
       | SMultipleSolutions of solution list 
       | SSolution of delta*(solution list)
+      | SLink of goal
       | SNoSolution
 
    type goalcache = {
@@ -259,6 +277,7 @@ struct
             | SMultipleSolutions(v) -> r
             | SSolution(d,v) -> (SSolution(d,v))::r 
             | SNoSolution -> r
+            | SLink(g) -> (SLink g)::r
          in
          List.fold_right _fun v []
       in
@@ -268,6 +287,7 @@ struct
             | SMultipleSolutions(v) -> v::r
             | SSolution(d,v) -> r
             | SNoSolution -> r
+            | SLink(_) -> r
          in
          List.fold_right _fun v []
       in
@@ -277,7 +297,6 @@ struct
          | GTrivialNode(g,d) -> 
             SSolution(d,[])
          | GSolutionNode(g,d,chld) -> 
-            let _ = Printf.printf "basic solution node %d\n" (List.length chld) in
             let rest = List.map (fun x -> _get_solution x) chld in
             if List.length (List.filter (fun x -> x = SNoSolution) rest) = 0 then
                begin
@@ -285,7 +304,6 @@ struct
                   begin
                      let prefix = get_norm_solns rest in 
                      let choices = get_mul_solns rest in
-                     Printf.printf "nsols: %d\n" (List.length choices); 
                      match all_combos prefix choices with 
                      | [h] -> SSolution(d,h)
                      | h::t -> SMultipleSolutions(List.map (fun x -> SSolution(d,x)) (h::t))
@@ -295,10 +313,10 @@ struct
                   SSolution(d,rest)
                end
             else 
-               raise (DerivationException "Solution Node with unmet Subgoals")
+               let _ = Printf.printf "warning: solution node with unmet subgoals\n" in 
+               SNoSolution
 
          | GMultipleSolutionNode(g,chld) -> 
-            let _ = (Printf.printf "multiple solution node: %d\n" (List.length chld)) in
             let rest = List.map (fun x -> _get_solution x) chld in
             let rest = List.filter (fun x -> x <> SNoSolution) rest in
             begin 
@@ -308,7 +326,8 @@ struct
                | [] -> SNoSolution
             end
          | GNoSolutionNode(g) -> SNoSolution
-         | GLinkedNode(g) -> raise (DerivationException "Linked Node not Expected.")
+         | GLinkedNode(g) -> SLink(g)
+         (*raise (DerivationException "Linked Node not Expected.")*)
          | GEmpty -> raise (DerivationException "Unexpected Node.")
       in
          match _get_solution gt with
@@ -331,7 +350,8 @@ struct
       let rec _solution2str ind s = match s with 
          | SSolution(del, rest) -> ind^(GoalData.delta2str del)^"\n"^
             (List.fold_right (fun x r -> (_solution2str (ind^sp) x)^r) (sort_by_kind rest) "")
-         | SMultipleSolutions(v) -> ind^"multiple\n"
+         | SMultipleSolutions(v) -> List.fold_right (fun x r -> (_solution2str ind x)^r) v ""
+         | SLink(g) -> ind^"link:"^(GoalData.goal2str g)^"\n"
          | SNoSolution -> ind^"no solution\n"
       in
       _solution2str "" sol
@@ -393,47 +413,66 @@ struct
          | GNoSolutionNode(_) -> true
          | _ -> false
       in
+      let _ = Printf.printf "Resolving Links.. this may take a while\n" in
       let has e lst = List.length (List.filter (fun x -> x = e) lst) > 0 in 
-      let rec _replace_links stk g = 
-         let handle_list lst hd : goalnode list = 
-            List.map (fun x -> _replace_links (hd @ stk) x) lst 
+      let rec _replace_links (stk:goal list) (g:goalnode) = 
+         let handle_list (lst: goalnode list) (hd:goal list) : goalnode list = 
+            List.map (fun x -> _replace_links (hd) x) lst 
          in
+         let _ = Printf.printf "depth > %d links\n" (List.length stk) in
          match g with 
          | GMultipleSolutionNode(g,sols) ->
-            if has g (stk) then 
-               GNoSolutionNode(g)
-            else
-               let rest = handle_list sols [] in
-               let rest = List.filter (fun x -> (is_no_sol x) = false) rest in
-               begin 
-               match rest with 
-               | [h] -> h
-               | h::t -> GMultipleSolutionNode(g,rest)
-               | [] -> GNoSolutionNode(g)
-               end
+            let rest = handle_list sols stk in
+            let rest = List.filter (fun x -> (is_no_sol x) = false) rest in
+            begin 
+            match rest with 
+            | [h] -> h
+            | h::t -> GMultipleSolutionNode(g,rest)
+            | [] -> GNoSolutionNode(g)
+            end
          | GSolutionNode(g,d,sols) -> 
+            let rest = handle_list sols stk in
+            if List.length (List.filter (fun x -> is_no_sol x) rest) = 0 then 
+               GSolutionNode(g,d,rest)
+            else 
+               GNoSolutionNode(g)
+         | GLinkedNode(g) -> 
             if has g (stk) then 
                GNoSolutionNode(g)
             else
-               let rest = handle_list sols [] in
-               if List.length (List.filter (fun x -> is_no_sol x) rest) = 0 then 
-                  GSolutionNode(g,d,rest)
-               else 
-                  GNoSolutionNode(g)
-         | GLinkedNode(g) ->
+            begin
+               match GoalTable.get_goal tb g with 
+               | Some([gn]) -> _replace_links (g::stk) gn
+               | Some(gh::gt) -> 
+                     let rest = handle_list [gh] (g::stk) in 
+                     begin
+                     match rest with 
+                        | [h] -> h
+                        | h::t -> GMultipleSolutionNode(g,rest) 
+                        | [] -> GNoSolutionNode(g)
+                     end
+               | Some([]) -> GNoSolutionNode(g)
+               | None -> GNoSolutionNode(g)
+
+            end
+         (*
             if has g (stk) then 
                GNoSolutionNode(g)
             else
             begin
                match GoalTable.get_goal tb g with 
                   | Some([gn]) -> _replace_links (g::stk) gn
-                  | Some(gh::gt) ->  _replace_links (g::stk) gh
+                  | Some(gh::gt) ->  
+                     let rest = handle_list (gh::gt) [g] in 
+                     GMultipleSolutionNode(g,rest)
                   | Some([]) -> GNoSolutionNode(g);
                   | None -> GNoSolutionNode(g)
             end
+         *)
          | g -> g
       in
          _replace_links [] g
+
    let traverse (gt:goaltree) (fn:goal->goalnode) (is_iactive:bool) : goaltree = 
       let max_depth = 5 in
       let cache = create_cache() in 
@@ -478,7 +517,8 @@ struct
             GTrivialNode(g,d)
       in 
          let weakref = _traverse cache gt in
-         let strongref = replace_links cache.tbl weakref in
-         strongref
+         let cache = update_table cache (fun x -> GoalTable.concretize x) in 
+         (*let strongref = replace_links cache.tbl weakref in*)
+         weakref
 
 end
