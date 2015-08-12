@@ -63,7 +63,7 @@ struct
 
    let convert (c:gencfg) (rel:genv)= 
       let print_sol sol = match sol with 
-      | Some(s) -> Printf.printf "%s\n" (ConfigSearchDeriver.solution2str s)
+      | Some(s) -> ConfigSearchDeriver.solution2stdout s
       | None -> Printf.printf "no component configuration.\n"
       in
       let hrel = GenericHWLib.genv2hwcomp (c.analogy) rel in

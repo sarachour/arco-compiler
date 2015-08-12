@@ -14,6 +14,9 @@ let rec make_conc (lst: ('a option) list) : 'a list =
   | None::t -> (make_conc t)
   | [] -> []
 
+let rec has (lst: 'a list) (e:'a) : bool = 
+  (List.length (List.filter (fun x -> x = e) lst)) > 0
+
 let rec cartesian_prod_2 (l1:'a list) (l2: 'b list) : ('a*'b) list =
   match l1 with 
   | h::t -> 
