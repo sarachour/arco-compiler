@@ -25,19 +25,22 @@ let rec cartesian_prod_2 (l1:'a list) (l2: 'b list) : ('a*'b) list =
   | [] -> []
 
 let cartesian_prod_n (l1: ('a list) list) : ('a list) list = 
-  let rec cpn (specs: ('a list) list) (rest: ('a list) list) : (('a list) list) = 
-    match rest with 
-    |h::t -> 
-      let pairs : ('a*'a list) list = cartesian_prod_2 h specs in 
-      let new_specs : ('a list) list = List.map (fun (x,y) -> x::y) pairs in 
-      cpn new_specs t
-    | [] -> specs
-  in 
-    match l1 with 
-    | h::t -> cpn [h] t 
-    | [h] -> [h]
-    | [] -> []
-
+  let rec wrap (x: 'a list) : ('a list) list = 
+    match x with 
+    | h::t ->[h]::(wrap t)
+    | [] -> [] 
+  in
+  let rec _cpn (perms: ('a list) list) (lst: ('a list) list) = 
+    match lst with 
+    | h::t -> 
+      let cp2 = cartesian_prod_2 h perms in 
+      let res = List.map (fun (x,y) -> x::y) cp2 in 
+      _cpn res t
+    | [] -> perms
+  in
+  match l1 with 
+  | h::t -> _cpn (wrap h) t
+  | [] -> []
 
 module Set (X:Type) : sig 
   type t = X.t

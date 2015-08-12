@@ -316,14 +316,55 @@ struct
       mutable tbl: goal_table;
    }
 
+   let solution2fb (sol:solution) (fx:'a->string->'a) (v:'a) : 'a = 
+      let sp = "   " in
+      let sort_by_kind lst = 
+         let order_by_kind a b = match (a,b) with 
+         | (SSolution(v,[]),_) -> 1 
+         | (_, SSolution(v,[])) -> -1
+         | (SMultipleSolutions(_),_) -> 2 
+         | (_,SMultipleSolutions(_)) -> -2
+         | _ -> 0 
+         in
+         List.sort order_by_kind lst
+      in
+      let rec _solution2fb (ind:string) (s:solution) (v:'a): 'a= 
+         match s with 
+         | SSolution(del, rest) -> 
+            let str : string = ind^(GoalData.delta2str del)^"\n" in
+            let nv : 'a = fx v str in 
+            let lmb x r = _solution2fb (ind^sp) x r in
+            let chl : 'a = List.fold_right lmb (sort_by_kind rest) nv in 
+            chl
+         | SMultipleSolutions(rest) -> 
+            let str = ind^"multiple solutions:"^"\n" in
+            let nv = fx v str in  
+            let chl = List.fold_right (fun x r -> (_solution2fb ind x) r) rest nv in 
+            chl
+         | SLink(g) -> 
+            let str = "link:"^(GoalData.goal2str g)^"\n" in 
+            fx v str
+         | SNoSolution -> 
+            let str = ind^"no solution\n" in 
+            fx v str
+      in
+      _solution2fb "" sol v
+
+   let solution2str (sol:solution) : string = 
+      solution2fb sol (fun x v -> x^v) ""
+
+   let solution2stdout (sol:solution) : unit = 
+      solution2fb sol (fun () v -> let _ = Printf.printf "%s" v in flush_all()) ()
+
+
    (*
    handle multiple solutions. Ie -> propagate them downward.
 
    *)
    let get_solution (gt:goaltree) : solution option = 
-      let all_combos (prefix: solution list) (combos: (solution list) list) = 
-         let combos = Util.cartesian_prod_n combos in 
-         List.map (fun x -> prefix @ x) combos 
+      let all_combos (prefix: solution list) (combos: (solution list) list) : (solution list) list = 
+         let res = Util.cartesian_prod_n combos in 
+         List.map (fun x -> prefix @ x) res 
       in
       let rec get_norm_solns v = 
          let _fun v r = 
@@ -389,46 +430,7 @@ struct
          | SNoSolution -> None 
          | v -> Some v
 
-   let solution2fb (sol:solution) (fx:'a->string->'a) (v:'a) : 'a = 
-      let sp = "   " in
-      let sort_by_kind lst = 
-         let order_by_kind a b = match (a,b) with 
-         | (SSolution(v,[]),_) -> -1 
-         | (_, SSolution(v,[])) -> 1
-         | (SMultipleSolutions(_),_) -> 1 
-         | (_,SMultipleSolutions(_)) -> -1
-         | _ -> 0 
-         in
-         List.sort order_by_kind lst
-      in
-      let rec _solution2fb (ind:string) (s:solution) (v:'a): 'a= 
-         match s with 
-         | SSolution(del, rest) -> 
-            let str : string = ind^(GoalData.delta2str del)^"\n" in
-            let nv : 'a = fx v str in 
-            let lmb x r = _solution2fb (ind^sp) x r in
-            let chl : 'a = List.fold_right lmb (sort_by_kind rest) nv in 
-            chl
-         | SMultipleSolutions(rest) -> 
-            let str = ind^"multiple solutions:"^"\n" in
-            let nv = fx v str in  
-            let chl = List.fold_right (fun x r -> (_solution2fb ind x) r) rest nv in 
-            chl
-         | SLink(g) -> 
-            let str = "link:"^(GoalData.goal2str g)^"\n" in 
-            fx v str
-         | SNoSolution -> 
-            let str = ind^"no solution\n" in 
-            fx v str
-      in
-      _solution2fb "" sol v
-
-   let solution2str (sol:solution) : string = 
-      solution2fb sol (fun x v -> x^v) ""
-
-   let solution2stdout (sol:solution) : unit = 
-      solution2fb sol (fun () v -> let _ = Printf.printf "%s" v in flush_all()) ()
-
+   
    
    let pr str interactive = 
       if interactive then 

@@ -60,6 +60,7 @@ struct
             res
       in
       ConfigSearchDeriver.traverse c.goals traverse_elem true
+   
 
    let convert (c:gencfg) (rel:genv)= 
       let print_sol sol = match sol with 
@@ -72,8 +73,8 @@ struct
       let tree = traverse c in 
       let sol = ConfigSearchDeriver.get_solution tree in 
       print_sol sol;
+      
       c.config
-
 
 
 end
