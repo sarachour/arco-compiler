@@ -210,7 +210,10 @@ struct
          GMultipleSolutionNode(g,nlst)
       | _ -> n
 
-   let concretize_node (gt:goal_table) (goalnode:goalnode) : goalnode =
+   type conc_tbl = {
+      mutable c: goal list   
+   }
+   let concretize_node (ct:conc_tbl) (gt:goal_table) (goalnode:goalnode) : goalnode =
       let replace_in_table (gl:goal) (st:goalnode list) = 
          let rec _replace_in_table gl st tbl = 
             match tbl with 
@@ -221,6 +224,13 @@ struct
          in
          gt.tbl <- _replace_in_table gl st gt.tbl
       in
+      let is_concretized (gl:goal) = 
+         let res = (List.length (List.filter (fun x -> x = gl) ct.c)) > 0 in 
+         res
+      in
+      let mark_concretized (gl:goal) = 
+         ct.c <- gl::ct.c
+      in 
       let is_no_sol x = match x with
          | GNoSolutionNode(_) -> true
          | _ -> false
@@ -247,12 +257,22 @@ struct
             else
                begin 
                match get_goal gt g with 
-               | Some([h]) -> let nh = _cn (g::stk) h in
-                  let _ = replace_in_table g [nh] in 
-                  nh
-               | Some(h::t) -> let nht = handle_list (g::stk) (h::t) in 
-                  let _ = replace_in_table g nht in 
-                  GMultipleSolutionNode(g,nht)
+               | Some([h]) -> 
+                  if is_concretized g then 
+                     h
+                  else
+                     let nh = _cn (g::stk) h in
+                     let _ = replace_in_table g [nh] in 
+                     let _ = mark_concretized g in
+                     nh
+               | Some(h::t) -> 
+                  if is_concretized g then 
+                     GMultipleSolutionNode(g,h::t)
+                  else
+                     let nht = handle_list (g::stk) (h::t) in 
+                     let _ = replace_in_table g nht in 
+                     let _ = mark_concretized g in
+                     GMultipleSolutionNode(g,nht)
                | Some([]) -> GNoSolutionNode(g)
                | None -> GNoSolutionNode(g)
                end 
@@ -261,10 +281,14 @@ struct
          _cn [] goalnode 
 
    let concretize (gt:goal_table): goal_table = 
+      let ct : conc_tbl = {c=[]} in
+      let mark_concretized (gl:goal) = 
+         ct.c <- gl::ct.c
+      in 
       let proc_sln (g:goal) (s:goalnode) : goalnode option= 
-         match concretize_node gt s with 
-         | GNoSolutionNode(_) -> None 
-         | g -> Some(g)
+         match concretize_node ct gt s with 
+         | GNoSolutionNode(_) -> let _ = mark_concretized g in None 
+         | gn -> let _ = mark_concretized g in Some(gn)
       in
       let proc_slns (g:goal) (s:slnset) : (goal*slnset) option = 
          let nelems = Util.make_conc (List.map (fun x -> proc_sln g x) s) in 
@@ -386,6 +410,16 @@ struct
          in
          List.fold_right _fun v []
       in
+      let rec flatten_sols v = 
+         let _fun v r = 
+            match v with 
+            | SMultipleSolutions(v) -> v@r
+            | SNoSolution -> r
+            | SLink(_) -> r
+            | _ -> v::r
+         in
+         List.fold_right _fun v []
+      in
       let rec has_mul_solns v = (List.length (get_mul_solns v)) > 0 in
       let rec _get_solution (gt:goalnode) : solution =
          match gt with 
@@ -399,7 +433,13 @@ struct
                   begin
                      let prefix = get_norm_solns rest in 
                      let choices = get_mul_solns rest in
-                     match all_combos prefix choices with 
+                     let results = all_combos prefix choices in 
+                     (*
+                     Printf.printf "goal: %s\n" (GoalData.goal2str g);
+                     Printf.printf "choices: %d\n" (List.length choices);
+                     Printf.printf "results: %d\n" (List.length results);
+                     *)
+                     match results with 
                      | [h] -> SSolution(d,h)
                      | h::t -> SMultipleSolutions(List.map (fun x -> SSolution(d,x)) (h::t))
                      | [] -> SNoSolution  
@@ -413,17 +453,11 @@ struct
 
          | GMultipleSolutionNode(g,chld) -> 
             let rest = List.map (fun x -> _get_solution x) chld in
-            let rest = List.filter (fun x -> x <> SNoSolution) rest in
-            begin 
-               match rest with 
-               | [h] -> h 
-               | h::t -> SMultipleSolutions(h::t)
-               | [] -> SNoSolution
-            end
+            let rest = flatten_sols rest in 
+            SMultipleSolutions(rest)
          | GNoSolutionNode(g) -> SNoSolution
-         | GLinkedNode(g) -> SLink(g)
-         | GUnsolvedNode(g) -> SNoSolution
-         (*raise (DerivationException "Linked Node not Expected.")*)
+         | GLinkedNode(g) -> raise (DerivationException "Linked Node not Expected.")
+         | GUnsolvedNode(g) -> raise (DerivationException "Unsolved Node not Expected.")
          | GEmpty -> raise (DerivationException "Unexpected Node.")
       in
          match _get_solution gt with
