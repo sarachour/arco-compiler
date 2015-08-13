@@ -1,5 +1,6 @@
 open HWData
 open HWLib
+open Util
 
 exception DerivationException of string;;
 
@@ -252,7 +253,7 @@ struct
          | GUnsolvedNode(g) -> 
             _cn stk (GLinkedNode(g))
          | GLinkedNode(g) -> 
-            if Util.has stk g then
+            if OptUtils.has stk g then
                GNoSolutionNode(g)
             else
                begin 
@@ -291,12 +292,12 @@ struct
          | gn -> let _ = mark_concretized g in Some(gn)
       in
       let proc_slns (g:goal) (s:slnset) : (goal*slnset) option = 
-         let nelems = Util.make_conc (List.map (fun x -> proc_sln g x) s) in 
+         let nelems = OptUtils.conc (List.map (fun x -> proc_sln g x) s) in 
          match nelems with 
          | h::t -> Some (g,nelems)
          | [] -> None
       in
-      gt.tbl <- Util.make_conc (List.map (fun (g,s) -> proc_slns g s) (gt.tbl) );
+      gt.tbl <- OptUtils.conc (List.map (fun (g,s) -> proc_slns g s) (gt.tbl) );
       gt
 
 

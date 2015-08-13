@@ -8,14 +8,6 @@ module type Type = sig
   type t 
 end
 
-let rec make_conc (lst: ('a option) list) : 'a list = 
-  match lst with 
-  | Some(v)::t -> v::(make_conc t)
-  | None::t -> (make_conc t)
-  | [] -> []
-
-let rec has (lst: 'a list) (e:'a) : bool = 
-  (List.length (List.filter (fun x -> x = e) lst)) > 0
 
 let rec cartesian_prod_2 (l1:'a list) (l2: 'b list) : ('a*'b) list =
   match l1 with 
@@ -83,6 +75,7 @@ end
 
 module OptUtils : sig 
   val conc : ('a option) list -> 'a list
+  val has:  'a list -> 'a -> bool 
   val unify_all : ('a option) list -> ('a list) option
   val unify_atleast_one : ('a option) list -> ('a list) option
 end = 
@@ -91,6 +84,12 @@ struct
     |Some(x)::t -> x::(conc t) 
     |None::t -> (conc t)
     |[] -> [] 
+
+
+
+  let rec has (lst: 'a list) (e:'a) : bool = 
+    (List.length (List.filter (fun x -> x = e) lst)) > 0
+
 
   let rec unify_all l = match l with 
     |Some(x)::t -> 
