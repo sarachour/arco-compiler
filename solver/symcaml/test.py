@@ -17,7 +17,7 @@ n = Wild("n")
 
 e3 = (x**2/(x**2+x**2))
 
-print "-- simpl --"
+print "-- simpl--"
 print apply(e3.doit, [])
 
 print "-- match 1 --"
@@ -36,4 +36,10 @@ print "-- match 3 --"
 e1 = x
 e2 = (a/b)**n
 res = e1.match(e2)
+print res
+
+
+print "-- sub 1 --"
+e1 = Eq(c,a+b)
+res = srepr(e1.subs([(a,x),(b,y)]))
 print res

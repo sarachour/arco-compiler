@@ -88,7 +88,13 @@ struct
       let proc i x j y = 
          let ni = mangle_expr qry.ns i in 
          let nj = mangle_expr tmpl.ns j in
-         SymCaml.pattern env (Symbol ni) (Symbol nj)
+         match SymCaml.pattern env (Symbol ni) (Symbol nj) with
+         | Some(sols) -> 
+            let sb (a,b) : symexpr*symexpr = ((Symbol a),b) in 
+            let sbs :(symexpr*symexpr) list = List.map sb sols in
+            let sexpr = SymCaml.subs env (Symbol nj) sbs in 
+            Some(sols)
+         | None -> None
       in
       let twodlist = 
          (*TODO - find multiple arg use case*)

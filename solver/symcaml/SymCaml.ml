@@ -23,6 +23,7 @@ sig
 
    val expand : symcaml -> symexpr -> symexpr
    val eval : symcaml -> symexpr -> symexpr
+   val subs : symcaml -> symexpr -> (symexpr*symexpr) list -> symexpr 
    val simpl : symcaml -> symexpr -> symexpr
    val pattern: symcaml -> symexpr -> symexpr -> ((string*symexpr) list) option
    val report : symcaml -> unit
@@ -118,6 +119,7 @@ struct
       Symbol(x)
 
    let _pyobj2expr (s:symcaml) (p:pyobject) : symexpr = 
+      dbg s (fun () -> Printf.printf "pyobj2expr: begin\n");
       match PyCamlWrapper.invoke (_wr s) "srepr" [p] [] with 
          | Some(res) -> 
             let strrep = PyCamlWrapper.pyobj2str res in 
@@ -150,7 +152,7 @@ struct
             end
          | None -> raise (SymCamlFunctionException("expand","unexpected: null callee."))
 
-   let eval (s:symcaml) (e:symexpr) =
+   let eval (s:symcaml) (e:symexpr) : symexpr =
       let cmd = (expr2py s (Paren e)) in 
       match PyCamlWrapper.eval (_wr s) cmd with 
          | Some(callee) ->
@@ -164,6 +166,35 @@ struct
       let repr = _pyobj2expr s res in 
       repr
       *)
+   (*
+   srepr input beforehand
+   *)
+   let subs (s:symcaml) (e:symexpr) (sub:(symexpr*symexpr) list) : symexpr =
+      let _ = set_debug s true in  
+      let callee : pyobject= 
+         match PyCamlWrapper.eval (_wr s) (expr2py s (Paren e)) with 
+         |Some(obj) -> obj 
+         |None ->raise (SymCamlFunctionException("subs","unexpected: callee cannot be null."))
+      in 
+      let to_tuple ((a,b):symexpr*symexpr) : string = 
+         let stct = "("^(expr2py s a)^","^(expr2py s b)^")" in 
+         stct
+      in
+      let to_tuple_list lst = match lst with
+         |[v] -> "["^(to_tuple v)^"]"
+         |v::t -> "["^(List.fold_right (fun x r -> r^","^(to_tuple x)) t (to_tuple v))^"]"
+         |[] -> "[]"
+      in
+      let args : pyobject = match PyCamlWrapper.eval (_wr s) (to_tuple_list sub) with
+         |Some(obj) -> obj 
+         |None ->raise (SymCamlFunctionException("subs", "unexpected: sub list cannot be null."))
+      in
+      dbg s (fun () -> Printf.printf "subs: %s using %s\n" (expr2py s (Paren e)) (to_tuple_list sub));
+      match PyCamlWrapper.invoke_from (_wr s) callee "subs" [args] [] with
+      | Some(res) -> 
+         let repr = _pyobj2expr s res in repr 
+      | None -> raise (SymCamlFunctionException("subs","unexpected: null result."))
+   
 
    let simpl (s:symcaml) (e:symexpr) =
       let cmd = (expr2py s (Paren e)) in 

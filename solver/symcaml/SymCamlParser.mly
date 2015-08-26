@@ -73,6 +73,7 @@ arg:
     | ("Pow",2) -> Exp(List.nth lst 0,List.nth lst 1)
     | ("Add",_) -> Add(lst)
     | ("Mul",_) -> Mult(lst)
+    | ("Equality",2) -> Eq(List.nth lst 0,List.nth lst 1)
     | ("Derivative",_) -> 
       begin
       match lst with 
