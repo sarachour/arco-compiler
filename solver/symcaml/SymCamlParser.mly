@@ -41,8 +41,10 @@ arg:
     let name = $1 and varname = $3 in
     if name = "Symbol" then
       Symbol(varname)
+    else if name = "Wild" then
+      Symbol(varname)
     else 
-      raise (SymCamlParserError "only symbols can have token arguments")
+      raise (SymCamlParserError ("only symbols can have token arguments: "^name^":"^varname))
   }
   | TOKEN OPARAN INTEGER CPARAN {
     let name = $1 and value = $3 in

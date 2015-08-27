@@ -407,7 +407,9 @@ struct
       _symexpr2hwexpr e
 
    let symexpr2hwrel e : hwrel= 
-      Eq(Literal(Current(Input("?"))), Literal(Current(Input("?"))))
+	  match e with
+	  | Eq(v,r) -> Eq (symexpr2hwexpr v, symexpr2hwexpr r)
+	  | _ -> Eq(Literal(Current(Input("?"))), Literal(Current(Input("?"))))
 
    let rec hwcomp2symenv (h:hwcomp) is_virt =
       let rec hwexpr2symexpr (e:hwexpr) : symexpr = 

@@ -66,26 +66,32 @@ struct
       c
 
 
+   let get_trivial_solution (h:hwrel) : delta option =
+	match h with
+		|Eq(Literal(Voltage(x)), Literal(Voltage(v))) -> Some (DSetPort(Voltage(x), Literal(Voltage(v))))
+		|Eq(Literal(Current(x)), Literal(Current(v))) -> Some (DSetPort(Current(x), Literal(Current(v))))
+		|Eq(Integer(v), Literal(x)) -> Some (DSetPort(x, Integer(v)))
+		|Eq(Literal(x),Integer(v)) -> Some (DSetPort(x, Integer(v)))
+		|Eq(Decimal(v), Literal(x)) -> Some (DSetPort(x, Decimal(v)))
+		|Eq(Literal(x),Decimal(v)) -> Some (DSetPort(x, Decimal(v)))
+		|Eq(_,_) -> None
+		
    let is_trivial (g:goal) : goalnode option = 
-      match List.nth (g.value.constraints) 0 with 
-         |Eq(Literal(x),Literal(v)) -> Some ( GTrivialNode(g,DSetPort(x, Literal v)) )
-         |Eq(Literal(x),Integer(v)) -> Some ( GTrivialNode(g,DSetPort(x, Integer v)) )
-         |Eq(Literal(x),Decimal(v)) -> Some ( GTrivialNode(g,DSetPort(x, Decimal v)) )
-         | _ -> None
-   (*
-   module SymAssignType : Util.Type = struct 
-      type t = string
-   end
+      let n = List.nth (g.value.constraints) 0 in
+      match get_trivial_solution n with
+		|Some(sol) -> Some (GTrivialNode(g,sol))
+		|None -> None
+     
 
-   module SymAssignSet = Set(SymAssignType);;
-   type search_cache = {
-      sols: SymAssignSet.set;
-      bans: (string*symexpr) list;
-   } 
-   *)
    let get_solution (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option = 
+	  let is_symexpr_trivial (s:symexpr) : bool = 
+		let hw = HWSymLib.symexpr2hwrel s in 
+		match get_trivial_solution hw with
+		| Some(v) -> true
+		| _ -> false
+	  in
       let rec _get_solution (prefix:string) (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option=
-         let matches : (((string*symexpr) list) list) option = SymLib.find_matches None tmpl expr in
+         let matches : (((string*symexpr) list) list) option = SymLib.find_matches None tmpl expr is_symexpr_trivial in
          match matches with
             | Some(sol) -> 
                let solve_one ((nm,assign):(string*symexpr)) : ((string*symexpr) list) list = 

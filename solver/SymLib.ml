@@ -19,7 +19,7 @@ sig
    val add_wildcard_ban : symenv -> string -> symexpr -> symenv
    val has_wildcard : symenv -> string -> bool 
    val has_var : symenv -> string -> bool
-   val find_matches : SymCaml.symcaml option -> symenv -> symenv -> (((string*symexpr) list) list) option
+   val find_matches : SymCaml.symcaml option -> symenv -> symenv -> (symexpr -> bool) -> (((string*symexpr) list) list) option
 end = 
 struct
    type symenv = {
@@ -77,7 +77,8 @@ struct
       in
       env
 
-   let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) : (((string*symexpr) list) list) option =
+   let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) (is_trivial:symexpr->bool)
+   : (((string*symexpr) list) list) option =
       let env = match e with 
          |None -> 
             let e = load_env None qry in
@@ -85,38 +86,45 @@ struct
             e
          |Some(e) -> e
       in
-      let proc i x j y = 
+      let proc i x j y : ((string*symexpr) list) option = 
          let ni = mangle_expr qry.ns i in 
          let nj = mangle_expr tmpl.ns j in
          match SymCaml.pattern env (Symbol ni) (Symbol nj) with
          | Some(sols) -> 
 			begin
-			print_endline "[FIND_MATCHES]/proc starting sub";
-            let sb (a,b) : symexpr*symexpr = ((Symbol a),b) in 
+            let sb ((a,b):string*symexpr) : symexpr*symexpr = 
+				match b with 
+				| Decimal(v) -> ((Symbol a),b)
+				| Integer(v) -> ((Symbol a),b)
+				| _ -> ((Symbol a),(Symbol a)) 
+            in 
             let sbs :(symexpr*symexpr) list = List.map sb sols in
             (* substitute *)
-            (* let sexpr = SymCaml.subs env (Symbol nj) sbs in *)
-			print_endline "[FIND_MATCHES]/proc done.";
-            Some(sols)
+            let sexpr = SymCaml.subs env (Symbol nj) sbs in 
+			let simpl_expr = SymCaml.simpl env sexpr in
+			(*
+			Printf.printf "[FIND_MATCHES]\n  simpl: %s\n " 
+				(SymCaml.expr2py env simpl_expr);
+			print_newline();
+			*)
+			if is_trivial simpl_expr then
+				None
+			else
+				Some(sols)
             end
          | None -> None
       in
       let twodlist = 
          let unify_exprs i x = 
 			let ures = List.mapi ( fun j y -> proc i x j y ) qry.exprs in 
-			print_endline "[FIND_MATCHES]/map expr done.";
 			let res = OptUtils.unify_all ures in 
-			print_endline "[FIND_MATCHES]/unify expr done.";
 			res 
 		 in
 		 let ures = List.mapi unify_exprs qry.exprs in 
-		 print_endline "[FIND_MATCHES]/map templ done.";
 		 let res = OptUtils.conc ures in 
-		 print_endline "[FIND_MATCHES]/twodlist done.";
 		 res
       in
       let onedlist = List.fold_right (fun x r -> x @ r) twodlist [] in
-	  print_endline "[FIND_MATCHES]/onedlist done.";
       match onedlist with 
          | h::t -> Some(h::t)
          | [] -> None
