@@ -21,8 +21,9 @@ sig
    val get_var : wrapper ref -> string -> (string*pyobject)
    val get_tmp_var : wrapper ref -> string -> (string*pyobject)
    val list2tuple: pyobject list -> pyobject
+   val cast_pyobj2str: pyobject -> string 
    val pyobj2str: pyobject -> string 
-   val pyobj2repr: pyobject -> pyobject
+   val pyobj2repr: pyobject -> string
    val pydict2ml: pyobject -> (pyobject*pyobject -> 'a*'b) -> (('a*'b) list)
    val find_var : wrapper ref -> pyobject -> string
    val report: wrapper ref -> unit
@@ -38,20 +39,26 @@ struct
    let null = pynull()
    let none = pynone()
    
-   let run x = 
-      let _ = pyrun_simplestring(x) in 
-      ()
-
+   
    let handle_err () : unit = 
          let typ = null in 
          let value = null in 
          let trace = null in 
-         let typ,value,trace = pyerr_fetch(typ,value,trace) in 
-         if value <> null then
-            let err_desc = (pystring_asstring (pyobject_str value)) in
-            raise (PyCamlWrapperException ("error occured:"^err_desc^"\n"))
+         let typ = pyerr_occurred () in 
+         if typ <> null then
+          begin
+			  pyerr_print();
+			  pyerr_printex 1;
+			  raise (PyCamlWrapperException "python error")
+          end
          else
             ()
+
+   let run x = 
+      let _ = pyrun_simplestring(x) in 
+      handle_err();
+      ()
+
 
    let _env x = "env[\""^x^"\"]"
    let _tmp x = "tmp[\""^x^"\"]"
@@ -59,7 +66,7 @@ struct
    let _get_dict_val (d:pyobject) (k:string) : pyobject option = 
       let x = pydict_getitemstring(d,k) in
       handle_err();
-      if x = null then None else Some(x)
+      if x = null or x = none then None else Some(x)
 
    let _get_obj_val (o:pyobject) (attr:string) : pyobject option = 
       let x = pyobject_getattrstring(o,attr) in 
@@ -93,27 +100,41 @@ struct
       Printf.printf "----------"
 
 
-   let pyobj2str (o:pyobject):string = 
+    
+      
+   let cast_pyobj2str (o:pyobject):string = 
       let x = pystring_asstring o in 
-      handle_err();
       x
-
-   let pyobj2repr (o:pyobject):pyobject = 
+   
+   let pyobj2str (o:pyobject):string = 
+      let so = pyobject_str o in 
+      let s = cast_pyobj2str so in
+      s
+      
+   let pyobj2repr (o:pyobject):string = 
       let x = pyobject_repr o in 
-      handle_err();
-      x
+      let s = cast_pyobj2str x in 
+      s
 
    let list2tuple (lst:pyobject list): pyobject =
       if List.length lst  = 0 then pytuple_empty
       else
          let arr = Array.of_list lst in 
          let tup = pytuple_fromarray arr in 
-         handle_err();
          tup
 
    let pydict2ml (obj:pyobject) (fxn:(pyobject*pyobject)->('a*'b)) : ('a*'b) list = 
-         let keys = Array.to_list (pylist_toarray (pydict_keys obj)) in 
-         let elems = List.map (fun k -> let v = pydict_getitem(obj,k) in handle_err(); (k,v)) keys in 
+		 let okeys = pydict_keys obj in 
+		 let _ = handle_err() in
+		 let arrkeys = pylist_toarray okeys in 
+		 let _ = handle_err() in
+		 let keys = Array.to_list arrkeys in
+		 let efun k = 
+			let v = pydict_getitem(obj,k) in 
+			let _ = handle_err() in
+			(k,v)
+		 in
+         let elems = List.map efun keys in 
          List.map fxn elems
       
    let report w : unit =
@@ -123,7 +144,9 @@ struct
    let init (imports :string list) : wrapper = 
       let modulename = "sympy" in 
       py_setprogramname("_interp");
+      handle_err();
       py_initialize();
+      handle_err();
       let _ = List.map 
          (fun x -> run("from "^x^" import *"))
          imports 
@@ -131,6 +154,7 @@ struct
       run("env = {}");
       run("tmp = {}");
       let mdl = pyimport_addmodule("__main__") in 
+      handle_err();
       let venv = _throw_if_null "init env" (_get_obj_val mdl "env") in 
       let tmp = _throw_if_null "init tmp" (_get_obj_val mdl "tmp") in
       {main=mdl;venv=venv; tmp=tmp} 
@@ -163,7 +187,7 @@ struct
 
    let find_var (w:wrapper ref) (obj: pyobject) =
       let compose ((k,v):pyobject*pyobject) : string*pyobject = 
-         let key = pyobj2str k in 
+         let key = cast_pyobj2str k in 
          let vl = v in 
          (key,vl)
       in
@@ -186,7 +210,7 @@ struct
 
    let define (w:wrapper ref) (vname:string) (cmd:string) : (pyobject) =
       let evname = (_env vname) in
-      let _ = eval w (evname^"="^cmd) in 
+      let _ = eval w (evname^"="^cmd) in
       _upd w;
       let obj = match _get_dict_val (_uw w).venv vname with
          | Some(x) -> x

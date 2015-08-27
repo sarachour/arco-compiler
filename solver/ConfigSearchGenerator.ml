@@ -90,7 +90,6 @@ struct
             | Some(sol) -> 
                let solve_one ((nm,assign):(string*symexpr)) : ((string*symexpr) list) list = 
                   let new_tmpl = SymLib.add_wildcard_ban tmpl nm assign in 
-                  (*Printf.printf "%srecursing / ban %s = %s\n" prefix nm (SymExpr.expr2str assign);*)
                   let s = _get_solution (prefix^"  ") new_tmpl expr in 
                   match s with 
                   | Some(x) -> 
@@ -114,7 +113,8 @@ struct
                   end
             | None -> None
       in 
-         _get_solution "" tmpl expr
+         let res = _get_solution "" tmpl expr in
+         res
 
    let find_one (t:hwcomp) (g:goal) : goalnode =
       match is_trivial g with

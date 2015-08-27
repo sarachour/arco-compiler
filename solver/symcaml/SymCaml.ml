@@ -35,10 +35,15 @@ struct
    }
    let _wr (s:symcaml) : PyCamlWrapper.wrapper ref = (s.w)
    let _wrc (s:symcaml) : PyCamlWrapper.wrapper = (!(_wr s))
-   let _print (o:pyobject) : string = (PyCamlWrapper.pyobj2str o)
-   let _rprint (o:pyobject) : string = (PyCamlWrapper.pyobj2str (PyCamlWrapper.pyobj2repr o))
+   let _print (o:pyobject) : string = (PyCamlWrapper.cast_pyobj2str o)
+   let _rprint (o:pyobject) : string = PyCamlWrapper.pyobj2repr o
    let dbg (s:symcaml) (fx: unit->unit) : unit = 
-      if !(s.debug) = true then fx()
+      if !(s.debug) = true then 
+         begin
+            fx();
+            print_newline();
+            ()
+         end
       else ()
 
    let init () =
@@ -89,19 +94,20 @@ struct
 
    let define_symbol (s:symcaml) (x:string) : symexpr =
       let cmd = "Symbol(\""^x^"\")" in
+      dbg s (fun () -> Printf.printf "symbol: %s" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in 
       (Symbol x)
 
    let define_function (s:symcaml) (x:string) : symexpr =
       let cmd = "Function(\""^x^"\")" in
-      dbg s (fun () -> Printf.printf "define_function: %s\n" cmd);
+      dbg s (fun () -> Printf.printf "define_function: %s" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in 
       (Symbol x)
 
    let define_expr (s:symcaml) (x:string) (e:symexpr) = 
       let stre = expr2py s e in
       let _ = PyCamlWrapper.define (_wr s) x stre in 
-      dbg s (fun () -> Printf.printf "define_expr: %s\n" stre);
+      dbg s (fun () -> Printf.printf "define_expr: %s" stre);
       Symbol(x)
 
    let define_wildcard (s:symcaml) (x:string) (exns:symexpr list) : symexpr = 
@@ -114,20 +120,23 @@ struct
          | [] -> "[]"
       in 
       let cmd ="Wild(\""^x^"\",exclude="^opt_arg^")" in 
-      dbg s (fun () -> Printf.printf "define_wildcard: %s\n" cmd);
+      dbg s (fun () -> Printf.printf "define_wildcard: %s" cmd);
       let _ = PyCamlWrapper.define (_wr s) x cmd in 
       Symbol(x)
 
    let _pyobj2expr (s:symcaml) (p:pyobject) : symexpr = 
-      dbg s (fun () -> Printf.printf "pyobj2expr: begin\n");
+      dbg s (fun () -> Printf.printf "[pyobj2expr] starting");
       match PyCamlWrapper.invoke (_wr s) "srepr" [p] [] with 
          | Some(res) -> 
-            let strrep = PyCamlWrapper.pyobj2str res in 
-            dbg s (fun () -> Printf.printf "pyobj2expr: %s\n" strrep);
+            dbg s (fun () -> Printf.printf "[pyobj2expr] invoked");
+            let strrep = PyCamlWrapper.cast_pyobj2str res in 
+            dbg s (fun () -> Printf.printf "[pyobj2expr] tostr. lexing: %s" strrep);
             begin
             try
                let lexbuf = Lexing.from_string strrep in
+               dbg s (fun () -> Printf.printf "[pyobj2expr] lexed. parsing: %s" strrep);
                let result = SymCamlParser.main SymCamlLexer.main lexbuf in
+               dbg s (fun () -> Printf.printf "[pyobj2expr] parsed: %s" (expr2py s result));
                result
             with  
                |SymCamlData.SymCamlParserError(msg) -> raise (SymCamlException ("parse error:"^msg))
@@ -154,6 +163,7 @@ struct
 
    let eval (s:symcaml) (e:symexpr) : symexpr =
       let cmd = (expr2py s (Paren e)) in 
+      dbg s (fun () -> Printf.printf "eval: %s" cmd);
       match PyCamlWrapper.eval (_wr s) cmd with 
          | Some(callee) ->
          begin
@@ -170,7 +180,7 @@ struct
    srepr input beforehand
    *)
    let subs (s:symcaml) (e:symexpr) (sub:(symexpr*symexpr) list) : symexpr =
-      let _ = set_debug s true in  
+      dbg s (fun () -> Printf.printf "subs: beginning");
       let callee : pyobject= 
          match PyCamlWrapper.eval (_wr s) (expr2py s (Paren e)) with 
          |Some(obj) -> obj 
@@ -189,7 +199,7 @@ struct
          |Some(obj) -> obj 
          |None ->raise (SymCamlFunctionException("subs", "unexpected: sub list cannot be null."))
       in
-      dbg s (fun () -> Printf.printf "subs: %s using %s\n" (expr2py s (Paren e)) (to_tuple_list sub));
+      dbg s (fun () -> Printf.printf "subs: %s using %s" (expr2py s (Paren e)) (to_tuple_list sub));
       match PyCamlWrapper.invoke_from (_wr s) callee "subs" [args] [] with
       | Some(res) -> 
          let repr = _pyobj2expr s res in repr 
@@ -210,26 +220,38 @@ struct
       
    let pattern (s:symcaml) (e:symexpr) (pat: symexpr) : ((string*symexpr) list) option =
       let transform (key,v) : (string*symexpr) = 
-         let nk = _rprint key in 
-         let expr = _pyobj2expr s v in 
+         dbg s (fun () -> Printf.printf "[pattern]/el starting");
+         let nk : string= _rprint key in 
+         dbg s (fun () -> Printf.printf "[pattern]/el convert val: %s" nk);
+         let expr : symexpr = _pyobj2expr s v in
+         dbg s (fun () -> Printf.printf "[pattern]/el convert key: %s" (expr2py s expr)); 
          let realname = PyCamlWrapper.find_var (_wr s) key in
+         dbg s (fun () -> Printf.printf "[pattern]/el get realname: %s" realname); 
          (realname,expr)
       in
       let ecmd = (expr2py s (Paren e)) in 
       let patcmd = (expr2py s (Paren pat)) in
-      dbg s (fun () -> Printf.printf "match: %s -> %s\n" ecmd patcmd);
+      dbg s (fun () -> Printf.printf "[pattern] match: %s -> %s" ecmd patcmd);
       let eobj = PyCamlWrapper.eval  (_wr s) ecmd in 
+      dbg s (fun () -> Printf.printf "[pattern] eval: %s" ecmd);
       let patobj = PyCamlWrapper.eval  (_wr s) patcmd in 
+      dbg s (fun () -> Printf.printf "[pattern] eval: %s" patcmd);
          match (eobj,patobj) with
          | (Some(texpr),Some(tpat)) -> 
             begin
-            match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
-            | Some(res) -> 
-               let assigns = PyCamlWrapper.pydict2ml res transform in Some assigns
-            | None -> None
+               dbg s (fun () -> Printf.printf "[pattern] invoke: %s" patcmd);
+               match PyCamlWrapper.invoke_from (_wr s)  texpr "match" [tpat] [] with
+               | Some(res) -> 
+                  begin
+                  dbg s (fun () -> Printf.printf "[pattern] some result: %s" (PyCamlWrapper.pyobj2str res));
+                  let assigns = PyCamlWrapper.pydict2ml res transform in 
+                     dbg s (fun () -> Printf.printf "[pattern] done.");
+                     Some assigns
+                  end
+               | None -> None
             end
          | _ -> raise (SymCamlFunctionException("pattern","unexpected: null callee or argument."))
-      
+
    let report (s:symcaml) : unit =
       PyCamlWrapper.report (_wr s)
 

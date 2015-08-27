@@ -77,7 +77,7 @@ struct
       in
       env
 
-   let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) : (((string*symexpr) list) list) option = 
+   let find_matches (e:SymCaml.symcaml option) (tmpl:symenv) (qry:symenv) : (((string*symexpr) list) list) option =
       let env = match e with 
          |None -> 
             let e = load_env None qry in
@@ -90,19 +90,33 @@ struct
          let nj = mangle_expr tmpl.ns j in
          match SymCaml.pattern env (Symbol ni) (Symbol nj) with
          | Some(sols) -> 
+			begin
+			print_endline "[FIND_MATCHES]/proc starting sub";
             let sb (a,b) : symexpr*symexpr = ((Symbol a),b) in 
             let sbs :(symexpr*symexpr) list = List.map sb sols in
-            let sexpr = SymCaml.subs env (Symbol nj) sbs in 
+            (* substitute *)
+            (* let sexpr = SymCaml.subs env (Symbol nj) sbs in *)
+			print_endline "[FIND_MATCHES]/proc done.";
             Some(sols)
+            end
          | None -> None
       in
       let twodlist = 
-         (*TODO - find multiple arg use case*)
-         OptUtils.conc (List.mapi (
-         fun i x -> OptUtils.unify_all (List.mapi ( fun j y -> proc i x j y ) qry.exprs)
-         ) tmpl.exprs)
+         let unify_exprs i x = 
+			let ures = List.mapi ( fun j y -> proc i x j y ) qry.exprs in 
+			print_endline "[FIND_MATCHES]/map expr done.";
+			let res = OptUtils.unify_all ures in 
+			print_endline "[FIND_MATCHES]/unify expr done.";
+			res 
+		 in
+		 let ures = List.mapi unify_exprs qry.exprs in 
+		 print_endline "[FIND_MATCHES]/map templ done.";
+		 let res = OptUtils.conc ures in 
+		 print_endline "[FIND_MATCHES]/twodlist done.";
+		 res
       in
       let onedlist = List.fold_right (fun x r -> x @ r) twodlist [] in
+	  print_endline "[FIND_MATCHES]/onedlist done.";
       match onedlist with 
          | h::t -> Some(h::t)
          | [] -> None
