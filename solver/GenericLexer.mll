@@ -8,6 +8,7 @@ rule main = parse
    | [';'] {SEMICOLON}
    | ['('] {OPARAN}
    | [')'] {CPARAN}
+   | [','] {COMMA}
    | "namespace" {NAMESPACE}
    | "in" {INP}
    | "out" {OUTP}

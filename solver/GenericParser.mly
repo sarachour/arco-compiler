@@ -55,6 +55,7 @@ let meta_get_rel () =
 %token <int> INTEGER
 %token NAMESPACE INP OUTP PARAM
 %token SEMICOLON 
+%token COMMA
 
 %token MULT DIV ADD SUB EXP OPARAN CPARAN
 %token EQ ASSIGN
@@ -127,6 +128,16 @@ expr_pe:
    | OPARAN expr_as CPARAN {let e = $2 in e}
    | expr_pe EXP expr_pe {let e1 = $1 and e2 = $3 in Exp(e1,e2)}
    | literal {let l = $1 in Literal(l)}
+   | TOKEN OPARAN expr_pe CPARAN 
+	{
+		let fxn = $1 and arg = $3 in 
+		match fxn with 
+		| "exp" -> NatExp(arg)
+		| "deriv" -> Deriv(arg)
+		| _ -> raise (ParserError ("1-arg function with name "^fxn^" not supported"))
+	}
+	
+
 ;
 
 expr_md:
@@ -153,6 +164,9 @@ expr_as:
       } 
 ;
 
+expr_top:
+   | expr_as {let e = $1 in e}
+   
 rel:
    | expr_as EQ expr_as {let e1 = $1 and e2 = $3 in Eq(e1,e2)}
 ;
