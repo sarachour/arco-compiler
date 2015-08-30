@@ -1,0 +1,32 @@
+diff -cr orig/spice3f4/src/include/os_linux.h spice3f4/src/include/os_linux.h
+*** orig/spice3f4/src/include/os_linux.h	Sat Dec  6 17:30:30 1997
+--- spice3f4/src/include/os_linux.h	Sat Dec  6 17:33:48 1997
+***************
+*** 1,5 ****
+  /*
+!  *	Linux/GNU 
+   */
+  
+  #include "os_unix.h"
+--- 1,5 ----
+  /*
+!  *	Linux/GNU Lib C
+   */
+  
+  #include "os_unix.h"
+***************
+*** 16,22 ****
+  #define HAS_ATRIGH              /* acosh( ), asinh( ), atanh( )         */
+- #define HAS_POW10
+- #define HAS_NO_IEEE_LOGB
+  #define HAS_TERMCAP
+  #define HAS_STDLIB
+  #define HAS_BCOPY
+  #define HAS_BSDRANDOM           /* srandom( ) and random( )             */
+--- 16,21 ----
+  #define HAS_ATRIGH              /* acosh( ), asinh( ), atanh( )         */
+  #define HAS_TERMCAP
++ #define HAS_TERMREAD
+  #define HAS_STDLIB
+  #define HAS_BCOPY
+  #define HAS_BSDRANDOM           /* srandom( ) and random( )             */

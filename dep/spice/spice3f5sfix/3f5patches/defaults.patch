@@ -1,0 +1,29 @@
+*** spice3f4/conf/defaults	Wed Nov 30 13:48:08 1994
+--- spice3f5/conf/defaults	Sat Sep 21 21:19:08 1996
+***************
+*** 241,246 ****
+--- 241,247 ----
+  #		bjt:	bipolar junction transistor
+  #		bsim1:	MOS model
+  #		bsim2:	MOS model
++ #		bsim3:  MOS model
+  #		cap:	capacitor
+  #		cccs:	current-controlled current source
+  #		ccvs:	current-controlled voltage source
+***************
+*** 263,269 ****
+  #		vcvs:	voltage-controlled voltage source
+  #		vsrc:	voltage source
+  
+! DEVICES		= asrc bjt bsim1 bsim2 cap cccs ccvs csw dio ind isrc \
+  		  jfet ltra mes mos1 mos2 mos3 mos6 res sw tra urc \
+  		  vccs vcvs vsrc
+  
+--- 264,270 ----
+  #		vcvs:	voltage-controlled voltage source
+  #		vsrc:	voltage source
+  
+! DEVICES		= asrc bjt bsim1 bsim2 bsim3 cap cccs ccvs csw dio ind isrc \
+  		  jfet ltra mes mos1 mos2 mos3 mos6 res sw tra urc \
+  		  vccs vcvs vsrc
+  

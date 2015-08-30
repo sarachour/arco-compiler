@@ -1,0 +1,35 @@
+*** spice3f4/conf/linux.orig	Tue Nov  4 20:00:53 1997
+--- spice3f4/conf/linux	Tue Nov  4 20:00:09 1997
+***************
+*** 4,6 ****
+  MAKE            = make
+! X_DIR           = /usr/X11
+  INCX            = -I$(X_DIR)/include -I$(X_DIR)/include/X11        \
+--- 4,6 ----
+  MAKE            = make
+! X_DIR           = /usr/X11R6
+  INCX            = -I$(X_DIR)/include -I$(X_DIR)/include/X11        \
+***************
+*** 11,15 ****
+  
+! SPICE_DIR       = /usr/local/spice
+  SPICE_LIB_DIR   = $(SPICE_DIR)/lib
+! SPICE_EXEC_DIR  = $(SPICE_DIR)/bin
+  
+--- 11,17 ----
+  
+! CC_OPT	        = -O2
+! 
+! SPICE_DIR       = /usr/lib/spice
+  SPICE_LIB_DIR   = $(SPICE_DIR)/lib
+! SPICE_EXEC_DIR  = /usr/bin
+  
+***************
+*** 17,19 ****
+  S_SPICE_LIB_DIR	= $(S_SPICE_DIR)/lib
+! S_SPICE_EXEC_DIR= $(S_SPICE_DIR)/bin
+  
+--- 19,21 ----
+  S_SPICE_LIB_DIR	= $(S_SPICE_DIR)/lib
+! S_SPICE_EXEC_DIR= /usr/bin
+  

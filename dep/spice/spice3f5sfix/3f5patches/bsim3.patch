@@ -1,0 +1,86 @@
+*** bsim3def.h.org	Sun Apr 12 23:38:57 1998
+--- bsim3def.h	Tue Apr 14 19:40:43 1998
+***************
+*** 19,24 ****
+--- 19,25 ----
+      struct sBSIM3instance *BSIM3nextInstance;
+      IFuid BSIM3name;
+  
++     int BSIM3states;  /* index into state table for this device */
+      int BSIM3dNode;
+      int BSIM3gNode;
+      int BSIM3sNode;
+***************
+*** 143,149 ****
+      double *BSIM3SPqPtr;
+      double *BSIM3BqPtr;
+  
+!     int BSIM3states;     /* index into state table for this device */
+  #define BSIM3vbd BSIM3states+ 0
+  #define BSIM3vbs BSIM3states+ 1
+  #define BSIM3vgs BSIM3states+ 2
+--- 144,150 ----
+      double *BSIM3SPqPtr;
+      double *BSIM3BqPtr;
+  
+!   /*    int BSIM3states;     index into state table for this device */
+  #define BSIM3vbd BSIM3states+ 0
+  #define BSIM3vbs BSIM3states+ 1
+  #define BSIM3vgs BSIM3states+ 2
+*** bsim3itf.h.org	Sun Apr 12 23:38:57 1998
+--- bsim3itf.h	Mon Apr 13 13:57:04 1998
+***************
+*** 32,37 ****
+--- 32,38 ----
+  
+          &BSIM3mPTSize,
+          BSIM3mPTable,
++         DEV_DEFAULT
+      },
+  
+      BSIM3param,
+***************
+*** 87,90 ****
+  
+  #endif
+  #endif
+- 
+--- 88,90 ----
+*** b3temp.c.org	Sun Apr 12 23:38:57 1998
+--- b3temp.c	Mon Apr 13 00:50:14 1998
+***************
+*** 32,38 ****
+  #define KboQ 8.617087e-5  /* Kb / q  where q = 1.60219e-19 */
+  #define EPSOX 3.453133e-11
+  #define EPSSI 1.03594e-10
+! #define PI 3.141592654
+  #define MAX_EXP 5.834617425e14
+  #define MIN_EXP 1.713908431e-15
+  #define EXP_THRESHOLD 34.0
+--- 32,38 ----
+  #define KboQ 8.617087e-5  /* Kb / q  where q = 1.60219e-19 */
+  #define EPSOX 3.453133e-11
+  #define EPSSI 1.03594e-10
+! /* #define PI 3.141592654 */
+  #define MAX_EXP 5.834617425e14
+  #define MIN_EXP 1.713908431e-15
+  #define EXP_THRESHOLD 34.0
+*** b3set.c.org	Tue Apr 14 20:01:12 1998
+--- b3set.c	Mon Apr 13 00:49:38 1998
+***************
+*** 32,38 ****
+  #define SMOOTHFACTOR 0.1
+  #define EPSOX 3.453133e-11
+  #define EPSSI 1.03594e-10
+! #define PI 3.141592654 
+  #define Charge_q 1.60219e-19
+  #define Meter2Micron 1.0e6
+  
+--- 32,38 ----
+  #define SMOOTHFACTOR 0.1
+  #define EPSOX 3.453133e-11
+  #define EPSSI 1.03594e-10
+! /* #define PI 3.141592654 */
+  #define Charge_q 1.60219e-19
+  #define Meter2Micron 1.0e6
+  

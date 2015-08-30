@@ -1,0 +1,12 @@
+*** spice3f4/src/lib/dev/bsim3/bsim3itf.h	Sun Oct 22 17:30:33 1995
+--- spice3f5/src/lib/dev/bsim3/bsim3itf.h	Sat Sep 21 12:55:55 1996
+***************
+*** 38,43 ****
+--- 38,44 ----
+      BSIM3mParam,
+      BSIM3load,
+      BSIM3setup,
++     BSIM3unsetup,
+      BSIM3setup,
+      BSIM3temp,
+      BSIM3trunc,

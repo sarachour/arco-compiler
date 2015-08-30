@@ -1,4 +1,7 @@
 
 
 all:
-	cd spice3f5; util/build gcc
+	cd spice3f5sfix; util/build linux 
+
+install:
+	cd spice3f5sfix; util/build linux install 

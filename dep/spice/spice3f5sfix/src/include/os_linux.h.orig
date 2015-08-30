@@ -1,0 +1,7 @@
+/* include file for linux.  Just include sysv, but we also have bzero. */
+
+#include "os_sysv.h"
+
+#define HAS_BCOPY
+#define HAS_POW10
+#define HAS_NO_IEEE_LOGB

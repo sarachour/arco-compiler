@@ -1,0 +1,157 @@
+diff -cr orig/spice3f4/conf/linux spice3f4/conf/linux
+*** orig/spice3f4/conf/linux	Wed Nov 30 18:46:56 1994
+--- spice3f4/conf/linux	Sat Jan 25 12:57:35 1997
+***************
+*** 1,8 ****
+! # linux config exception file
+  
+! MAKE		= /usr/bin/make
+! INTERFACE_OPTS  = -DWANT_X11
+! CC              = gcc
+! CC_OPT          = -O2
+! CC_OPT_SAFE     = -O2
+! LDFLAGS		= -lm
+--- 1,20 ----
+! # Linux/GNU (installs under /usr/local/spice) 
+  
+! DEFAULT_EDITOR  = vi
+! MAKE            = make
+! X_DIR           = /usr/X11
+! INCX            = -I$(X_DIR)/include -I$(X_DIR)/include/X11        \
+!                   -I$(X_DIR)/include/X11/Xmu                       \
+!                   -I$(X_DIR)/include/X11/Xaw
+! LIBX            = -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lX11
+! LDFLAGS	        = -ltermcap -lm
+! 
+! SPICE_DIR       = /usr/local/spice
+! SPICE_LIB_DIR   = $(SPICE_DIR)/lib
+! SPICE_EXEC_DIR  = $(SPICE_DIR)/bin
+! 
+! S_SPICE_DIR     = $(SPICE_DIR)
+! S_SPICE_LIB_DIR	= $(S_SPICE_DIR)/lib
+! S_SPICE_EXEC_DIR= $(S_SPICE_DIR)/bin
+! 
+! INSTALL_DIRS    = $(SPICE_DIR) $(SPICE_EXEC_DIR) $(SPICE_LIB_DIR)
+diff -cr orig/spice3f4/readme.Linux spice3f4/readme.Linux
+*** orig/spice3f4/readme.Linux	Thu Dec  1 02:31:59 1994
+--- spice3f4/readme.Linux	Sat Jan 25 12:59:41 1997
+***************
+*** 1,3 ****
+--- 1,47 ----
++ This is my (re-)port of Spice3f4 to Linux version 2 (I am not the same
++ person who ported it before).  It also wraps in the latest official
++ pre-3f5 patches from Berkeley I could find (found in
++ sp3f4.patch.tar.Z).  Support for the MFB interface using the Linux
++ termcap library and some various Linux features have been ported.
++ 
++ This was not done for the hell of it, but it seemed that something
++ broke due to some Linux/system/library changes, so I decided to try
++ porting it from scratch.  In fact, if you don't have any problems with
++ the previous port, your probably fine then.  However, if you do have
++ problems (e.g. exiting Spice leaves you in uppercase mode), or want
++ MFB for some reason, then try this.  It seems to work here.
++ 
++ Basically, I started out with sp3f4.kit.tar.Z.  Then, I applied the
++ most recent patches contained in sp3f4.patch.tar.Z and wrote new Linux
++ build files: "linux" and "os_linux.h" (some minor mods to the source
++ were also necessary, protected with linux conditionals).
++ 
++ Since the previous spice3f4.tar.gz port file was generally available,
++ there was no point in duplicating source, so I just diffed from the
++ spice3f4.tar.gz tree to freshly ported tree and edited or removed a
++ few of the diffs.  A few of the changes made in spice3f4.tar.gz have
++ been reverted to the distribution defaults, but one notable change is
++ that performing the install step will install the necessary files into
++ /usr/local/spice.  You'll need to add /usr/local/spice/bin to your
++ shell path.  See the file conf/linux to change the installation
++ location (this location gets hard-coded in the spice binaries).
++ 
++ This is a patched file of the original readme.Linux from
++ spice3f4.tar.gz, and the previous contents by Jeff@EE.Ryerson.Ca is
++ given below.  Just follow the below instructions, so you should be
++ able to safely do:
++ 
++         ./util/build linux
++         ./util/build linux install
++ 
++ You should then find the spice binaries and library files
++ in e.g. /usr/local/spice.  Example files and the man pages
++ are not installed, so you might want to copy them by hand.
++ 
++ Andrew Veliath (veliaa@rpi.edu)
++ January 25, 1997
++ 
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  This is my port of Spice3f4 to Linux.  It required a few more changes
+  than the porting document indicated would be necessary, mostly to do
+  with supported/unsupported functions in Linux libc & libm.
+diff -cr orig/spice3f4/src/include/cpstd.h spice3f4/src/include/cpstd.h
+*** orig/spice3f4/src/include/cpstd.h	Thu Jun 17 17:34:57 1993
+--- spice3f4/src/include/cpstd.h	Sat Jan 25 12:57:36 1997
+***************
+*** 50,56 ****
+--- 50,58 ----
+  extern char *printnum();
+  extern int cp_numdgt;
+  extern void fatal();
++ #ifndef linux
+  extern void setenv();
++ #endif /* linux */
+  extern void cp_printword();
+  
+  /* Externs from wlist.c */
+diff -cr orig/spice3f4/src/include/os_linux.h spice3f4/src/include/os_linux.h
+*** orig/spice3f4/src/include/os_linux.h	Wed Nov 30 19:10:57 1994
+--- spice3f4/src/include/os_linux.h	Sat Jan 25 12:57:36 1997
+***************
+*** 1,7 ****
+! /* include file for linux.  Just include sysv, but we also have bzero. */
+  
+! #include "os_sysv.h"
+  
+! #define HAS_BCOPY
+  #define HAS_POW10
+  #define HAS_NO_IEEE_LOGB
+--- 1,26 ----
+! /*
+!  *	Linux/GNU 
+!  */
+  
+! #include "os_unix.h"
+  
+! #define HAS_POSIXTTY            /* <termios.h>                          */
+! #define HAS_SYSVDIRS            /* <dirent.h>                           */
+! #define HAS_STRCHR              /* strchr( ) instead of index( )        */
+! #define HAS_FLOAT_H
+! #define HAS_LIMITS_H
+! #define HAS_FTIME               /* ftime( ), <times.h>                  */
+! #define HAS_SYSVTIME
+! #define HAS_BSDRLIMIT
+! #define HAS_SYSVRUSAGE
+! #define HAS_ATRIGH              /* acosh( ), asinh( ), atanh( )         */
+  #define HAS_POW10
+  #define HAS_NO_IEEE_LOGB
++ #define HAS_TERMCAP
++ #define HAS_STDLIB
++ #define HAS_BCOPY
++ #define HAS_BSDRANDOM           /* srandom( ) and random( )             */
++ #define HAS_BSDSOCKETS          /* <net/inet.h>, socket( ), etc.        */
++ #define HAS_DUP2
++ #define HAS_GETWD               /* getwd(buf)                           */
++ #define HAS_INTWAITSTATUS       /* wait(3)  takes an int *, not a union */
+diff -cr orig/spice3f4/src/lib/mfb/mfbgnc.c spice3f4/src/lib/mfb/mfbgnc.c
+*** orig/spice3f4/src/lib/mfb/mfbgnc.c	Thu Jun 17 17:34:25 1993
+--- spice3f4/src/lib/mfb/mfbgnc.c	Sat Jan 25 12:57:36 1997
+***************
+*** 24,31 ****
+--- 24,33 ----
+  #include "suffix.h"
+  
+  /* Library routines */
++ #ifndef linux
+  #ifdef HAS_FTIME
+  extern void ftime();
++ #endif
+  #endif
+  
+  /*

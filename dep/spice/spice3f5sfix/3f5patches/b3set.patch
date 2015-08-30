@@ -1,0 +1,41 @@
+*** spice3f4/src/lib/dev/bsim3/b3set.c	Sun Oct 22 17:30:29 1995
+--- spice3f5/src/lib/dev/bsim3/b3set.c	Sat Sep 21 12:55:46 1996
+***************
+*** 871,875 ****
+--- 871,906 ----
+  }  
+  
+  
++ int
++ BSIM3unsetup(inModel,ckt)
++     GENmodel *inModel;
++     CKTcircuit *ckt;
++ {
++ #ifndef HAS_BATCHSIM
++     BSIM3model *model;
++     BSIM3instance *here;
+  
++     for (model = (BSIM3model *)inModel; model != NULL;
++ 	    model = model->BSIM3nextModel)
++     {
++         for (here = model->BSIM3instances; here != NULL;
++                 here=here->BSIM3nextInstance)
++ 	{
++ 	    if (here->BSIM3dNodePrime
++ 		    && here->BSIM3dNodePrime != here->BSIM3dNode)
++ 	    {
++ 		CKTdltNNum(ckt, here->BSIM3dNodePrime);
++ 		here->BSIM3dNodePrime = 0;
++ 	    }
++ 	    if (here->BSIM3sNodePrime
++ 		    && here->BSIM3sNodePrime != here->BSIM3sNode)
++ 	    {
++ 		CKTdltNNum(ckt, here->BSIM3sNodePrime);
++ 		here->BSIM3sNodePrime = 0;
++ 	    }
++ 	}
++     }
++ #endif
++     return OK;
++ }
+  

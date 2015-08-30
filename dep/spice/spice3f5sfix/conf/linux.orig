@@ -1,0 +1,20 @@
+# Linux/GNU (installs under /usr/local/spice) 
+
+DEFAULT_EDITOR  = vi
+MAKE            = make
+X_DIR           = /usr/X11
+INCX            = -I$(X_DIR)/include -I$(X_DIR)/include/X11        \
+                  -I$(X_DIR)/include/X11/Xmu                       \
+                  -I$(X_DIR)/include/X11/Xaw
+LIBX            = -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lSM -lICE -lX11
+LDFLAGS	        = -ltermcap -lm
+
+SPICE_DIR       = /usr/local/spice
+SPICE_LIB_DIR   = $(SPICE_DIR)/lib
+SPICE_EXEC_DIR  = $(SPICE_DIR)/bin
+
+S_SPICE_DIR     = $(SPICE_DIR)
+S_SPICE_LIB_DIR	= $(S_SPICE_DIR)/lib
+S_SPICE_EXEC_DIR= $(S_SPICE_DIR)/bin
+
+INSTALL_DIRS    = $(SPICE_DIR) $(SPICE_EXEC_DIR) $(SPICE_LIB_DIR)

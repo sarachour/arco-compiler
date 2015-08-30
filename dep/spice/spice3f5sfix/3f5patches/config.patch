@@ -1,0 +1,19 @@
+*** spice3f4/src/bin/config.c	Wed Nov 30 13:48:09 1994
+--- spice3f5/src/bin/config.c	Sat Sep 21 11:23:21 1996
+***************
+*** 181,187 ****
+          &B2info,
+  #endif
+  #ifdef DEV_bsim3
+!         &B3info,
+  #endif
+  #ifdef DEV_cap
+          &CAPinfo,
+--- 185,191 ----
+          &B2info,
+  #endif
+  #ifdef DEV_bsim3
+!         &BSIM3info,
+  #endif
+  #ifdef DEV_cap
+          &CAPinfo,

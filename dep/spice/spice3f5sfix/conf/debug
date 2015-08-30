@@ -1,0 +1,27 @@
+# Linux/GNU for debuging (instal under /usr/local/spice) 
+
+DEFAULT_EDITOR  = joe
+ASCII_RAWFILE	= 0
+INTERFACE_OPTS	= -DWANT_X11
+MAKE            = make
+X_DIR           = /usr/X11R6
+INCX            = -I$(X_DIR)/include -I$(X_DIR)/include/X11        \
+                  -I$(X_DIR)/include/X11/Xmu                       \
+                  -I$(X_DIR)/include/X11/Xaw
+LIBX            = -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lSM -lICE -lX11
+
+LDFLAGS	        = -lefence -ltermcap -lm -g 
+
+CC_OPT	        = -DCPDEBUG -DFTEDEBUG -g
+
+OBJ_TOP		= $(SYS_DIR)/objdbg
+
+SPICE_DIR       = /usr/local/spice
+SPICE_LIB_DIR   = $(SPICE_DIR)/lib
+SPICE_EXEC_DIR  = $(SPICE_DIR)/bin
+
+S_SPICE_DIR     = $(SPICE_DIR)
+S_SPICE_LIB_DIR	= $(S_SPICE_DIR)/lib
+S_SPICE_EXEC_DIR= $(S_SPICE_DIR)/bin
+
+INSTALL_DIRS    = $(SPICE_DIR) $(SPICE_EXEC_DIR) $(SPICE_LIB_DIR)

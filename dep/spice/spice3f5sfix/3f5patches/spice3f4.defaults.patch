@@ -1,0 +1,291 @@
+diff -cr orig/spice3f4/conf/defaults spice3f4/conf/defaults
+*** orig/spice3f4/conf/defaults	Wed Nov 30 15:48:08 1994
+--- spice3f4/conf/defaults	Sat Jan 25 12:57:35 1997
+***************
+*** 136,142 ****
+  
+  #	CC_OPT: Default compile options (optimization/debug level, other)
+  
+! CC_OPT		= -g
+  
+  #	CC_OPT_SAFE: Special compile options to override CC_OPT for code
+  #	which typically causes problems for most compilers (bsim1 and bsim2).
+--- 136,142 ----
+  
+  #	CC_OPT: Default compile options (optimization/debug level, other)
+  
+! CC_OPT		= -O
+  
+  #	CC_OPT_SAFE: Special compile options to override CC_OPT for code
+  #	which typically causes problems for most compilers (bsim1 and bsim2).
+***************
+*** 212,219 ****
+  #	MIT X11r5, X11r4, and your vendor's version of X11, though listing
+  #	more doesn't hurt.
+  
+! INCX    	= -I$(X_DIR)/include -I$(X_DIR)/include/X11	   \
+! 		  -I$(X_DIR)/include/X11/Xmu			   \
+  		  -I$(X_DIR)/include/X11/Xaw
+  
+  #	LIBX lists the options for linking with the X11 libraries.  Order is
+--- 212,219 ----
+  #	MIT X11r5, X11r4, and your vendor's version of X11, though listing
+  #	more doesn't hurt.
+  
+! INCX    	= -I$(X_DIR)/include -I$(X_DIR)/include/X11		      \
+! 		  -I$(X_DIR)/include/X11/Xmu				      \
+  		  -I$(X_DIR)/include/X11/Xaw
+  
+  #	LIBX lists the options for linking with the X11 libraries.  Order is
+***************
+*** 221,228 ****
+  #	which is not available with all versions of X11.  If you do not have
+  #	it, then you do not need it (delete the following reference to it).
+  
+! #  LIBX		= -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lX11
+! LIBX		= -lXaw -lXt -lXext -lXmu -lX11
+  
+  
+  
+--- 221,227 ----
+  #	which is not available with all versions of X11.  If you do not have
+  #	it, then you do not need it (delete the following reference to it).
+  
+! LIBX		= -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lX11
+  
+  
+  
+***************
+*** 296,302 ****
+  #	DEFAULT_EDITOR lists where the default editor used by the "edit"
+  #	command is located.
+  
+! DEFAULT_EDITOR	= jove
+  
+  #	ASCII_RAWFILE indicates that the default format of the spice3 raw data
+  #	file should be in human-readable format ( = 1 ) or in the smaller,
+--- 295,301 ----
+  #	DEFAULT_EDITOR lists where the default editor used by the "edit"
+  #	command is located.
+  
+! DEFAULT_EDITOR	= vi
+  
+  #	ASCII_RAWFILE indicates that the default format of the spice3 raw data
+  #	file should be in human-readable format ( = 1 ) or in the smaller,
+diff -cr orig/spice3f4/conf/gcc spice3f4/conf/gcc
+*** orig/spice3f4/conf/gcc	Wed Nov 30 15:35:53 1994
+--- spice3f4/conf/gcc	Sat Jan 25 12:57:35 1997
+***************
+*** 1,6 ****
+  # For use with gcc; use "build <system> gcc"
+  
+  CC		= gcc
+! CC_OPT		= -O2
+! CC_OPT_SAFE	= -O2
+  ASM_HACK	= < /dev/null
+--- 1,6 ----
+  # For use with gcc; use "build <system> gcc"
+  
+  CC		= gcc
+! CC_OPT		= -O
+! CC_OPT_SAFE	= -O
+  ASM_HACK	= < /dev/null
+diff -cr orig/spice3f4/conf/linux spice3f4/conf/linux
+diff -cr orig/spice3f4/examples/pzt.cir spice3f4/examples/pzt.cir
+*** orig/spice3f4/examples/pzt.cir	Wed Nov 30 19:38:46 1994
+--- spice3f4/examples/pzt.cir	Sat Jan 25 12:57:35 1997
+***************
+*** 1,5 ****
+  test pz
+! iin	1	0	0 ac
+  r1	1	0	1Ohms
+  l1	1	0	0.05H
+  
+--- 1,5 ----
+  test pz
+! iin	1	0	ac
+  r1	1	0	1Ohms
+  l1	1	0	0.05H
+  
+diff -cr orig/spice3f4/lib/scripts/spinit spice3f4/lib/scripts/spinit
+*** orig/spice3f4/lib/scripts/spinit	Fri Jun 18 17:02:40 1993
+--- spice3f4/lib/scripts/spinit	Sat Jan 25 12:57:36 1997
+***************
+*** 2,8 ****
+  alias exit quit
+  alias acct rusage all
+  set x11lineararcs
+- * the following from spice3e2 version (NJ)
+- * set term=NO
+- set hcopydevtype=postscript
+- set hcopydev=laserplus
+--- 2,4 ----
+diff -cr orig/spice3f4/src/include/capabil.h spice3f4/src/include/capabil.h
+*** orig/spice3f4/src/include/capabil.h	Fri Jun 18 12:02:46 1993
+--- spice3f4/src/include/capabil.h	Sat Jan 25 12:57:36 1997
+***************
+*** 111,118 ****
+  #  ifdef __STDC__
+  extern double logb(double), scalb(double, int);
+  #  else
+! /* next line taken out because of inconsistent type errors (NJ)
+! extern double logb(), scalb();  */
+  #  endif
+  #endif
+  
+--- 111,117 ----
+  #  ifdef __STDC__
+  extern double logb(double), scalb(double, int);
+  #  else
+! extern double logb( ), scalb( );
+  #  endif
+  #endif
+  
+diff -cr orig/spice3f4/src/lib/cp/numparse.c spice3f4/src/lib/cp/numparse.c
+*** orig/spice3f4/src/lib/cp/numparse.c	Wed Nov 30 18:20:48 1994
+--- spice3f4/src/lib/cp/numparse.c	Sat Jan 25 12:57:36 1997
+***************
+*** 23,29 ****
+          d *= 10.0;
+      return (d);
+  }
+! #endif /*HAS_POW10*/
+  
+  
+  bool ft_strictnumparse = false;
+--- 23,29 ----
+          d *= 10.0;
+      return (d);
+  }
+! #endif
+  
+  
+  bool ft_strictnumparse = false;
+diff -cr orig/spice3f4/src/lib/misc/math.c spice3f4/src/lib/misc/math.c
+*** orig/spice3f4/src/lib/misc/math.c	Fri Jun 18 16:13:39 1993
+--- spice3f4/src/lib/misc/math.c	Sat Jan 25 12:57:36 1997
+***************
+*** 13,20 ****
+  
+  #ifdef HAS_NO_IEEE_LOGB
+  
+! /* changed all instances of logb to normslogb (NJ) */
+! double normslogb(x)
+  	double	x;
+  {
+  	double	y = 0.0;
+--- 13,20 ----
+  
+  #ifdef HAS_NO_IEEE_LOGB
+  
+! double
+! logb(x)
+  	double	x;
+  {
+  	double	y = 0.0;
+***************
+*** 36,44 ****
+  	return y;
+  }
+  
+- /* changed scalb to normsscalb (system routine should be OK (NJ) */
+  double
+! normsscalb(x, n)
+  	double	x;
+  	int	n;
+  {
+--- 36,43 ----
+  	return y;
+  }
+  
+  double
+! scalb(x, n)
+  	double	x;
+  	int	n;
+  {
+diff -cr orig/spice3f4/src/lib/sparse/spsmp.c spice3f4/src/lib/sparse/spsmp.c
+*** orig/spice3f4/src/lib/sparse/spsmp.c	Wed Nov 30 19:12:45 1994
+--- spice3f4/src/lib/sparse/spsmp.c	Sat Jan 25 12:57:36 1997
+***************
+*** 383,397 ****
+  #endif
+  
+      /* Re-normalize (re or im may be > 2.0 or both < 1.0 */
+-     /* have to change all of the logb function calls to normslogb (NJ) */
+      if (re != 0.0) {
+! 	y = normslogb(re);
+  	if (im != 0.0)
+! 	    z = normslogb(im);
+  	else
+  	    z = 0;
+      } else if (im != 0.0) {
+! 	z = normslogb(im);
+  	y = 0;
+      } else {
+  	/* Singular */
+--- 383,396 ----
+  #endif
+  
+      /* Re-normalize (re or im may be > 2.0 or both < 1.0 */
+      if (re != 0.0) {
+! 	y = logb(re);
+  	if (im != 0.0)
+! 	    z = logb(im);
+  	else
+  	    z = 0;
+      } else if (im != 0.0) {
+! 	z = logb(im);
+  	y = 0;
+      } else {
+  	/* Singular */
+***************
+*** 407,420 ****
+  	y = z;
+  
+      *pExponent = x + y;
+!     x = normsscalb(re, (int) -y);
+!     z = normsscalb(im, (int) -y);
+  #ifdef debug_print
+      printf(" ** values are: re %g, im %g, y %g, re' %g, im' %g\n",
+  	    re, im, y, x, z);
+  #endif
+!     pMantissa->real = normsscalb(re, (int) -y);
+!     pMantissa->imag = normsscalb(im, (int) -y);
+  
+  #ifdef debug_print
+      printf("Determinant 10->2: (%20g,%20g)^%d\n", pMantissa->real,
+--- 406,419 ----
+  	y = z;
+  
+      *pExponent = x + y;
+!     x = scalb(re, (int) -y);
+!     z = scalb(im, (int) -y);
+  #ifdef debug_print
+      printf(" ** values are: re %g, im %g, y %g, re' %g, im' %g\n",
+  	    re, im, y, x, z);
+  #endif
+!     pMantissa->real = scalb(re, (int) -y);
+!     pMantissa->imag = scalb(im, (int) -y);
+  
+  #ifdef debug_print
+      printf("Determinant 10->2: (%20g,%20g)^%d\n", pMantissa->real,
+diff -crN orig/spice3f4/NORM.changes spice3f4/NORM.changes
+*** orig/spice3f4/NORM.changes	Sun Dec  7 11:10:05 1997
+--- spice3f4/NORM.changes	Wed Dec 31 19:00:00 1969
+***************
+*** 1,14 ****
+- 
+- 
+- Problem with type declaration of double logb(double)
+- 
+- Had to rename spice function logb to normslogb in lib/misc/math.c
+- and lib/sparse/spsmp.c
+- 
+- conflict with /usr/include/math.h
+- 
+- 
+- Config changes:
+- 
+-  -O flag out
+-  X11R4 libraries and include files in conf/defaults and hpux
+--- 0 ----

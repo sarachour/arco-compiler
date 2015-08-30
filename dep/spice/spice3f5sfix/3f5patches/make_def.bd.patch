@@ -1,0 +1,36 @@
+*** spice3f4/util/skeleton/make_def.bd	Wed Nov 30 13:48:18 1994
+--- spice3f5/util/skeleton/make_def.bd	Sat Sep 21 19:52:45 1996
+***************
+*** 8,14 ****
+  PATH_SEP	= /
+  PS		= /
+  REVISION	=
+! VERSION		= 3f4
+  VERSION_REVISION= $(VERSION)$(REVISION)
+  NOTICE		=
+  TOP		= /projects/spice3/spice$(VERSION)
+--- 8,14 ----
+  PATH_SEP	= /
+  PS		= /
+  REVISION	=
+! VERSION		= 3f5
+  VERSION_REVISION= $(VERSION)$(REVISION)
+  NOTICE		=
+  TOP		= /projects/spice3/spice$(VERSION)
+***************
+*** 114,120 ****
+  
+  DEV_SUBDIRS	= $(DEVICES)
+  
+! ALL_DEVICES	= asrc bjt bsim1 bsim2 cap cccs ccvs csw dio ind isrc \
+  		  jfet ltra mes mos1 mos2 mos3 mos6 res sw tra urc \
+  		  vccs vcvs vsrc
+  
+--- 114,120 ----
+  
+  DEV_SUBDIRS	= $(DEVICES)
+  
+! ALL_DEVICES	= asrc bjt bsim1 bsim2 bsim3 cap cccs ccvs csw dio ind isrc \
+  		  jfet ltra mes mos1 mos2 mos3 mos6 res sw tra urc \
+  		  vccs vcvs vsrc
+  

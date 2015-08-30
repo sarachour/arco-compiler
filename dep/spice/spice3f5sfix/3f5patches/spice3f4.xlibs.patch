@@ -1,0 +1,9 @@
+*** spice3f4/conf/linux	Sun Dec  7 10:35:20 1997
+--- ../spice3f4/conf/linux	Sun Dec  7 10:32:44 1997
+***************
+*** 8,9 ****
+                    -I$(X_DIR)/include/X11/Xaw
+! LIBX            = -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lX11
+--- 8,9 ----
+                    -I$(X_DIR)/include/X11/Xaw
+! LIBX            = -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lSM -lICE -lX11

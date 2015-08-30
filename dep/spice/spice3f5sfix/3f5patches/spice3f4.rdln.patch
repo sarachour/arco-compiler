@@ -1,0 +1,459 @@
+diff -cr newlnx/spice3f4/conf/linux spice3f4/conf/linux
+*** newlnx/spice3f4/conf/linux	Tue Nov  4 22:17:51 1997
+--- spice3f4/conf/linux	Tue Nov  4 22:18:53 1997
+***************
+*** 1,4 ****
+! # Linux/GNU (installs under /usr/local/spice) 
+  
+  DEFAULT_EDITOR  = vi
+  MAKE            = make
+--- 1,4 ----
+! # Linux/GNU with GNU Readline, Termcap, X11 and MFB support
+  
+  DEFAULT_EDITOR  = vi
+  MAKE            = make
+***************
+*** 10,11 ****
+! LDFLAGS	        = -ltermcap -lm
+  
+--- 10,11 ----
+! LDFLAGS	        = -lreadline -ltermcap -lm
+  
+diff -cr newlnx/spice3f4/readme.Linux spice3f4/readme.Linux
+*** newlnx/spice3f4/readme.Linux	Tue Nov  4 22:17:51 1997
+--- spice3f4/readme.Linux	Tue Nov  4 22:18:53 1997
+***************
+*** 1,3 ****
+--- 1,43 ----
++ I have updated my port patch.  The update makes the following feature
++ addition:
++ 
++     * Support for GNU Readline Command-Line Editing
++ 
++ 	The consequence of this change is that there may be a few
++ 	changes in normal interactive operation.  However, usability
++ 	should be improved.  Operation in non-interactive mode should
++ 	be unchanged.
++ 
++ 	History for spice3 is saved in ~/.spice3_history and in 
++ 	~/.nutmeg_history for nutmeg.  Also, in your ~/.inputrc
++ 	file, you can use the name spice3 and nutmeg for conditional
++ 	keybindings.  As a result of this, when you restart spice3,
++ 	the history counter is appropriately updated.  To disable 
++ 	saving of the history file, set the spice history variable 
++ 	to zero (set history = 0).  By default, the last 1000 lines
++ 	of history are saved.
++ 
++ 	Note that the history mechanism in spice3 and nutmeg has been
++ 	completely replaced by GNU Readline, so running the "history" 
++ 	command will display the history from GNU Readline and not 
++ 	the old history mechanism, though operation is similar and 
++ 	better.
++ 
++ 	For more information on using GNU Readline, see the associated
++ 	manual for more information on this wonderful tool.  
++ 
++ 	This may work on other platforms, but is untested -- just
++ 	include the HAS_GNUREADLINE define in the OS-specific header
++ 	file.
++ 
++ --
++ Regards,
++ Andrew Veliath
++ veliaa@frontiernet.net, veliaa@rpi.edu
++ November 4, 1997
++ 
++ 
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  This is my (re-)port of Spice3f4 to Linux version 2 (I am not the same
+  person who ported it before).  It also wraps in the latest official
+  pre-3f5 patches from Berkeley I could find (found in
+***************
+*** 41,46 ****
+--- 81,88 ----
+  Andrew Veliath (veliaa@rpi.edu)
+  January 25, 1997
+  
++ 
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  This is my port of Spice3f4 to Linux.  It required a few more changes
+  than the porting document indicated would be necessary, mostly to do
+diff -cr newlnx/spice3f4/src/bin/main.c spice3f4/src/bin/main.c
+*** newlnx/spice3f4/src/bin/main.c	Wed Nov 30 15:48:10 1994
+--- spice3f4/src/bin/main.c	Tue Nov  4 22:19:01 1997
+***************
+*** 25,30 ****
+--- 25,37 ----
+  #include <pwd.h>
+  #endif
+  
++ #ifdef HAS_GNUREADLINE
++ /* Added GNU Readline Support 11/3/97 -- Andrew Veliath <veliaa@rpi.edu> */
++ #include <readline/readline.h>
++ #include <readline/history.h>
++ #include "fteinput.h"
++ #endif
++ 
+  #ifdef HAS_UNIX_SIGS
+  #include <signal.h>
+  #endif
+***************
+*** 49,54 ****
+--- 56,66 ----
+  bool ft_intrpt = false;     /* Set by the (void) signal handlers. */
+  bool ft_setflag = false;    /* Don't abort after an interrupt. */
+  
++ #ifdef HAS_GNUREADLINE
++ char gnu_history_file[512];
++ static char *application_name;
++ #endif
++ 
+  struct variable *(*if_getparam)( );
+  
+  #ifdef BATCH
+***************
+*** 181,186 ****
+--- 193,281 ----
+  
+  #endif
+  
++ #ifdef HAS_GNUREADLINE
++ /* Adapted ../lib/cp/lexical.c:prompt() for GNU Readline -- Andrew Veliath <veliaa@rpi.edu> */
++ static char *
++ prompt()
++ {
++     static char pbuf[128];
++     char *p = pbuf, *s;
++ 
++     if (cp_interactive == false)
++         return;
++     if (cp_promptstring == NULL)
++         s = "-> ";
++     else
++         s = cp_promptstring;
++     if (cp_altprompt)
++         s = cp_altprompt;
++     while (*s) {
++         switch (strip(*s)) {
++ 	case '!':
++ 	    p += sprintf(p, "%d", where_history() + 1);
++ 	    break;
++ 	case '\\':
++ 	    if (*(s + 1)) 
++ 		p += sprintf(p, "%c", strip(*++s));
++ 	default:
++ 	    *p = strip(*s); ++p;
++ 	    break;
++         }
++         s++;
++     }
++     *p = 0;
++     return pbuf;
++ }
++ 
++ /* Process device events in Readline's hook since there is no where
++    else to do it now - AV */
++ int rl_event_func()
++ {
++     static REQUEST reqst = { checkup_option, 0 };
++     Input(&reqst, NULL);
++     return 0;
++ }
++ 
++ /* Added GNU Readline Support -- Andrew Veliath <veliaa@rpi.edu> */
++ void app_rl_readlines()
++ {
++     char *line, *expanded_line;
++ 
++     strcpy(gnu_history_file, getenv("HOME"));
++     strcat(gnu_history_file, "/.");
++     strcat(gnu_history_file, application_name);
++     strcat(gnu_history_file, "_history");
++ 
++     using_history();
++     read_history(gnu_history_file);
++ 
++     rl_readline_name = application_name;
++     rl_instream = cp_in;
++     rl_outstream = cp_out;
++     rl_event_hook = rl_event_func;
++ 	
++     while (1) {
++ 	history_set_pos(history_length);
++ 	line = readline(prompt());
++ 	if (line && *line) {
++ 	    int s = history_expand(line, &expanded_line);
++ 		    
++ 	    if (s == 2) {
++ 		fprintf(stderr, "-> %s\n", expanded_line);
++ 	    } else if (s == -1) {
++ 		fprintf(stderr, "readline: %s\n", expanded_line);
++ 	    } else {
++ 		cp_evloop(expanded_line);
++ 		add_history(expanded_line);
++ 	    }
++ 	    free(expanded_line);
++ 	}
++ 	if (line) free(line);
++     }
++     /* History gets written in ../fte/misccoms.c com_quit */
++ }
++ #endif /* HAS_GNUREADLINE */
++ 
+  char *hlp_filelist[] = { "spice", 0 };
+  
+  void
+***************
+*** 217,222 ****
+--- 312,324 ----
+      }
+      started = true;
+  
++ #ifdef HAS_GNUREADLINE
++     if (!(application_name = strrchr(av[0],'/')))
++         application_name = av[0];
++     else
++         ++application_name;
++ #endif
++ 
+  #ifdef HAS_MAC_ARGCARGV
+      ac = initmac(&av);
+  #endif
+***************
+*** 393,399 ****
+--- 495,505 ----
+  #  ifdef HAS_UNIX_SIGS
+      /* Set up (void) signal handling */
+      if (!ft_batchmode) {
++ #    ifdef HAS_GNUREADLINE
++         (void) signal(SIGINT, SIG_IGN);
++ #    else
+          (void) signal(SIGINT, ft_sigintr);
++ #    endif
+          (void) signal(SIGFPE, sigfloat);
+  #    ifdef SIGTSTP
+          (void) signal(SIGTSTP, sigstop);
+***************
+*** 588,594 ****
+--- 694,704 ----
+      } else {
+          (void) setjmp(jbuf);
+          cp_interactive = true;
++ #ifdef HAS_GNUREADLINE
++ 	app_rl_readlines();
++ #else
+  	while (cp_evloop((char *) NULL) == 1) ;
++ #endif /* ifelse HAS_GNUREADLINE */
+      }
+  
+  #  else /* if BATCH */
+***************
+*** 627,633 ****
+--- 737,747 ----
+      /* Nutmeg "main" */
+      (void) setjmp(jbuf);
+      cp_interactive = true;
++ #ifdef HAS_GNUREADLINE
++     app_rl_readlines();
++ #else
+      while (cp_evloop((char *) NULL) == 1) ;
++ #endif /* ifelse HAS_GNUREADLINE */
+  
+  #endif
+  
+diff -cr newlnx/spice3f4/src/include/os_linux.h spice3f4/src/include/os_linux.h
+*** newlnx/spice3f4/src/include/os_linux.h	Tue Nov  4 22:17:52 1997
+--- spice3f4/src/include/os_linux.h	Tue Nov  4 22:18:54 1997
+***************
+*** 24,26 ****
+--- 25,28 ----
+  #define HAS_DUP2
+  #define HAS_GETWD               /* getwd(buf)                           */
+  #define HAS_INTWAITSTATUS       /* wait(3)  takes an int *, not a union */
++ #define HAS_GNUREADLINE         /* use the GNU Readline library for input */
+diff -cr newlnx/spice3f4/src/lib/cp/history.c spice3f4/src/lib/cp/history.c
+*** newlnx/spice3f4/src/lib/cp/history.c	Thu Jun 17 17:32:40 1993
+--- spice3f4/src/lib/cp/history.c	Tue Nov  4 22:18:54 1997
+***************
+*** 11,16 ****
+--- 11,24 ----
+  #include "cpdefs.h"
+  #include "suffix.h"
+  
++ #ifdef HAS_GNUREADLINE
++ 
++ /* Added GNU Readline Support -- Andrew Veliath <veliaa@rpi.edu> */
++ #include <readline/readline.h>
++ #include <readline/history.h>
++ 
++ #endif /* HAS_GNUREADLINE */
++ 
+  static char *dohs();
+  static void freehist();
+  static wordlist *dohmod();
+***************
+*** 19,24 ****
+--- 27,33 ----
+  static wordlist *hpattern();
+  static wordlist *hprefix();
+  
++ 
+  struct histent *cp_lastone = NULL;
+  int cp_maxhistlength = 1000;
+  char cp_hat = '^';
+***************
+*** 345,352 ****
+--- 354,363 ----
+      cp_lastone->hi_next = NULL;
+      cp_lastone->hi_event = event;
+      cp_lastone->hi_wlist = wl_copy(wlist);
++ #ifndef HAS_GNUREADLINE
+      freehist(histlength - cp_maxhistlength);
+      histlength++;
++ #endif
+      return;
+  }
+  
+***************
+*** 483,492 ****
+--- 494,529 ----
+          wl = wl->wl_next;
+          rev = true;
+      }
++ #ifdef HAS_GNUREADLINE
++     /* Added GNU Readline Support -- Andrew Veliath <veliaa@rpi.edu> */
++     {
++ 	HIST_ENTRY *he;
++ 	int i, N;
++ 
++ 	N = (wl == NULL) ? history_length : atoi(wl->wl_word);
++ 
++ 	if (N < 0) N = 0;
++ 	if (N > history_length) N = history_length;
++ 
++ 	if (rev)
++ 	    for (i = history_length; i > 0 && N; --i, --N) {
++ 		he = history_get(i);
++ 		if (!he) return;
++ 		fprintf(cp_out, "%d\t%s\n", i, he->line);
++ 	    }
++ 	else
++ 	    for (i = history_length - N + 1; i <= history_length; ++i) {
++ 		he = history_get(i);
++ 		if (!he) return;
++ 		fprintf(cp_out, "%d\t%s\n", i, he->line);
++ 	    }
++     }
++ #else
+      if (wl == NULL)
+          cp_hprint(cp_event - 1, cp_event - histlength, rev);
+      else
+          cp_hprint(cp_event - 1, cp_event - 1 - atoi(wl->wl_word), rev);
++ #endif /* ifelse HAS_GNUREADLINE */
+      return;
+  }
+  
+diff -cr newlnx/spice3f4/src/lib/fte/misccoms.c spice3f4/src/lib/fte/misccoms.c
+*** newlnx/spice3f4/src/lib/fte/misccoms.c	Thu Jun 17 17:32:53 1993
+--- spice3f4/src/lib/fte/misccoms.c	Tue Nov  4 22:18:54 1997
+***************
+*** 11,16 ****
+--- 11,24 ----
+  #include "hlpdefs.h"
+  #include "suffix.h"
+  
++ #ifdef HAS_GNUREADLINE
++ #include <readline/readline.h>
++ #include <readline/history.h>
++ 
++ extern int gnu_history_lines;
++ extern char gnu_history_file[];
++ #endif
++ 
+  static void byemesg();
+  
+  void
+***************
+*** 299,304 ****
+--- 307,320 ----
+              byemesg();
+      } else
+          byemesg();
++ 
++ #ifdef HAS_GNUREADLINE
++     /* Added GNU Readline Support -- Andrew Veliath <veliaa@rpi.edu> */
++     if (cp_interactive && (cp_maxhistlength > 0)) {
++ 	stifle_history(cp_maxhistlength);
++ 	write_history(gnu_history_file);
++     }
++ #endif /* HAS_GNUREADLINE */
+  
+      exit(EXIT_NORMAL);
+      /* NOTREACHED */
+diff -cr newlnx/spice3f4/src/lib/fte/signal.c spice3f4/src/lib/fte/signal.c
+*** newlnx/spice3f4/src/lib/fte/signal.c	Thu Jun 17 17:32:59 1993
+--- spice3f4/src/lib/fte/signal.c	Tue Nov  4 22:19:01 1997
+***************
+*** 32,37 ****
+--- 32,39 ----
+   * is true.
+   */
+  
++ /* not using SIGINT with GNU Readline - AV */
++ #ifndef HAS_GNUREADLINE
+  SIGNAL_TYPE
+  ft_sigintr()
+  {
+***************
+*** 58,63 ****
+--- 60,66 ----
+      cp_resetcontrol();
+      longjmp(jbuf, 1);
+  }
++ #endif /* !HAS_GNUREADLINE */
+  
+  /* ARGSUSED */
+  SIGNAL_TYPE
+diff -cr newlnx/spice3f4/src/lib/fte/x10.c spice3f4/src/lib/fte/x10.c
+*** newlnx/spice3f4/src/lib/fte/x10.c	Thu Jun 17 17:32:54 1993
+--- spice3f4/src/lib/fte/x10.c	Tue Nov  4 22:18:54 1997
+***************
+*** 726,737 ****
+--- 726,740 ----
+              graph->commandline, fx0, fx1, fy0, fy1);
+      }
+  
++ /* don't use the following if using GNU Readline - AV */
++ #ifndef HAS_GNUREADLINE
+      /* hack for Gordon Jacobs */
+      /* add to history list if plothistory is set */
+      if (cp_getvar("plothistory", VT_BOOL, (char *) &dummy)) {
+        wl = cp_parse(buf);
+        (void) cp_addhistent(cp_event++, wl);
+      }
++ #endif /* HAS_GNUREADLINE */
+  
+      (void) cp_evloop(buf);
+  
+diff -cr newlnx/spice3f4/src/lib/fte/x11.c spice3f4/src/lib/fte/x11.c
+*** newlnx/spice3f4/src/lib/fte/x11.c	Thu Jun 17 17:32:59 1993
+--- spice3f4/src/lib/fte/x11.c	Tue Nov  4 22:18:54 1997
+***************
+*** 773,784 ****
+--- 773,787 ----
+  	        graph->commandline, fx0, fx1, fy0, fy1);
+  	}
+  
++ /* don't use the following if using GNU Readline - AV */
++ #ifndef HAS_GNUREADLINE
+  	/* hack for Gordon Jacobs */
+  	/* add to history list if plothistory is set */
+  	if (cp_getvar("plothistory", VT_BOOL, (char *) &dummy)) {
+  	  wl = cp_parse(buf);
+  	  (void) cp_addhistent(cp_event++, wl);
+  	}
++ #endif /* HAS_GNUREADLINE */
+  
+  	(void) cp_evloop(buf);
+  

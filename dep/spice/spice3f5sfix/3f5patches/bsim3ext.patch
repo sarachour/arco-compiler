@@ -1,0 +1,22 @@
+*** spice3f4/src/lib/dev/bsim3/bsim3ext.h	Sun Oct 22 17:30:33 1995
+--- spice3f5/src/lib/dev/bsim3/bsim3ext.h	Sat Sep 21 13:46:06 1996
+***************
+*** 24,29 ****
+--- 24,30 ----
+  extern int BSIM3param(int,IFvalue*,GENinstance*,IFvalue*);
+  extern int BSIM3pzLoad(GENmodel*,CKTcircuit*,SPcomplex*);
+  extern int BSIM3setup(SMPmatrix*,GENmodel*,CKTcircuit*,int*);
++ extern int BSIM3unsetup(GENmodel*,CKTcircuit*);
+  extern int BSIM3temp(GENmodel*,CKTcircuit*);
+  extern int BSIM3trunc(GENmodel*,CKTcircuit*,double*);
+  extern int BSIM3noise(int,int,GENmodel*,CKTcircuit*,Ndata*,double*);
+***************
+*** 44,49 ****
+--- 45,51 ----
+  extern int BSIM3param();
+  extern int BSIM3pzLoad();
+  extern int BSIM3setup();
++ extern int BSIM3unsetup();
+  extern int BSIM3trunc();
+  extern int BSIM3noise();
+  

@@ -1,0 +1,21 @@
+*** spice3f4/src/lib/fte/cpitf.c.orig	Sun Dec  7 13:40:46 1997
+--- spice3f4/src/lib/fte/cpitf.c	Sun Dec  7 13:41:41 1997
+***************
+*** 212,218 ****
+  		cp_interactive = false;
+  		inp_spsource(fp, true, buf);
+  		cp_interactive = true;
+! 		(void) fclose(fp);
+  		found = true;
+  		break;
+  	    } else if (ft_controldb)
+--- 212,220 ----
+  		cp_interactive = false;
+  		inp_spsource(fp, true, buf);
+  		cp_interactive = true;
+!                 /* the following caused me SIGSEGV's since inp_spsource
+!                    already closes fp - A. Veliath 12/7/97 */
+! 		/* (void) fclose(fp); */
+  		found = true;
+  		break;
+  	    } else if (ft_controldb)
