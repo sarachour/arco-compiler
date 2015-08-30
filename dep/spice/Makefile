@@ -1,5 +1,4 @@
 
 
 all:
-	cd spice3f5/src
-	../conf/build system gcc
+	cd spice3f5; util/build gcc

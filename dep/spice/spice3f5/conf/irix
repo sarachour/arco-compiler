@@ -1,9 +1,0 @@
-# Silicon Graphics Iris / IRIX System V
-LDFLAGS		= -lm
-INCX		=
-LIBX		=
-
-RANLIB		= echo
-MAKE		= /bin/make
-SHELL		= /bin/sh
-INTERFACE_OPTS	= -DWANT_MFB

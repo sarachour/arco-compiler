@@ -1,5 +1,0 @@
-# Sun SPARC systems
-
-# In case of a bug (as described in the top-level "readme" file):
-# LIBX		= -L$(X_DIR)/lib -lXaw -lXt -lXext -Bstatic -lXmu \
-#			-Bdynamic -lX11
