@@ -1,6 +1,14 @@
 .INCLUDE ./include.lst
 
-.SUBCKT imul A B O
+.SUBCKT imul 1 2 3
+	* X1=p1, Y1=p2, W=p3, Y2=X2=Z=VPOS=VNEG=0
+	* W = (X1-X2)*(Y1-Y2)/10 + Z
+	AD633 1 0 2 0 0 0 3 0
 
+.ENDS imul
 
+.SUBCKT iaddmul 1 2 3 4
+	* X1=p2, Y1=p3, Z=p4, W=p1, Y2=X2=Z=VPOS=VNEG=0
+	* W = (X1-X2)*(Y1-Y2)/10 + Z
+	AD633 2 0 3 0 0 4 1 0
 .ENDS imul
