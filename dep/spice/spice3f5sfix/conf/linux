@@ -1,17 +1,20 @@
 # Linux/GNU (installs under /usr/local/spice) 
 
-DEFAULT_EDITOR  = joe
+DEFAULT_EDITOR  = vim
 ASCII_RAWFILE	= 0
 INTERFACE_OPTS	= -DWANT_X11
 MAKE            = make
-X_DIR           = /usr/X11R6
+X_DIR           = /usr
 INCX            = -I$(X_DIR)/include -I$(X_DIR)/include/X11        \
                   -I$(X_DIR)/include/X11/Xmu                       \
                   -I$(X_DIR)/include/X11/Xaw
-LIBX            = -L$(X_DIR)/lib -lXaw -lXt -lXext -lXmu -lSM -lICE -lX11
+                  
+LIBX            = -L$(X_DIR)/lib \
+				-lXaw -lXt -lXext -lXmu -lSM -lICE -lX11
 
 LDFLAGS	        = -ltermcap -lm -s  
 
+CC		= gcc-3.3
 CC_OPT	        = -O2 -s
 
 SPICE_DIR       = /usr/local/spice
