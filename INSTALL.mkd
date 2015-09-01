@@ -1,0 +1,94 @@
+# Installation Instructions
+Before compiling the project, one must configure ocaml, opam and python.
+
+Install base dependencies
+
+	build-essential git
+	
+Install the python libraries 
+
+	sudo apt-get install python python-sympy python-numpy python-scipy
+
+Add the PPA with a recent version of ocaml and opam
+	
+	sudo add-apt-repository ppa:avsm/ocaml42+opam12
+	
+Install the ocaml dependencies
+	
+	sudo apt-get install m4 ocaml opam
+	opam init
+
+Add the following to `.bashrc`
+
+	eval `opam config env`
+	
+Next install the relevent packages
+
+	opam install extlib ocamlfind camlp4 core oasis omake yojson
+	
+## Installing SymCaml
+To build the compiler, the ocaml bindings for sympy need to be installed. First clone the symcaml repository:
+
+	git@github.mit.edu:sachour/symcaml.git
+
+#### Installing PyCaml
+First we need to install the pycaml package from source
+	
+	cd symcaml
+	cd deps/pycaml
+
+We need to first generate the oasis file with the python environmental variables. Note we tested this process with python2.7 set as default. 
+	
+	./init.sh
+	
+Next we need to compile pycaml:
+
+	oasis setup -setup-update dynamic
+	ocaml setup.ml -configure
+	ocaml setup.ml -build
+	
+Next we install pycaml
+	
+	oasis setup.ml -install
+	
+Alternatively you can use the make file:
+
+	make
+	make install
+
+Note that you might need to do the following to get the library to appear:
+	
+	source ~/.bashrc
+
+#### Installing SymCaml
+First we need to cd into symcaml
+	
+	cd symcaml
+	cd src
+	
+Next we compile symcaml
+
+	oasis setup -setup-update dynamic
+	ocaml setup.ml -configure
+	ocaml setup.ml -build
+
+Alternatively you can use the make file:
+
+	make
+	make install
+	
+Note that you might need to do the following to get the library to appear:
+	
+	source ~/.bashrc
+	
+## Installing Spice
+
+We depend on spice3
+
+	sudo apt-get install ngspice
+		
+## Installing Arco
+
+	git clone git@github.mit.edu:sachour/arco.git
+	
+	
