@@ -6,18 +6,14 @@ EXAMPLE PSpice
 *
 * ## Structure
 *
-VIN1 1 0 DC 3
-VIN2 2 0 DC 5
-* plus side of vin1 and vin2
-XVMul 1 2 3 VOUT vaddmul
+VIN1 1 0 DC 10
+VIN2 2 0 DC 10
+
+x1 1 2 3 vadd
+x2 1 3 4 vadd
 
 *
 * ## Analysis and Plotting
 *
 .OP
-*.TF V(3,0) VIN
-*.DC VIN 0 20 2
-*.PRINT DC V(1,2) V(2,4) I(VMEAS)
-*.PLOT DC V(1,2) V(2,4)
-*.PLOT DC I(VMEAS)
 .END

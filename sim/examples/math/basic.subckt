@@ -1,7 +1,8 @@
 .INCLUDE ./include.lst
 
-.SUBCKT vaddmul 1 2 3 4
-	* X1=p2, Y1=p3, Z=p4, W=p1, Y2=X2=Z=VPOS=VNEG=0
-	* W = (X1-X2)*(Y1-Y2)/10 + Z
-	XVMulAdd 2 0 3 0 0 4 1 0 AD633
+* 0 is default node of circuit ground
+*               X,Y,Z,W,VIN
+.SUBCKT vadd 1 2 3
+	a2 [1 2] 3 sum1
+	.model sum1 summer(in_offset=[0,0] in_gain=[1.0,1.0] out_gain=1.0 out_offset=0)
 .ENDS imul
