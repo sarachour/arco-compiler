@@ -3,5 +3,5 @@
 .SUBCKT vaddmul 1 2 3 4
 	* X1=p2, Y1=p3, Z=p4, W=p1, Y2=X2=Z=VPOS=VNEG=0
 	* W = (X1-X2)*(Y1-Y2)/10 + Z
-	AD633 2 0 3 0 0 4 1 0
+	XVMulAdd 2 0 3 0 0 4 1 0 AD633
 .ENDS imul
