@@ -1,0 +1,26 @@
+EXAMPLE PSpice
+*
+* ## Dependencies
+*
+.INCLUDE math/basic.subckt
+*
+* ## Structure
+*
+VIN 1 0 DC 10
+F1 0 3 VMEAS 0.5
+VMEAS 4 0 DC 0
+R1 1 2 1K
+R2 2 3 10K
+R3 1 3 15K
+R4 2 4 40K
+R5 3 0 50K
+*
+* ## Analysis and Plotting
+*
+.OP
+.TF V(3,0) VIN
+.DC VIN 0 20 2
+.PRINT DC V(1,2) V(2,4) I(VMEAS)
+.PLOT DC V(1,2) V(2,4)
+.PLOT DC I(VMEAS)
+.END

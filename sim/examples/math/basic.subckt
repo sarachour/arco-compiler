@@ -1,0 +1,4 @@
+.SUBCKT imul A B O
+
+
+.ENDS imul
