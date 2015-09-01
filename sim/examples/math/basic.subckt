@@ -1,3 +1,5 @@
+.INCLUDE ./include.lst
+
 .SUBCKT imul A B O
 
 
