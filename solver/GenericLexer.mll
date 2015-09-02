@@ -21,6 +21,6 @@ rule main = parse
    | ['/'] {DIV}
    | ['+'] {ADD}
    | ['-'] {SUB}
-   | ['^'] {SUB}
+   | ['^'] {EXP}
    | ['='] {EQ}
    | eof {EOF}
