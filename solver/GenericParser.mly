@@ -53,7 +53,7 @@ let meta_get_rel () =
 %token <string> TOKEN
 %token <float> DECIMAL
 %token <int> INTEGER
-%token NAMESPACE INP OUTP PARAM
+%token NAMESPACE INP OUTP PARAM VAR
 %token SEMICOLON 
 %token COMMA
 
@@ -92,6 +92,7 @@ main:
 toplevel:
    | NAMESPACE TOKEN SEMICOLON {let ns = $2 in meta_clear ns}  
    | toplevel INP TOKEN SEMICOLON {let name = $3 in meta_put (Input name)}
+   | toplevel VAR TOKEN SEMICOLON {let name = $3 in meta_put (Input name)}
    | toplevel OUTP TOKEN SEMICOLON {let name = $3 in meta_put (Output name)}
    | toplevel PARAM TOKEN SEMICOLON {let name = $3 in meta_put (Param name)}
    | toplevel PARAM TOKEN EQ DECIMAL SEMICOLON {

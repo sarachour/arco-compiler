@@ -52,14 +52,14 @@ type hwliteral =
 	| Current of hwsymbol
 
 type hwexpr = 
-	| NatExp of hwexpr
-	| Exp of hwexpr*hwexpr
-	| Div of hwexpr*hwexpr
-	| Mult of hwexpr list
-	| Add of hwexpr list
-	| Sub of hwexpr list
-	| Literal of hwliteral
-	| Deriv of hwexpr
+  | NatExp of hwexpr
+  | Exp of hwexpr*hwexpr
+  | Div of hwexpr*hwexpr
+  | Mult of hwexpr list
+  | Add of hwexpr list
+  | Sub of hwexpr list
+  | Literal of hwliteral
+  | Deriv of hwexpr
   | Decimal of hwdecimal 
   | Integer of hwint
 

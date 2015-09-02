@@ -46,6 +46,7 @@ let meta_ns () =
 
 %token <string> TOKEN
 %token <float> DECIMAL
+%token <int> INTEGER
 %token BEGIN
 %token COLON EOF SEMICOLON OBRACE CBRACE VBAR DOT OPARAN CPARAN
 %token COMPONENT SCHEMATIC AGG_COMPONENT SWITCH_COMPONENT WIRE JOIN ELEM TO
@@ -116,6 +117,10 @@ literal:
       | None -> raise (ParserError ("Symbol not found "^name)) 
    }
 ;
+expr_nl:
+   | literal {let l = $1 in Literal(l)}
+   | DECIMAL {let d = $1 in Decimal(d)}
+   | INTEGER {let i = $1 in Integer(i)}
 
 expr_pe:
    | TOKEN OPARAN expr_as CPARAN {let name = $1 and arg = $3 in
@@ -126,7 +131,7 @@ expr_pe:
    }
    | OPARAN expr_as CPARAN {let e = $2 in e}
    | expr_pe EXP expr_pe {let e1 = $1 and e2 = $3 in Exp(e1,e2)}
-   | literal {let l = $1 in Literal(l)}
+   | expr_nl {let e = $1 in e}
 ;
 
 expr_md:

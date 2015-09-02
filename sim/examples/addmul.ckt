@@ -17,4 +17,6 @@ x2 2 3 4 vmul
 * ## Analysis and Plotting
 *
 .OP
+.DC
+.TF
 .END
