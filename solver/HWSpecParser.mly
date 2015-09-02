@@ -153,8 +153,8 @@ expr_as:
       } 
    | expr_as SUB expr_md {let e1 = $1 and e2 = $3 in 
       match e1 with 
-         | Add(a) -> Add(e2::a)
-         | _ -> Add([e1;e2])
+         | Sub(a) -> Sub(e2::a)
+         | _ -> Sub([e1;e2])
       } 
 ;
 

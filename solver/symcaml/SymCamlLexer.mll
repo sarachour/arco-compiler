@@ -6,6 +6,7 @@
 rule main = parse
    |[' ''\t''\n'] {main lexbuf}
    | [','] {COMMA}
+   | ['='] {EQ}
    | ['('] {OPARAN}
    | [')'] {CPARAN}
    | ['"'] {QUOTE}

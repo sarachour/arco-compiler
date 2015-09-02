@@ -2,7 +2,7 @@
 
 open Printf
 open SymCamlData
-
+ 
 
 %}
 
@@ -12,14 +12,15 @@ open SymCamlData
 %token <string> QTOKEN
 %token <float> DECIMAL
 %token <int> INTEGER
-%token COMMA OPARAN CPARAN EOF QUOTE
+%token COMMA OPARAN CPARAN EOF QUOTE EQ
 
 
 
 
 %type <SymCamlData.symexpr> main
-%type <SymCamlData.symexpr list> arglist
-%type <SymCamlData.symexpr> arg
+%type <string*string> kwarg
+%type <(SymCamlData.symexpr list)*((string*string) list)> arglist
+%type <SymCamlData.symexpr> symexp
 
 
 %start main
@@ -27,16 +28,34 @@ open SymCamlData
 %%
 
 main:
-  | QUOTE arg QUOTE {let c = $2 in c}
-  | arg {let c = $1 in c}
+  | QUOTE symexp QUOTE {let c = $2 in c}
+  | symexp {let c = $1 in c}
 ;
 
+kwarg:
+   | TOKEN EQ TOKEN {let key = $1 and vl = $3 in (key,vl)}
+   | TOKEN EQ INTEGER {let key = $1 and vl = string_of_int $3 in (key,vl)}
+   | TOKEN EQ DECIMAL {let key = $1 and vl = string_of_float $3 in (key,vl)}
+   
 arglist:
-   | arg {let a = $1 in [a]}
-   | arg COMMA arglist {let t = $3 and h = $1 in h::t}
+   | symexp {let a = $1 in ([a],[])}
+   | symexp COMMA arglist {
+		let t = $1 and (args, kwargs) = $3 in 
+		(t::args, kwargs)
+	}
+   | kwarg {
+		let (key,vl) = $1 in 
+		([],[(key,vl)])
+	}
+   | kwarg COMMA arglist {
+		let (key,vl) = $1 and (args,kwargs) = $3 in 
+		(args, (key,vl)::kwargs)
+	}
 ;
 
-arg:
+
+
+symexp:
   | TOKEN OPARAN QTOKEN CPARAN {
     let name = $1 and varname = $3 in
     if name = "Symbol" then
@@ -62,15 +81,15 @@ arg:
     else 
       raise (SymCamlParserError "only numerators can have two int arguments")
   }
-  | TOKEN OPARAN DECIMAL CPARAN {
-    let name = $1 and value = $3 in
-    if name = "XXX" then
+  | TOKEN OPARAN QTOKEN COMMA arglist CPARAN {
+    let name = $1 and value = float_of_string $3 in
+    if name = "Float" then
       Decimal(value)
     else 
       raise (SymCamlParserError "only XXX can have decimal arguments")
   }
   | TOKEN OPARAN arglist CPARAN {
-    let name = $1 and lst = $3 in
+    let name = $1 and (lst,kwlst) = $3 in
     match (name,List.length lst) with
     | ("Pow",2) -> Exp(List.nth lst 0,List.nth lst 1)
     | ("Add",_) -> Add(lst)
