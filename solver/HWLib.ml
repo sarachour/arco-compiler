@@ -58,7 +58,7 @@ struct
       match h with   
       | Add(lst) -> hwexprlst2str lst "+"
       | Sub(lst) -> hwexprlst2str lst "-"
-      | Mult(lst) -> hwexprlst2str lst "\\cdot"
+      | Mult(lst) -> hwexprlst2str lst " \\cdot "
       | Div(x,y) -> "\\frac{"^(hwexpr2str x)^"}{"^(hwexpr2str y)^"}"
       | Exp(x,y) -> "{"^(hwexpr2str x)^"}^{"^(hwexpr2str y)^"}"
       | Deriv(x) -> "\\frac{\\partial}{\\partial t}"^(hwexpr2str x)
