@@ -31,7 +31,7 @@ type grel =
 	| Eq of gexpr*gexpr
 
 type genv = {
-	rel: grel;
-	ports: gsymbol list;
+	rels: grel list;
+	syms: gsymbol list;
 	ns: string
 }

@@ -9,22 +9,22 @@ exception ParserError of string;;
 
 type meta = {
    mutable syms: gsymbol list;
-   mutable rel: grel option;
+   mutable rels: grel list;
    ns: string;
 }
 
-let meta_data: meta = {syms=[]; ns=""; rel=None}
+let meta_data: meta = {syms=[]; ns=""; rels=[]}
 
 let _meta : meta ref = ref meta_data
 
 let meta_clear ns = 
-   _meta := {syms=[]; ns=ns;rel=None}
+   _meta := {syms=[]; ns=ns;rels=[]}
 
 let meta_put (n:gsymbol) =
    (!_meta).syms <-  n::(!_meta).syms 
 
-let meta_set_rel (n:grel) = 
-   (!_meta).rel <- Some(n)
+let meta_add_rel (n:grel) = 
+   (!_meta).rels <- n::((!_meta).rels)
 
 let meta_get (n:string) : gsymbol option= 
    let rec names_match e = match e with
@@ -44,8 +44,8 @@ let meta_get_syms () : gsymbol list =
 let meta_ns () =
    (!_meta).ns
 
-let meta_get_rel () = 
-   (!_meta).rel
+let meta_get_rels () = 
+   (!_meta).rels
 
 %}
 
@@ -79,13 +79,13 @@ let meta_get_rel () =
 
 main:
    toplevel {
-      let rel = meta_get_rel() in 
+      let rel = meta_get_rels() in 
       match rel with 
-         | Some(x) -> 
+         | h::t -> 
             let ns = meta_ns() in
-            let ports = meta_get_syms() in 
-            {ns=ns;ports=ports;rel=x}
-         | None ->
+            let syms = meta_get_syms() in 
+            {ns=ns;syms=syms;rels=(h::t)}
+         | [] ->
             raise (ParserError ("no relation defined")) 
    }
 
@@ -99,7 +99,7 @@ toplevel:
       let name = $3 and value = $5 in meta_put (FixedParam(name,value))
    }
    | toplevel rel SEMICOLON {
-      let rel = $2 in meta_set_rel (rel)
+      let rel = $2 in meta_add_rel (rel)
    }
 ;
 

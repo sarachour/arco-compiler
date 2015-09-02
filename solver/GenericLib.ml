@@ -45,8 +45,8 @@ struct
 
    let genv2str (e:genv) = 
       "namespace: "^e.ns^"\n"^
-      (List.fold_right (fun x r -> r^(gliteral2str (Symbol x))^"\n" ) e.ports "")^
-      (grel2str e.rel)^"\n"
+      (List.fold_right (fun x r -> r^(gliteral2str (Symbol x))^"\n" ) e.syms "")^
+      (List.fold_right (fun x r -> r^(grel2str x)^"\n") e.rels "")
 
 
 
@@ -91,16 +91,11 @@ struct
          | Eq(a,b) -> Eq(gexpr2hwexpr a, gexpr2hwexpr b)
          | _ -> raise (GenericLibException "unimplemented grel2hwrel")
       in
-      let rec gsymlst2hsymlst (l:gsymbol list) : hwsymbol list =
-         match l with 
-         | n::t ->  (gsym2hwsym n)::(gsymlst2hsymlst t)
-         | [] -> []
-      in
-         let hr = grel2hwrel ge.rel in 
-         let ports = gsymlst2hsymlst ge.ports in 
+         let rels = List.map (fun x -> grel2hwrel x) ge.rels in 
+         let syms = List.map (fun x -> gsym2hwsym x) ge.syms in 
          {
-            ports=ports;
-            constraints=[hr];
+            ports=syms;
+            constraints=rels;
             ns=ge.ns
          }
 
