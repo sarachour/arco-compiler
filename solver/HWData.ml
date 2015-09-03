@@ -90,7 +90,7 @@ type hwcond =
 type hwcomp = {
 	mutable ports: hwsymbol list;
 	mutable constraints: hwrel list;
-  mutable ns: string;
+    mutable ns: string;
 }
 
 

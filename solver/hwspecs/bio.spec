@@ -44,9 +44,9 @@ component tfdna {
 	param kr3;
 	param efb_en;
 	param sfb_en;
-	enforce | deriv(ETOT.I) = kr3*(EFREE.I*(1/kd2*SFREE.I)^n - ETOT.I)-DEGRADE.I;
-	enforce | EFREE.I = ESTART.I - efb_en*ETOT.I;
-	enforce | SFREE.I = SSTART.I - sfb_en*ETOT.I;
+	enforce | deriv(ETOT.I) = kr3.V*(EFREE.I*(1/kd2*SFREE.I)^n.V - ETOT.I)-DEGRADE.I;
+	enforce | EFREE.I = ESTART.I - efb_en.V*ETOT.I;
+	enforce | SFREE.I = SSTART.I - sfb_en.V*ETOT.I;
 }
 
 

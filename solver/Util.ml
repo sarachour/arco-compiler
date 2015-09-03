@@ -76,6 +76,7 @@ end
 module OptUtils : sig 
   val conc : ('a option) list -> 'a list
   val has:  'a list -> 'a -> bool 
+  val uniq: 'a list -> 'a list 
   val unify_all : ('a option) list -> ('a list) option
   val unify_atleast_one : ('a option) list -> ('a list) option
 end = 
@@ -85,11 +86,14 @@ struct
     |None::t -> (conc t)
     |[] -> [] 
 
-
+  
 
   let rec has (lst: 'a list) (e:'a) : bool = 
     (List.length (List.filter (fun x -> x = e) lst)) > 0
-
+  
+  let rec uniq l = match l with
+  | h::t -> if has t h then uniq t else h::(uniq t)
+  | [] -> []
 
   let rec unify_all l = match l with 
     |Some(x)::t -> 
