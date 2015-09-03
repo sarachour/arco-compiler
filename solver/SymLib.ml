@@ -102,11 +102,6 @@ struct
             (* substitute *)
             let sexpr = SymCaml.subs env (Symbol nj) sbs in 
 			let simpl_expr = SymCaml.simpl env sexpr in
-			(*
-			Printf.printf "[FIND_MATCHES]\n  simpl: %s\n " 
-				(SymCaml.expr2py env simpl_expr);
-			print_newline();
-			*)
 			if is_trivial simpl_expr then
 				None
 			else
@@ -116,7 +111,7 @@ struct
       in
       let twodlist = 
          let unify_exprs i x = 
-			let ures = List.mapi ( fun j y -> proc i x j y ) qry.exprs in 
+			let ures = List.mapi ( fun j y -> proc i x j y ) tmpl.exprs in 
 			let res = OptUtils.unify_all ures in 
 			res 
 		 in
