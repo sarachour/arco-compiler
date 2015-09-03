@@ -90,14 +90,15 @@ struct
 		| Some(v) -> true
 		| _ -> false
 	  in
-      let rec _get_solution (prefix:int) (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option=
+	  let max_depth = 5 in
+      let rec _get_solution (depth:int) (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option=
+		 if max_depth = depth then None else
          let matches : (((string*symexpr) list) list) option = SymLib.find_matches None tmpl expr is_symexpr_trivial in
-         let _ = Printf.printf "depth: %d\n" prefix in
          match matches with
             | Some(sol) -> 
 				let solve_one ((nm,assign):(string*symexpr)) : ((string*symexpr) list) list = 
                   let new_tmpl = SymLib.add_wildcard_ban tmpl nm assign in 
-                  let s = _get_solution (prefix+1) new_tmpl expr in 
+                  let s = _get_solution (depth+1) new_tmpl expr in 
                   match s with 
                   | Some(x) -> x 
                   | None -> []
@@ -112,7 +113,7 @@ struct
                   begin
                   match (children,sol) with
                   |([],[]) -> None 
-                  |(a,b) -> Some (a @ b) 
+                  |(a,b) -> Some (OptUtils.uniq (a @ b))
                   end
             | None ->
 				None

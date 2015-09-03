@@ -51,7 +51,7 @@ struct
       let hwexprlst2str lst delim =
             begin
             match lst with
-               | h::t -> List.fold_right (fun x y -> y^delim^(hwexpr2str x)) t (hwexpr2str h)
+               | h::t -> List.fold_right (fun x y -> y^delim^"("^(hwexpr2str x)^")") t (hwexpr2str h)
                | [] -> raise (HWLibException ("cannot print operation "^delim^" with no arguments."))
             end
       in

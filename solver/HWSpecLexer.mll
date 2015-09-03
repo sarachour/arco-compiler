@@ -4,6 +4,7 @@
 
 rule main = parse
    "/*" _* "*/" {main lexbuf}
+   | "#" [^ '\n']* "\n" {main lexbuf}
    |[' ''\t''\n'] {main lexbuf}
    | [':'] {COLON}
    | ['{'] {OBRACE}
@@ -35,7 +36,7 @@ rule main = parse
    | ['/'] {DIV}
    | ['+'] {ADD}
    | ['-'] {SUB}
-   | ['^'] {SUB}
+   | ['^'] {EXP}
    | ":=" {ASSIGN}
    | ['='] {EQ}
    | eof {EOF}

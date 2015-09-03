@@ -30,7 +30,7 @@ struct
       | Literal(x) -> gliteral2str(x)
       | Add(lst) -> gexprlst2str (fun x -> "+"^x) lst
       | Sub(lst) -> gexprlst2str (fun x -> "-"^x) lst
-      | Div(a,b) -> "\frac {"^(gexpr2str a)^"} {"^(gexpr2str b)^"}"
+      | Div(a,b) -> "\\frac {"^(gexpr2str a)^"} {"^(gexpr2str b)^"}"
       | Mult(lst) -> gexprlst2str (fun x -> "*"^x) lst
       | Decimal(a) -> (string_of_float a)
       | Integer(a) -> (string_of_int a)
