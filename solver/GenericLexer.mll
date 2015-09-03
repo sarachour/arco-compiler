@@ -3,8 +3,8 @@
 }
 
 rule main = parse
-   "/*" _* "*/" {main lexbuf}
-   "#" _* "\n" {main lexbuf}
+   | "/*" _* "*/" {main lexbuf}
+   | "#" [^ '\n']* "\n" {main lexbuf}
    |[' ''\t''\n'] {main lexbuf}
    | [';'] {SEMICOLON}
    | ['('] {OPARAN}

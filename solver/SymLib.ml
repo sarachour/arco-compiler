@@ -92,20 +92,25 @@ struct
          match SymCaml.pattern env (Symbol ni) (Symbol nj) with
          | Some(sols) -> 
 			begin
-            let sb ((a,b):string*symexpr) : symexpr*symexpr = 
+            let sb (idx:int) ((a,b):string*symexpr)  : symexpr*symexpr = 
 				match b with 
 				| Decimal(v) -> ((Symbol a),b)
 				| Integer(v) -> ((Symbol a),b)
-				| _ -> ((Symbol a),(Symbol a)) 
+				| _ -> (Symbol a, Symbol a) 
             in 
-            let sbs :(symexpr*symexpr) list = List.map sb sols in
+            let simpl ((a,b):string*symexpr) : string*symexpr = 
+				let sb = SymCaml.simpl env b in 
+				(a,sb)
+			in
+			let sols =  List.map simpl sols in
+            let sbs :(symexpr*symexpr) list = List.mapi sb sols in
             (* substitute *)
             let sexpr = SymCaml.subs env (Symbol nj) sbs in 
 			let simpl_expr = SymCaml.simpl env sexpr in
 			if is_trivial simpl_expr then
 				None
 			else
-				Some(sols)
+				Some sols
             end
          | None -> None
       in

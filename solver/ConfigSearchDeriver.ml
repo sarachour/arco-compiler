@@ -457,7 +457,7 @@ struct
             let rest = flatten_sols rest in 
             SMultipleSolutions(rest)
          | GNoSolutionNode(g) -> SNoSolution
-         | GLinkedNode(g) -> raise (DerivationException "Linked Node not Expected.")
+         | GLinkedNode(g) -> raise (DerivationException ("Linked Node not Expected:"^(GoalData.goal2str g)^".") )
          | GUnsolvedNode(g) -> raise (DerivationException "Unsolved Node not Expected.")
          | GEmpty -> raise (DerivationException "Unexpected Node.")
       in
@@ -566,7 +566,12 @@ struct
                | Some([]) -> GNoSolutionNode(g)
                | None -> GNoSolutionNode(g)
             end
-         | g -> g
+         | GUnsolvedNode(g) -> 
+			let _ = Printf.printf "WARNING: found unexpected unsolved node in link strengthening\n" in
+			_replace_links (depth+1) (GLinkedNode(g))
+		 | GTrivialNode(g,d) -> GTrivialNode(g,d)
+		 | GNoSolutionNode(g) -> GNoSolutionNode(g)
+         | _ ->  raise (DerivationException "Unexpected Node.")
       in
          _replace_links 0 g
 
@@ -618,6 +623,8 @@ struct
          let cache = update_table cache (fun x -> GoalTable.concretize x) in
          let _ = pr ("==============\nFilling in Links\n==============\n") is_iactive in 
          let strongref = replace_links cache.tbl weakref is_iactive in
+         let _ = pr ("==============\nSecond Iteration of Filling in Links\n==============\n") is_iactive in 
+         let strongref = replace_links cache.tbl strongref is_iactive in
          let _ = pr ("==============\nFinished...\n==============\n") is_iactive in 
          strongref
 
