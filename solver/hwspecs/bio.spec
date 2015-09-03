@@ -1,4 +1,3 @@
-
 component igain {
 	param K;
 	in X;
@@ -19,6 +18,14 @@ component iadd2 {
 	enforce | O.I = X.I + Y.I;
 }
 
+component iintegadd {
+    in IP;
+    in IM;
+    in IM2;
+    out O;
+    enforce | deriv(O.I) = IP.I - IM.I - IM2.I; 
+}
+
 component itf {
 	in STOT;
 	in ETOT;
@@ -32,7 +39,6 @@ component itf {
 	enforce | TBND.I = TFREE.I*((1/kd.V)*SFREE.I)^n.V;
 }
 
-# Todo: Multiple goals trigger no solutions.
 component tfdna {
 	in SSTART;
 	in ESTART;
@@ -45,11 +51,9 @@ component tfdna {
 	param kr3;
 	param efb_en;
 	param sfb_en;
-	#enforce | deriv(ETOT.I) = EFREE.I;
-	#enforce | EFREE.I = ESTART.I - efb_en.V*ETOT.I;
-	#enforce | SFREE.I = SSTART.I - sfb_en.V*ETOT.I;
+	enforce | EFREE.I = ESTART.I - efb_en.V*ETOT.I;
+	enforce | SFREE.I = SSTART.I - sfb_en.V*ETOT.I;
 	enforce | deriv(ETOT.I) = (kr3.V)*( (EFREE.I)*((1/kd2.V)*SFREE.I)^(n.V) - ETOT.I)-DEGRADE.I;
-	#enforce | ETOT.I = (SFREE.I)^(n.V);
 	
 	
 }
@@ -57,10 +61,11 @@ component tfdna {
 
 schematic main {
 
-   #elem vadd2: iadd2;
-   #elem vgain: igain;
-   #elem vsub2: isub2;
-   #elem vitf: itf;
+   elem vadd2: iadd2;
+   elem vgain: igain;
+   elem vsub2: isub2;
+   elem vintegadd: iintegadd;
+   elem vitf: itf;
    elem vtfdna: tfdna;
    
 }

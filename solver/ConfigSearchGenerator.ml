@@ -90,7 +90,7 @@ struct
 		| Some(v) -> true
 		| _ -> false
 	  in
-	  let max_depth = 5 in
+	  let max_depth = 3 in
       let rec _get_solution (depth:int) (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option=
 		 if max_depth = depth then None else
          let matches : (((string*symexpr) list) list) option = SymLib.find_matches None tmpl expr is_symexpr_trivial in
