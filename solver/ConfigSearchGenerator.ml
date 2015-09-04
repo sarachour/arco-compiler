@@ -134,44 +134,36 @@ struct
             variables to follow analogy defined. Ban parameters from being assigned variables
          *)
          let handle_wcs (v:wctype) (conc:symenv) : wctype = 
-            let (name,excepts) = v in 
-            let typ = HWSymLib.symvar2hwliteral name in 
-            let filti x = 
+            let is_current x = 
                match HWSymLib.symvar2hwliteral x with 
                   Current(x) -> true 
                   | _ -> false 
             in 
-            let filtv x = 
+            let is_var x = 
+			   let rec _is_var x = match x with 
+				   | Param(_) -> false 
+				   | FixedParam(_) -> false
+				   | Namespace(v,x) -> _is_var x 
+				   | _ -> true 
+			   in
                match HWSymLib.symvar2hwliteral x with 
-                  Voltage(x) -> true 
-                  | _ -> false 
-            in 
-            let filtvar x = 
-               match HWSymLib.symvar2hwliteral x with 
-               | Voltage(Param(_)) -> false 
-               | Current(Param(_)) -> false 
-               | Voltage(FixedParam(_,_)) -> false 
-               | Current(FixedParam(_,_)) -> false 
-               | _ -> true 
-            in
-            let rec is_param x = match x with 
-               | Param(_) -> true 
-               | FixedParam(_) -> true
-               | Namespace(v,x) -> is_param x 
-               | _ -> false 
+               | Voltage(v) -> (_is_var v)
+               | Current(v) -> (_is_var v) 
             in
             let str2var (x:string) : symexpr = Symbol(x) in
-            let vvars :symexpr list = List.map str2var (List.filter filtv conc.vars) in
-            let ivars :symexpr list = List.map str2var (List.filter filti conc.vars) in
-            let wcvars = List.map str2var (List.filter filtvar conc.vars) in
+            let vvars :symexpr list = List.map str2var (List.filter (fun x -> (is_current x) = false ) conc.vars) in
+            let ivars :symexpr list = List.map str2var (List.filter (fun x -> (is_current x) = true ) conc.vars) in
+            let allvars = List.map str2var (List.filter (fun x -> (is_var x) = true) conc.vars) in
+            let (name,excepts) = v in 
+            let typ = HWSymLib.symvar2hwliteral name in 
             match typ with 
             | Current(x) -> 
-               if is_param x 
-               then (name,excepts@vvars@wcvars)
+               if is_var name = false
+               then (name,excepts@allvars)
                else (name,excepts@vvars)
             | Voltage(x) -> 
-               if is_param x 
-               then (name,excepts@ivars@wcvars)
+               if is_var name = false
+               then (name,excepts@allvars)
                else (name,excepts@ivars)
          in
          let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in 
