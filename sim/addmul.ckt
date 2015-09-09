@@ -2,7 +2,7 @@ EXAMPLE PSpice
 *
 * ## Dependencies
 *
-.INCLUDE math/basic.subckt
+.INCLUDE libs/basic.subckt
 *
 * ## Structure
 *
