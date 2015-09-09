@@ -4,7 +4,7 @@
 *               X,Y,Z,W,VIN
 .SUBCKT vadd 1 2 3
 	a2 [1 2] 3 sum
-	.model sum summer(in_offset=[0,0] in_gain=[1.0,1.0] out_gain=1.0 out_offset=0)
+*	.model sum summer(in_offset=[0,0] in_gain=[1.0,1.0] out_gain=1.0 out_offset=0)
 .ENDS vadd
 
 .SUBCKT vmul 1 2 3

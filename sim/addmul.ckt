@@ -19,4 +19,6 @@ x2 2 3 4 vmul
 .OP
 .DC
 .TF
+.DISPLAY
+.PLOT x2 V(1)
 .END
