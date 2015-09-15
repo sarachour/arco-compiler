@@ -14,9 +14,9 @@ VSIN1 sin1 0 DC SIN(0V 5V 100Hz)
 
 rin sin1 in 0
 *rout sin1 out 0
-xcmp sin1 out 0 vvderiv
+*xcmp sin1 out 0 vvderiv
 *xcmp sin1 out 0 vvinteg
-*xcmp in1 in2 0 out vadd
+xcmp c1 c2 0 out vadd
 
 *
 * ## Analysis and Plotting

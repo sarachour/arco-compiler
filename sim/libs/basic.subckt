@@ -30,12 +30,10 @@
 
 *vout = -(va*rf/ra + vb*rf/rb + vc*rf/rc)
 .SUBCKT vadd va vb vc vout
-	Ra va ja 1000
-	Rb vb jb 1000
-	Rc vc jc 1000
-	Rab ja jb 0
-	Rbc jb jc 0 
-	Rf vb jout 100
-	XOP 0 jc jout opamp741
+	Ra va j 1
+	Rb vb j 1
+	Rc vc j 1
+	Rf j jout 1
+	XOP 0 j jout opamp741
 	RO jout vout 0
 .ENDS vadd
