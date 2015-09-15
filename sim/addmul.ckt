@@ -8,11 +8,11 @@ EXAMPLE PSpice
 *
 VIN1 c1 0 DC 1
 VIN2 c2 0 DC 2
-VSIN1 sin1 0 DC SIN(0V 5V 10MHz) 
+VSIN1 sin1 0 DC SIN(0V 5V 100Hz) 
 
 
 
-*rin sin1 in 0
+rin sin1 in 0
 *rout sin1 out 0
 xcmp sin1 out 0 vvderiv
 *xcmp sin1 out 0 vvinteg
@@ -23,12 +23,13 @@ xcmp sin1 out 0 vvderiv
 *
 .control
 	set stime=1us
-	set etime=100us
+	set etime=0.01s
 
 	op
 	tran $stime $etime 
 	
-	gnuplot out-trans tran.v(out) tran.V(in) $stime $etime 
+	gnuplot out-trans:in tran.V(in)
+	gnuplot out-trans:out tran.V(out)
 .endc
 
 

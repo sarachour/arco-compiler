@@ -17,13 +17,13 @@
 * vout = -RC d/dt vin with vin = ic
 .SUBCKT vvderiv vin out ic
 	CAP vin j1 1 ic
-	RES j1 out 1000
+	RES j1 out 1
 	XOP 0 j1 out opamp741
 .ENDS vvderiv
 
 * d/dt vout = - Vin / RC with vout = ic
 .SUBCKT vvinteg vin vout ic
-	RES vin j1 1000
+	RES vin j1 1
 	CAP j1 vout 1 ic
 	XOP 0 j1 vout opamp741
 .ENDS vvinteg
