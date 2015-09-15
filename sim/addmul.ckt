@@ -6,19 +6,40 @@ EXAMPLE PSpice
 *
 * ## Structure
 *
-VIN1 1 0 DC 2
-VIN2 2 0 DC 3
+VIN1 c1 0 DC 1
+VIN2 c2 0 DC 2
+VSIN1 sin1 0 DC SIN(0V 5V 10MHz) 
 
-x1 1 2 3 vadd
-x2 2 3 4 vmul
-*x3 4 1 5 vdiv
+
+
+rin sin1 in 0
+rout sin1 out 0
+*xcmp sin1 out 0 vvderiv
+*xcmp sin1 out 0 vvinteg
+*xcmp in1 in2 0 out vadd
 
 *
 * ## Analysis and Plotting
 *
-.OP
-.DC
-.TF
-.DISPLAY
-.PLOT x2 V(1)
+.control
+	set stime=1us
+	set etime=100us
+
+	op
+	tran $stime $etime 
+	
+	set term png size 800.600
+	set output "out-trans.png"
+	gnuplot out-trans tran.v(out) tran.V(in) $stime $etime 
+.endc
+
+
 .END
+
+
+
+
+*.TF V(out,0) VSIN1
+*.PRINT DC V(out,0)
+*.SENS V(out,0)
+*.DISPLAY
