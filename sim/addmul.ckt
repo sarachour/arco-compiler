@@ -12,9 +12,9 @@ VSIN1 sin1 0 DC SIN(0V 5V 10MHz)
 
 
 
-rin sin1 in 0
-rout sin1 out 0
-*xcmp sin1 out 0 vvderiv
+*rin sin1 in 0
+*rout sin1 out 0
+xcmp sin1 out 0 vvderiv
 *xcmp sin1 out 0 vvinteg
 *xcmp in1 in2 0 out vadd
 
@@ -28,8 +28,6 @@ rout sin1 out 0
 	op
 	tran $stime $etime 
 	
-	set term png size 800.600
-	set output "out-trans.png"
 	gnuplot out-trans tran.v(out) tran.V(in) $stime $etime 
 .endc
 
