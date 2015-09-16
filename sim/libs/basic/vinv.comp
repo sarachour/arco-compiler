@@ -1,0 +1,12 @@
+inputs:
+	in
+	
+outputs:
+	out
+	
+rel:
+	v(out) = a*v(in)
+
+spice:
+	X${NAME} in out vinv
+
