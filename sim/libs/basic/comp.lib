@@ -1,4 +1,4 @@
-.INCLUDE ./basic.lst
+.INCLUDE ./comp.dep
 
 * 0 is default node of circuit ground
 *               X,Y,Z,W,VIN
