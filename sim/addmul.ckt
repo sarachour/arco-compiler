@@ -7,19 +7,21 @@ EXAMPLE PSpice
 * ## Structure
 *
 VIN1 c1 0 DC 1
-VIN2 c2 0 DC 5
+VIN2 c2 0 DC 1
 VSIN1 sin1 0 DC SIN(0V 5V 100Hz) 
 
 
 
 rin sin1 in 0
-xcmp c2 out alogamp
+*xcmp c2 out alogamp
 *xcmp c2 out logamp
 *rout sin1 out 0
 *xcmp sin1 out 0 vvderiv
 *xcmp c1 out 0 vvinteg
-*xcmp c1 c2 0 out vadd
-*xcmp c1 c2 out vsub
+*xcmp c1 c2 0 out vadd2
+*xcmp c1 c2 out vsub2
+*xcmp c1 c2 out vmul2
+*xcmp c1 c2 out vdiv2
 *xcmp c1 out vinv
 *
 * ## Analysis and Plotting

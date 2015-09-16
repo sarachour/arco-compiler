@@ -74,13 +74,13 @@
 
 * == verified ==
 * out = Rf/R1(V2 - V1)
-.SUBCKT vsub b a out
+.SUBCKT vsub2 b a out
 	R1 a ja 1
 	R2 b jb 1
 	Rg jb 0 1
 	Rf ja out 1
 	XOMP ja jb out opamp741
-.ENDS vsub
+.ENDS vsub2
 
 * == verified ==
 * out = -Rf/Rin*in
@@ -90,10 +90,22 @@
 	XOMP 0 j1 out opamp741
 .ENDS vinv
 
-.SUBCKT vmul va vb vc out
+*
+*
+.SUBCKT vmul2 va vb out
 	Xa va ja logamp
 	Xb vb jb logamp
-	Xc vc jc logamp
-	Xadd ja jb jc jo vadd
-	Xo jo out antilogamp
-.ENDS vmul
+	Xadd ja jb jo vadd2
+	Xo jo out alogamp
+.ENDS vmul2
+
+*
+*
+.SUBCKT vdiv2 va vb out
+	Xa va ja logamp
+	Xb vb jb logamp
+	Xadd ja jb jo vsub2
+	Xo jo out alogamp
+.ENDS vdiv2
+
+
