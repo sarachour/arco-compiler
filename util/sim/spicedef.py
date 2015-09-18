@@ -204,8 +204,6 @@ class SpiceModel:
 	def add_output(self,o):
 		if(o == ""): return;
 		self.outputs.append(o);
-		#self.use.define_var(o);
-		#self.comp.define_var(o);
 	
 	def add_param(self,p):
 		if(p == ""): return;
@@ -222,7 +220,16 @@ class SpiceModel:
 		self.gen_deps(strm);
 		pr(".INCLUDE "+self.name+".ckt;");
 		
-			
+		assigns = {};
+		for i in self.inputs:
+			pr("V"+i+" I_"+i+" 0 DC "+" 0");
+			assigns[i] = "I_"+i
+		
+		for o in self.outputs:
+			assigns[o] = "O_"+o;
+		
+		assigns["name"] = "comp";
+		self.use.assign_vars(assigns);
 		for l in self.use.concretize():
 			pr(l);
 		

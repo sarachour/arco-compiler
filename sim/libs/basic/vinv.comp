@@ -2,20 +2,20 @@
 	vinv
 	
 @inputs
-	in
+	x
 	
 @outputs
-	out
+	z
 
 @params
 	a
 	
 @model
-	$out.V: $a*$in.V
+	$z.V: $a*$x.V
 
 @spice-use
 	:var name
-	X$name $in $out vinv
+	X$name $x $z vinv
 
 @spice-comp
 	:var Q1
