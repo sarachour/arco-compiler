@@ -1,20 +1,31 @@
 @inputs
-	in
+	a
+	b
 	
 @outputs
-	out
+	o
+	
+@params
+	x
+	y
+	z
 	
 @model
-	v(out) = x*v(a) + y*v(b) + z
+	$o.V: x*$a.V + y*$b.V + z
 
 @spice-use
-	X${NAME} a b out vinv
+	:var name
+	X$name a b out vinv
 
-@spice-def
+@spice-comp
+	:var Q1
+	:var Q2
+	:var Q3
+	:dep opamp741
 	.SUBCKT vadd2 va vb vout
-		Ra va j 1
-		Rb vb j 1
-		Rf j jout 1
+		Ra va j $Q1
+		Rb vb j $Q2
+		Rf j jout $Q3
 		XOP 0 j jout opamp741
 		RO jout vout 0
 	.ENDS vadd2

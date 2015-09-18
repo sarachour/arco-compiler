@@ -3,16 +3,23 @@
 	
 @outputs
 	out
+
+@params
+	a
 	
 @model
-	v(out) = a*v(in)
+	$out.V: a*$in.V
 
 @spice-use
-	X${NAME} in out vinv
+	:var name
+	X$name in out vinv
 
-@spice-def
+@spice-comp
+	:var Q1
+	:var Q2
+	:dep opamp741
 	.SUBCKT vinv in out
-		Rin in j1 1
-		Rf j1 out 1
+		Rin in j1 $Q1
+		Rf j1 out $Q2
 		XOMP 0 j1 out opamp741
 	.ENDS vinv
