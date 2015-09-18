@@ -229,6 +229,7 @@ class SpiceModel:
 			assigns[o] = "O_"+o;
 		
 		assigns["name"] = "comp";
+		pr("\n");
 		self.use.assign_vars(assigns);
 		for l in self.use.concretize():
 			pr(l);
