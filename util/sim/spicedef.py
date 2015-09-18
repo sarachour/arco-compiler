@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import re
+
 # A template class that allows for one to define variables with $x
 class Template:
 	def __init__(self):
@@ -36,13 +38,11 @@ class ArcoModel:
 		self.inputs = [];
 		self.outputs = [];
 		self.params = {};
-		self.props = {};
 		self.models = [];
 	
 	def add_input(self,i):
 		if(i == ""): return;
 		self.inputs.append(i);
-		self.props[i] = [];
 		
 	def add_output(self,o):
 		if(o == ""): return;
@@ -52,10 +52,46 @@ class ArcoModel:
 		if(p == ""): return;
 		self.params[p] = None;	
 	
+	def __get_prop__(self,s,v):
+		print(v,s);
+		matches = re.findall("\$"+v+"\.([A-Za-z]+)",s);
+		props = [];
+		for match in matches:
+			props.append(match);
+		return props;
+	
+	def __has_var__(self,s,v):
+		print(v,s);
+		matches = re.findall("\$"+v,s);
+		return len(matches) > 0;
+			
+	def __parse_model__(self,s):
+		mdl = {};
+		mdl["inputs"] = {};
+		mdl["outputs"] = {};
+		mdl["params"] = [];
+		mdl["rel"] = {};
+		mdl["rel"]["lhs"] = s.split(":")[0].strip();
+		mdl["rel"]["rhs"] = s.split(":")[1].strip();
+		
+		for v in (self.inputs+self.outputs):
+			props = self.__get_prop__(s,v);
+			if v in self.inputs:
+				mdl["inputs"][v] = props;
+			else:
+				mdl["outputs"][v] = props;
+		
+		for x in self.params:
+			if self.__has_var__(s,x):
+				mdl["params"].append(x);
+		
+		print(str(mdl))
+		return mdl
+		
 	def set_model(self,m):
 		if(m == ""): return;
-		
-		self.models.append(m);
+		mdl = self.__parse_model__(m);
+		self.models.append(mdl);
 	
 	def print(self):
 		print("in:"+str(self.inputs));

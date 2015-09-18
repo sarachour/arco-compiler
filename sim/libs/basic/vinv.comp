@@ -8,7 +8,7 @@
 	a
 	
 @model
-	$out.V: a*$in.V
+	$out.V: $a*$in.V
 
 @spice-use
 	:var name
