@@ -2,7 +2,7 @@
 	vinv
 	
 @inputs
-	x
+	x : 1
 	
 @outputs
 	z

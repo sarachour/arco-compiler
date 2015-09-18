@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 from sim import model as mdl
+from sim import spice as spice
+import matplotlib.pyplot as plt
 
 class ParamFile:
 	def load(name):
@@ -14,25 +16,36 @@ class ParamFile:
 		return dic
 			
 def run(libdir, infile, outfile):
-	(spice,arco) = mdl.ModelLoader.load(libdir + infile);
+	(hwspec,model) = mdl.ModelLoader.load(libdir + infile);
 	
 	
-	name = spice.get_name();
+	name = hwspec.get_name();
 	pfile = infile.split(".")[0] + ".spice-params"
 	pars = ParamFile.load(libdir + pfile);
-	spice.set_comp_vars(pars);
+	hwspec.comp.set_vars(pars);
 	# Add Sweep experiment across each input for min to max
 	
-	arco.set_param("a",0.5);
 	
 	print("== Generating Spec ==");
-	spec = open(name+".spac", "w");
-	arco.gen_spec(spec);
+	modelfile = open(name+".spec", "w");
+	model.set_param("a",0.5);
+	model.gen_spec(modelfile);
 	
 	print("== Generating Component ==");
 	comp = open(name+".ckt", "w");
-	spice.gen_comp(comp);
+	hwspec.gen_comp(comp);
 	
 	print("== Generating Experiment ==");
 	exp = open("experiment.sim", "w");
-	spice.gen_exp(libdir, exp);
+	measures = [];
+	measures.append(hwspec.make_io_exp("x","z",-250,250));
+	hwspec.gen_exp(libdir, exp, measures);
+	
+	print("== Running Experiment ==");
+	sim = spice.Simulation();
+	sim.run();
+	
+	print("== Analyzing Data ==");
+	data = sim.get_rel("x","z");
+	plt.plot(data["x"],data["z"]);
+	plt.savefig("relation.png");

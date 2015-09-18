@@ -1,5 +1,8 @@
 #!/usr/bin/python
 import re
+from sim import spice as Spice 
+
+wr = Spice.Wrapper
 
 # A template class that allows for one to define variables with $x
 class Template:
@@ -13,7 +16,7 @@ class Template:
 	def get_vars(self):
 		return self.vars;
 	
-	def assign_vars(self,d):
+	def set_vars(self,d):
 		for v in self.vars:
 			self.vars[v] = None;
 			
@@ -141,7 +144,7 @@ class ArcoModel:
 				subs[v] = v;
 			
 			print(str(subs));
-			m["rel"].assign_vars(subs);
+			m["rel"].set_vars(subs);
 			proc = m["rel"].concretize()[0].replace(":","=");
 			
 			pr(indent + "enforce | "+proc+";");
@@ -150,8 +153,8 @@ class ArcoModel:
 
 class SpiceModel:
 	def __init__(self):
-		self.inputs = [];
-		self.outputs = [];
+		self.inputs = {};
+		self.outputs = {};
 		self.params = {};
 		self.use = Template();
 		self.comp = Template();
@@ -164,47 +167,34 @@ class SpiceModel:
 	
 	def get_name(self):
 		return self.name;
-	
-	def define_use_var(self, v):
-		self.use.define_var(v);
 		
 	def __has_var__(self,s,v):
 		return len(re.findall("\$"+v,s)) > 0
-		
-	def append_use(self, u):
-		for i in (self.inputs + self.outputs):
-			if self.__has_var__(u,i):
-				self.use.define_var(i);
-		self.use.append_body(u);
-	
-	def append_comp(self,d):
-		for i in (self.inputs + self.outputs):
-			if self.__has_var__(d,i):
-				self.comp.define_var(i);
-				
-		self.comp.append_body(d);
-	
-	def define_comp_var(self,v):
-		self.comp.define_var(v); 
-	
-	def get_comp_vars(self, v):
-		return self.comp.get_vars();
-	
-	def set_comp_vars(self,v):
-		self.comp.assign_vars(v);
 		
 		
 	def add_dep(self, d):
 		self.deps.append(d);
 	
-	def add_input(self,i):
+	def add_input(self,i,v):
 		if(i == ""): return;
-		self.inputs.append(i);
+		self.inputs[i] = {"value": v};
 		
 	def add_output(self,o):
 		if(o == ""): return;
-		self.outputs.append(o);
+		self.outputs[o] = {};
 	
+	def make_io_exp(self,inp,outp,lo,hi):
+		NPTS = 1000;
+		step = (hi-lo)/NPTS;
+		obj = {};
+		obj["kind"] = "input-output";
+		obj["low"] = lo;
+		obj["high"] = hi;
+		obj["step"] = step;
+		obj["input"] = inp;
+		obj["output"] = outp;
+		return obj;
+		
 	def add_param(self,p):
 		if(p == ""): return;
 		self.params[p] = None;	
@@ -214,8 +204,8 @@ class SpiceModel:
 		pr = lambda x : strm.write(x+"\n");
 		for l in self.comp.concretize():
 			pr(l);
-			
-	def gen_exp(self,libdir, strm):
+	
+	def gen_exp(self,libdir, strm, exps):
 		pr = lambda x : strm.write(x+"\n");
 		
 		for d in self.deps:
@@ -223,24 +213,37 @@ class SpiceModel:
 			
 		pr(".INCLUDE "+self.name+".ckt;");
 		pr("");
-		pr("* Input Sources");
+		pr("* == Input Sources ==");
 		
 		assigns = {};
 		for i in self.inputs:
-			pr("V"+i+" I_"+i+" 0 DC "+" 2");
-			assigns[i] = "I_"+i
+			pr(wr.input_to_src(i)+" "+wr.input_to_port(i)+" 0 DC "+" "+str(self.inputs[i]["value"]));
+			assigns[i] = wr.input_to_port(i);
 		
 		for o in self.outputs:
-			assigns[o] = "O_"+o;
+			assigns[o] = wr.input_to_port(o);
 		
 		assigns["name"] = "comp";
 		pr("");
-		pr("* Relation");
-		self.use.assign_vars(assigns);
+		pr("* == Relation ==");
+		self.use.set_vars(assigns);
 		for l in self.use.concretize():
 			pr(l);
+		pr("* == Experiment ==");
+		pr(".control");
+		for ex in exps:
+			#print(str(ex))
+			inp = ex["input"];
+			outp = ex["output"];
+			if ex["kind"] == "input-output":
+				pr("dc "+wr.input_to_src(inp)+" "+str(ex["low"])+" "+str(ex["high"])+" "+str(ex["step"])+";")
+				#pr("gnuplot io_"+ex["input"]+"_"+ex["output"]+" dc.V(O"+ex["output"]+") > ")
+				pr("print dc.V("+wr.input_to_port(inp)+") dc.V("+wr.output_to_port(outp)+") > "+wr.in_out_to_file(inp, outp))
+		#dc comp min max step
+		pr(".endc");
 		
-		pr(".OP");
+		pr(".end")
+		
 	def gen_deps(self,strm):
 		pr = lambda x : strm.write(x+"\n");
 		for d in self.deps:
@@ -280,7 +283,10 @@ class ModelLoader:
 					
 				if cmd == "@inputs":
 					inp = clean(line)
-					spice.add_input(inp);
+					if(len(inp.split(":")) < 2): continue;
+					name = inp.split(":")[0].strip();
+					dv = inp.split(":")[1].strip();
+					spice.add_input(name,dv);
 					arco.add_input(inp);
 					
 				elif cmd == "@outputs":
@@ -300,17 +306,17 @@ class ModelLoader:
 				elif cmd == "@spice-use":
 					use = clean(line)
 					if isvar(use):
-						spice.define_use_var(getvar(use));
+						spice.use.define_var(getvar(use));
 					else:
-						spice.append_use(use);
+						spice.use.append_body(use);
 				
 				elif cmd == "@spice-comp":
 					defn = clean(line)
 					if isvar(defn):
-						spice.define_comp_var(getvar(defn));
+						spice.comp.define_var(getvar(defn));
 					elif isdep(defn):
 						spice.add_dep(getdep(defn));
 					else:
-						spice.append_comp(defn);
+						spice.comp.append_body(defn);
 		
 		return (spice,arco);
