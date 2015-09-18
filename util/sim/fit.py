@@ -3,6 +3,9 @@
 from sim import model as mdl
 from sim import spice as spice
 import matplotlib.pyplot as plt
+import scipy as sc
+from scipy import optimize
+
 
 class ParamFile:
 	def load(name):
@@ -15,6 +18,9 @@ class ParamFile:
 			dic[k] = v
 		return dic
 			
+def inv(x,a,b):
+	return -(x*a)+b;
+	 
 def run(libdir, infile, outfile):
 	(hwspec,model) = mdl.ModelLoader.load(libdir + infile);
 	
@@ -47,5 +53,9 @@ def run(libdir, infile, outfile):
 	
 	print("== Analyzing Data ==");
 	data = sim.get_rel("x","z");
-	plt.plot(data["x"],data["z"]);
+	x = data["x"];
+	z = data["z"];
+	plt.plot(x,z);
+	(sol,cov) = sc.optimize.curve_fit(inv,x,z);
+	print"Solution", (sol);
 	plt.savefig("relation.png");
