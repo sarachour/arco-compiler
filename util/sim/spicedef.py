@@ -6,7 +6,7 @@ class Template:
 	def __init__(self):
 		self.vars = {};
 		self.body = [];
-	
+		
 	def define_var(self,a):
 		self.vars[a] = None;
 	
@@ -39,7 +39,12 @@ class ArcoModel:
 		self.outputs = [];
 		self.params = {};
 		self.models = [];
-	
+		self.name = "???";
+		
+	def set_name(self,n):
+		if(n == ""): return;
+		self.name = n;
+		
 	def add_input(self,i):
 		if(i == ""): return;
 		self.inputs.append(i);
@@ -53,7 +58,6 @@ class ArcoModel:
 		self.params[p] = None;	
 	
 	def __get_prop__(self,s,v):
-		print(v,s);
 		matches = re.findall("\$"+v+"\.([A-Za-z]+)",s);
 		props = [];
 		for match in matches:
@@ -61,7 +65,6 @@ class ArcoModel:
 		return props;
 	
 	def __has_var__(self,s,v):
-		print(v,s);
 		matches = re.findall("\$"+v,s);
 		return len(matches) > 0;
 			
@@ -85,10 +88,9 @@ class ArcoModel:
 			if self.__has_var__(s,x):
 				mdl["params"].append(x);
 		
-		print(str(mdl))
 		return mdl
 		
-	def set_model(self,m):
+	def add_model(self,m):
 		if(m == ""): return;
 		mdl = self.__parse_model__(m);
 		self.models.append(mdl);
@@ -103,7 +105,7 @@ class ArcoModel:
 		pr = lambda x : strm.write(x+"\n");
 		
 		indent = "  ";
-		pr("component XXXX {");
+		pr("component "+self.name+" {");
 		for i in self.inputs:
 			pr(indent+"in "+i+";");
 		for o in self.outputs:
@@ -221,6 +223,10 @@ class SpiceDef:
 			if line.startswith("@"):
 				cmd = clean(line);
 			else:
+				if cmd == "@name":
+					nm = clean(line);
+					self.arco.set_name(nm);
+					
 				if cmd == "@inputs":
 					inp = clean(line)
 					self.spice.add_input(inp);
@@ -238,7 +244,7 @@ class SpiceDef:
 					
 				elif cmd == "@model":
 					l = clean(line)
-					self.arco.set_model(l);
+					self.arco.add_model(l);
 				
 				elif cmd == "@spice-use":
 					use = clean(line)
