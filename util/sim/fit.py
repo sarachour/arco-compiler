@@ -14,23 +14,22 @@ class ParamFile:
 		return dic
 			
 def run(libdir, infile, outfile):
-	inp = sd.SpiceDef();
-	inp.load(libdir + infile);
+	(spice,arco) = sd.ModelLoader.load(libdir + infile);
 	
 	
-	name = inp.get_name();
+	name = spice.get_name();
 	pfile = infile.split(".")[0] + ".spice-params"
 	pars = ParamFile.load(libdir + pfile);
-	inp.set_spice_comp_vars(pars);
-	inp.set_model_param("a",0.5);
+	spice.set_comp_vars(pars);
+	arco.set_param("a",0.5);
 	
 	spec = open(name+".spac", "w");
 	exp = open("experiment.sim", "w");
 	comp = open(name+".ckt", "w");
 	
 	print("== Generating Spec ==");
-	inp.gen_arco_spec(spec);
+	arco.gen_spec(spec);
 	print("== Generating Component ==");
-	inp.gen_spice_comp(comp);
+	spice.gen_comp(comp);
 	print("== Generating Experiment ==");
-	inp.gen_spice_exp(exp);
+	spice.gen_exp(libdir, exp);

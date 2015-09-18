@@ -215,16 +215,19 @@ class SpiceModel:
 		for l in self.comp.concretize():
 			pr(l);
 			
-	def gen_exp(self,strm):
+	def gen_exp(self,libdir, strm):
 		pr = lambda x : strm.write(x+"\n");
-		self.gen_deps(strm);
+		
+		for d in self.deps:
+			pr(".INCLUDE "+libdir+d+".ckt")
+			
 		pr(".INCLUDE "+self.name+".ckt;");
 		pr("");
-		pr("' Input Sources");
+		pr("* Input Sources");
 		
 		assigns = {};
 		for i in self.inputs:
-			pr("V"+i+" I_"+i+" 0 DC "+" 0");
+			pr("V"+i+" I_"+i+" 0 DC "+" 2");
 			assigns[i] = "I_"+i
 		
 		for o in self.outputs:
@@ -232,11 +235,12 @@ class SpiceModel:
 		
 		assigns["name"] = "comp";
 		pr("");
-		pr("' Relation");
+		pr("* Relation");
 		self.use.assign_vars(assigns);
 		for l in self.use.concretize():
 			pr(l);
 		
+		pr(".OP");
 	def gen_deps(self,strm):
 		pr = lambda x : strm.write(x+"\n");
 		for d in self.deps:
@@ -250,32 +254,10 @@ class SpiceModel:
 		self.use.print();
 	
 
-class SpiceDef:
-	def get_name(self):
-		return self.spice.get_name();
+class ModelLoader:
+
 		
-	def gen_arco_spec(self,strm):
-		self.arco.gen_spec(strm);
-	
-	def gen_spice_exp(self,strm):
-		self.spice.gen_exp(strm);
-	
-	def gen_spice_comp(self,strm):
-		self.spice.gen_comp(strm);
-	
-	def set_model_param(self,k,v):
-		self.arco.set_param(k,v);
-	
-	def set_spice_comp_vars(self,d):
-		self.spice.set_comp_vars(d);
-		
-	def print_spicedef(self):
-		print("#ARCO");
-		self.arco.print();
-		print("\n#SPICE");
-		self.spice.print();
-		
-	def load(self,url):
+	def load(url):
 		clean = lambda x : x.split("\n")[0].strip()
 		isvar = lambda x : x.startswith(":var")
 		isdep = lambda x : x.startswith(":dep")
@@ -284,8 +266,8 @@ class SpiceDef:
 		
 		fn = open(url,"r");
 		cmd = None;
-		self.spice = SpiceModel();
-		self.arco = ArcoModel();
+		spice = SpiceModel();
+		arco = ArcoModel();
 		
 		for line in fn:
 			if line.startswith("@"):
@@ -293,42 +275,42 @@ class SpiceDef:
 			else:
 				if cmd == "@name":
 					nm = clean(line);
-					self.arco.set_name(nm);
-					self.spice.set_name(nm);
+					arco.set_name(nm);
+					spice.set_name(nm);
 					
 				if cmd == "@inputs":
 					inp = clean(line)
-					self.spice.add_input(inp);
-					self.arco.add_input(inp);
+					spice.add_input(inp);
+					arco.add_input(inp);
 					
 				elif cmd == "@outputs":
 					outp = clean(line)
-					self.spice.add_output(outp);
-					self.arco.add_output(outp);
+					spice.add_output(outp);
+					arco.add_output(outp);
 				
 				elif cmd == "@params":
 					par = clean(line);
-					self.spice.add_param(par);
-					self.arco.add_param(par);
+					spice.add_param(par);
+					arco.add_param(par);
 					
 				elif cmd == "@model":
 					l = clean(line)
-					self.arco.add_model(l);
+					arco.add_model(l);
 				
 				elif cmd == "@spice-use":
 					use = clean(line)
 					if isvar(use):
-						self.spice.define_use_var(getvar(use));
+						spice.define_use_var(getvar(use));
 					else:
-						self.spice.append_use(use);
+						spice.append_use(use);
 				
 				elif cmd == "@spice-comp":
 					defn = clean(line)
 					if isvar(defn):
-						self.spice.define_comp_var(getvar(defn));
+						spice.define_comp_var(getvar(defn));
 					elif isdep(defn):
-						self.spice.add_dep(getdep(defn));
+						spice.add_dep(getdep(defn));
 					else:
-						self.spice.append_comp(defn);
+						spice.append_comp(defn);
 		
-		
+		return (spice,arco);
