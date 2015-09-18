@@ -156,14 +156,33 @@ class SpiceModel:
 		self.use = Template();
 		self.comp = Template();
 		self.deps = [];
+		self.name = "???";
 		
-		
+	def set_name(self,n):
+		if(n == ""): return;
+		self.name = n;
+	
+	def get_name(self):
+		return self.name;
 	
 	def define_use_var(self, v):
 		self.use.define_var(v);
 		
+	def __has_var__(self,s,v):
+		return len(re.findall("\$"+v,s)) > 0
+		
 	def append_use(self, u):
+		for i in (self.inputs + self.outputs):
+			if self.__has_var__(u,i):
+				self.use.define_var(i);
 		self.use.append_body(u);
+	
+	def append_comp(self,d):
+		for i in (self.inputs + self.outputs):
+			if self.__has_var__(d,i):
+				self.comp.define_var(i);
+				
+		self.comp.append_body(d);
 	
 	def define_comp_var(self,v):
 		self.comp.define_var(v); 
@@ -171,11 +190,9 @@ class SpiceModel:
 	def get_comp_vars(self, v):
 		return self.comp.get_vars();
 	
-	def set_comp_var(self,v):
+	def set_comp_vars(self,v):
 		self.comp.assign_vars(v);
 		
-	def append_comp(self,d):
-		self.comp.append_body(d);
 		
 	def add_dep(self, d):
 		self.deps.append(d);
@@ -183,14 +200,12 @@ class SpiceModel:
 	def add_input(self,i):
 		if(i == ""): return;
 		self.inputs.append(i);
-		self.use.define_var(i);
-		self.comp.define_var(i);
 		
 	def add_output(self,o):
 		if(o == ""): return;
 		self.outputs.append(o);
-		self.use.define_var(o);
-		self.comp.define_var(o);
+		#self.use.define_var(o);
+		#self.comp.define_var(o);
 	
 	def add_param(self,p):
 		if(p == ""): return;
@@ -205,6 +220,8 @@ class SpiceModel:
 	def gen_exp(self,strm):
 		pr = lambda x : strm.write(x+"\n");
 		self.gen_deps(strm);
+		pr(".INCLUDE "+self.name+".ckt;");
+		
 			
 		for l in self.use.concretize():
 			pr(l);
@@ -212,7 +229,7 @@ class SpiceModel:
 	def gen_deps(self,strm):
 		pr = lambda x : strm.write(x+"\n");
 		for d in self.deps:
-			pr(".INCLUDE "+d)
+			pr(".INCLUDE "+d+".ckt")
 			
 	def print(self):
 		print("deps:"+str(self.deps));
@@ -223,7 +240,9 @@ class SpiceModel:
 	
 
 class SpiceDef:
-	
+	def get_name(self):
+		return self.spice.get_name();
+		
 	def gen_arco_spec(self,strm):
 		self.arco.gen_spec(strm);
 	
@@ -235,6 +254,9 @@ class SpiceDef:
 	
 	def set_model_param(self,k,v):
 		self.arco.set_param(k,v);
+	
+	def set_spice_comp_vars(self,d):
+		self.spice.set_comp_vars(d);
 		
 	def print_spicedef(self):
 		print("#ARCO");
@@ -261,6 +283,7 @@ class SpiceDef:
 				if cmd == "@name":
 					nm = clean(line);
 					self.arco.set_name(nm);
+					self.spice.set_name(nm);
 					
 				if cmd == "@inputs":
 					inp = clean(line)
