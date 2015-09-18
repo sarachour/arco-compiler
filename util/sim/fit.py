@@ -7,52 +7,126 @@ import scipy as sc
 from scipy import optimize
 from scipy import spatial
 import numpy as np;
+import itertools
+import sys
 
 
-class ParamFile:
-	def load(name):
-		fd = open(name);
-		dic = {};
-		for line in fd:
-			fields = line.strip().split(",");
-			k = fields[0];
-			v = fields[1];
-			dic[k] = v
-		return dic
-			
 def inv(x,a,b):
 	return -(x*a)+b;
-	 
-def run(libdir, infile, outfile):
-	(hwspec,model) = mdl.ModelLoader.load(libdir + infile);
 	
-	
-	name = hwspec.get_name();
-	pfile = infile.split(".")[0] + ".spice-params"
-	pars = ParamFile.load(libdir + pfile);
-	hwspec.comp.set_vars(pars);
-	# Add Sweep experiment across each input for min to max
-	
-	
+def gen_spec(libdir,model):
+	name = model.get_name();
 	print("== Generating Spec ==");
 	modelfile = open(name+".spec", "w");
-	model.set_param("a",0.5);
+	pfile = name + ".arco-params"
+	pars = mdl.ParamFile.load(libdir + pfile);
+	model.set_params(pars);
 	model.gen_spec(modelfile);
-	
+
+def gen_comp(libdir, hwspec):
+	name = hwspec.get_name();
 	print("== Generating Component ==");
 	comp = open(name+".ckt", "w");
+	pfile = name + ".spice-params"
+	pars = mdl.ParamFile.load(libdir + pfile);
+	hwspec.comp.set_vars(pars);
 	hwspec.gen_comp(comp);
-	
+
+def gen_experiment(libdir, hwspec, model):
 	print("== Generating Experiment ==");
 	exp = open("experiment.sim", "w");
 	measures = [];
-	measures.append(hwspec.make_io_exp("x","z",-250,250));
-	hwspec.gen_exp(libdir, exp, measures);
 	
+	# For each model output product
+	for m in model.get_models():
+		inp = m["inputs"];
+		outp = m["outputs"];
+		for (i,j) in itertools.product(inp,outp):
+			for (ik,jk) in itertools.product(inp[i],outp[j]):
+				if ik == "V" and jk == "V":
+					trial = hwspec.make_io_exp(i,j,-250,250);
+					measures.append(trial);
+				else:
+					raise ValueError("unknown kinds: "+ik+","+jk);
+				
+			
+	hwspec.gen_exp(libdir, exp, measures);
+
+
+def run_experiment():
 	print("== Running Experiment ==");
 	sim = spice.Simulation();
 	sim.run();
+	return sim;
+
+def model_to_python(m):
+		inp = list(m["inputs"]);
+		outp = list(m["outputs"]);
+		param = m["params"];
+		rel = m["rel"];
+		
+		name = "__tmp__";
+		assigns = {};
+		fxn_header = "def "+name+"(_i";
+		
+		for i in range(0,len(inp)):
+			assigns[inp[i]] = "_i["+str(i)+"]";
+			
+		
+		for i in range(0,len(outp)):
+			assigns[outp[i]] = "_o["+str(i)+"]";
+		
+		for k in param:
+			assigns[k] = k;
+			fxn_header += ", "+k;
+		fxn_header += "):";
+		
+		rel.set_vars(assigns);
+		ln = rel.concretize()[0];
+		ln = ln.replace(".V","").replace(":","=");
+		
+		res = {};
+		routine = fxn_header+"\n";
+		routine += "   _o = [0]*"+str(len(outp))+"\n" 
+		routine += "   "+ln+"\n"
+		routine += "   return _o\n"
+		routine += "print(\"> loaded "+name+"\")\n";
+		routine += "res[\"fxn\"] = "+name+"\n";
+		
+		exec(routine);	
+		return res["fxn"];
+		
+def analyze_experiment(sim, hwspec, model):
+		
+		for m in model.get_models():
+			cbk = model_to_python(m);
+			print(str(cbk));
+		
+		'''
+		for (i,j) in itertools.product(inp,outp):
+			hwinps = hwspec.get_inputs();
+			els = {};
+			
+			print(i,j,v);
+			data = sim.get_rel("x","z");
+		'''
+		
+def run(libdir, infile, outfile):
+	sim = spice.Simulation();
+	sim.clean();
 	
+	hwspec,model = mdl.ModelLoader.load(libdir + infile);
+
+	
+	# Add Sweep experiment across each input for min to max
+	
+	gen_spec(libdir,model);
+	gen_comp(libdir, hwspec);
+	gen_experiment(libdir,hwspec,model);
+	sim = run_experiment();
+	analyze_experiment(sim,hwspec,model);
+	
+	sys.exit(0);
 	print("== Analyzing Data ==");
 	data = sim.get_rel("x","z");
 	x = data["x"];
@@ -73,4 +147,4 @@ def run(libdir, infile, outfile):
 	print("Model-Hardware Error", rms(z,zmod));
 	plt.savefig("relation.png");
 	
-	sim.clean();
+	#sim.clean();

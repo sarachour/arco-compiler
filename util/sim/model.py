@@ -4,6 +4,18 @@ from sim import spice as Spice
 
 wr = Spice.Wrapper
 
+class ParamFile:
+	def load(name):
+		fd = open(name);
+		dic = {};
+		for line in fd:
+			fields = line.strip().split(",");
+			k = fields[0];
+			v = fields[1];
+			dic[k] = v
+		return dic
+			
+			
 # A template class that allows for one to define variables with $x
 class Template:
 	def __init__(self):
@@ -51,6 +63,9 @@ class ArcoModel:
 		self.params = {};
 		self.models = [];
 		self.name = "???";
+	
+	def get_name(self):
+		return self.name;
 		
 	def set_name(self,n):
 		if(n == ""): return;
@@ -108,6 +123,9 @@ class ArcoModel:
 			mdl["rel"].define_var(x)
 		
 		return mdl
+	
+	def get_models(self):
+		return self.models;
 		
 	def add_model(self,m):
 		if(m == ""): return;
@@ -120,8 +138,9 @@ class ArcoModel:
 		print("param:"+str(self.params));
 		print(self.models);
 
-	def set_param(self, k, v):
-		self.params[k] = v;
+	def set_params(self, v):
+		for k in v:
+			self.params[k] = v[k];
 		
 	def gen_spec(self,strm):
 		pr = lambda x : strm.write(x+"\n");
@@ -175,6 +194,8 @@ class SpiceModel:
 	def add_dep(self, d):
 		self.deps.append(d);
 	
+	def get_inputs(self):
+		return self.inputs;
 	def add_input(self,i,v):
 		if(i == ""): return;
 		self.inputs[i] = {"value": v};
@@ -289,7 +310,7 @@ class ModelLoader:
 					name = inp.split(":")[0].strip();
 					dv = inp.split(":")[1].strip();
 					spice.add_input(name,dv);
-					arco.add_input(inp);
+					arco.add_input(name);
 					
 				elif cmd == "@outputs":
 					outp = clean(line)
