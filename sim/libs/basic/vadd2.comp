@@ -4,7 +4,7 @@
 @outputs
 	out
 	
-@rel
+@model
 	v(out) = x*v(a) + y*v(b) + z
 
 @spice-use

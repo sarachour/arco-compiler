@@ -4,7 +4,7 @@
 @outputs
 	out
 	
-@rel
+@model
 	v(out) = a*v(in)
 
 @spice-use
