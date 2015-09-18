@@ -37,7 +37,7 @@ class ArcoModel:
 		self.outputs = [];
 		self.params = {};
 		self.props = {};
-		self.model = [];
+		self.models = [];
 	
 	def add_input(self,i):
 		if(i == ""): return;
@@ -55,28 +55,30 @@ class ArcoModel:
 	def set_model(self,m):
 		if(m == ""): return;
 		
-		self.model.append(m);
+		self.models.append(m);
 	
 	def print(self):
 		print("in:"+str(self.inputs));
 		print("out:"+str(self.outputs));
 		print("param:"+str(self.params));
-		print(self.model);
+		print(self.models);
 
-	def gen_spec(self):
+	def gen_spec(self,strm):
+		pr = lambda x : strm.write(x+"\n");
+		
 		indent = "  ";
-		print("component XXXX {");
+		pr("component XXXX {");
 		for i in self.inputs:
-			print(indent+"in "+i+";");
+			pr(indent+"in "+i+";");
 		for o in self.outputs:
-			print(indent+"out "+o+";");
+			pr(indent+"out "+o+";");
 		for p in self.params:
-			print(indent+"param "+p+"="+self.params[p]+";");
+			pr(indent+"param "+p+"="+str(self.params[p])+";");
 		
 		for m in self.models:
-			print(indent + "enforce | ??;");
+			pr(indent + "enforce | ??;");
 		
-		print("}");
+		pr("}");
 
 class SpiceModel:
 	def __init__(self):
@@ -125,17 +127,22 @@ class SpiceModel:
 		self.params[p] = None;	
 	
 
-	def gen_comp(self):
+	def gen_comp(self,strm):
+		pr = lambda x : strm.write(x+"\n");
 		for l in self.comp.concretize():
-			print(l);
+			pr(l);
 			
-	def gen_exp(self):
+	def gen_exp(self,strm):
+		pr = lambda x : strm.write(x+"\n");
+		self.gen_deps(strm);
+			
 		for l in self.use.concretize():
-			print(l);
+			pr(l);
 		
-	def gen_deps(self):
+	def gen_deps(self,strm):
+		pr = lambda x : strm.write(x+"\n");
 		for d in self.deps:
-			print(".INCLUDE "+d)
+			pr(".INCLUDE "+d)
 			
 	def print(self):
 		print("deps:"+str(self.deps));
@@ -147,17 +154,14 @@ class SpiceModel:
 
 class SpiceDef:
 	
-	def get_inputs(self):
-		return self.inputs;
+	def gen_arco_spec(self,strm):
+		self.arco.gen_spec(strm);
 	
-	def get_outputs(self):
-		return self.outputs;
-		
-	def get_use(self):
-		return self.spice["use"];
+	def gen_spice_exp(self,strm):
+		self.spice.gen_exp(strm);
 	
-	def get_def(self):
-		return self.spice["def"];
+	def gen_spice_comp(self,strm):
+		self.spice.gen_comp(strm);
 	
 	def print_spicedef(self):
 		print("#ARCO");
