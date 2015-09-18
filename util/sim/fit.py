@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from sim import spicedef as sd
+from sim import model as mdl
 
 class ParamFile:
 	def load(name):
@@ -14,7 +14,7 @@ class ParamFile:
 		return dic
 			
 def run(libdir, infile, outfile):
-	(spice,arco) = sd.ModelLoader.load(libdir + infile);
+	(spice,arco) = mdl.ModelLoader.load(libdir + infile);
 	
 	
 	name = spice.get_name();
