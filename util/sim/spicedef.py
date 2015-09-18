@@ -36,3 +36,5 @@ class SpiceDef:
 				elif cmd == "spice-def":
 					defn = line.split("\n")[0];
 					self.spice["def"].append(defn);
+		
+		print self
