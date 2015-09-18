@@ -75,9 +75,13 @@ class Simulation:
 			
 		return data;
 				
+	def clean(self):
+			sp.call(["rm *.dat"], shell=True);
+			#sp.call(["rm", "-f", "experiment.sim"]);
 			
 	def run(self):
-		with open('log.txt',"w") as f:
-			sp.call(["ngspice","-b",Wrapper.exp_to_file()],
-				stderr = sp.STDOUT,
-				stdout = f);
+		with open('log.err.txt',"w") as fe:
+			with open('log.out.txt',"w") as fo:
+				sp.call(["ngspice","-b",Wrapper.exp_to_file()],
+					stderr = fe,
+					stdout = fo);

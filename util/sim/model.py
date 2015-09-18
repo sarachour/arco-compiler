@@ -221,7 +221,7 @@ class SpiceModel:
 			assigns[i] = wr.input_to_port(i);
 		
 		for o in self.outputs:
-			assigns[o] = wr.input_to_port(o);
+			assigns[o] = wr.output_to_port(o);
 		
 		assigns["name"] = "comp";
 		pr("");
@@ -240,6 +240,8 @@ class SpiceModel:
 				#pr("gnuplot io_"+ex["input"]+"_"+ex["output"]+" dc.V(O"+ex["output"]+") > ")
 				pr("print dc.V("+wr.input_to_port(inp)+") dc.V("+wr.output_to_port(outp)+") > "+wr.in_out_to_file(inp, outp))
 		#dc comp min max step
+		pr("op");
+		pr("run");
 		pr(".endc");
 		
 		pr(".end")

@@ -70,7 +70,7 @@ def run(libdir, infile, outfile):
 	fun = lambda n : inv(n,1,0)
 	zperf = list(map(fun, x));
 	
-	print(type(z));
-	print(type(zmod));
 	print("Model-Hardware Error", rms(z,zmod));
 	plt.savefig("relation.png");
+	
+	sim.clean();
