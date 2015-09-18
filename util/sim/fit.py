@@ -7,7 +7,7 @@ class ParamFile:
 		fd = open(name);
 		dic = {};
 		for line in fd:
-			fields = line.split(",");
+			fields = line.strip().split(",");
 			k = fields[0];
 			v = fields[1];
 			dic[k] = v
