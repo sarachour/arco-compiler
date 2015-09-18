@@ -4,6 +4,7 @@
 class SpiceDef:
 	
 	def load(self,url):
+		clean = lambda x : x.split("\n")[0].strip()
 		fn = open(url,"r");
 		cmd = None;
 		self.inputs = [];
@@ -15,26 +16,26 @@ class SpiceDef:
 		
 		for line in fn:
 			if line.startswith("@"):
-				cmd = line.split("\n")[0].split("@")[1];
+				cmd = clean(line);
 			else:
-				if cmd == "inputs":
-					inp = line.split("\n")[0];
+				if cmd == "@inputs":
+					inp = clean(line)
 					self.inputs.append(inp);
 					
-				elif cmd == "outputs":
-					outp = line.split("\n")[0];
+				elif cmd == "@outputs":
+					outp = clean(line)
 					self.outputs.append(outp);
 					
-				elif cmd == "model":
-					model = line.split("\n")[0];
+				elif cmd == "@model" and self.model == "":
+					model = clean(line)
 					self.model = model;
 				
-				elif cmd == "spice-use":
-					use = line.split("\n")[0];
+				elif cmd == "@spice-use" and self.spice["use"] == "":
+					use = clean(line)
 					self.spice["use"] = use;
 				
-				elif cmd == "spice-def":
-					defn = line.split("\n")[0];
+				elif cmd == "@spice-def":
+					defn = clean(line)
 					self.spice["def"].append(defn);
 		
-		print self
+		
