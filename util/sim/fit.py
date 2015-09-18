@@ -7,6 +7,8 @@ def run(libdir, indir, outdir):
 	print("fitting");
 	inp = sd.SpiceDef();
 	inp.load(libdir + indir);
+	
+	inp.set_model_param("a",0.5);
 	spec = open("spec.txt", "w");
 	exp = open("exp.txt", "w");
 	comp = open("comp.txt", "w");

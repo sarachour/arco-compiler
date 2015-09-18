@@ -21,7 +21,15 @@ class Template:
 			self.vars[v] = d[v];
 	
 	def concretize(self):
-		return self.body;
+		nbody = [];
+		for l in self.body:
+			for v in self.vars:
+				if self.vars[v] == None:
+					raise ValueError("ERROR: template: var <"+v+"> is not defined");
+				l = l.replace("$"+v, self.vars[v]);
+			nbody.append(l);	
+			
+		return nbody;
 		
 	def append_body(self,l):
 		self.body.append(l);
@@ -74,10 +82,15 @@ class ArcoModel:
 		mdl["outputs"] = {};
 		mdl["params"] = [];
 		mdl["rel"] = {};
-		mdl["rel"]["lhs"] = s.split(":")[0].strip();
-		mdl["rel"]["rhs"] = s.split(":")[1].strip();
+		mdl["rel"] = Template(); 
+		mdl["rel"].append_body(s.strip());
 		
 		for v in (self.inputs+self.outputs):
+			if self.__has_var__(s,v) == False:
+				continue;
+			
+			mdl["rel"].define_var(v)
+				
 			props = self.__get_prop__(s,v);
 			if v in self.inputs:
 				mdl["inputs"][v] = props;
@@ -85,8 +98,11 @@ class ArcoModel:
 				mdl["outputs"][v] = props;
 		
 		for x in self.params:
-			if self.__has_var__(s,x):
-				mdl["params"].append(x);
+			if self.__has_var__(s,x) == False:
+				continue;
+				
+			mdl["params"].append(x);
+			mdl["rel"].define_var(x)
 		
 		return mdl
 		
@@ -101,6 +117,9 @@ class ArcoModel:
 		print("param:"+str(self.params));
 		print(self.models);
 
+	def set_param(self, k, v):
+		self.params[k] = v;
+		
 	def gen_spec(self,strm):
 		pr = lambda x : strm.write(x+"\n");
 		
@@ -111,10 +130,21 @@ class ArcoModel:
 		for o in self.outputs:
 			pr(indent+"out "+o+";");
 		for p in self.params:
+			if (self.params[p] == None):
+				raise ValueError("ERROR: "+p+" is not defined");
 			pr(indent+"param "+p+"="+str(self.params[p])+";");
 		
+		
 		for m in self.models:
-			pr(indent + "enforce | ??;");
+			subs = {};
+			for v in m["rel"].get_vars():
+				subs[v] = v;
+			
+			print(str(subs));
+			m["rel"].assign_vars(subs);
+			proc = m["rel"].concretize()[0].replace(":","=");
+			
+			pr(indent + "enforce | "+proc+";");
 		
 		pr("}");
 
@@ -153,12 +183,14 @@ class SpiceModel:
 	def add_input(self,i):
 		if(i == ""): return;
 		self.inputs.append(i);
-		self.define_use_var(i);
+		self.use.define_var(i);
+		self.comp.define_var(i);
 		
 	def add_output(self,o):
 		if(o == ""): return;
 		self.outputs.append(o);
-		self.define_use_var(o);
+		self.use.define_var(o);
+		self.comp.define_var(o);
 	
 	def add_param(self,p):
 		if(p == ""): return;
@@ -201,6 +233,9 @@ class SpiceDef:
 	def gen_spice_comp(self,strm):
 		self.spice.gen_comp(strm);
 	
+	def set_model_param(self,k,v):
+		self.arco.set_param(k,v);
+		
 	def print_spicedef(self):
 		print("#ARCO");
 		self.arco.print();
