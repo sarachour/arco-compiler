@@ -5,6 +5,8 @@ from sim import spice as spice
 import matplotlib.pyplot as plt
 import scipy as sc
 from scipy import optimize
+from scipy import spatial
+import numpy as np;
 
 
 class ParamFile:
@@ -56,6 +58,19 @@ def run(libdir, infile, outfile):
 	x = data["x"];
 	z = data["z"];
 	plt.plot(x,z);
+	# note the input can be an array
 	(sol,cov) = sc.optimize.curve_fit(inv,x,z);
-	print"Solution", (sol);
+	print("Solution",(sol));
+	
+	rms = lambda x,y : np.sqrt(np.mean(np.square(np.subtract(x,y) )))
+	
+	fun = lambda n : inv(n,sol[0],sol[1])
+	zmod = list(map(fun, x));
+	
+	fun = lambda n : inv(n,1,0)
+	zperf = list(map(fun, x));
+	
+	print(type(z));
+	print(type(zmod));
+	print("Model-Hardware Error", rms(z,zmod));
 	plt.savefig("relation.png");
