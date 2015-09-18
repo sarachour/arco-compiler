@@ -219,6 +219,8 @@ class SpiceModel:
 		pr = lambda x : strm.write(x+"\n");
 		self.gen_deps(strm);
 		pr(".INCLUDE "+self.name+".ckt;");
+		pr("");
+		pr("' Input Sources");
 		
 		assigns = {};
 		for i in self.inputs:
@@ -229,7 +231,8 @@ class SpiceModel:
 			assigns[o] = "O_"+o;
 		
 		assigns["name"] = "comp";
-		pr("\n");
+		pr("");
+		pr("' Relation");
 		self.use.assign_vars(assigns);
 		for l in self.use.concretize():
 			pr(l);
