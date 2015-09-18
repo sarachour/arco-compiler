@@ -57,7 +57,7 @@ class ArcoModel:
 		
 		self.model.append(m);
 	
-	def print_model(self):
+	def print(self):
 		print("in:"+str(self.inputs));
 		print("out:"+str(self.outputs));
 		print("param:"+str(self.params));
@@ -114,7 +114,7 @@ class SpiceModel:
 		self.comp.append_body(d);
 		
 	def add_dep(self, d):
-		self.use.add_var(v);
+		self.deps.append(d);
 	
 	def print(self):
 		print("deps:"+str(self.deps));
