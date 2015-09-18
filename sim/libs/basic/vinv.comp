@@ -1,12 +1,18 @@
-inputs:
+@inputs
 	in
 	
-outputs:
+@outputs
 	out
 	
-rel:
+@rel
 	v(out) = a*v(in)
 
-spice:
+@spice-use
 	X${NAME} in out vinv
 
+@spice-def
+	.SUBCKT vinv in out
+		Rin in j1 1
+		Rf j1 out 1
+		XOMP 0 j1 out opamp741
+	.ENDS vinv

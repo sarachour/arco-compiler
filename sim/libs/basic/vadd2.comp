@@ -1,11 +1,20 @@
-inputs:
+@inputs
 	in
 	
-outputs:
+@outputs
 	out
 	
-rel:
-	v(out) = a*v(in)
+@rel
+	v(out) = x*v(a) + y*v(b) + z
 
-spice:
-	X${NAME} in out vinv
+@spice-use
+	X${NAME} a b out vinv
+
+@spice-def
+	.SUBCKT vadd2 va vb vout
+		Ra va j 1
+		Rb vb j 1
+		Rf j jout 1
+		XOP 0 j jout opamp741
+		RO jout vout 0
+	.ENDS vadd2
