@@ -88,17 +88,6 @@ class SpiceModel:
 		self.deps = [];
 		
 		
-	def add_input(self,i):
-		if(i == ""): return;
-		self.inputs.append(i);
-		
-	def add_output(self,o):
-		if(o == ""): return;
-		self.outputs.append(o);
-	
-	def add_param(self,p):
-		if(p == ""): return;
-		self.params[p] = None;	
 	
 	def define_use_var(self, v):
 		self.use.define_var(v);
@@ -106,9 +95,14 @@ class SpiceModel:
 	def append_use(self, u):
 		self.use.append_body(u);
 	
-	
 	def define_comp_var(self,v):
 		self.comp.define_var(v); 
+	
+	def get_comp_vars(self, v):
+		return self.comp.get_vars();
+	
+	def set_comp_var(self,v):
+		self.comp.assign_vars(v);
 		
 	def append_comp(self,d):
 		self.comp.append_body(d);
@@ -116,6 +110,33 @@ class SpiceModel:
 	def add_dep(self, d):
 		self.deps.append(d);
 	
+	def add_input(self,i):
+		if(i == ""): return;
+		self.inputs.append(i);
+		self.define_use_var(i);
+		
+	def add_output(self,o):
+		if(o == ""): return;
+		self.outputs.append(o);
+		self.define_use_var(o);
+	
+	def add_param(self,p):
+		if(p == ""): return;
+		self.params[p] = None;	
+	
+
+	def gen_comp(self):
+		for l in self.comp.concretize():
+			print(l);
+			
+	def gen_exp(self):
+		for l in self.use.concretize():
+			print(l);
+		
+	def gen_deps(self):
+		for d in self.deps:
+			print(".INCLUDE "+d)
+			
 	def print(self):
 		print("deps:"+str(self.deps));
 		print("#comp");

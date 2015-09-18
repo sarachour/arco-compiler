@@ -12,7 +12,7 @@
 
 @spice-use
 	:var name
-	X$name in out vinv
+	X$name $in $out vinv
 
 @spice-comp
 	:var Q1
