@@ -14,11 +14,22 @@ component vmul2 {
    enforce | O.V = K*B.V*A.V;
 }
 
+#component vinteg {
+#   in A;
+#    I: 100pA - 1 uA
+#    V: 0 V - 5 V
+#   out O;
+#   param C;
+#   enforce | deriv(O.V) = A.V;
+#   spice | Xname A C O vinteg
+#   error | \hat O = beta*O + alpha
+#}
+
 component vinteg {
-   in A;
-   out O;
-   param C;
-   enforce | deriv(O.V) = A.V;
+    in A;
+    out O;
+    param C;
+    enforce | deriv(O.V) = A.V;
 }
 
 component vintegsum {
@@ -42,5 +53,5 @@ schematic main {
    elem integsum: vintegsum;
 
 
-   
+
 }
