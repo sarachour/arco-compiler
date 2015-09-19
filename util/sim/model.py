@@ -196,7 +196,7 @@ class SpiceModel:
 
 	def get_params(self):
 		return self.params;
-		
+
 	def get_inputs(self):
 		return self.inputs;
 
@@ -239,7 +239,7 @@ class SpiceModel:
 		for d in self.deps:
 			pr(".INCLUDE "+libdir+d+".ckt")
 
-		pr(".INCLUDE "+self.name+".ckt;");
+		pr(".INCLUDE "+libdir+self.name+".ckt;");
 		pr("");
 		pr("* == Input Sources ==");
 

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from sim import model as mdl
+from sim import gen as g
 from sim import spice as spice
 import matplotlib.pyplot as plt
 import scipy as sc
@@ -11,29 +12,6 @@ import itertools
 import sys
 
 
-def gen_pfile(libdir,model,di):
-	name = model.get_name();
-	f = open(name+".arco-params", "w");
-	for k in di:
-		f.write(k+","+str(di[k]["value"])+"\n");
-
-def gen_spec(libdir,model):
-	name = model.get_name();
-	print("== Generating Spec ==");
-	modelfile = open(name+".spec", "w");
-	pfile = name + ".arco-params"
-	pars = mdl.ParamFile.load(libdir + pfile);
-	model.set_params(pars);
-	model.gen_spec(modelfile);
-
-def gen_comp(libdir, hwspec):
-	name = hwspec.get_name();
-	print("== Generating Component ==");
-	comp = open(name+".ckt", "w");
-	pfile = name + ".spice-params"
-	pars = mdl.ParamFile.load(libdir + pfile);
-	hwspec.comp.set_vars(pars);
-	hwspec.gen_comp(comp);
 
 def gen_experiment(libdir, hwspec, model):
 	print("== Generating Experiment ==");
@@ -191,13 +169,11 @@ def run(libdir, infile, outfile):
 
 
 	# Add Sweep experiment across each input for min to max
-
-	gen_spec(libdir,model);
-	gen_comp(libdir, hwspec);
+	g.Generator.spice_comp(libdir, hwspec);
 	gen_experiment(libdir,hwspec,model);
 	sim = run_experiment();
 	sols = analyze_experiment(sim,hwspec,model);
-	gen_pfile(libdir,model,sols);
+	g.Generator.param_file(libdir,model,sols);
 
 	print(sols);
 	sys.exit(0);
