@@ -1,17 +1,17 @@
-@name 
+@name
 	vadd2
 @inputs
 	a : 1
 	b : 1
-	
+
 @outputs
 	o
-	
+
 @params
-	x
-	y
 	z
-	
+	y
+	x
+
 @model
 	$o.V: $x*$a.V + $y*$b.V + $z
 

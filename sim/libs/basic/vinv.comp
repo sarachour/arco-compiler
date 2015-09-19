@@ -1,17 +1,18 @@
 @name
 	vinv
-	
+
 @inputs
 	x : 1
-	
+
 @outputs
 	z
 
 @params
 	a
-	
+	b
+
 @model
-	$z.V: $a*$x.V
+	$z.V: $a*$x.V+$b
 
 @spice-use
 	:var name
