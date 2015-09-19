@@ -11,8 +11,11 @@ import itertools
 import sys
 
 
-def inv(x,a,b):
-	return -(x*a)+b;
+def gen_pfile(libdir,model,di):
+	name = model.get_name();
+	f = open(name+".arco-params", "w");
+	for k in di:
+		f.write(k+","+str(di[k]["value"])+"\n");
 
 def gen_spec(libdir,model):
 	name = model.get_name();
@@ -60,47 +63,56 @@ def run_experiment():
 	return sim;
 
 def model_to_python(m):
-		inp = list(m["inputs"]);
-		outp = list(m["outputs"]);
-		param = m["params"];
-		rel = m["rel"];
+	inp = list(m["inputs"]);
+	outp = list(m["outputs"]);
+	param = m["params"];
+	rel = m["rel"];
 
-		name = "__tmp__";
-		assigns = {};
-		fxn_header = "def "+name+"( INPUTS";
-		unpack_state = "";
-		for i in range(0,len(inp)):
-			assigns[inp[i]] = inp[i];
-			unpack_state += inp[i];
-			if i < len(inp) - 1: unpack_state += ",";
-		unpack_state += " = INPUTS;"
+	name = "__tmp__";
+	assigns = {};
+	fxn_header = "def "+name+"( INPUTS";
+	unpack_state = "";
+	for i in range(0,len(inp)):
+		assigns[inp[i]] = inp[i];
+		unpack_state += inp[i];
+		if i < len(inp) - 1: unpack_state += ",";
+	unpack_state += " = INPUTS;"
 
-		ret_state = "return (";
-		for i in range(0,len(outp)):
-			assigns[outp[i]] = outp[i];
-			ret_state += outp[i];
-			if i < len(outp) - 1: ret_state += ",";
-		ret_state += ");";
+	ret_state = "return (";
+	for i in range(0,len(outp)):
+		assigns[outp[i]] = outp[i];
+		ret_state += outp[i];
+		if i < len(outp) - 1: ret_state += ",";
+	ret_state += ");";
 
-		for k in param:
-			assigns[k] = k;
-			fxn_header += ", "+k;
-		fxn_header += "):";
+	for k in param:
+		assigns[k] = k;
+		fxn_header += ", "+k;
+	fxn_header += "):";
 
-		rel.set_vars(assigns);
-		ln = rel.concretize()[0];
-		ln = ln.replace(".V","").replace(":","=");
+	rel.set_vars(assigns);
+	ln = rel.concretize()[0];
+	ln = ln.replace(".V","").replace(":","=");
 
-		res = {};
-		routine = fxn_header+"\n";
-		routine += "   "+unpack_state+"\n";
-		routine += "   "+ln+"\n"
-		routine += "   "+ret_state+"\n";
-		routine += "print(\"> loaded "+name+"\")\n";
-		routine += "res[\"fxn\"] = "+name+"\n";
-		print("------\n"+routine+"-----\n");
-		exec(routine);
-		return res["fxn"];
+	res = {};
+	routine = fxn_header+"\n";
+	routine += "   "+unpack_state+"\n";
+	routine += "   "+ln+"\n"
+	routine += "   "+ret_state+"\n";
+	routine += "print(\"> loaded "+name+"\")\n";
+	routine += "res[\"fxn\"] = "+name+"\n";
+	print("------\n"+routine+"-----\n");
+	exec(routine);
+	return res["fxn"];
+
+def invoke_callback(cbk,m,inps,pdict):
+	param = m["params"];
+	args = [np.array(inps)];
+	for p in param:
+		args.append(pdict[p]["value"]);
+
+	res = cbk(*args);
+	return res;
 
 def analyze_experiment(sim, hwspec, model):
 
@@ -144,46 +156,32 @@ def analyze_experiment(sim, hwspec, model):
 			for idx in range(0,len(louts) ):
 				outputs.append(dataset[louts[idx]]);
 
-			tolist = lambda x : list(x) if isinstance(x, tuple) else [x]
-
-
-			def format(lst):
-				k = len(lst);
-				n = len(lst[0]);
-				ar = [];
-				for j in range(0,n):
-					for i in range(0,k):
-						ar.append(lst[i][j]);
-				ar = np.array(ar);
-				ar.shape = (k,n);
-				print(ar.shape)
-				return ar;
-
-			#inputs = format(inputs)
-			#outputs = format(outputs)
 			p0 = len(lpars)*[1];
 			print(p0);
 
 			print("=== Starting Fitting Process ===")
 
-			print("=== Starting Running Process ===")
 			if len(inputs) == 1:
 				inputs = inputs[0];
 			if len(outputs) == 1:
 				outputs = outputs[0];
 			(sol,cov) = sc.optimize.curve_fit(cbk,inputs,outputs, p0);
-			print(sol);
-			#print("outputs",outputs)
-			#print("inputs",inputs)
-			#print("dataset",dataset)
-		'''
-		for (i,j) in itertools.product(inp,outp):
-			hwinps = hwspec.get_inputs();
-			els = {};
 
-			print(i,j,v);
-			data = sim.get_rel("x","z");
-		'''
+			print("=== Found Solution, Building Dictionary ===")
+			pars = {};
+			for i in range(0,len(lpars)):
+				el = {};
+				el["value"] = sol[i];
+				pars[lpars[i]] = el;
+
+			res = invoke_callback(cbk, m, inputs, pars);
+
+			rms = lambda x,y : np.sqrt(np.mean(np.square(np.subtract(x,y) )))
+			err = rms(res,outputs)
+			print("Associated Error",err)
+			return pars;
+
+
 
 def run(libdir, infile, outfile):
 	sim = spice.Simulation();
@@ -198,19 +196,13 @@ def run(libdir, infile, outfile):
 	gen_comp(libdir, hwspec);
 	gen_experiment(libdir,hwspec,model);
 	sim = run_experiment();
-	analyze_experiment(sim,hwspec,model);
+	sols = analyze_experiment(sim,hwspec,model);
+	gen_pfile(libdir,model,sols);
 
+	print(sols);
 	sys.exit(0);
 	print("== Analyzing Data ==");
-	data = sim.get_rel("x","z");
-	x = data["x"];
-	z = data["z"];
-	plt.plot(x,z);
-	# note the input can be an array
-	(sol,cov) = sc.optimize.curve_fit(inv,x,z);
-	print("Solution",(sol));
 
-	rms = lambda x,y : np.sqrt(np.mean(np.square(np.subtract(x,y) )))
 
 	fun = lambda n : inv(n,sol[0],sol[1])
 	zmod = list(map(fun, x));
