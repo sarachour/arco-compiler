@@ -1,28 +1,34 @@
 
 
 
-type delta =
-   | DUseComponent of hwcomp*int
-   | DAddWire of hwexpr*string*(string option)
-   | DAggregate of delta list
-   | DSetPort of hwliteral*hwexpr
+type comp_id = string*int
+type port_id = string*comp_id
+
+type sln_action =
+   | DUseComponent of comp_id
+   | DAddWire of port_id*port_id
+   | DSetPort of port_id*float
    | DNone
 
-type conn_lim =
+type conn_cstr =
   | AllPorts
   | PortOfComp of string*string
-  | PortOfInst of string*string*int
-  | Mixed of conn_src_type list
+  | PortOfInst of port_id
 
 
-type elem_lim =
+type elem_cstr =
    | Infinite
    | Finite of int
 
-type comp_lim =
+type comp_cstr =
 {
-  mutable comp: scarcity_type;
-  mutable ports: (string*conn_type*conn_type);
+  mutable comp: elem_cstr;
+  mutable ports: (string*conn_cstr*conn_cstr);
+}
+
+
+type system_cstr = {
+  comp : (string*(comp_cstr list)) list
 }
 
 type comp_state =
@@ -30,9 +36,9 @@ type comp_state =
   mutable used: int;
 
 }
-type comp_sln =
+
+type sln =
 {
-  mutable lims: comp_lim list;
-  mutable state : comp_state list;
-  mutable sln: delta;
+  mutable state : (string*comp_state) list;
+  mutable sln: sln_action list;
 }

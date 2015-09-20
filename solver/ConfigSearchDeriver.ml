@@ -1,8 +1,8 @@
 open HWData
 open HWLib
 open Util
-open HWSol
-
+open HWSolData
+open HWSolLib
 
 
 exception DerivationException of string;;
@@ -16,11 +16,11 @@ type goal = {
 (*the set of goals. A solved goal node is a goal with a list of new subgoals
 An aggregate goal node is a list of possible solutions of a goal*)
 type goalnode =
-   | GSolutionNode of goal*delta*(goalnode list)
+   | GSolutionNode of goal*sln*(goalnode list)
    | GUnsolvedNode of goal
    | GMultipleSolutionNode of goal*(goalnode list)
    | GNoSolutionNode of goal
-   | GTrivialNode of goal*delta
+   | GTrivialNode of goal*sln
    | GLinkedNode of goal
    | GEmpty
 
@@ -43,22 +43,6 @@ end =
 struct
 
    let __spacing = "  "
-   let rec _delta2str (prefix:string) (d:delta) : string = match d with
-      | DUseComponent(hwcomp) -> let ns = hwcomp.ns in
-         prefix^"use component "^ns
-      | DAddWire(expr,src,Some(sink)) ->
-         let sexpr = HWUtil.hwexpr2str expr in
-         prefix^sexpr^" : "^src^" -> "^sink
-      | DAddWire(expr,src,None) ->
-         let sexpr = HWUtil.hwexpr2str expr in
-         prefix^sexpr^" : "^src^" -> ?"
-      | DSetPort(n,e) ->
-         let nexpr = HWUtil.hwlit2str n in
-         let expr = HWUtil.hwexpr2str e in
-         nexpr^":="^expr
-      | DAggregate(lst) ->
-         List.fold_right (fun x r -> r^(_delta2str prefix x)^"\n") lst ""
-      | DNone -> "none"
 
    let _goal2str (prefix:string) (d:goal) : string =
       let expr = HWUtil.hwrel2str (List.nth (d.value.relations) 0) in
@@ -83,7 +67,7 @@ struct
       | GEmpty -> prefix^"empty.\n"
       | GLinkedNode(g) -> prefix^"linked:"^(_goal2str (prefix^__spacing) g)^"\n"
 
-   let delta2str (d:delta) : string = _delta2str "" d
+
    let goal2str (d:goal) : string = _goal2str "" d
    let goalnode2str (d:goalnode) : string = _goalnode2str "" d
 
