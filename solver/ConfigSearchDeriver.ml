@@ -1,8 +1,8 @@
 open HWData
 open HWLib
 open Util
-open HWSolData
-open HWSolLib
+open HwSlnLib
+open HwSlnData
 
 
 exception DerivationException of string;;
@@ -58,7 +58,7 @@ struct
       | GNoSolutionNode(g) -> prefix^"no solution\n"
       | GUnsolvedNode(g) -> prefix^(_goal2str (prefix^__spacing) g)^"\n"
       | GSolutionNode(g,d,subs) ->
-         (_goal2str prefix g)^"\n"^(_delta2str (prefix^"-> ") d)^"\n\n"^
+         (_goal2str prefix g)^"\n"^(SlnUtil.action2str (prefix^"-> ") d)^"\n\n"^
          (_goallist2str subs "")
       | GMultipleSolutionNode(g,lst) ->
          prefix^"multiple solutions:\n\n"^
