@@ -21,9 +21,9 @@ component vmul2 {
 #    V: 0 V - 5 V
 #   out O;
 #   param C;
-#   enforce | deriv(O.V) = A.V;
-#   spice | Xname A C O vinteg
-#   error | \hat O = beta*O + alpha
+#   relation: deriv(O.V) = A.V;
+#   spice: Xname A C O vinteg
+#   error: \hat O = beta*O + alpha
 #}
 
 component vinteg {

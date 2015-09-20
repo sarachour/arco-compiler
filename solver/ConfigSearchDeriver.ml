@@ -1,16 +1,11 @@
 open HWData
 open HWLib
 open Util
+open HWSol
+
+
 
 exception DerivationException of string;;
-
-type delta =
-   | DUseComponent of hwcomp
-   | DAddWire of hwexpr*string*(string option)
-   | DAggregate of delta list
-   | DSetPort of hwliteral*hwexpr
-   | DNone
-
 
 (* a list of subgoals you have to remove *)
 type goal = {
@@ -48,7 +43,7 @@ end =
 struct
 
    let __spacing = "  "
-   let rec _delta2str (prefix:string) (d:delta) : string = match d with 
+   let rec _delta2str (prefix:string) (d:delta) : string = match d with
       | DUseComponent(hwcomp) -> let ns = hwcomp.ns in
          prefix^"use component "^ns
       | DAddWire(expr,src,Some(sink)) ->
