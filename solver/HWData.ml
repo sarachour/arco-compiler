@@ -6,16 +6,16 @@ exception HWDataException of string;;
 type hwid = id
 let nullid : hwid = (0,None)
 
-module HWSymTbl : 
+module HWSymTbl :
 sig
   type symtable = {
     mutable fid: int ref;
     mutable map: hwid StringMap.t ref;
   }
-  val create : unit -> symtable 
-  val add : symtable -> string -> hwid 
-  val make : symtable -> hwid 
-end = 
+  val create : unit -> symtable
+  val add : symtable -> string -> hwid
+  val make : symtable -> hwid
+end =
 struct
   type symtable = {
     mutable fid: int ref;
@@ -23,7 +23,7 @@ struct
   }
   let create() = {fid=(ref 1); map=(ref StringMap.empty)}
 
-  let add (s:symtable) (n:string) = 
+  let add (s:symtable) (n:string) =
    let fid = s.fid in
    let id = (!fid,Some(n)) in
    fid := !fid + 1;
@@ -35,23 +35,23 @@ struct
 end
 
 
-type hwdecimal = float 
-type hwint = int 
+type hwdecimal = float
+type hwint = int
 type hwvar = string
 (* Hardware Logic *)
 
 type hwsymbol =
-  | Param of hwvar 
-  | FixedParam of hwvar*hwdecimal 
-  | Input of hwvar 
+  | Param of hwvar
+  | FixedParam of hwvar*hwdecimal
+  | Input of hwvar
   | Output of hwvar
   | Namespace of hwvar*hwsymbol
 
-type hwliteral = 
+type hwliteral =
 	| Voltage of hwsymbol
 	| Current of hwsymbol
 
-type hwexpr = 
+type hwexpr =
   | NatExp of hwexpr
   | Exp of hwexpr*hwexpr
   | Div of hwexpr*hwexpr
@@ -60,10 +60,10 @@ type hwexpr =
   | Sub of hwexpr list
   | Literal of hwliteral
   | Deriv of hwexpr
-  | Decimal of hwdecimal 
+  | Decimal of hwdecimal
   | Integer of hwint
 
-type hwrel = 
+type hwrel =
    | Eq of hwexpr*hwexpr (*Equality with effects*)
    | Set of hwliteral*hwexpr (* Set the output to something equivalent, treated as a new terminal *)
 
@@ -71,16 +71,16 @@ type hwrel =
 
 (* Hardware Conditions *)
 (*
-type hwcond_digital = 
-   | HIGH of hwid 
-   | LOW of hwid 
+type hwcond_digital =
+   | HIGH of hwid
+   | LOW of hwid
 
-type hwcond_analog = 
+type hwcond_analog =
    |GreaterThanEq of hwid*hwdecimal
    |LessThanEq of hwid*hwdecimal
    |Between of hwid*hwdecimal*hwdecimal
 
-type hwcond = 
+type hwcond =
    | Digital of hwcond_digital
    | Analog of hwcond_analog
    | And of hwcond*hwcond
@@ -89,8 +89,9 @@ type hwcond =
 
 type hwcomp = {
 	mutable ports: hwsymbol list;
-	mutable constraints: hwrel list;
-    mutable ns: string;
+	mutable relations: hwrel list;
+  mutable spice: string;
+  mutable ns: string;
 }
 
 
@@ -112,7 +113,7 @@ type hwcomp_switch = {
    mutable subcomps : hwcomp list;
    mutable id: string*hwid;
 }
-type hwterm = 
+type hwterm =
    |Wire of string
    |Port of string*string
 
@@ -130,14 +131,14 @@ type 'a hwschemT = {
 }
 (*
 type hwinput = {
-   id:hwid   
+   id:hwid
 }
 
 type hwoutput = {
-   id:hwid   
+   id:hwid
 }
 *)
-type hwelem = 
+type hwelem =
    | Component of hwcomp
    (*
    | AggComponent of hwcomp_agg
@@ -150,7 +151,7 @@ type hwelem =
   *)
 type hwschem = hwelem hwschemT
 
-type hwconfig = 
+type hwconfig =
    | None
 
 
@@ -158,4 +159,3 @@ type hwarch = {
    mutable schem: hwschem;
 
 }
-

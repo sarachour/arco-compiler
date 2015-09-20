@@ -3,7 +3,8 @@
 }
 
 rule main = parse
-   "/*" _* "*/" {main lexbuf}
+   |"/*" _* "*/" {main lexbuf}
+   |"\"" [^ '\n']* "\"" as word {STRING(word)}
    | "#" [^ '\n']* "\n" {main lexbuf}
    |[' ''\t''\n'] {main lexbuf}
    | [':'] {COLON}
@@ -13,6 +14,7 @@ rule main = parse
    | [')'] {CPARAN}
    | [';'] {SEMICOLON}
    | ['|'] {VBAR}
+   | ['$'] {DOLLAR}
    | "begin" {BEGIN}
    | "aggregate-component" {AGG_COMPONENT}
    | "switch-component" {SWITCH_COMPONENT}
@@ -20,7 +22,8 @@ rule main = parse
    | "wire" {WIRE}
    | "join" {JOIN}
    | "schematic" {SCHEMATIC}
-   | "enforce" {RELATION}
+   | "relation" {RELATION}
+   | "spice" {SPICE}
    | "elem" {ELEM}
    | "in" {INPUT_PIN}
    | "out" {OUTPUT_PIN}

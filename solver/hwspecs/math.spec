@@ -3,15 +3,16 @@ component vadd2 {
    in A;
    in B;
    out O;
-   enforce | O.V = B.V + A.V;
+   relation: O.V = B.V + A.V;
+   spice: "X$name $A $B $O vadd2";
 }
 
 component vmul2 {
    in A;
    in B;
    out O;
-   param K;
-   enforce | O.V = K*B.V*A.V;
+   relation: O.V = B.V*A.V;
+   spice: "X$name $A $B $O vmul2";
 }
 
 #component vinteg {
@@ -28,15 +29,16 @@ component vmul2 {
 component vinteg {
     in A;
     out O;
-    param C;
-    enforce | deriv(O.V) = A.V;
+    relation: deriv(O.V) = A.V;
+    spice: "X$name $A $O vadd2";
 }
 
 component vintegsum {
    in A;
    in B;
    out O;
-   enforce | deriv(O.V) = A.V + B.V;
+   relation: deriv(O.V) = A.V + B.V;
+   spice: "X$name $A $B $O vadd2";
 }
 
 

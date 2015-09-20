@@ -47,9 +47,10 @@ let meta_ns () =
 %token <string> TOKEN
 %token <float> DECIMAL
 %token <int> INTEGER
+%token <string> STRING
 %token BEGIN
-%token COLON EOF SEMICOLON OBRACE CBRACE VBAR DOT OPARAN CPARAN
-%token COMPONENT SCHEMATIC AGG_COMPONENT SWITCH_COMPONENT WIRE JOIN ELEM TO
+%token DOLLAR COLON EOF SEMICOLON OBRACE CBRACE VBAR DOT OPARAN CPARAN
+%token COMPONENT SPICE SCHEMATIC AGG_COMPONENT SWITCH_COMPONENT WIRE JOIN ELEM TO
 %token RELATION INPUT_PIN OUTPUT_PIN PARAM
 
 %token MULT DIV ADD SUB EXP
@@ -193,9 +194,14 @@ component:
       meta_put (FixedParam(n,v));
       (name,newc)
    }
-   | component RELATION VBAR rel SEMICOLON {
+   | component RELATION COLON rel SEMICOLON {
       let (name,c) = $1 and r = $4 in
       let newc = HWComp.add_constraint c r in
+      (name,newc)
+   }
+   | component SPICE COLON STRING SEMICOLON {
+      let (name,c) = $1 and r = $4 in
+      let newc = HWComp.set_spice c r in
       (name,newc)
    }
    | component CBRACE {let (name,c) = $1 in (name,c)}
