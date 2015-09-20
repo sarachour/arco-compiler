@@ -40,5 +40,5 @@ type comp_state =
 type sln =
 {
   mutable state : (string*comp_state) list;
-  mutable sln: sln_action list;
+  mutable actions: sln_action list;
 }

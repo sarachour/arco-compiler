@@ -6,6 +6,7 @@ sig
    val compid2str : comp_id -> string
    val action2str : string -> sln_action -> string
    val actions2str : string -> sln_action list -> string
+   val sln2str : string -> sln -> string
 
 end =
 struct
@@ -24,4 +25,6 @@ struct
     let actions2str prefix (d:sln_action list) : string =
       List.fold_right (fun x r -> r^(action2str prefix x)^"\n") d ""
 
+    let sln2str prefix (d:sln) : string =
+      actions2str prefix d.actions
 end

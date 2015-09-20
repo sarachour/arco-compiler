@@ -2,6 +2,7 @@ open Sys
 open Core
 
 open Util
+open HwSlnData
 open SymCamlData
 open SymCaml
 open SymLib
@@ -12,6 +13,7 @@ open ConfigSearchDeriver
 
 type symcaml = SymCaml.symcaml
 
+exception GenerationException of string;;
 (*
 Given a set of components, it finds all possible combinations of assignments
 that yields equivalent
@@ -63,14 +65,18 @@ struct
         c
 
 
-   let get_trivial_solution (h:hwrel) : delta option =
+   let get_trivial_solution (h:hwrel) : sln_action option =
 	match h with
-		|Eq(Literal(Voltage(x)), Literal(Voltage(v))) -> Some (DSetPort(Voltage(x), Literal(Voltage(v))))
-		|Eq(Literal(Current(x)), Literal(Current(v))) -> Some (DSetPort(Current(x), Literal(Current(v))))
-		|Eq(Integer(v), Literal(x)) -> Some (DSetPort(x, Integer(v)))
-		|Eq(Literal(x),Integer(v)) -> Some (DSetPort(x, Integer(v)))
-		|Eq(Decimal(v), Literal(x)) -> Some (DSetPort(x, Decimal(v)))
-		|Eq(Literal(x),Decimal(v)) -> Some (DSetPort(x, Decimal(v)))
+		|Eq(Literal(Voltage(x)), Literal(Voltage(v))) ->
+      raise (GenerationException ("Cannot Handle "^x^" to "^v))
+      (*Some (DSetPort(Voltage(x), Literal(Voltage(v))))*)
+		|Eq(Literal(Current(x)), Literal(Current(v))) ->
+      raise (GenerationException ("Cannot Handle "^x^" to "^v))
+      (*Some (DSetPort(Current(x), Literal(Current(v))))*)
+		|Eq(Integer(v), Literal(x)) -> Some (DSetPort(x, (float_of_int v)))
+		|Eq(Literal(x),Integer(v)) -> Some (DSetPort(x, (float_of_int v)))
+		|Eq(Decimal(v), Literal(x)) -> Some (DSetPort(x, (v)))
+		|Eq(Literal(x),Decimal(v)) -> Some (DSetPort(x, (v)))
 		|Eq(_,_) -> None
 
    let is_trivial (g:goal) : goalnode option =

@@ -31,8 +31,6 @@ type goalnode =
 *)
 module GoalData :
 sig
-
-   val delta2str : delta -> string
    val goal2str : goal -> string
    val goalnode2str : goalnode -> string
    val _goalnode2str : string -> goalnode -> string
@@ -58,7 +56,7 @@ struct
       | GNoSolutionNode(g) -> prefix^"no solution\n"
       | GUnsolvedNode(g) -> prefix^(_goal2str (prefix^__spacing) g)^"\n"
       | GSolutionNode(g,d,subs) ->
-         (_goal2str prefix g)^"\n"^(SlnUtil.action2str (prefix^"-> ") d)^"\n\n"^
+         (_goal2str prefix g)^"\n"^(SlnUtil.sln2str (prefix^"-> ") d)^"\n\n"^
          (_goallist2str subs "")
       | GMultipleSolutionNode(g,lst) ->
          prefix^"multiple solutions:\n\n"^
@@ -289,7 +287,7 @@ sig
 
    type solution =
       | SMultipleSolutions of solution list
-      | SSolution of delta*(solution list)
+      | SSolution of sln*(solution list)
       | SLink of goal
       | SNoSolution
 
@@ -311,7 +309,7 @@ struct
 
    type solution =
       | SMultipleSolutions of solution list
-      | SSolution of delta*(solution list)
+      | SSolution of sln*(solution list)
       | SLink of goal
       | SNoSolution
 
@@ -335,7 +333,7 @@ struct
       let rec _solution2fb (ind:string) (s:solution) (v:'a): 'a=
          match s with
          | SSolution(del, rest) ->
-            let str : string = ind^(GoalData.delta2str del)^"\n" in
+            let str : string = ind^(SlnUtil.sln2str "" del)^"\n" in
             let nv : 'a = fx v str in
             let lmb x r = _solution2fb (ind^sp) x r in
             let chl : 'a = List.fold_right lmb (sort_by_kind rest) nv in
