@@ -67,7 +67,7 @@ struct
       match h with
       |Eq(Literal(Var(p1,x)), Literal(Var(p2,v))) ->
         if p1 == p2 then
-          Some (DAddWire(x,v))
+          Some (DAddWire(gpd x, gpd v))
         else
           None
       (*Some (DSetPort(Current(x), Literal(Current(v))))*)
