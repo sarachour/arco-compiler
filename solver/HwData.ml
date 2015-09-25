@@ -39,23 +39,6 @@ type hwrel =
 
 
 
-(* Hardware Conditions *)
-(*
-type hwcond_digital =
-   | HIGH of hwid
-   | LOW of hwid
-
-type hwcond_analog =
-   |GreaterThanEq of hwid*hwdecimal
-   |LessThanEq of hwid*hwdecimal
-   |Between of hwid*hwdecimal*hwdecimal
-
-type hwcond =
-   | Digital of hwcond_digital
-   | Analog of hwcond_analog
-   | And of hwcond*hwcond
-   | Or of hwcond*hwcond
-*)
 
 type hwcomp = {
 	mutable ports: hwsymbol list;
@@ -66,60 +49,17 @@ type hwcomp = {
 }
 
 
-(*
-type hwcomp_agg = {
-   mutable inputs: (string*hwid) list;
-   mutable outputs: (string*hwid) list;
-   mutable params: hwparam list;
-   mutable conns : (string*string) list;
-   mutable subcomps : hwcomp list;
-   mutable id: string*hwid;
-}
-
-type hwcomp_switch = {
-   mutable inputs: (string*hwid) list;
-   mutable outputs: (string*hwid) list;
-   mutable params: hwparam list;
-   mutable conns : (hwcond*(hwid*hwid)) list;
-   mutable subcomps : hwcomp list;
-   mutable id: string*hwid;
-}
-type hwterm =
-   |Wire of string
-   |Port of string*string
-
-type hwire = {
-   id : string*hwid;
-   mutable conns: hwterm list;
-}
-*)
 
 type 'a hwschemT = {
    mutable elems : 'a list;
-   (*mutable wires : hwire list;*)
    mutable ports: hwsymbol list;
    mutable name: string;
 }
-(*
-type hwinput = {
-   id:hwid
-}
 
-type hwoutput = {
-   id:hwid
-}
-*)
 type hwelem =
    | Component of hwcomp
-   (*
-   | AggComponent of hwcomp_agg
-   | SwitchComponent of hwcomp_switch
-    *)
    | Schematic of hwelem hwschemT
-   (*
-   | AnalogInput of hwinput
-   | AnalogOutput of hwoutput
-  *)
+
 type hwschem = hwelem hwschemT
 
 type hwconfig =
