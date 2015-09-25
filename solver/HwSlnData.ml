@@ -1,19 +1,17 @@
 
+open HwData
 
-
-type comp_id = string*int
-type port_id = string*comp_id
 
 type sln_action =
-   | DUseComponent of comp_id
-   | DAddWire of port_id*port_id
-   | DSetPort of port_id*float
+   | DUseComponent of compid
+   | DAddWire of portid*portid
+   | DSetPort of hwprop*portid*float
    | DNone
 
 type conn_cstr =
   | AllPorts
   | PortOfComp of string*string
-  | PortOfInst of port_id
+  | PortOfInst of portid
 
 
 type elem_cstr =

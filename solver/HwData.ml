@@ -3,53 +3,24 @@ open Util
 
 exception HWDataException of string;;
 (* Hardware Identifiers *)
-type hwid = id
-let nullid : hwid = (0,None)
-
-module HWSymTbl :
-sig
-  type symtable = {
-    mutable fid: int ref;
-    mutable map: hwid StringMap.t ref;
-  }
-  val create : unit -> symtable
-  val add : symtable -> string -> hwid
-  val make : symtable -> hwid
-end =
-struct
-  type symtable = {
-    mutable fid: int ref;
-    mutable map: hwid StringMap.t ref;
-  }
-  let create() = {fid=(ref 1); map=(ref StringMap.empty)}
-
-  let add (s:symtable) (n:string) =
-   let fid = s.fid in
-   let id = (!fid,Some(n)) in
-   fid := !fid + 1;
-   s.map := StringMap.add (string_of_int (!fid)) id !(s.map);
-   id
-
-  let make s = add s ("v"^(string_of_int (!(s.fid)) ) )
-
-end
 
 
-type hwdecimal = float
-type hwint = int
-type hwvar = string
+type inst = Any | Instance of int
+type compid = string*inst
+type portid = string*compid
 (* Hardware Logic *)
 
+type hwprop =
+  Current | Voltage
+
 type hwsymbol =
-  | Param of hwvar
-  | FixedParam of hwvar*hwdecimal
-  | Input of hwvar
-  | Output of hwvar
-  | Namespace of hwvar*hwsymbol
+  | Input of portid
+  | Output of portid
+  | Namespace of string*hwsymbol
 
 type hwliteral =
-	| Voltage of hwsymbol
-	| Current of hwsymbol
+	| Var of hwprop*hwsymbol
+  | Param of string
 
 type hwexpr =
   | NatExp of hwexpr
@@ -60,12 +31,11 @@ type hwexpr =
   | Sub of hwexpr list
   | Literal of hwliteral
   | Deriv of hwexpr
-  | Decimal of hwdecimal
-  | Integer of hwint
+  | Decimal of float
+  | Integer of int
 
 type hwrel =
    | Eq of hwexpr*hwexpr (*Equality with effects*)
-   | Set of hwliteral*hwexpr (* Set the output to something equivalent, treated as a new terminal *)
 
 
 
@@ -89,9 +59,10 @@ type hwcond =
 
 type hwcomp = {
 	mutable ports: hwsymbol list;
+  mutable params: (string*float) list;
 	mutable relations: hwrel list;
   mutable spice: string;
-  mutable ns: string;
+  mutable name: string;
 }
 
 
@@ -127,7 +98,7 @@ type 'a hwschemT = {
    mutable elems : 'a list;
    (*mutable wires : hwire list;*)
    mutable ports: hwsymbol list;
-   mutable ns: string;
+   mutable name: string;
 }
 (*
 type hwinput = {

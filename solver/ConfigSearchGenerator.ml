@@ -7,8 +7,8 @@ open SymCamlData
 open SymCaml
 open SymLib
 open GenericData
-open HWData
-open HWLib
+open HwData
+open HwLib
 open ConfigSearchDeriver
 
 type symcaml = SymCaml.symcaml
@@ -29,7 +29,7 @@ sig
 end =
 struct
    type symexpr = SymCamlData.symexpr
-   type hwexpr = HWData.hwexpr
+   type hwexpr = HwData.hwexpr
    type symenv = SymLib.symenv
    type wctype = SymLib.wctype
 
@@ -37,53 +37,53 @@ struct
 
    let rec hwexpr2comp (tmpls:hwcomp list) (lbl:hwliteral) (expr:hwexpr) =
       let is_comp (nm:string) =
-         match List.filter (fun (x:hwcomp) -> x.ns = nm) tmpls with
+         match List.filter (fun (x:hwcomp) -> x.name = nm) tmpls with
          | [] -> false
          | _ -> true
       in
       let rec flip_sym (x:hwsymbol) (doflip:bool): hwsymbol = match x with
          | Input(v) -> if doflip then Output(v) else x
          | Output(v) -> if doflip then Input(v) else x
-         | Param(v) -> Param(v)
-         | FixedParam(v,n) -> FixedParam(v,n)
          | Namespace(ns,v) -> let iscmp = is_comp ns in
             Namespace(ns,flip_sym v iscmp)
       in
       let flip_expr (x:hwexpr) : hwexpr option = match x with
-         | Literal(Voltage(x)) -> Some (Literal(Voltage(flip_sym x false)))
-         | Literal(Current(x)) -> Some (Literal(Current(flip_sym x false)))
+         | Literal(Var(p,x)) -> Some (Literal(Var(p,flip_sym x false)))
          | _ -> None
       in
       let lhs = Literal lbl in
       let rhs = expr in
-      let nexpr = Eq(HWUtil.map2expr lhs flip_expr,HWUtil.map2expr rhs flip_expr) in
-      let nports = HWUtil.hwrel2symbols nexpr in
-      let nm = List.fold_right (fun (x:hwcomp) r-> r^"."^(x.ns)) tmpls "interim" in
-      let c = HWLib.HWComp.create nm in
+      let nexpr = Eq(HwUtil.map2expr lhs flip_expr,HwUtil.map2expr rhs flip_expr) in
+      let nports = HwUtil.hwrel2symbols nexpr in
+      let nm = List.fold_right (fun (x:hwcomp) r-> r^"."^(x.name)) tmpls "interim" in
+      let c = HwLib.HwComp.create nm in
         c.ports <- nports;
         c.relations <- [nexpr];
         c
 
 
    let get_trivial_solution (h:hwrel) : sln_action option =
-	match h with
-		|Eq(Literal(Voltage(x)), Literal(Voltage(v))) ->
-      raise (GenerationException ("Cannot Handle "^x^" to "^v))
-      (*Some (DSetPort(Voltage(x), Literal(Voltage(v))))*)
-		|Eq(Literal(Current(x)), Literal(Current(v))) ->
-      raise (GenerationException ("Cannot Handle "^x^" to "^v))
+      let rec gpd x =
+        match x with Input(v) -> v | Output(v) -> v | Namespace(s,v) -> gpd v
+      in
+      match h with
+      |Eq(Literal(Var(p1,x)), Literal(Var(p2,v))) ->
+        if p1 == p2 then
+          raise (GenerationException ("Cannot Handle "^(HwUtil.hwsym2str x)^" to "^(HwUtil.hwsym2str v)))
+        else
+          None
       (*Some (DSetPort(Current(x), Literal(Current(v))))*)
-		|Eq(Integer(v), Literal(x)) -> Some (DSetPort(x, (float_of_int v)))
-		|Eq(Literal(x),Integer(v)) -> Some (DSetPort(x, (float_of_int v)))
-		|Eq(Decimal(v), Literal(x)) -> Some (DSetPort(x, (v)))
-		|Eq(Literal(x),Decimal(v)) -> Some (DSetPort(x, (v)))
-		|Eq(_,_) -> None
+      |Eq(Integer(v), Literal(Var(p,x))) -> Some (DSetPort(p,gpd x, (float_of_int v)))
+      |Eq( Literal(Var(p,x)),Integer(v)) -> Some (DSetPort(p,gpd x, (float_of_int v)))
+      |Eq(Decimal(v),  Literal(Var(p,x))) -> Some (DSetPort(p,gpd x, (v)))
+      |Eq( Literal(Var(p,x)),Decimal(v)) -> Some (DSetPort(p,gpd x, (v)))
+      |Eq(_,_) -> None
 
    let is_trivial (g:goal) : goalnode option =
       let n = List.nth (g.value.relations) 0 in
       match get_trivial_solution n with
-		|Some(sol) -> Some (GTrivialNode(g,sol))
-		|None -> None
+    		|Some(sol) -> Some (GTrivialNode(g,sol))
+    		|None -> None
 
 
    let get_solution (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option =

@@ -1,5 +1,5 @@
-open HWData
-open HWLib
+open HwData
+open HwLib
 open Util
 open HwSlnLib
 open HwSlnData
@@ -43,9 +43,9 @@ struct
    let __spacing = "  "
 
    let _goal2str (prefix:string) (d:goal) : string =
-      let expr = HWUtil.hwrel2str (List.nth (d.value.relations) 0) in
+      let expr = HwUtil.hwrel2str (List.nth (d.value.relations) 0) in
       match d.name with
-         | Some(name) -> prefix^"goal -> "^(HWUtil.hwlit2str name)^" | "^expr
+         | Some(name) -> prefix^"goal -> "^(HwUtil.hwlit2str name)^" | "^expr
          | None ->  prefix^"goal -> _ | "^expr
 
    let rec _goalnode2str (prefix:string) (d:goalnode) : string =
