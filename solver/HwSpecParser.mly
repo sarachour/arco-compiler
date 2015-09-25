@@ -1,45 +1,49 @@
 %{
 
 open Printf
-open HWData
-open HWLib
+open HwData
+open HwLib
 open Util
 
 exception ParserError of string;;
+type kind =
+  | KInput of string
+  | KOutput of string
+  | KParam of string
 
 type meta = {
-   mutable syms: hwsymbol list;
-   ns: string
+   mutable syms: kind list;
+   mutable name: string;
 }
-let arch = HWLib.HWArch.create()
+
+let arch = HwLib.HwArch.create()
 let cmap: hwelem Util.StringMap.t ref = ref StringMap.empty
 
-let meta_data: meta = {syms=[]; ns=""}
+let meta_data: meta = {syms=[];name="";}
 
 let _meta : meta ref = ref meta_data
 
 let meta_clear ns =
-   _meta := {syms=[]; ns=ns}
+   _meta := {syms=[];name=ns}
 
-let meta_put (n:hwsymbol) =
-   (!_meta).syms <- (Namespace ((!_meta).ns,n))::(!_meta).syms
+let meta_put (n:kind) =
+   (!_meta).syms <- n::(!_meta).syms
 
-let meta_get (n:string) : hwsymbol option=
-   let rec names_match e = match e with
-   | Input(x) -> x = n
-   | Output(x) -> x = n
-   | Param(x) -> x = n
-   | FixedParam(x,v) -> x = n
-   | Namespace(v,x) -> names_match x
+let meta_get (n:string) : kind option=
+   let rec var_names_match e = match e with
+   | KInput(x) -> x = n
+   | KOutput(x) -> x = n
+   | KParam(x) -> x = n
    in
-   match List.filter names_match (!_meta).syms with
+   let matchv = List.filter var_names_match (!_meta).syms in
+   match (matchv) with
       |[] -> None
       |[h] -> Some(h)
       |_ -> raise (ParserError "too many defined symbols.")
 
-let meta_ns () =
-   (!_meta).ns
 
+let meta_name () : string =
+  (!_meta).name
 %}
 
 
@@ -60,19 +64,19 @@ let meta_ns () =
 
 
 
-%type <HWData.hwarch> main
+%type <HwData.hwarch> main
 %type <unit> toplevel
 
-%type <string*HWData.hwschem> schem
-%type <string*HWData.hwcomp> component
-%type <string*HWData.hwelem> elem
+%type <string*HwData.hwschem> schem
+%type <string*HwData.hwcomp> component
+%type <string*HwData.hwelem> elem
 
 
-%type <HWData.hwrel> rel
-%type <HWData.hwexpr> expr_pe
-%type <HWData.hwexpr> expr_md
-%type <HWData.hwexpr> expr_as
-%type <HWData.hwliteral> literal
+%type <HwData.hwrel> rel
+%type <HwData.hwexpr> expr_pe
+%type <HwData.hwexpr> expr_md
+%type <HwData.hwexpr> expr_as
+%type <HwData.hwliteral> literal
 
 
 %start main
@@ -103,19 +107,22 @@ literal:
       let prop = $3 and vname = $1 in
       match meta_get vname with
       | Some(x) ->
-         begin
-         match prop with
-            |"V" -> Voltage (x)
-            |"I" -> Current (x)
-            | _ -> raise (ParserError ("Unknown property "^prop))
-         end
-      | None -> raise (ParserError ("Symbol not found "^vname))
+           let vprop = HwUtil.str2hwprop prop in
+           let cnm = meta_name() in
+           begin
+           match x with
+           | KInput(nm) -> Var(vprop, Input (HwUtil.mkportid nm cnm None) )
+           | KOutput(nm) -> Var(vprop, Output (HwUtil.mkportid nm cnm None))
+           | KParam(nm) -> raise (ParserError ("Symbol with property cannot be parameter <"^nm^">"))
+           end
+      | None -> raise (ParserError ("Symbol not found <"^vname^">"))
    }
    | TOKEN {
       let name = $1 in
       match meta_get name with
-      | Some(x) -> Voltage (x)
-      | None -> raise (ParserError ("Symbol not found "^name))
+      | Some(KParam(nm)) -> Param(name)
+      | Some(_) -> raise (ParserError ("Variable must reference property carry property <"^name^">"))
+      | None -> raise (ParserError ("Symbol not found <"^name^">"))
    }
 ;
 expr_nl:
@@ -166,42 +173,39 @@ rel:
 component:
    | COMPONENT TOKEN OBRACE {
       let name = $2 in
-      let c = HWComp.create name in
+      let c = HwComp.create name in
       meta_clear name;
       (name, c)
    }
    | component INPUT_PIN TOKEN SEMICOLON {
       let (name,c) = $1 and n = $3 in
-      let newc = HWComp.add_input c n in
-      meta_put (Input n);
+      let newc = HwComp.add_input c n in
+      meta_put (KInput n);
       (name,newc)
    }
    | component OUTPUT_PIN TOKEN SEMICOLON {
       let (name,c) = $1 and n = $3 in
-      let newc = HWComp.add_output c n in
-      meta_put (Output n);
+      let newc = HwComp.add_output c n in
+      meta_put (KOutput n);
       (name,newc)
    }
    | component PARAM TOKEN SEMICOLON {
-      let (name,c) = $1 and n = $3 in
-      let newc = HWComp.add_param c n None in
-      meta_put (Param n);
-      (name,newc)
+      raise (ParserError "HWSpec: Parameter must be set")
    }
    | component PARAM TOKEN DECIMAL SEMICOLON {
       let (name,c) = $1 and n = $3 and v = $4 in
-      let newc = HWComp.add_param c n (Some v) in
-      meta_put (FixedParam(n,v));
+      let newc = HwComp.add_param c n v in
+      meta_put (KParam(n));
       (name,newc)
    }
    | component RELATION COLON rel SEMICOLON {
       let (name,c) = $1 and r = $4 in
-      let newc = HWComp.add_constraint c r in
+      let newc = HwComp.add_constraint c r in
       (name,newc)
    }
    | component SPICE COLON STRING SEMICOLON {
       let (name,c) = $1 and r = $4 in
-      let newc = HWComp.set_spice c r in
+      let newc = HwComp.set_spice c r in
       (name,newc)
    }
    | component CBRACE {let (name,c) = $1 in (name,c)}
@@ -214,7 +218,7 @@ elem:
       let _ = Printf.printf "%s\n" kind in
       try
         let elem = Util.StringMap.find kind !(cmap) in
-        let newelem = HWElem.clone elem in
+        let newelem = HwElem.clone elem in
         (name,newelem)
       with
         Not_found -> raise (ParserError ("elem/Not_found: component with name <"^kind^"> not defined."))
@@ -225,24 +229,24 @@ elem:
 schem:
    SCHEMATIC TOKEN OBRACE {
       let name = $2 in
-      let nsc = HWSchem.create name in
+      let nsc = HwSchem.create name in
       (name,nsc)
    }
    | schem elem {
       let (name_elem,e) = $2 and (name_sch,sc) = $1 in
-      let nsc = HWSchem.add_elem sc name_elem e in
+      let nsc = HwSchem.add_elem sc name_elem e in
       (name_sch,nsc)
    }
 
    | schem INPUT_PIN TOKEN SEMICOLON {
       let (name,sc) = $1 and n = $3 in
-      let nsc = HWSchem.add_input sc n in
+      let nsc = HwSchem.add_input sc n in
       (name,nsc)
    }
 
    | schem OUTPUT_PIN TOKEN SEMICOLON {
       let (name,sc) = $1 and n = $3 in
-      let nsc = HWSchem.add_output sc n in
+      let nsc = HwSchem.add_output sc n in
       (name,nsc)
    }
    | schem CBRACE {let (n,sc) = $1 in (n,sc)}

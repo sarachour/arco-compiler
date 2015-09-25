@@ -1,5 +1,5 @@
 {
-   open HWSpecParser
+   open HwSpecParser
 }
 
 rule main = parse

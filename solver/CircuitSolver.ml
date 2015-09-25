@@ -4,12 +4,12 @@ open Core
 open Util
 open GenericData
 open GenericLib
-open HWData
-open HWLib
+open HwData
+open HwLib
 open ConfigSearch
 
-open HWSpecParser
-open HWSpecLexer
+open HwSpecParser
+open HwSpecLexer
 
 open GenericParser
 open GenericLexer
@@ -17,25 +17,25 @@ open GenericLexer
 
 exception CircuitSolverException of string;;
 
-let compile_hwspec f : hwarch = 
+let compile_hwspec f : hwarch =
   let in_chan = open_in(f) in
   let lexbuf = Lexing.from_channel in_chan in
-  HWSpecParser.main HWSpecLexer.main lexbuf 
+  HwSpecParser.main HwSpecLexer.main lexbuf
 
-let compile_gexpr f : genv = 
-  let in_chan = open_in(f) in 
+let compile_gexpr f : genv =
+  let in_chan = open_in(f) in
   let lexbuf = Lexing.from_channel in_chan in
-  GenericParser.main GenericLexer.main lexbuf 
+  GenericParser.main GenericLexer.main lexbuf
 
-      
-let process specname formula kind = 
-  let form = compile_gexpr formula in 
-  Printf.printf "Relation: %s\n" (GenericUtils.genv2str form); 
-  let hw = compile_hwspec specname in 
-  let cenv = ConfigSearch.init kind hw in 
+
+let process specname formula kind =
+  let form = compile_gexpr formula in
+  Printf.printf "Relation: %s\n" (GenericUtils.genv2str form);
+  let hw = compile_hwspec specname in
+  let cenv = ConfigSearch.init kind hw in
   let config = ConfigSearch.convert cenv form in
   (**Format.printf "%s\n" (HWArch.arch2str hw);*)
-  Format.printf "%s\n" (HWArch.config2str config)
+  Format.printf "%s\n" (HwArch.config2str config)
 
 let command =
   Command.basic
@@ -46,7 +46,7 @@ let command =
       +> flag "-formula" (optional string) ~doc:"formula specification"
       +> flag "-analogy" (optional string) ~doc:"hardware analogy. Use 'voltage' or 'current'."
     )
-    (fun hwspec formula analogy () -> 
+    (fun hwspec formula analogy () ->
       match (hwspec,formula,analogy) with
       | (Some(h),Some(f),None) -> process h f Voltage
       | (Some(h),Some(f),Some("voltage")) -> process h f Voltage

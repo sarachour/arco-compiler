@@ -74,9 +74,9 @@ struct
           None
       (*Some (DSetPort(Current(x), Literal(Current(v))))*)
       |Eq(Integer(v), Literal(Var(p,x))) -> Some (DSetPort(p,gpd x, (float_of_int v)))
-      |Eq( Literal(Var(p,x)),Integer(v)) -> Some (DSetPort(p,gpd x, (float_of_int v)))
+      |Eq(Literal(Var(p,x)),Integer(v)) -> Some (DSetPort(p,gpd x, (float_of_int v)))
       |Eq(Decimal(v),  Literal(Var(p,x))) -> Some (DSetPort(p,gpd x, (v)))
-      |Eq( Literal(Var(p,x)),Decimal(v)) -> Some (DSetPort(p,gpd x, (v)))
+      |Eq(Literal(Var(p,x)),Decimal(v)) -> Some (DSetPort(p,gpd x, (v)))
       |Eq(_,_) -> None
 
    let is_trivial (g:goal) : goalnode option =
@@ -88,7 +88,7 @@ struct
 
    let get_solution (tmpl:symenv) (expr:symenv) : (((string*symexpr) list) list) option =
 	  let is_symexpr_trivial (s:symexpr) : bool =
-		let hw = HWSymLib.symexpr2hwrel s in
+		let hw = HwSymLib.symexpr2hwrel s in
 		match get_trivial_solution hw with
 		| Some(v) -> true
 		| _ -> false
@@ -129,45 +129,22 @@ struct
       | Some(x) -> x
       | None ->
          begin
-         let tmpl = HWSymLib.hwcomp2symenv t true in
-         let expr = HWSymLib.hwcomp2symenv (g.value) false in
-	     let _ = Printf.printf "-> find_one %s\n" (t.ns) in
+         let tmpl = HwSymLib.hwcomp2symenv t true in
+         let expr = HwSymLib.hwcomp2symenv (g.value) false in
+	     let _ = Printf.printf "-> find_one %s\n" (t.name) in
          (*
             ban currents for voltages and voltages for currents. Constrain
             variables to follow analogy defined. Ban parameters from being assigned variables
          *)
          let handle_wcs (v:wctype) (conc:symenv) : wctype =
-            let is_current x =
-               match HWSymLib.symvar2hwliteral x with
-                  Current(x) -> true
-                  | _ -> false
-            in
-            let is_var x =
-			   let rec _is_var x = match x with
-				   | Param(_) -> false
-				   | FixedParam(_) -> false
-				   | Namespace(v,x) -> _is_var x
-				   | _ -> true
-			   in
-               match HWSymLib.symvar2hwliteral x with
-               | Voltage(v) -> (_is_var v)
-               | Current(v) -> (_is_var v)
-            in
+            let get_prop x = match x with Var(p,x) -> p in
             let str2var (x:string) : symexpr = Symbol(x) in
-            let vvars :symexpr list = List.map str2var (List.filter (fun x -> (is_current x) = false ) conc.vars) in
-            let ivars :symexpr list = List.map str2var (List.filter (fun x -> (is_current x) = true ) conc.vars) in
-            let allvars = List.map str2var (List.filter (fun x -> (is_var x) = true) conc.vars) in
             let (name,excepts) = v in
-            let typ = HWSymLib.symvar2hwliteral name in
-            match typ with
-            | Current(x) ->
-               if is_var name = false
-               then (name,excepts@allvars)
-               else (name,excepts@vvars)
-            | Voltage(x) ->
-               if is_var name = false
-               then (name,excepts@allvars)
-               else (name,excepts@ivars)
+            match HwSymLib.symvar2hwliteral name with
+            | Var(p,x) ->
+              let mismatch = List.filter (fun x -> let vx = HwSymLib.symvar2hwliteral x in (get_prop vx) != p) conc.vars in
+              let bans = List.map str2var mismatch in
+              (name, excepts@bans)
          in
          let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in
          let ntmpl : symenv={
@@ -181,15 +158,15 @@ struct
          match result with
             | Some(sol) ->
                let subgoals2nodelist (n,e) : goalnode=
-                  let name = HWSymLib.symvar2hwliteral n in
-                  let expr = HWSymLib.symexpr2hwexpr e in
+                  let name = HwSymLib.symvar2hwliteral n in
+                  let expr = HwSymLib.symexpr2hwexpr e in
                   let comp = hwexpr2comp [t] name expr in
                   let gl = GoalData.make_goal (Some name) comp in
                   GUnsolvedNode(gl)
                in
                let goals2nodelist lst  : goalnode=
                   let nlst = List.map subgoals2nodelist lst in
-                  let dlt : delta = DUseComponent(t) in
+                  let dlt : sln_action = DUseComponent(HwUtil.mkcompid (t.name) None) in
                   GSolutionNode(g,dlt,nlst)
                in
                let nlst : goalnode list = List.map goals2nodelist sol in

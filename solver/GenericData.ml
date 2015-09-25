@@ -1,20 +1,17 @@
 open Util
 
-type gdecimal = float
-type gint = int
-type gvar = string
 
-type gsymbol = 
-  | Param of string 
-  | FixedParam of string*gdecimal 
-  | Input of string 
+
+type gsymbol =
+  | Param of string*float
+  | Input of string
   | Output of string
 
 
-type gliteral = 
+type gliteral =
 	| Symbol of gsymbol
-	
-type gexpr = 
+
+type gexpr =
 	| Literal of gliteral
 	| Div of gexpr*gexpr
 	| Mult of gexpr list
@@ -23,11 +20,11 @@ type gexpr =
 	| Exp of gexpr*gexpr
 	| NatExp of gexpr
 	| Deriv of gexpr
-	| Decimal of gdecimal
-	| Integer of gint
+	| Decimal of float
+	| Integer of int
 	| Paren of gexpr
 
-type grel = 
+type grel =
 	| Eq of gexpr*gexpr
 
 type genv = {
