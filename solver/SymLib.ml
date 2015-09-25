@@ -15,7 +15,7 @@ sig
       ns: string
    }
    type wctype = string*(symexpr list)
-   val create_env : unit -> symenv
+   val create_env : string -> symenv
    val load_env : (SymCaml.symcaml option) -> symenv -> SymCaml.symcaml
    val add_wildcard_ban : symenv -> string -> symexpr -> symenv
    val has_wildcard : symenv -> string -> bool
@@ -59,7 +59,7 @@ struct
       | [] -> false
 
 
-   let create_env () = raise (SymLibException "create_env : Unimplemented")
+   let create_env ns = {vars=[]; wildcards=[]; exprs = []; ns=ns}
 
    let load_env (w:SymCaml.symcaml option) (s:symenv) : SymCaml.symcaml =
       let env = match w with

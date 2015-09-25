@@ -44,8 +44,6 @@ struct
       let rec flip_sym (x:hwsymbol) (doflip:bool): hwsymbol = match x with
          | Input(v) -> if doflip then Output(v) else x
          | Output(v) -> if doflip then Input(v) else x
-         | Namespace(ns,v) -> let iscmp = is_comp ns in
-            Namespace(ns,flip_sym v iscmp)
       in
       let flip_expr (x:hwexpr) : hwexpr option = match x with
          | Literal(Var(p,x)) -> Some (Literal(Var(p,flip_sym x false)))
@@ -64,7 +62,7 @@ struct
 
    let get_trivial_solution (h:hwrel) : sln_action option =
       let rec gpd x =
-        match x with Input(v) -> v | Output(v) -> v | Namespace(s,v) -> gpd v
+        match x with Input(v) -> v | Output(v) -> v 
       in
       match h with
       |Eq(Literal(Var(p1,x)), Literal(Var(p2,v))) ->
@@ -145,6 +143,8 @@ struct
               let mismatch = List.filter (fun x -> let vx = HwSymLib.symvar2hwliteral x in (get_prop vx) != p) conc.vars in
               let bans = List.map str2var mismatch in
               (name, excepts@bans)
+           | Param(p) ->
+              raise (GenerationException "Parameter cannot be wildcard.")
          in
          let nwc = List.map (fun x -> handle_wcs x expr) tmpl.wildcards  in
          let ntmpl : symenv={

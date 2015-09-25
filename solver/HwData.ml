@@ -16,7 +16,6 @@ type hwprop =
 type hwsymbol =
   | Input of portid
   | Output of portid
-  | Namespace of string*hwsymbol
 
 type hwliteral =
 	| Var of hwprop*hwsymbol

@@ -17,11 +17,13 @@ sig
    val iid2str : inst -> string
    val compid2str : compid ->string
    val portid2str : portid -> string
+   val hwlit2str : hwliteral -> string
 
    val str2iid : string -> inst
    val str2compid : string -> compid
    val str2portid : string -> portid
    val str2hwprop : string -> hwprop
+   val str2hwlit : string -> hwliteral
 
    val hwprop2str : hwprop -> string
    val hwsym2str : hwsymbol -> string
@@ -32,13 +34,7 @@ sig
    val hwexpr2symbols : hwexpr -> hwsymbol list
    val hwrel2symbols  : hwrel -> hwsymbol list
 
-   val scrubns4literal : hwliteral -> string option -> hwliteral
-   val scrubns4expr : hwexpr -> string option -> hwexpr
-   val scrubns4rel : hwrel -> string option -> hwrel
 
-   val wrapns4literal : hwliteral -> string -> hwliteral
-   val wrapns4expr : hwexpr -> string -> hwexpr
-   val wrapns4rel : hwrel -> string -> hwrel
 
    val map2expr : hwexpr -> (hwexpr -> hwexpr option) -> hwexpr
    val map2rel : hwrel -> (hwexpr -> hwexpr option) -> hwrel
@@ -50,25 +46,59 @@ struct
    let mkcompid s i = (s, mkiid i)
    let mkportid p s i = (p , mkcompid s i)
 
-   let iid2str i = match i with Any -> "*" | Instance(v) -> string_of_int v
-   let compid2str (c,i) = c^"."^(iid2str i)
-   let portid2str (p,c) = (compid2str c)^"["^p^"]"
-
-   let str2iid s = raise (HwLibException "str2iid: Unimplemented")
-   let str2compid s = raise (HwLibException "str2compid: Unimplemented")
-   let str2portid s = raise (HwLibException "str2portid: Unimplemented")
-   let str2hwprop s = raise (HwLibException "str2hwprop: Unimplemented")
-
-
-   let rec hwsym2str h = match h with
-      |Input(x) -> "i:"^(portid2str x)
-      |Output(x) -> "o:"^(portid2str x)
-      |Namespace(n,x) -> n^"."^(hwsym2str x)
-
    let hwprop2str h = match h with Voltage -> "V" | Current -> "I"
-   let rec hwlit2str h = match h with
-      | Var(p,v) -> (hwprop2str p)^"("^(hwsym2str v)^")"
-      | Param(x) -> "P."^x
+   let iid2str i = match i with Any -> "?" | Instance(v) -> string_of_int v
+   let compid2str (c,i) = c^"#"^(iid2str i)
+   let portid2str (p,c) = (compid2str c)^"<"^p^">"
+   let hwsym2str h = match h with
+       | Input(x) -> "in:"^(portid2str x)
+       | Output(x) -> "out:"^(portid2str x)
+
+   let hwlit2str h = match h with
+       | Var(p,x) -> (hwprop2str p)^"{"^(hwsym2str x)^"}"
+       | Param(p) -> p
+
+   let str2iid s =
+       match s with
+       | "?" -> Any
+       | n ->
+        try
+          let num = int_of_string n in Instance(num)
+        with Failure(_) -> raise (HwLibException ("str2iid: malformed expression: <"^s^">"))
+
+   let str2compid s =
+       let iodelim  = "#" in
+       match (Str.split (Str.regexp iodelim) s) with
+       | [name;id] -> (name, str2iid id)
+       | _ -> raise (HwLibException ("str2compid: malformed expression: <"^s^">"))
+
+   let str2portid s =
+       let iodelim  = "[\\<\\>]" in
+       match (Str.split (Str.regexp iodelim) s) with
+       | id::port::[] -> let c = str2compid id in (port,c)
+       | h::t -> raise (HwLibException ("str2portid: malformed expression: <"^h^"> of <"^s^">")  )
+
+   let str2hwprop s = match s with
+    | "V" -> Voltage
+    | "I" -> Current
+    | _ -> raise (HwLibException  ("str2hwprop: malformed expression: <"^s^"> ") )
+
+   let str2hwsym s =
+    let iodelim = ":" in
+    match Str.split (Str.regexp iodelim) s with
+    | ["in";rest] -> let v = str2portid rest in Input(v)
+    | ["out";rest] -> let v = str2portid rest in Output(v)
+    | _ -> raise (HwLibException  ("str2hwsym: malformed expression: <"^s^"> ") )
+
+   let str2hwlit s =
+      let iodelim = "[{}]+" in
+      match Str.split (Str.regexp iodelim) s with
+      | [kind;id] -> let pr = str2hwprop kind and pid = str2hwsym id in
+        Var(pr, pid)
+      | _ -> raise (HwLibException  ("str2hwsym: malformed expression: <"^s^"> ") )
+      | [name] -> Param(name)
+      | h::t -> raise (HwLibException  ("str2hwlit: malformed expression: <"^h^"> of <"^s^">") )
+
 
    let rec hwexpr2str (h:hwexpr) =
       let hwexprlst2str lst delim =
@@ -123,71 +153,6 @@ struct
       match r with
       |Eq(a,b) -> _make_symbols_unique ((hwexpr2symbols a) @ (hwexpr2symbols b))
 
-
-   let scrubns4literal (l:hwliteral) (ns: string option) : hwliteral =
-      let rec scrubns4symbols (s:hwsymbol) : hwsymbol = match s with
-         | Namespace(n,e) ->
-            begin
-            match (n,ns) with
-            |(curr_name, Some(ns)) -> if curr_name = ns then (scrubns4symbols e) else s
-            |(_, None) -> scrubns4symbols e
-            end
-         | _ -> s
-      in
-      match l with
-      | Var(p,s) -> Var(p,scrubns4symbols s)
-      | Param(n) -> Param(n)
-
-   let scrubns4expr (e:hwexpr) (ns:string option) =
-      let rec _scrubsns4expr (h:hwexpr) : hwexpr =
-         let scrubsns4exprlst lst : hwexpr list =
-            List.fold_right (fun x r -> (_scrubsns4expr x)::r) lst []
-         in
-         match h with
-         |Add(lst) -> Add (scrubsns4exprlst lst)
-         |Sub(lst) -> Sub (scrubsns4exprlst lst)
-         |Mult(lst) -> Mult (scrubsns4exprlst lst)
-         |Literal(l) -> Literal(scrubns4literal l ns)
-         |Deriv(x) -> Deriv (_scrubsns4expr x)
-         |NatExp(x) -> NatExp (_scrubsns4expr x)
-         |Exp(x,y) -> Exp (_scrubsns4expr x,_scrubsns4expr y)
-         |Div(x,y) -> Div (_scrubsns4expr x,_scrubsns4expr y)
-         | a -> a
-      in
-      let nunc = _scrubsns4expr e in
-      nunc
-
-   let scrubns4rel (r:hwrel) (ns:string option) : hwrel =
-      match r with
-      |Eq(a,b) -> Eq(scrubns4expr a ns, scrubns4expr b ns)
-
-   let wrapns4literal l ns =
-      match l with
-      | Var(p,s) -> Var(p,Namespace(ns,s))
-      | Param(s) -> Param(s)
-
-   let wrapns4expr ex ns =
-      let rec _wrapns4expr (h:hwexpr) : hwexpr =
-         let wrapns4exprlst lst : hwexpr list =
-            List.fold_right (fun x r -> (_wrapns4expr x)::r) lst []
-         in
-         match h with
-         |Add(lst) -> Add (wrapns4exprlst lst)
-         |Sub(lst) -> Sub (wrapns4exprlst lst)
-         |Mult(lst) -> Mult (wrapns4exprlst lst)
-         |Literal(l) -> Literal(wrapns4literal l ns)
-         |Deriv(x) -> Deriv (_wrapns4expr x)
-         |NatExp(x) -> NatExp (_wrapns4expr x)
-         |Exp(x,y) -> Exp (_wrapns4expr x,_wrapns4expr y)
-         |Div(x,y) -> Div (_wrapns4expr x,_wrapns4expr y)
-         | a -> a
-      in
-      let nunc = _wrapns4expr ex in
-      nunc
-   let wrapns4rel (r:hwrel) (ns:string) : hwrel =
-      match r with
-      |Eq(a,b) -> Eq(wrapns4expr a ns, wrapns4expr b ns)
-
    let map2expr (ex:hwexpr) (fn:hwexpr -> hwexpr option) : hwexpr =
       let rec _map2expr (h:hwexpr) : hwexpr =
       let map2exprlst lst : hwexpr list =
@@ -237,15 +202,20 @@ struct
       {ports=[];relations=[];params=[];spice="";name=name}
 
    let add_input (c:hwcomp) (name:string) : hwcomp =
-      c.ports <- (Input (HwUtil.mkportid c.name name None))::c.ports; c
+      c.ports <- (Input (HwUtil.mkportid name c.name None))::c.ports; c
 
    let add_output (c:hwcomp) (name:string) : hwcomp =
-      c.ports <- (Output (HwUtil.mkportid c.name name None))::c.ports; c
+      c.ports <- (Output (HwUtil.mkportid name c.name None))::c.ports; c
 
    let add_param (c:hwcomp) name value =
       c.params <- (name,value)::c.params; c
 
-   let get_param (c:hwcomp) name = raise (HwLibException "get_param: Unimplemented.")
+   let get_param (c:hwcomp) name =
+      let res = List.filter (fun (x,v) -> x = name) c.params in
+      match res with
+      | [] -> raise (HwLibException ("No parameter with name <"^name^"> found"))
+      | [(s,n)] -> n
+      | h::t -> raise (HwLibException ("Multiple declarations of parameter with name <"^name^"> found"))
 
    let add_constraint (c:hwcomp) rel =
       c.relations <- rel::c.relations; c
@@ -358,42 +328,9 @@ struct
    let wildtype_of_int w = match w with 0 -> Param | 1 -> Var
       | _ -> raise (HwLibException "unexpected int to wildtype")
 
-   let rec mangle (l:hwliteral) =
-      let pdelim = ":" in
-      let sdelim = "$" in
-      let iodelim = "|" in
-      let rec mangle_sym (s:hwsymbol) =
-         match s with
-         | Namespace(q,e) -> q^sdelim^(mangle_sym e)
-         | Input(x) -> "in"^iodelim^(HwUtil.portid2str x)
-         | Output(x) -> "out"^iodelim^(HwUtil.portid2str x)
-      in
-      match l with
-         | Var(p,x) -> "v"^pdelim^(mangle_sym x)^pdelim^(HwUtil.hwprop2str p)
-         | Param(x) -> "p"^pdelim^x
+   let rec mangle (l:hwliteral) = HwUtil.hwlit2str l
 
-   let symvar2hwliteral n : hwliteral =
-      let delim = ":" in
-      let sdelim = "\$" in
-      let iodelim = "|" in
-      let parse_id str =
-         let rec mkid lst = match lst with
-            | h::h2::t -> Namespace(h, mkid (h2::t))
-            | [h] ->
-               begin
-                  match (Str.split (Str.regexp iodelim) h) with
-                  | ["in";name] -> Input (HwUtil.str2portid name)
-                  | ["out";name] -> Output (HwUtil.str2portid name)
-                  | _ -> raise (HwLibException ("kind: unknown literal {"^str^"}"))
-               end
-            | [] -> raise (HwLibException ("ns: unknown literal {"^str^"}"))
-         in
-         mkid (Str.split (Str.regexp sdelim) str)
-      in
-      match Str.split (Str.regexp delim) n with
-      | ["v";id;pstr] -> let pr = HwUtil.str2hwprop pstr in Var(pr,parse_id id)
-      | ["p";name] -> Param (name)
-      | _ -> raise (HwLibException ("t:unknown literal "^n))
+   let symvar2hwliteral n : hwliteral = HwUtil.str2hwlit n
 
    let symexpr2hwexpr (e:symexpr): hwexpr =
       let rec _symexpr2hwexpr e : hwexpr =
@@ -437,7 +374,7 @@ struct
             begin
                match l with
                | Param(l) -> Decimal(HwComp.get_param h l)
-               | x -> Symbol(mangle x)
+               | v -> Symbol(mangle v)
             end
          | Literal(x) -> Symbol(mangle x)
          | Integer(x) -> Integer(x)
@@ -458,7 +395,7 @@ struct
          |h::t -> (proc h)@(ports2symlst t)
          |[] -> []
       in
-      let s : SymLib.symenv = SymLib.create_env() in
+      let s : SymLib.symenv = SymLib.create_env (h.name) in
       let vars = (ports2symlst h.ports) in
       if is_virt then
          s.wildcards <- vars
