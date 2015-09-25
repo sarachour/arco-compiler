@@ -62,12 +62,12 @@ struct
 
    let get_trivial_solution (h:hwrel) : sln_action option =
       let rec gpd x =
-        match x with Input(v) -> v | Output(v) -> v 
+        match x with Input(v) -> v | Output(v) -> v
       in
       match h with
       |Eq(Literal(Var(p1,x)), Literal(Var(p2,v))) ->
         if p1 == p2 then
-          raise (GenerationException ("Cannot Handle "^(HwUtil.hwsym2str x)^" to "^(HwUtil.hwsym2str v)))
+          Some (DAddWire(x,v))
         else
           None
       (*Some (DSetPort(Current(x), Literal(Current(v))))*)
