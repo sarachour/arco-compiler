@@ -2,6 +2,10 @@ open HwLib
 open HwData
 open GenericData
 open GenericLib
+open GoalData
+open GoalLib
+open HwSlnLib
+open HwSlnData
 open ConfigSearchGenerator
 open ConfigSearchDeriver
 
@@ -13,7 +17,7 @@ exception ConfigSearchException of string;;
 module ConfigSearch :
 sig
    type analogy  = GenericHWLib.analogy
-   type goaltree  = ConfigSearchDeriver.goaltree
+   type goaltree  = GoalData.goalnode
 
    type gencfg = {
       analogy: analogy;
@@ -28,7 +32,7 @@ sig
 end =
 struct
    type analogy  = GenericHWLib.analogy
-   type goaltree  = ConfigSearchDeriver.goaltree
+   type goaltree  = GoalData.goalnode
 
    type gencfg = {
       analogy: analogy;
@@ -52,28 +56,19 @@ struct
       {analogy=anlgy; arch=arch; config=c; components=comps; goals=g}
 
    let traverse (c:gencfg) =
-      let traverse_elem (gl:goal) : goalnode =
-         match ConfigSearchGenerator.is_trivial gl with
-         | Some(c) -> c
-         |None ->
-            let res = ConfigSearchGenerator.find c.components gl in
-            res
-      in
-      ConfigSearchDeriver.traverse c.goals traverse_elem true
+      ConfigSearchDeriver.traverse c.goals true
 
 
    let convert (c:gencfg) (rel:genv)=
-      let print_sol sol = match sol with
-      | Some(s) -> ConfigSearchDeriver.solution2stdout s
+      let print_sol (sol:sln option) : unit = match sol with
+      | Some(s) -> SlnUtils.sln2stdout "" s
       | None -> Printf.printf "no component configuration.\n"
       in
       let hrel = GenericHWLib.genv2hwcomp (c.analogy) rel in
-      let initial_goal =  GoalData.make_goal None hrel in
+      let initial_goal =  GoalUtils.make_goal None hrel in
       c.goals <- GUnsolvedNode(initial_goal);
-      let tree = traverse c in
-      let sol = ConfigSearchDeriver.get_solution tree in
-      print_sol sol;
-
+      let slns = traverse c in
+      print_sol slns;
       c.config
 
 

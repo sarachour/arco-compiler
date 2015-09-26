@@ -9,6 +9,8 @@ open SymLib
 open GenericData
 open HwData
 open HwLib
+open GoalData
+open GoalLib
 open ConfigSearchDeriver
 
 type symcaml = SymCaml.symcaml
@@ -67,20 +69,20 @@ struct
       match h with
       |Eq(Literal(Var(p1,x)), Literal(Var(p2,v))) ->
         if p1 == p2 then
-          Some (DAddWire(gpd x, gpd v))
+          Some (SAddWire(gpd x, gpd v))
         else
           None
       (*Some (DSetPort(Current(x), Literal(Current(v))))*)
-      |Eq(Integer(v), Literal(Var(p,x))) -> Some (DSetPort(p,gpd x, (float_of_int v)))
-      |Eq(Literal(Var(p,x)),Integer(v)) -> Some (DSetPort(p,gpd x, (float_of_int v)))
-      |Eq(Decimal(v),  Literal(Var(p,x))) -> Some (DSetPort(p,gpd x, (v)))
-      |Eq(Literal(Var(p,x)),Decimal(v)) -> Some (DSetPort(p,gpd x, (v)))
+      |Eq(Integer(v), Literal(Var(p,x))) -> Some (SSetPort(p,gpd x, (float_of_int v)))
+      |Eq(Literal(Var(p,x)),Integer(v)) -> Some (SSetPort(p,gpd x, (float_of_int v)))
+      |Eq(Decimal(v),  Literal(Var(p,x))) -> Some (SSetPort(p,gpd x, (v)))
+      |Eq(Literal(Var(p,x)),Decimal(v)) -> Some (SSetPort(p,gpd x, (v)))
       |Eq(_,_) -> None
 
    let is_trivial (g:goal) : goalnode option =
       let n = List.nth (g.value.relations) 0 in
       match get_trivial_solution n with
-    		|Some(sol) -> Some (GTrivialNode(g,sol))
+    		|Some(sol) -> Some (GTrivialNode(g))
     		|None -> None
 
 
@@ -161,13 +163,13 @@ struct
                   let name = HwSymLib.symvar2hwliteral n in
                   let expr = HwSymLib.symexpr2hwexpr e in
                   let comp = hwexpr2comp [t] name expr in
-                  let gl = GoalData.make_goal (Some name) comp in
+                  let gl = GoalUtils.make_goal (Some name) comp in
                   GUnsolvedNode(gl)
                in
                let goals2nodelist lst  : goalnode=
                   let nlst = List.map subgoals2nodelist lst in
-                  let dlt : sln_action = DUseComponent(HwUtil.mkcompid (t.name) None) in
-                  GSolutionNode(g,dlt,nlst)
+                  let dlt : sln_action = SUseComponent(HwUtil.mkcompid (t.name) None) in
+                  GSolutionNode(g,nlst)
                in
                let nlst : goalnode list = List.map goals2nodelist sol in
                begin

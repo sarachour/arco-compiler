@@ -1,42 +1,41 @@
 
 open HwData
-
+open GoalData
 
 type sln_action =
-   | DUseComponent of compid
-   | DAddWire of portid*portid
-   | DSetPort of hwprop*portid*float
-   | DNone
+   | SUseComponent of compid
+   | SAddWire of portid*portid
+   | SSetPort of hwprop*portid*float
 
-type conn_cstr =
-  | AllPorts
-  | PortOfComp of string*string
-  | PortOfInst of portid
-
+type port_cstr =
+  | CPortOfComp of string*string
+  | CPortOfInst of portid
+  | CAllPorts
 
 type elem_cstr =
-   | Infinite
-   | Finite of int
+  | CAllElems
+  | CElem of int
 
-type comp_cstr =
+type conn_cstr =
+  | CFanoutCstr of port_cstr*int
+  | CSinkCstr of port_cstr*port_cstr
+  | CPropValCstr of port_cstr*hwprop*float*float
+
+
+type system_cstr =
 {
-  mutable comp: elem_cstr;
-  mutable ports: (string*conn_cstr*conn_cstr);
+  mutable comp: elem_cstr list;
+  mutable ports: conn_cstr list;
 }
 
-
-type system_cstr = {
-  comp : (string*(comp_cstr list)) list
-}
-
-type comp_state =
-{
-  mutable used: int;
-
-}
+type sln_state =
+  | SUsedComponent of string
+  | SUsedConnection of portid*portid
+  | SNoStateChange
 
 type sln =
-{
-  mutable state : (string*comp_state) list;
-  mutable actions: sln_action list;
-}
+  | SSolutionNode of sln_state*sln_action
+  | SSolutionBranch of sln list
+  | SAggregateSolution of sln list
+  | SSolutionLink of goal
+  | SDeadEnd

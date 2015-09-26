@@ -4,6 +4,8 @@ open Map
 type id = int*(string option)
 module StringMap = Map.Make (String)
 
+type ('a,'b) pair = First of 'a | Second of 'b
+
 module type Type = sig
   type t
 end
