@@ -4,6 +4,7 @@ type 'a ast_term =
   | Literal of 'a
   | Decimal of float
   | Integer of int
+  | Deriv of ('a*'a)
 
 
 type ast_opn =
@@ -21,9 +22,10 @@ type ast_op1 =
 
 type 'a ast =
   | Term of 'a ast_term
-  | OpL of ast_opn*(('a ast_node) list)
-  | Op2 of ast_op2*(('a ast_node)*('a ast_node))
-  | Op1 of ast_op1*(('a ast_node))
+  | OpN of ast_opn*(('a ast) list)
+  | Op2 of ast_op2*(('a ast)*('a ast))
+  | Op1 of ast_op1*(('a ast))
+  | Deriv of 'a ast_term
 
 exception ASTException of (string*string)
 let error n msg = raise (ASTException(n,msg))
@@ -32,11 +34,11 @@ module AST : sig
     val to_string : ('a ast) -> ('a -> string) -> string
     val map : ('a ast) -> ('a -> 'b) -> ('b ast)
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
-    val parse : (string) -> 'a ast
 end =
 struct
     let to_string ast fn : string = error "to_string" "unimplemented"
     let map n fn  = error "conv" "unimplemented"
     let to_symcaml ast fn : symexpr = error "to_symcaml" "unimplemented"
+
 
 end

@@ -13,8 +13,3 @@ let make_set (type s) () =
 
 
 type ('a,'b) pair = Fst of 'a | Snd of 'b
-
-let file_to_lexbuf f =
-  let in_chan = open_in(f) in
-  let lexbuf = Lexing.from_channel in_chan in
-  lexbuf

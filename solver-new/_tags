@@ -1,3 +1,4 @@
 true: package(threads,core,pycaml,str,camlp4)
 true: thread,debug
+true: use_menhir
 <symcaml>: include

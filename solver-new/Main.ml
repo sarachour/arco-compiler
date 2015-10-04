@@ -7,7 +7,7 @@ open AST
 open Math
 open Sym
 open HW
-open LogicTree
+open Logic
 open Util
 
 exception MainException of string*string;;
