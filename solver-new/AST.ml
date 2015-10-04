@@ -19,7 +19,7 @@ type ast_op1 =
   | Exp
   | Neg
 
-type 'a ast_node =
+type 'a ast =
   | Term of 'a ast_term
   | OpL of ast_opn*(('a ast_node) list)
   | Op2 of ast_op2*(('a ast_node)*('a ast_node))
@@ -29,9 +29,10 @@ exception ASTException of (string*string)
 let error n msg = raise (ASTException(n,msg))
 
 module AST : sig
-    val to_string : ('a ast_node) -> ('a -> string) -> string
-    val map : ('a ast_node) -> ('a -> 'b) -> ('b ast_node)
-    val to_symcaml : ('a ast_node) -> ('a -> symvar) -> (symexpr)
+    val to_string : ('a ast) -> ('a -> string) -> string
+    val map : ('a ast) -> ('a -> 'b) -> ('b ast)
+    val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
+    val parse : (string) -> 'a ast
 end =
 struct
     let to_string ast fn : string = error "to_string" "unimplemented"
