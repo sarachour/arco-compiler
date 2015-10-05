@@ -2,8 +2,6 @@ open SymCamlData
 
 type 'a ast_term =
   | Literal of 'a
-  | Decimal of float
-  | Integer of int
   | Deriv of ('a*'a)
 
 
@@ -26,11 +24,14 @@ type 'a ast =
   | Op2 of ast_op2*(('a ast)*('a ast))
   | Op1 of ast_op1*(('a ast))
   | Deriv of 'a ast_term
+  | Decimal of float
+  | Integer of int
+
 
 exception ASTException of (string*string)
 let error n msg = raise (ASTException(n,msg))
 
-module AST : sig
+module ASTMod : sig
     val to_string : ('a ast) -> ('a -> string) -> string
     val map : ('a ast) -> ('a -> 'b) -> ('b ast)
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)

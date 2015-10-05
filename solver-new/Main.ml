@@ -10,7 +10,16 @@ open HW
 open Logic
 open Util
 
+open ParseLex
+
+
+
 exception MainException of string*string;;
+
+let read_data f h a =
+  let fenv = ParserGenerator.file_to_formula f in
+  let henv = ParserGenerator.file_to_hwspec h in
+  (fenv,henv)
 
 let command =
   Command.basic
@@ -24,6 +33,9 @@ let command =
     )
     (fun hwspec formula analogy is_interactive () ->
       match (hwspec,formula,analogy) with
+      | (Some h, Some f, Some a) ->
+        let f,h = read_data f h a in
+        ()
       | (_,_,_) -> raise (MainException("command","Must provide hwspec and formula"))
     )
 
