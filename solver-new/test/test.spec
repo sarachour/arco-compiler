@@ -68,8 +68,8 @@ components output I:
      rel out := sample(I(A),rate)
      error out | 0.001*out
 
-  ensure:
-     I(A) | 0 to 1 : MA
+   ensure:
+     I(A) | 0 to 1 : mA
      V(A) | 0 to 5 : V
 
 
@@ -123,8 +123,8 @@ component dderiv:
     rel V(B) = 5 : V
     rel V(C) = 5 : V
     error V(B) | 0
-    error V(C) | 0 
-    error I(B) |  deriv(A,t)*0.01 + 0.0001
+    error V(C) | 0
+    error I(B) |  E(I(A) - I(B))*0.01 + 0.0001
     error I(C) |  deriv(B,t)*0.01 + 0.0001
 
   time:
@@ -140,9 +140,9 @@ constrain circuit:
     count:
       dderiv: 1
       imul: 3
-      dac[I]: 7
-      adc[I]: 7
-      copy I: 13
+      dac(I): 7
+      adc(I): 7
+      copy(I): 13
 
     connect:
       % copy 0:2 must have only dderiv.A as input

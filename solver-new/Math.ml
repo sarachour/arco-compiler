@@ -1,28 +1,33 @@
+open AST
+open Unit
+open Util
 
 type mid = string
 
-type mv_cstr =
-  | MMagCstr of float*float
-  | MErrCstr of mid ast
+type mrel = State of (mid ast)*float | Function of (mid ast) | None
 
-type mvar =
-  | MInput of string*(mv_cstr list)
-  | MOutput of string*(mv_cstr list)
-  | MInOut of string*(mv_cstr list)
-  | MParam of string*float
+type mv_kind = Input | Output | Param of float
 
-type mrel =
-  | StateRel of (mid ast_term)*(mid ast)*(float)
-  | FxnRel of (mid ast_term)*(mid ast)
+type mv_ensure =
+  | MMagEns of float*float
+  | MErrEns of mv_kind*(mid ast)
 
-type msim_prop =
-  | MTimeCstr of float*float
-  | MSampleCstr of float
+type mv_assume =
+  | MMagAsm of float*float
+  | MErrAsm of mv_kind*mid*(mid ast)
+
+type mvar = {
+  name: mid;
+  kind: mv_kind;
+  ens: mv_ensure list;
+  asm: mv_assume list;
+  rel: mrel;
+  typ: unit;
+}
 
 type menv = {
-  vars : mvar list;
-  rels : mrel list;
-  sim : msim_prop list;
+  mutable vars : (mid, mvar) map;
+  mutable units: unit_env;
 }
 
 
