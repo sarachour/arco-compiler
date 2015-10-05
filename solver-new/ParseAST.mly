@@ -2,7 +2,7 @@
 %token <string> TOKEN
 %token <float> DECIMAL
 %token <int> INTEGER
-%token ADD SUB MULT POW OPAR CPAR COMMA DIV EOF OBRAC CBRAC DOT
+%token ADD SUB MULT POW OPAR CPAR COMMA DIV EOF OBRAC CBRAC DOT EXP DERIV
 
 
 
@@ -29,7 +29,7 @@
 
 %type <string AST.ast> expr
 
-%type <string ast_term> term
+%type <string> term
 %type <(string AST.ast) list> explst
 
 %type <string AST.ast> par
@@ -46,37 +46,28 @@ explst(node,delim):
   | node delim explst(node,delim) {let el = $1 and lst = $3 in el::lst}
 
 term:
-  | TOKEN {let name = $1 in Literal(name)}
-  | TOKEN OPAR explst(term,COMMA) CPAR {
-    error "fun_fxn_to_string" "function doesn't exist"
-  }
-  | TOKEN OBRAC explst(term,COMMA) CBRAC {
-    error "fun_fxn_to_string" "function to paren doesn't exist"
-  }
-  | TOKEN OPAR explst(term,COMMA) CPAR {
-    error "fun_fxn_to_string" "function to brac doesn't exist"
-  }
+  | TOKEN {let name = $1 in name}
   | term OBRAC explst(term,COMMA) CBRAC {
     error "fun_fxn_to_string" "function to paren doesn't exist"
   }
   | term OPAR explst(term,COMMA) CPAR {
     error "fun_fxn_to_string" "function to brac doesn't exist"
   }
-  | term DOT term
+  | term DOT TOKEN {let a = $1 and b = $3 in a^"."^b}
 
 par:
   | OPAR expr CPAR { let e = $2 in e}
   | DERIV OPAR term COMMA term CPAR {
       let a = $3 and b =$5 in
       match (a,b) with
-      | (Literal(x), Literal("t")) -> Deriv(x, t)
-      | (Literal(x), _ )-> error "deriv" "only supports derivatives with respect to t"
+      | (x,"t") -> Term(Deriv(x, "t"))
+      | (x, _ )-> error "deriv" "only supports derivatives with respect to t"
     }
   | EXP OPAR expr CPAR {
       let a = $3 in
-      Exp(a)
+      Op1(Exp,a)
   }
-  | term {let term = $1 in Term(term)}
+  | term {let term = $1 in Term(Literal(term))}
   | DECIMAL {let dec = $1 in Decimal(dec)}
   | INTEGER {let dec = $1 in Integer(dec)}
 
