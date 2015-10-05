@@ -34,7 +34,7 @@
 
 
 %type <string AST.ast> expr
-(*
+
 %type <string ast_term> term
 %type <(string AST.ast) list> explst
 
@@ -42,7 +42,7 @@
 %type <string AST.ast> pow
 %type <string AST.ast> md
 %type <string AST.ast> sa
-*)
+
 %start expr
 
 %%
