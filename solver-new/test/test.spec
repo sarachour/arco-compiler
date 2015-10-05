@@ -1,16 +1,15 @@
-
-
-
 % units
 
 unit:
-  usec
-  mV
-  V
-  mA
-  A
-  1 V to 1000 mV
-  1 A to 1000 mA
+  define:
+    usec
+    mV
+    V
+    mA
+    A
+  map:
+    1 V = 1000 mV
+    1 A = 1000 mA
 
 % analogous to unit
 
