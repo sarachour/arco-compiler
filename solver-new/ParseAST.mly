@@ -2,7 +2,7 @@
 %token <string> TOKEN
 %token <float> DECIMAL
 %token <int> INTEGER
-%token ADD SUB MULT POW OPAR CPAR COMMA DIV EOF
+%token ADD SUB MULT POW OPAR CPAR COMMA DIV EOF OBRAC CBRAC DOT
 
 
 
@@ -12,12 +12,6 @@
   exception ParseASTException of string*string
 
   let error n m = raise (ParseASTException (n,m) )
-
-  let fun_to_ast(name,args) =
-    match (name, List.length args) with
-    | ("deriv",2) -> error "fun_to_ast" "deriv"
-    | ("exp", 2)
-    | _ -> error "fun_to_ast" "unimplemented"
 
   let to_tuple2 lst =
     (List.nth lst 0, List.nth lst 1)
@@ -53,14 +47,34 @@ explst(node,delim):
 
 term:
   | TOKEN {let name = $1 in Literal(name)}
+  | TOKEN OPAR explst(term,COMMA) CPAR {
+    error "fun_fxn_to_string" "function doesn't exist"
+  }
+  | TOKEN OBRAC explst(term,COMMA) CBRAC {
+    error "fun_fxn_to_string" "function to paren doesn't exist"
+  }
+  | TOKEN OPAR explst(term,COMMA) CPAR {
+    error "fun_fxn_to_string" "function to brac doesn't exist"
+  }
+  | term OBRAC explst(term,COMMA) CBRAC {
+    error "fun_fxn_to_string" "function to paren doesn't exist"
+  }
+  | term OPAR explst(term,COMMA) CPAR {
+    error "fun_fxn_to_string" "function to brac doesn't exist"
+  }
+  | term DOT term
 
 par:
   | OPAR expr CPAR { let e = $2 in e}
-  | TOKEN OPAR explst(expr,COMMA) CPAR {
-    let name = $1 and args = $3 in
-    match fun_to_ast(name,args) with
-    | Some(v) -> v
-    | None -> error "fun_parse" "function doesn't exist"
+  | DERIV OPAR term COMMA term CPAR {
+      let a = $3 and b =$5 in
+      match (a,b) with
+      | (Literal(x), Literal("t")) -> Deriv(x, t)
+      | (Literal(x), _ )-> error "deriv" "only supports derivatives with respect to t"
+    }
+  | EXP OPAR expr CPAR {
+      let a = $3 in
+      Exp(a)
   }
   | term {let term = $1 in Term(term)}
   | DECIMAL {let dec = $1 in Decimal(dec)}
