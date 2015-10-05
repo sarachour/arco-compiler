@@ -2,14 +2,8 @@ open Core
 open Camlp4
 
 
+type 'a set = ('a,unit) Hashtbl.t
 
-let make_set (type s) () =
-  let module S = Set.Make(
-    struct
-      type t = s
-      let compare = Pervasives.compare
-    end) in
-    (module S : Set.S with type elt = s)
-
+type ('a,'b) map = ('a, 'b) Hashtbl.t
 
 type ('a,'b) pair = Fst of 'a | Snd of 'b

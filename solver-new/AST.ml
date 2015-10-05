@@ -31,7 +31,7 @@ type 'a ast =
 exception ASTException of (string*string)
 let error n msg = raise (ASTException(n,msg))
 
-module ASTMod : sig
+module ASTLib : sig
     val to_string : ('a ast) -> ('a -> string) -> string
     val map : ('a ast) -> ('a -> 'b) -> ('b ast)
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)

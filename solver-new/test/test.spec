@@ -1,87 +1,131 @@
 
-prop V
-prop I
 
-time t with scale T
+
+% units
+
+unit:
+  usec
+  mV
+  V
+  mA
+  A
+  1 V to 1000 mV
+  1 A to 1000 mA
+
+% analogous to unit
+
+prop:
+    V : mV,V
+    I : mA,A
+
+time t : usec
 
 
 % every property must have a copy constructor
 component copy I:
   in:
-    A
+    A : port
   out:
-    B
-  relation:
-    I(A) = I(B)
-  spice:
+    B : port
+
+  ensure:
+    mag V(*) | 0 to 5 : V
+    mag I(*) | 0 to 1 : mA
+
+  assume:
+    rel I(B) := I(A)
+    rel V(B) := 5V
+    error V[B] | 0
+    error I[B] | I(A)*0.00001 + 0.00001
 
 % every property must have an input interface
-component dac I:
-  in:
-    A
+component input I:
   out:
-    B
-  relation:
-    I(B) = DAC(A)
-  time:
-    % the sampling rate in hertz
-    sample: 10
+    B : port
+  param:
+    % samples three times a microsecond
+    rate = 3 : 1/usec
+
+  assume:
+    rel I(B) := sample(in,rate)
+    rel V(B) := 5
+    error I(B) | 0.001*I(B)
+
+  ensure:
+    mag I(B) | 0 to 1 : mA
+    mag V(B) | 0 to 5 : V
 
 % every property must have an output interface
-components acd I:
+components output I:
    in:
-    A
-   out:
-    B
-   relation:
-    ADC(B) = I(A)
-   time:
-    % the sampling rate in hertz
-    sample: 10
+    A : port
 
-component copy V:
-  in:
-    A
-  out:
-    B
-  param:
-    gain = 1
-  relation:
-    V(B) = gain*V(A)
-  error:
-    V(B) : V(A)*0.01 + 0.05
+   param:
+    % samples three times a microsecond
+    rate = 3 : 1/usec
 
-  constrain:
-    magnitude V(*)-> 0 to 5
-    magnitude I(*) -> 0 to 0.1
+   assume:
+     rel out := sample(I(A),rate)
+     error out | 0.001*out
+
+  ensure:
+     I(A) | 0 to 1 : MA
+     V(A) | 0 to 5 : V
+
+
 
 component imul:
   in:
-    A
-    B
+    A : port
+    B : port
+
   out:
-    O
-  relation:
-    I(O) = I(A)*I(B)
-  error:
-    I(O) = I(
+    O : port
+
+  assume:
+    rel I(O) := I(A)*I(B)
+    rel V(O) := 5V
+    error I(O) | E[I(A)]*E[I(B)] + 0.001
+
+  ensure:
+    V(*) | 0 to 5 V
+    I(*) | 0 to 1 mA
+
+component iadd:
+  in:
+    A : port
+    B : port
+
+  out:
+    O : port
+
+  assume:
+    rel I(O) := I(A)+I(B)
+    rel V(O) := 5V
+    error I(O) | E[I(A)]+E[I(B)] - 0.001
+
+  ensure:
+    V(*) | 0 to 5 V
+    I(*) | 0 to 1 mA
 
 component dderiv:
   in:
-    Ain
-    Aout
+    A : port
+    Bic : port
 
   out:
-    A with A(0) = Ain
-    B with B(0) = Bin
+    B : port
+    C : port
 
-  relation:
-    deriv(I(A),t) = I(B) - T*I(A) with I(A)(0) = I(Ain)
-    deriv(I(B),t) = I(A) - T*I(B) with I(B)(0) = I(Bin)
-
-  error:
-    I(A): deriv(A,t)*0.01 + 0.0001
-    I(B): deriv(B,t)*0.01 + 0.0001
+  assume:
+    rel deriv(I(B),t) = I(A) - I(B) with I(B)(0) = I(Bic)
+    rel I(C) = I(A)*I(B)
+    rel V(B) = 5 : V
+    rel V(C) = 5 : V
+    error V(B) | 0
+    error V(C) | 0 
+    error I(B) |  deriv(A,t)*0.01 + 0.0001
+    error I(C) |  deriv(B,t)*0.01 + 0.0001
 
   time:
     % the number of seconds that correspond to one time step
