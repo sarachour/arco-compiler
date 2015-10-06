@@ -1,0 +1,10 @@
+name "defining types."
+
+type m
+type km
+type mm
+type sec
+let 1 km = 1000 m
+let 1 sec = 1 sec
+let 1 mm = 0.001 m
+let 1 km = 1 mm
