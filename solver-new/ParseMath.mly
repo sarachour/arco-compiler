@@ -14,7 +14,7 @@
 %}
 
 %token EOF EOL VBAR COLON
-%token NAME TYPE LET EQ INPUT OUTPUT LOCAL PARAM
+%token NAME TYPE LET EQ INPUT OUTPUT LOCAL PARAM TIME
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
@@ -87,6 +87,9 @@ st:
     let typ : unt = UExpr($4) in
     MathLib.mkvar dat name knd typ;
     ()
+  }
+  | TIME TOKEN COLON typ EOL {
+    error "time_parse" "unimplemented"
   }
   | EOL                                  {
 
