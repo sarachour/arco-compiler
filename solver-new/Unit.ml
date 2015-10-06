@@ -8,6 +8,7 @@ type untid = string
 
 type unt =
   | UNone
+  | UVar
   | UExpr of untid ast
 
 
@@ -25,6 +26,7 @@ sig
   val define : unt_env -> string -> unt_env
   val mkrule : unt_env -> string -> float -> string ->float -> unt_env
   val print : unt_env -> unit
+  val unit2str : unt -> string
 end =
 
 struct
@@ -40,6 +42,11 @@ struct
     SET.iter e.units (fun x -> Printf.printf "type %s\n" x);
     MAP.iter e.conv (fun x d -> Printf.printf "%s: " x; (print_deps d))
 
+  let unit2str u =
+    match u with
+    | UExpr(u) -> ASTLib.ast2str u (fun x -> x)
+    | UNone -> "_"
+    | UVar  -> "*"
 
   let mkrule (e:unt_env) (u1:untid) (n1:float) (u2:untid) (n2:float) =
     if MAP.has (e.conv) u1 = false then

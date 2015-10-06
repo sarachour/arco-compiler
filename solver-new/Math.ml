@@ -19,12 +19,14 @@ type mv_assume =
   | MMagAsm of float*float
   | MErrAsm of (mid ast)
 
+type mtype = mkind*unt
+
 type mvar = {
   name: mid;
   mutable ens: mv_ensure set;
   mutable asm: mv_assume set;
   mutable rel: mrel option;
-  typ: mkind*unt;
+  typ: mtype;
 }
 
 type menv = {
@@ -44,14 +46,30 @@ struct
   let mkenv () : menv =
     {vars=MAP.make(); units=UnitLib.mkenv()}
 
+  let kind2str (k:mkind) : string = match k with
+    | Input -> "input"
+    | Output -> "output"
+    | Local -> "local"
+    | Param(v) -> "param ("^(string_of_float v)^")"
+
+  let typ2str (v:mtype) : string = match v with
+    |(k,u) -> (kind2str k)^":"^(UnitLib.unit2str u)
+
+  let print_var (v:mvar) : unit=
+    Printf.printf "%s of %s\n" (v.name) (typ2str v.typ)
+
+
   let print m =
-   UnitLib.print (m.units)
+   Printf.printf "==== Units ====\n";
+   UnitLib.print (m.units);
+   Printf.printf "==== Vars =====\n";
+   MAP.iter (m.vars) (fun k v -> print_var v)
 
   let mkvar e name knd un =
     if MAP.has (e.vars) name then
       error "mkvar" ("variable "^name^" already exists.")
     else
       let v = {name=name; ens=(SET.make refl); asm=(SET.make refl); rel=None; typ=(knd,un)} in
-      MAP.put (e.vars) name v;
+      e.vars <- MAP.put (e.vars) name v;
       e
 end

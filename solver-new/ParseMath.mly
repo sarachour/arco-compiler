@@ -67,11 +67,19 @@ st:
     MathLib.mkvar dat name knd typ;
     ()
   }
-  | OUTPUT TOKEN COLON expr EOL {
-
+  | OUTPUT TOKEN COLON typ EOL {
+    let knd : mkind = Output in
+    let name : string = $2 in
+    let typ : unt = UExpr($4) in
+    MathLib.mkvar dat name knd typ;
+    ()
   }
-  | LOCAL TOKEN COLON expr EOL {
-
+  | LOCAL TOKEN COLON typ EOL {
+    let knd : mkind = Local in
+    let name : string = $2 in
+    let typ : unt = UExpr($4) in
+    MathLib.mkvar dat name knd typ;
+    ()
   }
   | PARAM TOKEN COLON expr EQ number EOL {
 
