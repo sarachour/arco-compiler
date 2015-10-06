@@ -7,7 +7,6 @@ let error n s = raise (UnitException (n^": "^s))
 type untid = string
 
 type unt =
-  | USimple of untid
   | UNone
   | UExpr of untid ast
 
@@ -24,11 +23,12 @@ module UnitLib :
 sig
   val mkenv : unit -> unt_env
   val define : unt_env -> string -> unt_env
-  val add_rule : unt_env -> string -> float -> string ->float -> unt_env
+  val mkrule : unt_env -> string -> float -> string ->float -> unt_env
   val print : unt_env -> unit
 end =
 
 struct
+
   let mkenv () =
     {units=SET.make (fun x y -> x = y); conv=MAP.make()}
 
@@ -39,7 +39,9 @@ struct
     in
     SET.iter e.units (fun x -> Printf.printf "type %s\n" x);
     MAP.iter e.conv (fun x d -> Printf.printf "%s: " x; (print_deps d))
-  let add_rule (e:unt_env) (u1:untid) (n1:float) (u2:untid) (n2:float) =
+
+
+  let mkrule (e:unt_env) (u1:untid) (n1:float) (u2:untid) (n2:float) =
     if MAP.has (e.conv) u1 = false then
       error "add_rule" ("no type "^u1^" exists in type table.");
     if MAP.has (e.conv) u2 = false then

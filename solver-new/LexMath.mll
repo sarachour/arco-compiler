@@ -15,6 +15,7 @@ let token = ['A'-'Z''a'-'z''0'-'9''_']+
 let str = '"' [^ '"']* '"'
 let decimal = ['0'-'9']*'.'['0'-'9']+
 let integer = ['0'-'9']+
+let op = ['[' ']' '(' ')' '+' '-' '*' '^' '.' '/']+
 
 rule env = parse
   | whitespace              {env lexbuf}
@@ -27,8 +28,13 @@ rule env = parse
   | "name"                  {NAME}
   | "let"                   {LET}
   | "type"                  {TYPE}
-  | decimal as t            {let v = float_of_string t in NUMBER(v)}
-  | integer as t            {let v = float_of_string t in NUMBER(v)}
+  | "input"                 {INPUT}
+  | "output"                {OUTPUT}
+  | "local"                 {LOCAL}
+  | "param"                 {PARAM}
+  | decimal as t            {let v = float_of_string t in DECIMAL(v)}
+  | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}
+  | op as t                 {OPERATOR(t)}
   | str as t                {STRING(t)}
   | _ as q                  { report lexbuf q }

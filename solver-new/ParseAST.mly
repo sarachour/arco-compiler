@@ -92,7 +92,13 @@ md:
   }
 
 sa:
-  | SUB md {let e = $2 in Op1(Neg,e)}
+  | md     {
+    let e = $1 in e
+  }
+  | SUB md {
+      let e = $2 in Op1(Neg,e)
+  }
+
   | explst(md,ADD) {
     let args = $1 in
     OpN(Add,args)
