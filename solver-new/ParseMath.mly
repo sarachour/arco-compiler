@@ -81,8 +81,12 @@ st:
     MathLib.mkvar dat name knd typ;
     ()
   }
-  | PARAM TOKEN COLON expr EQ number EOL {
-
+  | PARAM TOKEN COLON typ EQ number EOL {
+    let knd : mkind = Param($6) in
+    let name : string = $2 in
+    let typ : unt = UExpr($4) in
+    MathLib.mkvar dat name knd typ;
+    ()
   }
   | EOL                                  {
 
