@@ -9,15 +9,26 @@ let report lexbuf q =
   error "Math Lexer Error" ("At offset "^ofst^": unexpected character: <"^chr^">")
 }
 
+let whitespace = ['\t'' ']*
+let comment = '%'[^'\n']*
+let token = ['A'-'Z''a'-'z']+
+let str = '"' [^ '"']* '"'
+let decimal = ['0'-'9']*'.'['0'-'9']+
+let integer = ['0'-'9']+
 
 rule env = parse
-  | ['\t'' ']*              {env lexbuf}
-  | '\n'['\t' ' ']*'\n'      {env lexbuf}
-  | '%'[^'\n']*'\n'         {env lexbuf}
+  | whitespace              {env lexbuf}
+  | comment                 {env lexbuf}
   | '\n'                    {EOL}
   | eof                     {EOF}
   | "|"                     {VBAR}
   | ":"                     {COLON}
+  | "="                     {EQ}
   | "name"                  {NAME}
-  | '"' [^ '"']* '"' as t   {STRING(t)}
+  | "let"                   {LET}
+  | "type"                  {TYPE}
+  | decimal as t            {let v = float_of_string t in NUMBER(v)}
+  | integer as t            {let v = float_of_string t in NUMBER(v)}
+  | token as t              {TOKEN(t)}
+  | str as t                {STRING(t)}
   | _ as q                  { report lexbuf q }

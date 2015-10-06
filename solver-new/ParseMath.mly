@@ -10,10 +10,9 @@
 %}
 
 %token EOF EOL VBAR COLON
-%token NAME
-%token <string> STRING
-%token <string> EXPR
-%token <string> TYPE
+%token NAME TYPE LET EQ
+%token <string> STRING TOKEN
+%token <float> NUMBER
 %type <unit> seq
 %type <unit> st
 %type <Math.menv option> env
@@ -23,7 +22,10 @@
 %%
 
 st:
-  | NAME COLON STRING EOL {}
+  | NAME STRING EOL                       {}
+  | TYPE TOKEN EOL                        {}
+  | LET NUMBER TOKEN EQ NUMBER TOKEN EOL  {}
+  | EOL                                   {}
 
 seq:
   | st    {}
