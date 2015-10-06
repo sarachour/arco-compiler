@@ -33,11 +33,13 @@ type menv = {
 
 module MathLib:
 sig
-  val create_env : unit -> menv
-
+  val mkenv : unit -> menv
+  val print : menv -> unit
 end =
 struct
-  let create_env () : menv =
-    {vars=make_map 10; units=UnitLib.create_env()}
+  let mkenv () : menv =
+    {vars=MAP.make(); units=UnitLib.mkenv()}
 
+  let print m =
+   UnitLib.print (m.units)  
 end

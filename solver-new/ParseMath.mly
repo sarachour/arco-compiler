@@ -1,8 +1,9 @@
 %{
   open Math
   open Util
+  open Unit
 
-  let env_ref = REF.mk (MathLib.create_env())
+  let dat = MathLib.mkenv()
   exception ParseMathError of string*string
 
   let error s n = raise (ParseMathError(s,n))
@@ -23,8 +24,15 @@
 
 st:
   | NAME STRING EOL                       {}
-  | TYPE TOKEN EOL                        {}
-  | LET NUMBER TOKEN EQ NUMBER TOKEN EOL  {}
+  | TYPE TOKEN EOL                        {
+    let t = $2 in
+    dat.units <- UnitLib.define dat.units t
+  }
+  | LET NUMBER TOKEN EQ NUMBER TOKEN EOL  {
+    let u1 = $3 and n1 = $2 in
+    let u2 = $6 and n2 = $5 in
+    dat.units <- UnitLib.add_rule (dat.units) u1 n1 u2 n2
+  }
   | EOL                                   {}
 
 seq:
@@ -32,5 +40,5 @@ seq:
   | seq st {}
 
 env:
-  | seq EOF {Some (REF.deref env_ref)}
+  | seq EOF {Some (dat)}
   | EOF     {None}

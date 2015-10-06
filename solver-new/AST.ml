@@ -28,8 +28,8 @@ type 'a ast =
   | Integer of int
 
 
-exception ASTException of (string*string)
-let error n msg = raise (ASTException(n,msg))
+exception ASTException of (string)
+let error n msg = raise (ASTException(n^": "^msg))
 
 module ASTLib : sig
     val to_string : ('a ast) -> ('a -> string) -> string
