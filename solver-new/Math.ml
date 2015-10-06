@@ -10,11 +10,11 @@ type mv_kind = Input | Output | Param of float
 
 type mv_ensure =
   | MMagEns of float*float
-  | MErrEns of mv_kind*(mid ast)
+  | MErrEns of (mid ast)
 
 type mv_assume =
   | MMagAsm of float*float
-  | MErrAsm of mv_kind*mid*(mid ast)
+  | MErrAsm of (mid ast)
 
 type mvar = {
   name: mid;
@@ -22,20 +22,22 @@ type mvar = {
   ens: mv_ensure list;
   asm: mv_assume list;
   rel: mrel;
-  typ: unit;
+  typ: unt;
 }
 
 type menv = {
   mutable vars : (mid, mvar) map;
-  mutable units: unit_env;
+  mutable units: unt_env;
 }
 
 
-module MathLib : sig
-
+module MathLib:
+sig
+  val create_env : unit -> menv
 
 end =
 struct
-
+  let create_env () : menv =
+    {vars=make_map 10; units=UnitLib.create_env()}
 
 end

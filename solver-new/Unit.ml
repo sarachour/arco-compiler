@@ -1,28 +1,29 @@
 open AST
 open Util
 
-type unit_id = string
+type untid = string
 
-type unit =
-  | USimple of unit_id
+type unt =
+  | USimple of untid
   | UNone
-  | UExpr of unit_id ast
+  | UExpr of untid ast
 
 
 
-type unit_conv = float*unit_id
+type unt_conv = float*untid
 
-type unit_env = {
-  units : unit_id list;
-  conv : (unit, unit_conv list) map;
+type unt_env = {
+  units : untid list;
+  conv : (unt, unt_conv list) map;
 }
 
 module UnitLib :
 sig
-
+  val create_env : unit -> unt_env
 
 end =
 struct
-
+  let create_env () =
+    {units=[]; conv=make_map 10}
 
 end
