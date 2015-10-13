@@ -13,8 +13,8 @@
 
   let error n m = raise (ParseASTException (n,m) )
 
-  let to_tuple2 lst =
-    (List.nth lst 0, List.nth lst 1)
+  let get lst i =
+    List.nth lst i
 
   let to_elem lst =
     List.nth lst 0
@@ -76,7 +76,7 @@ pow:
   | explst(par,POW) {
     let args = $1 in
     let _ = assert_len args 2 "pow must have two args" in
-    Op2(Power, to_tuple2 args)
+    Op2(Power, get args 0, get args 1)
   }
 
 md:
@@ -88,7 +88,7 @@ md:
   | explst(pow,DIV) {
     let args = $1 in
     let _ = assert_len args 2 "div must have two args" in
-    Op2(Div, to_tuple2 args)
+    Op2(Div, get args 0, get args 1)
   }
 
 sa:

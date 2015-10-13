@@ -73,15 +73,15 @@ struct
       | UVar -> error "typechecker.typeof" "cannot have variant types."
       | UExpr(e) -> e
     in
-    let conv (v:'b ast) (children:(untid ast) list) : (untid ast) option =
+    let conv (v:untid ast) : (untid ast) option =
       match v with
       | Term(Deriv(name,t)) -> let num = get_expr name and den = get_expr t in
-        Some (Op2(Div,(num,den)))
+        Some (Op2(Div,num,den))
       | Term(Literal(name)) -> let ty = get_expr name in
         Some ty
       | _ -> None
     in
-    ASTLib.map expr conv
+    ASTLib.trans expr conv
 
 
   let typecheck (e1: untid ast) (e2:untid ast) : bool=
