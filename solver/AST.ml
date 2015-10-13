@@ -112,7 +112,12 @@ struct
      let res : y ast = _internal_map a cnv_el cnv_term in
      res
 
-    let to_symcaml ast fn : symexpr = error "to_symcaml" "unimplemented"
+    let to_symcaml (type a) (x:a ast)  (fn:a -> symvar) : symexpr = error "to_symcaml" "unimplemented"
+
+    let from_symcaml (type a) ast (fn:symvar -> a) : a ast = error "from_symcaml" "unimplemented"
+
+    let simpl (type a) (to:a->symvar) (fm:symvar->b) (ast: a ast) : a ast = error "simpl" "unimplemented"
+
 
 
 end
