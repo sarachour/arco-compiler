@@ -1,5 +1,0 @@
-true: package(threads,core,pycaml,str,camlp4)
-true: thread,debug
-<symcaml>: include
-
-"compile-ast": use_menhir
