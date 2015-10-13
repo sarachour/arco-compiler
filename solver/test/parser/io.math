@@ -16,7 +16,9 @@ local B : m^2
 
 output O : m
 
-param R1 : 1/s = 5
+param T : m = 4
+
+param R1 : 1/s = 5.0
 param R2 : 1/s = 5
 
 %time t : s

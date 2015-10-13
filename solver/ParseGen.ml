@@ -6,6 +6,7 @@ open ParseMath
 open LexMath
 open Math
 
+open ParseGenUtil
 
 open HW
 (*
@@ -49,7 +50,8 @@ struct
 
   let file_to_formula fn =
     let lb = file_to_lexbuf fn in
-    match ParseMath.env LexMath.env lb with
+    let res = parse_lexbuf "math" (fun x -> ParseMath.env LexMath.env x) lb in
+    match res with
     | Some(v) -> let res = v in
       MathLib.print res;
       res
@@ -61,7 +63,8 @@ struct
 
   let string_to_formula fn =
     let lb = string_to_lexbuf fn in
-    match ParseMath.env LexMath.env lb with
+    let res = parse_lexbuf "math" (fun x -> ParseMath.env LexMath.env x) lb in
+    match res with
     | Some(v) -> v
     | None -> error "file_to_formula" "could not parse math environment."
 

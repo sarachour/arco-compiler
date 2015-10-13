@@ -7,6 +7,7 @@
   open ParseGenUtil
 
   let dat = MathLib.mkenv()
+
   exception ParseMathError of string*string
 
   let error s n =
@@ -62,7 +63,7 @@ rest:
   | STRING rest       {"\""^$1^"\" "^$2}
   | OPERATOR rest     {$1^" "^$2}
   | EQ rest           {"= "^$2}
-  | EOL {""}
+  | EOL               {"\\n"}
 
 st:
   | NAME STRING EOL                       {
@@ -105,17 +106,11 @@ st:
     MathLib.mkvar dat name knd typ;
     ()
   }
-  | PARAM TOKEN rest {let name = $2 and r = $3 in
-    error "param_parse" ("param "^name^" with expression <"^r^"> malformed.\n   parameter definitions are: param name : type = decimal")}
   | TIME TOKEN COLON typ EOL {
     error "time_parse" "unimplemented"
   }
   | EOL  {
 
-  }
-  | TOKEN {
-    let name = $1 in
-    error "stmt" ("unknown identifier "^name)
   }
 
 seq:
