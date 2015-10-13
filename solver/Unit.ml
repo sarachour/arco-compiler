@@ -62,3 +62,28 @@ struct
     let _ = GRAPH.mknode (e.graph) name in
     e
 end
+
+module UnitTypeChecker =
+struct
+  let typeof (expr:'b ast) (lookup : 'b -> unt) : untid ast =
+    let get_expr (v: 'b) : untid ast =
+    let t = lookup v in
+      match t with
+      | UNone -> Integer(1)
+      | UVar -> error "typechecker.typeof" "cannot have variant types."
+      | UExpr(e) -> e
+    in
+    let conv (v:'b ast) (children:(untid ast) list) : (untid ast) option =
+      match v with
+      | Term(Deriv(name,t)) -> let num = get_expr name and den = get_expr t in
+        Some (Op2(Div,(num,den)))
+      | Term(Literal(name)) -> let ty = get_expr name in
+        Some ty
+      | _ -> None
+    in
+    ASTLib.map expr conv
+
+
+  let typecheck (e1: untid ast) (e2:untid ast) : bool=
+    e1 = e2
+end

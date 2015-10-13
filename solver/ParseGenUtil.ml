@@ -22,7 +22,7 @@ let parse_lexbuf prefix plroutine lexbuf  =
       let column = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in
       let token = Lexing.lexeme lexbuf in
       raise (Parse_error (Printf.sprintf "%s|%d:%d: '%s'" prefix line column token))
-    | _ ->
+    | Error ->
       let pos = lexbuf.Lexing.lex_curr_p in
       let line = pos.Lexing.pos_lnum in
       let column = pos.Lexing.pos_cnum - pos.Lexing.pos_bol in

@@ -72,6 +72,18 @@ struct
    Printf.printf "==== Vars =====\n";
    MAP.iter (m.vars) (fun k v -> print_var v)
 
+  let getvar e name =
+    if MAP.has (e.vars) name = false then
+      error "mkrel" ("variable "^name^" does not exist.")
+    else
+      MAP.get (e.vars) name
+
+  let getunit e name =
+    let n = getvar e name in
+    match n.typ with
+    | (k,u) -> u
+
+
   let mkvar e name knd un =
     if MAP.has (e.vars) name then
       error "mkvar" ("variable "^name^" already exists.")
@@ -88,9 +100,14 @@ struct
       if dat.rel <> MNothing then
         error "mkstrel" ("variable "^name^" already has relation defined.")
       else
-        dat.rel <- MState(rhs,ic);
-        e
-
+        let get_type x = getunit e x in
+        let tl = UnitTypeChecker.typeof (Term(Deriv(name,"t"))) get_type in
+        let tr = UnitTypeChecker.typeof rhs get_type in
+        if UnitTypeChecker.typecheck tl tr then
+          let _ = dat.rel <- MState(rhs,ic) in
+          e
+        else
+          error "mkstrel" ("variable "^name^" doesn't type check with expression.")
   let mkrel e name rhs =
     if MAP.has (e.vars) name = false then
       error "mkrel" ("variable "^name^" does not exist.")

@@ -32,7 +32,7 @@ let error n msg = raise (ASTException(n^": "^msg))
 
 module ASTLib : sig
     val ast2str : ('a ast) -> ('a -> string) -> string
-    val map : ('a ast) -> ('a -> 'b) -> ('b ast)
+    val map : ('a ast) -> ('a ast -> (('b ast) list) -> ('b ast) option)  -> ('b ast)
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
 end =
 struct
@@ -69,7 +69,9 @@ struct
       | Decimal(d) -> string_of_float d
       | Integer(i) -> string_of_int i
 
-    let map n fn  = error "conv" "unimplemented"
+    let map a (conv_elem: 'a ast -> (('b ast) list) -> ('b ast) option)  =
+      error "conv" "unimplemented"
+      
     let to_symcaml ast fn : symexpr = error "to_symcaml" "unimplemented"
 
 
