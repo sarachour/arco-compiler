@@ -35,7 +35,10 @@ end =
 struct
 
   let mkenv () =
-    {units=SET.make (fun x y -> x = y); graph=GRAPH.make (fun v1 v2 -> true)}
+    let node2str x = x in
+    let val2str v = string_of_float v in
+    let cmpval v1 v2 = true in
+    {units=SET.make (fun x y -> x = y); graph=(GRAPH.make cmpval node2str val2str)}
 
   let print e =
     let print_elem src snk flt  =

@@ -9,6 +9,8 @@ type 'a set = {
   cmp : 'a -> 'a -> bool
 }
 
+
+
 type ('a,'b) map = ('a, 'b) Hashtbl.t
 
 type ('a,'b) either = Left of 'a | Right of 'b
@@ -83,13 +85,15 @@ end
 type ('a,'b) graph = {
   mutable adj : ('a,('a*'b) set) map;
   vcmp : 'b -> 'b -> bool;
+  node2str: 'a -> string;
+  val2str: 'b -> string;
 }
+
 
 module GRAPH =
 struct
-
-  let make (type a) (type b) vcmp =
-    {adj=MAP.make(); vcmp = vcmp}
+  let make (type a) (type b) vcmp astr bstr =
+    {adj=MAP.make(); vcmp = vcmp; node2str = astr; val2str = bstr}
 
   let hasnode (type a) (type b) (g) (n:a) : bool =
     MAP.has (g.adj) n
@@ -116,7 +120,14 @@ struct
       let _ = SET.add dest (b,v) in
       g
     else
-      error "mkedge" "one of the nodes doesn't exist in the graph"
+      if hasnode g a = false then
+        error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
+      else if hasnode g b = false then
+        error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
+      else if hasedge g a b v = true then
+        error "mkedge" ("edge "^(g.node2str a)^"->"^(g.node2str b)^":"^(g.val2str v)^" already exists in graph.")
+      else
+        error "mkedge" "unknown"
 
   let iter (type a) (type b) (g) (fn : a-> a-> b -> unit) =
     let iterset src snk v =
