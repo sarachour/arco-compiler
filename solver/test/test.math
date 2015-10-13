@@ -1,0 +1,25 @@
+name: simple problem
+
+type m
+type km
+type sec
+
+let 1 km = 1000 m
+
+time t : sec
+input A : m
+local B : m
+output O : m
+param K1 = 0.123 : 1/sec
+param K2 = 0.245 : 1/sec
+
+assume mag A | [0,1] : km
+assume mag B | [0,1] : km
+assume err A | 0 : m
+
+ensure mag O | [0,1] : km
+ensure err O | ? : km
+ensure err deriv B | (K1*E[A] + K2*E[B])*0.01 + 0.04 : km
+
+rel  | deriv(B,t) = K1*A - K2*B with B(0) = 0.25
+rel | O = A*B*K1*K2
