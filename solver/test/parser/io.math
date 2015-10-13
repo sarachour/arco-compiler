@@ -21,4 +21,4 @@ param T : m = 4
 param R1 : 1/s = 5.0
 param R2 : 1/s = 5
 
-%time t : s
+time t : s

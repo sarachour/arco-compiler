@@ -126,7 +126,11 @@ st:
     ()
   }
   | TIME TOKEN COLON typ EOL {
-    error "time_parse" "unimplemented"
+    let knd : mkind = Time in
+    let name : string = $2 in
+    let typ : unt = UExpr($4) in
+    MathLib.mkvar dat name knd typ;
+    ()
   }
   | REL rel EOL {
     ()

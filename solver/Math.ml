@@ -9,7 +9,7 @@ type mid = string
 
 type mrel = MState of (mid ast)*float | MFunction of (mid ast) | MNothing
 
-type mkind = Input | Output | Local | Param of float
+type mkind = Time | Input | Output | Local | Param of float
 
 type mv_ensure =
   | MMagEns of float*float
@@ -53,6 +53,7 @@ struct
     | Output -> "output"
     | Local -> "local"
     | Param(v) -> "param ("^(string_of_float v)^")"
+    | Time -> "time"
 
   let rel2str (v:mrel) : string = match v with
     | MState(r,ic) -> (ASTLib.ast2str r (fun x -> x))^" | ic = "^(string_of_float ic)
@@ -107,7 +108,9 @@ struct
           let _ = dat.rel <- MState(rhs,ic) in
           e
         else
-          error "mkstrel" ("variable "^name^" doesn't type check with expression.")
+          error "mkstrel" ("variable "^name^" doesn't type check with expression: "^
+            (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
+
   let mkrel e name rhs =
     if MAP.has (e.vars) name = false then
       error "mkrel" ("variable "^name^" does not exist.")
