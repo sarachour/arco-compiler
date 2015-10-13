@@ -42,7 +42,7 @@ struct
 
   let print e =
     let print_elem src snk flt  =
-      Printf.printf "%s -> %s: %f\n " src snk  flt
+      Printf.printf "%s -> %s: %f\n" src snk  flt
     in
     SET.iter e.units (fun x -> Printf.printf "type %s\n" x);
     GRAPH.iter e.graph print_elem

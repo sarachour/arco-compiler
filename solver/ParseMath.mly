@@ -9,7 +9,10 @@
   let dat = MathLib.mkenv()
   exception ParseMathError of string*string
 
-  let error s n = raise (ParseMathError(s,n))
+  let error s n =
+    let _ = Printf.printf "==== %s ====\n%s\n========\n" s n in
+    let _ = flush_all () in
+    raise (ParseMathError(s,n))
 
 %}
 
@@ -20,6 +23,7 @@
 %token <int> INTEGER
 
 %type <string> expr
+%type <string> rest
 %type <untid ast> typ
 %type <float> number
 %type <unit> seq
@@ -48,9 +52,22 @@ number:
 typ:
   | expr {string_to_ast $1}
 
+rest:
+  | VBAR rest         {"|"^$2}
+  | COLON rest        {":"^$2}
+  | TYPE rest         {"type "^$2}
+  | TOKEN rest        {$1^" "^$2}
+  | DECIMAL rest      {(string_of_float $1)^" "^$2}
+  | INTEGER rest      {(string_of_int $1)^" "^$2}
+  | STRING rest       {"\""^$1^"\" "^$2}
+  | OPERATOR rest     {$1^" "^$2}
+  | EQ rest           {"= "^$2}
+  | EOL {""}
 
 st:
-  | NAME STRING EOL                       {}
+  | NAME STRING EOL                       {
+
+  }
   | TYPE TOKEN EOL                        {
     let t = $2 in
     dat.units <- UnitLib.define dat.units t
@@ -88,11 +105,17 @@ st:
     MathLib.mkvar dat name knd typ;
     ()
   }
+  | PARAM TOKEN rest {let name = $2 and r = $3 in
+    error "param_parse" ("param "^name^" with expression <"^r^"> malformed.\n   parameter definitions are: param name : type = decimal")}
   | TIME TOKEN COLON typ EOL {
     error "time_parse" "unimplemented"
   }
-  | EOL                                  {
+  | EOL  {
 
+  }
+  | TOKEN {
+    let name = $1 in
+    error "stmt" ("unknown identifier "^name)
   }
 
 seq:
