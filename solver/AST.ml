@@ -40,7 +40,7 @@ struct
     let rec ast2str a fn : string =
       let list2str lst delim =
         match lst with
-        | h::h2::t -> List.fold_right (fun x r -> r^(ast2str x fn)) (h2::t) (ast2str h fn)
+        | h::h2::t -> List.fold_right (fun x r -> r^delim^(ast2str x fn)) (h2::t) (ast2str h fn)
         | [h] -> ast2str h fn
         | [] -> ""
       in

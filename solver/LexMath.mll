@@ -15,14 +15,15 @@ let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
 let str = '"' [^ '"']* '"'
 let decimal = ['0'-'9']*'.'['0'-'9']+
 let integer = ['0'-'9']+
-let op = ['[' ']' '(' ')' '+' '-' '*' '^' '.' '/']+
+let op = ['[' ']' '(' ')' '+' '-' '*' '^' '.' '/' ',']+
 
 rule env = parse
   | whitespace              {env lexbuf}
   | comment                 {env lexbuf}
   | '\n'                    {Lexing.new_line lexbuf; EOL}
   | eof                     {EOF}
-  | "|"                     {VBAR}
+  | "with"                  {WITH}
+  | "rel"                   {REL}
   | ":"                     {COLON}
   | "="                     {EQ}
   | "name"                  {NAME}

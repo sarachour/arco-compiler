@@ -17,14 +17,13 @@
 
 %}
 
-%token EOF EOL VBAR COLON
-%token NAME TYPE LET EQ INPUT OUTPUT LOCAL PARAM TIME
+%token EOF EOL COLON
+%token NAME TYPE LET EQ INPUT OUTPUT LOCAL PARAM TIME REL WITH
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
 
 %type <string> expr
-%type <string> rest
 %type <untid ast> typ
 %type <float> number
 %type <unit> seq
@@ -53,17 +52,37 @@ number:
 typ:
   | expr {string_to_ast $1}
 
-rest:
-  | VBAR rest         {"|"^$2}
-  | COLON rest        {":"^$2}
-  | TYPE rest         {"type "^$2}
-  | TOKEN rest        {$1^" "^$2}
-  | DECIMAL rest      {(string_of_float $1)^" "^$2}
-  | INTEGER rest      {(string_of_int $1)^" "^$2}
-  | STRING rest       {"\""^$1^"\" "^$2}
-  | OPERATOR rest     {$1^" "^$2}
-  | EQ rest           {"= "^$2}
-  | EOL               {"\\n"}
+rel:
+  | expr EQ expr WITH TOKEN OPERATOR INTEGER OPERATOR EQ number {
+      let lhs = string_to_ast $1 in
+      let rhs = string_to_ast $3 in
+      let ic = $10 and lbr = $6 and rbr = $8 and tic : int = $7 and icn = $5 in
+      if lbr <> "(" || rbr <> ")" then
+        error "rel_parse" "expecting parens around initial condition"
+      else if tic <> 0 then
+        error "rel_parse" "initial condition must be for t=0"
+      else
+      match lhs with
+      |Term(Literal(name)) ->
+        error "rel_parse" ("stateless variable "^name^" is qualitifed with 'with' statement")
+      |Term(Deriv(name, wrt)) ->
+        if wrt <> "t" then
+          error "rel_parse" ("derivative of "^name^" can only be wrt t")
+        else if icn <> name then
+          error "rel_parse" ("name of variable "^name^" must match initial condition variable name")
+        else
+          MathLib.mkstrel dat name rhs ic
+    }
+  | expr EQ expr {
+    let lhs = string_to_ast $1 in
+    let rhs = string_to_ast $3 in
+    match lhs with
+      | Term(Literal(name)) ->
+        MathLib.mkrel dat name rhs
+      | Term(Deriv(name,wrt)) ->
+        error "rel_parse" ("variable with state "^name^" missing the 'with V(0) = 0.001' clause")
+
+  }
 
 st:
   | NAME STRING EOL                       {
@@ -108,6 +127,9 @@ st:
   }
   | TIME TOKEN COLON typ EOL {
     error "time_parse" "unimplemented"
+  }
+  | REL rel EOL {
+    ()
   }
   | EOL  {
 
