@@ -79,6 +79,11 @@ struct
   let map s f =
     List.map f (s.lst)
 
+  let filter s f =
+    List.filter f (s.lst)
+
+  let to_list (type a) (s: a set) : a list=
+    s.lst
 end
 
 

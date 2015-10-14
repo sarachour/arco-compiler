@@ -65,7 +65,14 @@ end
 
 module UnitTypeChecker =
 struct
+  let typecheck (e1: untid ast) (e2:untid ast) : bool=
+    let cnv x = x in
+    let todecl x = SymbolVar(x) in
+    let res = ASTLib.eq e1 e2 cnv todecl in
+    res
+
   let typeof (expr:'b ast) (lookup : 'b -> unt) : untid ast =
+    let tostr (v: untid ast) : string = ASTLib.ast2str v (fun x -> x) in
     let get_expr (v: 'b) : untid ast =
     let t = lookup v in
       match t with
@@ -73,20 +80,26 @@ struct
       | UVar -> error "typechecker.typeof" "cannot have variant types."
       | UExpr(e) -> e
     in
+    let tclist lst : untid ast =
+      let tc x r = if typecheck x r then r else
+        error "typerror" ("term "^(tostr x)^" does not match type "^(tostr r))
+      in
+      match lst with
+      | h::t -> List.fold_right tc t h
+      | [] -> Integer(1)
+    in
     let conv (v:untid ast) : (untid ast) option =
       match v with
       | Term(Deriv(name,t)) -> let num = get_expr name and den = get_expr t in
         Some (Op2(Div,num,den))
       | Term(Literal(name)) -> let ty = get_expr name in
         Some ty
+      | OpN(Add, lst) -> Some(tclist lst)
+      | OpN(Sub,lst) -> Some(tclist lst)
       | _ -> None
     in
     ASTLib.trans expr conv
 
 
-  let typecheck (e1: untid ast) (e2:untid ast) : bool=
-    let cnv x = x in
-    let todecl x = SymbolVar(x) in
-    let res = ASTLib.eq e1 e2 cnv todecl in
-    res
+
 end

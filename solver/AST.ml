@@ -1,5 +1,6 @@
 open SymCamlData
 open SymCaml
+open Util
 
 type 'a ast_term =
   | Literal of 'a
@@ -167,15 +168,42 @@ struct
 
     let from_symcaml (type a) ast (fn:symvar -> a) : a ast = error "from_symcaml" "unimplemented"
 
-    let mkenv (type a) (exprs: (a ast) list) : symcaml =
+    let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> a symdecl) : symcaml =
       let env = SymCaml.init() in
       let _ = SymCaml.clear env in
+      let getvars (x:a ast) (r:(a symdecl) set) : (a symdecl) set = match x with
+        | Term(Literal(x)) -> SET.add r (decl x)
+        | Term(Deriv(x,v)) -> SET.add r (decl x)
+        | _ -> r
+      in
+      let onevarset (ast:a ast) (r: (a symdecl) set) : (a symdecl) set =
+        fold ast getvars r
+      in
+      let allvars = List.fold_right onevarset exprs (SET.make (fun x y -> x = y)) in
+      let syms = SET.filter allvars (fun x -> match x with SymbolVar(_) -> true | _ -> false) in
+      let wcs = SET.filter allvars (fun x -> match x with WildcardVar(_) -> true | _ -> false) in
+      let symbans =List.map (fun x -> match x with SymbolVar(n) -> n | _ -> error "mkenv/symbans" "must be a symbol") syms in
+      let define_sym x =
+        match x with
+        | SymbolVar(n) -> let _ =  SymCaml.define_symbol env (cnv n) in ()
+        | _ -> error "mkenv/define_sym" "impossible to have wildcard in symbol declaration"
+      in
+      let define_wc x =
+        match x with
+        | WildcardVar(n,trans) -> let bans = trans n symbans in
+          let sybans = List.map (fun x -> to_symcaml x cnv) bans in
+          let _ = SymCaml.define_wildcard env (cnv n) sybans in 
+          ()
+        | _ -> error "mkenv/define_wc" "impossible to have symbol in wildcard declaration"
+      in
+      let _ = List.iter define_sym syms in
+      let _ = List.iter define_wc wcs in
       env
 
     let simpl (type a) (ast: symexpr ast) : symexpr ast = error "simpl" "unimplemented"
 
     let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->a symdecl) : bool =
-      let env = mkenv [e1;e2] in
+      let env = mkenv [e1;e2] cnv decl in
       let lhe = to_symcaml e1 cnv in
       let rhe = to_symcaml e2 cnv in
       SymCaml.eq env lhe rhe
