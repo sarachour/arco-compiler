@@ -17,10 +17,10 @@ param K2 : 1/s = 0.245
 assume mag A is [0,1] : m
 
 %automagically determine the magnitude of B
-assume mag B is auto : m
+assume mag B is [0,1] : m
 
 % automagically derive range of O
-assume mag O is auto : m
+assume mag O is [0,1] : m
 
 assume error A is 0 : m
 

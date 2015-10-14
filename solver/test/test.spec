@@ -42,6 +42,8 @@ component copy I:
     args: A B icopy
 
 % every property must have an input interface
+% 7 bit digital number, (log (3 bits whether number is 1-10,10-100,100-1000)+ linear (4 bits)) 10 micro ampere - 100 pico ampere
+% 0.3 millisecond
 component input I:
   out:
     B : port
@@ -63,6 +65,10 @@ component input I:
     args: B 0 DC 5
 
 % every property must have an output interface
+% rate, 2 ms
+% digital rep -> read 1's and zeroes for fixed amount of time and then you sum then
+% entire current range is mapped into 10000, quantization error (sample less points, sample faster)
+% convert to dac representation
 components output I:
    in:
     A : port
@@ -83,6 +89,7 @@ components output I:
      prefix: R
      args: A 0 0
 
+%
 component imul:
   in:
     A : port
@@ -150,7 +157,8 @@ component dderiv:
     magnitude V(*) | 0 -> 5 : V
     magnitude I(*) | 0 -> 0.1 : mA
 
-
+% time constant is fixed in the chip -> 1 msec (tau)
+% maximum speed is 1 msec
 constrain circuit:
     count:
       dderiv: 1

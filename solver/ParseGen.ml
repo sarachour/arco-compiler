@@ -25,8 +25,8 @@ sig
   val string_to_ast : string -> string ast
   val file_to_formula : string -> Math.menv
   val string_to_formula : string -> Math.menv
-  val file_to_hwspec : string -> string
-  val string_to_hwspec : string -> string
+  val file_to_hwspec : string -> HW.hwenv
+  val string_to_hwspec : string -> HW.hwenv
 
 end =
 struct
@@ -59,7 +59,12 @@ struct
 
   let file_to_hwspec fn =
     let lb = file_to_lexbuf fn in
-    error "file_to_hwspec" "unimplemented"
+    let res = parse_lexbuf "hw" (fun x -> ParseHW.env LexHW.env x) lb in
+    match res with
+    | Some (v) -> let res = v in
+      HwLib.print res;
+      res
+    | None -> error "file_to_formula" "could not parse the hw environment"
 
   let string_to_formula fn =
     let lb = string_to_lexbuf fn in
@@ -70,6 +75,9 @@ struct
 
   let string_to_hwspec fn =
     let lb = string_to_lexbuf fn in
-    error "string_to_hwspec" "unimplemented"
+    let res = parse_lexbuf "hw" (fun x -> ParseHW.env LexHW.env x) lb in
+    match res with
+    | Some (v) -> v
+    | None -> error "file_to_formula" "could not parse the hw environment"
 
 end
