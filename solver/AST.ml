@@ -1,4 +1,5 @@
 open SymCamlData
+open SymCaml
 
 type 'a ast_term =
   | Literal of 'a
@@ -26,6 +27,10 @@ type 'a ast =
   | Decimal of float
   | Integer of int
 
+type 'a symdecl =
+  | WildcardVar of 'a*('a  -> 'a list -> ('a ast) list)
+  | SymbolVar of 'a
+
 
 exception ASTException of (string)
 let error n msg = raise (ASTException(n^": "^msg))
@@ -34,7 +39,9 @@ module ASTLib : sig
     val ast2str : ('a ast) -> ('a -> string) -> string
     val trans : ('b ast) -> ('b ast ->  ('b ast) option)  -> ('b ast)
     val map : ('a ast)  -> ('a -> 'b)  -> ('b ast)
+    val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
+    val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> 'a symdecl) -> bool
 end =
 struct
 
@@ -71,7 +78,7 @@ struct
       | Integer(i) -> string_of_int i
 
 
-      let _internal_map (type a) (type b) (a:a ast) (conv_elem:b ast -> b ast option) (conv_term: a -> b) : b ast  =
+      let _MAP (type a) (type b) (a:a ast) (conv_elem:b ast -> b ast option) (conv_term: a -> b) : b ast  =
         let rec _map (el:a ast) : b ast =
           let maplst (lst:(a ast) list) : (b ast) list =
             List.fold_left (fun r x -> (_map x)::r) [] lst
@@ -105,19 +112,73 @@ struct
         _map a
 
     let trans (a:'b ast) (conv_elem: 'b ast -> ('b ast) option) : 'b ast =
-      _internal_map a conv_elem (fun x -> x)
+      _MAP a conv_elem (fun x -> x)
 
     let map (type x) (type y) (a:x ast) (cnv_term:x -> y) : y ast =
      let cnv_el (v:y ast) : (y ast) option = None in
-     let res : y ast = _internal_map a cnv_el cnv_term in
+     let res : y ast = _MAP a cnv_el cnv_term in
      res
 
-    let to_symcaml (type a) (x:a ast)  (fn:a -> symvar) : symexpr = error "to_symcaml" "unimplemented"
+    let fold (type x) (type y) (a:x ast) (fld:x ast -> y ->y)  (b0:y) : y =
+      let rec _fold (el: x ast) (b: y) : y =
+        let _foldlst (lst:(x ast) list) b0 : y =
+          List.fold_right (fun a b -> let nb = _fold a b in fld a nb) lst b0
+        in
+        match el with
+          | OpN(op,elst) -> let nb : y = _foldlst elst b in
+            fld el nb
+          | Op2(op,e1,e2) -> let nb : y = _foldlst [e1;e2] b in
+            fld el nb
+          | Op1(op,e1) -> let nb : y = _foldlst [e1] b in
+            fld el nb
+          | _ -> fld el b
+      in
+        _fold a b0
+
+    type symcaml = SymCaml.symcaml
+
+    let to_symcaml (type a) (x:a ast)  (fn:a -> symvar) : symexpr =
+      let op1_ast2sym x : SymCamlData.op1 = match x with
+        | Exp -> NatExp
+        | Neg -> Neg
+      in
+      let op2_ast2sym x : SymCamlData.op2 = match x with
+        | Power -> Exp
+        | Div -> Div
+      in
+      let opn_ast2sym x : SymCamlData.opn = match x with
+        | Add -> Add
+        | Mult -> Mult
+        | Sub -> Sub
+      in
+      let rec _tosym (e:a ast) = match e with
+        | Term(Literal(x)) -> let sx = fn x in Symbol(sx)
+        | Term(Deriv(x,v)) -> let sx = fn x and sv  = fn v in
+          let wrt = [(sv,1)] in
+          Op1(Deriv(wrt),Symbol(sx))
+        | Op1(op,e1) -> Op1((op1_ast2sym op), _tosym e1)
+        | Op2(op,e1,e2) -> Op2(op2_ast2sym op, _tosym e1, _tosym e2)
+        | OpN(op,elst) -> let nlst = List.map (fun x -> _tosym x) elst in
+          OpN(opn_ast2sym op, nlst)
+        | Decimal(v) -> Decimal(v)
+        | Integer(v) -> Integer(v)
+      in
+        _tosym x
 
     let from_symcaml (type a) ast (fn:symvar -> a) : a ast = error "from_symcaml" "unimplemented"
 
-    let simpl (type a) (to:a->symvar) (fm:symvar->b) (ast: a ast) : a ast = error "simpl" "unimplemented"
+    let mkenv (type a) (exprs: (a ast) list) : symcaml =
+      let env = SymCaml.init() in
+      let _ = SymCaml.clear env in
+      env
 
+    let simpl (type a) (ast: symexpr ast) : symexpr ast = error "simpl" "unimplemented"
+
+    let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->a symdecl) : bool =
+      let env = mkenv [e1;e2] in
+      let lhe = to_symcaml e1 cnv in
+      let rhe = to_symcaml e2 cnv in
+      SymCaml.eq env lhe rhe
 
 
 end

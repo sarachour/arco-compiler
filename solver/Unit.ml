@@ -85,5 +85,8 @@ struct
 
 
   let typecheck (e1: untid ast) (e2:untid ast) : bool=
-    e1 = e2
+    let cnv x = x in
+    let todecl x = SymbolVar(x) in
+    let res = ASTLib.eq e1 e2 cnv todecl in
+    res
 end
