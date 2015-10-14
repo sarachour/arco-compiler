@@ -34,6 +34,8 @@ rule env = parse
   | "local"                 {LOCAL}
   | "param"                 {PARAM}
   | "time"                  {TIME}
+  | "none"                  {NONE}
+  | "?"                     {QMARK}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}

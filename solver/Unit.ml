@@ -8,7 +8,7 @@ type untid = string
 
 type unt =
   | UNone
-  | UVar
+  | UVariant
   | UExpr of untid ast
 
 
@@ -30,6 +30,7 @@ sig
   val mkrule : unt_env -> string -> float -> string ->float -> unt_env
   val print : unt_env -> unit
   val unit2str : unt -> string
+  val has: unt_env -> untid -> bool
 end =
 
 struct
@@ -47,11 +48,14 @@ struct
     SET.iter e.units (fun x -> Printf.printf "type %s\n" x);
     GRAPH.iter e.graph print_elem
 
+  let has e id =
+    SET.has e.units id
+
   let unit2str u =
     match u with
     | UExpr(u) -> ASTLib.ast2str u (fun x -> x)
     | UNone -> "_"
-    | UVar  -> "*"
+    | UVariant  -> "*"
 
   let mkrule (e:unt_env) (u1:untid) (n1:float) (u2:untid) (n2:float) =
     let _ = GRAPH.mkedge (e.graph) u1 u2 (n2/.n1) in
@@ -60,6 +64,7 @@ struct
 
   let define e name =
     let _ = GRAPH.mknode (e.graph) name in
+    let _ = SET.add (e.units) name in
     e
 end
 
@@ -71,13 +76,32 @@ struct
     let res = ASTLib.eq e1 e2 cnv todecl in
     res
 
+  let valid (type a) (e: unt_env) (expr: unt) : bool =
+    match expr with
+    | UNone -> true
+    | UVariant -> true
+    | UExpr(a) ->
+      let check x = match x with
+        | Term(Literal(n)) ->
+          if UnitLib.has e n then ()
+          else error "type error" ("unit "^n^" does not exist in environment.")
+        | Term(Deriv(n,t)) ->
+          if UnitLib.has e n then
+          if UnitLib.has e t then ()
+          else error "type error" ("unit "^t^" does not exist in environment.")
+          else error "type error" ("unit "^n^" does not exist in environment.")
+        | _ -> ()
+      in
+      let _ = ASTLib.iter a (fun x -> check x) in
+      true
+
   let typeof (expr:'b ast) (lookup : 'b -> unt) : untid ast =
     let tostr (v: untid ast) : string = ASTLib.ast2str v (fun x -> x) in
     let get_expr (v: 'b) : untid ast =
     let t = lookup v in
       match t with
       | UNone -> Integer(1)
-      | UVar -> error "typechecker.typeof" "cannot have variant types."
+      | UVariant -> error "typechecker.typeof" "cannot have variant types."
       | UExpr(e) -> e
     in
     let tclist lst : untid ast =

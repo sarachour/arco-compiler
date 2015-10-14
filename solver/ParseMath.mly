@@ -18,13 +18,13 @@
 %}
 
 %token EOF EOL COLON
-%token NAME TYPE LET EQ INPUT OUTPUT LOCAL PARAM TIME REL WITH
+%token NAME TYPE LET EQ INPUT OUTPUT LOCAL PARAM TIME REL WITH NONE QMARK
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
 
 %type <string> expr
-%type <untid ast> typ
+%type <unt> typ
 %type <float> number
 %type <unit> seq
 %type <unit> st
@@ -50,7 +50,9 @@ number:
   | INTEGER   {let e = $1 in float(e)}
 
 typ:
-  | expr {string_to_ast $1}
+  | expr {UExpr(string_to_ast $1)}
+  | NONE {UNone}
+  | QMARK {UVariant}
 
 rel:
   | expr EQ expr WITH TOKEN OPERATOR INTEGER OPERATOR EQ number {
@@ -100,35 +102,35 @@ st:
   | INPUT TOKEN COLON typ EOL {
     let knd : mkind = Input in
     let name : string = $2 in
-    let typ : unt = UExpr($4) in
+    let typ : unt = ($4) in
     MathLib.mkvar dat name knd typ;
     ()
   }
   | OUTPUT TOKEN COLON typ EOL {
     let knd : mkind = Output in
     let name : string = $2 in
-    let typ : unt = UExpr($4) in
+    let typ : unt = ($4) in
     MathLib.mkvar dat name knd typ;
     ()
   }
   | LOCAL TOKEN COLON typ EOL {
     let knd : mkind = Local in
     let name : string = $2 in
-    let typ : unt = UExpr($4) in
+    let typ : unt = ($4) in
     MathLib.mkvar dat name knd typ;
     ()
   }
   | PARAM TOKEN COLON typ EQ number EOL {
     let knd : mkind = Param($6) in
     let name : string = $2 in
-    let typ : unt = UExpr($4) in
+    let typ : unt = $4 in
     MathLib.mkvar dat name knd typ;
     ()
   }
   | TIME TOKEN COLON typ EOL {
     let knd : mkind = Time in
     let name : string = $2 in
-    let typ : unt = UExpr($4) in
+    let typ : unt = $4 in
     MathLib.mkvar dat name knd typ;
     ()
   }

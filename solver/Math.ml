@@ -32,6 +32,7 @@ type mvar = {
 type menv = {
   mutable vars : (mid, mvar) map;
   mutable units: unt_env;
+  mutable time : mid option;
 }
 
 
@@ -46,7 +47,7 @@ end =
 struct
   let refl x y = (x = y)
   let mkenv () : menv =
-    {vars=MAP.make(); units=UnitLib.mkenv()}
+    {vars=MAP.make(); time=None; units=UnitLib.mkenv()}
 
   let kind2str (k:mkind) : string = match k with
     | Input -> "input"
@@ -85,14 +86,20 @@ struct
     | (k,u) -> u
 
 
-  let mkvar e name knd un =
+  let mkvar e name knd un : menv =
     if MAP.has (e.vars) name then
       error "mkvar" ("variable "^name^" already exists.")
     else
-      let v = {name=name; ens=(SET.make refl); asm=(SET.make refl); rel=MNothing; typ=(knd,un)} in
-      e.vars <- MAP.put (e.vars) name v;
-      e
-
+      begin
+      if knd = Time then
+        e.time <- Some(name);
+      if UnitTypeChecker.valid (e.units) un then
+        let v = {name=name; ens=(SET.make refl); asm=(SET.make refl); rel=MNothing; typ=(knd,un)} in
+        let _ = e.vars <- MAP.put (e.vars) name v in
+        e
+      else
+        error "mkvar" "type is invalid"
+      end
   let mkstrel e name rhs ic =
     if MAP.has (e.vars) name = false then
       error "mkstrel" ("variable "^name^" does not exist.")
@@ -102,16 +109,21 @@ struct
         error "mkstrel" ("variable "^name^" already has relation defined.")
       else
         let get_type x = getunit e x in
-        let tl = UnitTypeChecker.typeof (Term(Deriv(name,"t"))) get_type in
-        let tr = UnitTypeChecker.typeof rhs get_type in
-        if UnitTypeChecker.typecheck tl tr then
-          let _ = dat.rel <- MState(rhs,ic) in
-          e
-        else
-          error "mkstrel" ("variable "^name^" doesn't type check with expression: "^
-            (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
+        match e.time with
+        | Some(tv) ->
+          let tl = UnitTypeChecker.typeof (Term(Deriv(name,tv))) get_type in
+          let tr = UnitTypeChecker.typeof rhs get_type in
+          if UnitTypeChecker.typecheck tl tr then
+            let _ = dat.rel <- MState(rhs,ic) in
+            e
+          else
+            error "mkstrel" ("variable "^name^" doesn't type check with expression: "^
+              (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
+        | None ->
+          error "mkstrel"  "time variable not defined anywhere."
 
-  let mkrel e name rhs =
+
+  let mkrel e name rhs : menv =
     if MAP.has (e.vars) name = false then
       error "mkrel" ("variable "^name^" does not exist.")
     else
@@ -119,6 +131,13 @@ struct
       if dat.rel <> MNothing then
         error "mkrel" ("variable "^name^" already has relation defined.")
       else
-        dat.rel <- MFunction(rhs);
-        e
+        let get_type x = getunit e x in
+        let tl = UnitTypeChecker.typeof (Term(Literal(name))) get_type in
+        let tr = UnitTypeChecker.typeof rhs get_type in
+        if UnitTypeChecker.typecheck tl tr then
+          let _ = dat.rel <- MFunction(rhs) in
+          e
+        else
+          error "mkrel"  ("variable "^name^" doesn't type check with expression: "^
+            (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
 end

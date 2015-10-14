@@ -40,6 +40,7 @@ module ASTLib : sig
     val ast2str : ('a ast) -> ('a -> string) -> string
     val trans : ('b ast) -> ('b ast ->  ('b ast) option)  -> ('b ast)
     val map : ('a ast)  -> ('a -> 'b)  -> ('b ast)
+    val iter : ('a ast) -> ('a ast -> unit) -> unit
     val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
     val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> 'a symdecl) -> bool
@@ -136,6 +137,10 @@ struct
       in
         _fold a b0
 
+    let iter (type x) (a: x ast) (fn: x ast -> unit) : unit =
+      let fld x r = let _ = fn x in r in
+      fold a fld ()
+
     type symcaml = SymCaml.symcaml
 
     let to_symcaml (type a) (x:a ast)  (fn:a -> symvar) : symexpr =
@@ -192,7 +197,7 @@ struct
         match x with
         | WildcardVar(n,trans) -> let bans = trans n symbans in
           let sybans = List.map (fun x -> to_symcaml x cnv) bans in
-          let _ = SymCaml.define_wildcard env (cnv n) sybans in 
+          let _ = SymCaml.define_wildcard env (cnv n) sybans in
           ()
         | _ -> error "mkenv/define_wc" "impossible to have symbol in wildcard declaration"
       in
