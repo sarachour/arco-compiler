@@ -35,17 +35,19 @@
 %token TYPE LET NONE WHERE IN
 
 %token PROP TIME
-%token COMP INPUT OUTPUT PARAM END
+%token COMP INPUT OUTPUT PARAM REL END
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
 
 %type<string list> strlist
-%type <string> expr
+%type <string> sexpr
+%type <hwvid ast> expr
 %type <unt> typ
 %type <(propid*untid) list> proptyplst
 %type <float> number
 
+%type <hwrel> rel
 %type <unit> comp
 %type <unit> block
 %type <unit> st
@@ -60,24 +62,58 @@ strlist:
   | TOKEN                    {let e = $1 in [e]}
   | TOKEN COMMA strlist      {let lst = $3 and e = $1 in e::lst }
 
-expr:
+sexpr:
   | OPERATOR          {let e = $1 in e}
   | TOKEN             {let e = $1 in e}
   | INTEGER           {let e = $1 in string_of_int e}
   | DECIMAL           {let e = $1 in string_of_float e}
-  | expr INTEGER      {let rest = $1 and e = string_of_int $2 in rest^e}
-  | expr DECIMAL      {let rest = $1 and e = string_of_float $2 in rest^e}
-  | expr TOKEN        {let rest = $1 and e = $2 in rest^e}
-  | expr OPERATOR     {let rest = $1 and e = $2 in rest^e}
-  | expr COMMA        {let rest = $1 in rest^"," }
+  | sexpr INTEGER      {let rest = $1 and e = string_of_int $2 in rest^e}
+  | sexpr DECIMAL      {let rest = $1 and e = string_of_float $2 in rest^e}
+  | sexpr TOKEN        {let rest = $1 and e = $2 in rest^e}
+  | sexpr OPERATOR     {let rest = $1 and e = $2 in rest^e}
+  | sexpr COMMA        {let rest = $1 in rest^"," }
 
 
 number:
   | DECIMAL   {let e = $1 in e}
   | INTEGER   {let e = $1 in float(e)}
 
+
+expr:
+  | sexpr {
+    let exprstr = $1 in
+    let strast : string ast = string_to_ast exprstr in
+    let cname = get_cmpname() in
+    let tname,ttypes = HwLib.gettime dat in
+    let str2hwid x =
+      if x = tname then HNTime else 
+      let x = HwLib.getvar dat cname x in
+      let xn = x.name in
+      match x.typ with
+      | HPortType(HKInput, _) -> HNInput(LocalCompId(cname),xn,"?","?")
+      | HPortType(HKOutput,_) -> HNOutput(LocalCompId(cname),xn,"?","?")
+      | HParamType(vl, un) -> HNParam(xn,vl,un)
+    in
+    let hwast = ASTLib.map strast str2hwid in
+    hwast
+  }
+
+rel:
+    | expr EQ expr {
+      HRNothing
+    }
+    | expr EQ expr WHERE TOKEN OPERATOR INTEGER OPERATOR EQ expr {
+      let lhs = $1 and rhs = $3 and
+        icn = $5 and opl = $6 and opr = $8 and icv = $7 in
+      if opl <> "(" or opr <> ")" then
+        error "strel" "expected parenthesis"
+      else
+        HRNothing
+    }
+
+
 typ:
-  | expr {UExpr(string_to_ast $1)}
+  | sexpr {UExpr(string_to_ast $1)}
   | NONE {UNone}
   | QMARK {UVariant}
 
@@ -106,13 +142,16 @@ comp:
     let _ = HwLib.mkport dat cname HKOutput iname typlst in
     ()
   }
-  | comp PARAM TOKEN COLON typ EQ DECIMAL EOL {
+  | comp PARAM TOKEN COLON typ EQ number EOL {
     let iname = $3 in
     let typ = $5 in
     let vl = $7 in
     let cname = get_cmpname() in
     let _ = HwLib.mkparam dat cname iname vl typ in
     ()
+  }
+  | comp REL rel EOL {
+
   }
   | comp EOL   {}
 

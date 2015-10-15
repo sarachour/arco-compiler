@@ -37,6 +37,7 @@ rule env = parse
   | "where"                 {WHERE}
   | "param"                 {PARAM}
   | "in"                    {IN}
+  | "rel"                   {REL}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}

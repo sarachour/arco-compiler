@@ -11,9 +11,10 @@ type compid =
 
 
 type hwvid =
-  | HNInput of compid*string*propid
-  | HNOutput of compid*string*propid
-  | HNParam of string*float
+  | HNInput of compid*string*propid*untid
+  | HNOutput of compid*string*propid*untid
+  | HNParam of string*float*unt
+  | HNTime
 
 type hwrel =
   | HRFunction of hwvid ast
@@ -181,6 +182,25 @@ struct
       let _ = MAP.put e.comps name c in
       e
 
+  let gettime e =
+    match e.time with
+    | Some(t) -> t
+    | _ -> error "gettime" "time must be defined in spec."
+
+  let getcomp e cname =
+    if hascomp e cname = false then
+      error "getcomp" ("comp with name "^cname^" does not exist")
+    else
+        MAP.get e.comps cname
+
+  let getvar e cname iname =
+    let c = getcomp e cname in
+    if MAP.has c.vars iname = false then
+      error "getport" ("port with name "^iname^" does not exist.")
+    else
+      MAP.get c.vars iname
+
+
   let mkport e cname (hwkind:pkind) iname (types:(propid*untid) list) =
     if hascomp e cname = false then
       error "mkport" ("comp with name "^cname^" already defined.")
@@ -192,9 +212,9 @@ struct
         let prps : (propid,untid) map = MAP.make () in
         let add_propunit ((p,x):propid*untid) =
           if hasprop e p = false then
-            error "mkport" "prop doesn't exist"
+            error "mkport" ("prop "^p^" doesn't exist")
           else if UnitLib.has e.units x = false then
-            error "mkport" "unit doesn't exist"
+            error "mkport" ("unit "^x^" doesn't exist")
           else
             let _ = MAP.put prps p x in
             ()

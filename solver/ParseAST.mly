@@ -48,12 +48,14 @@ explst(node,delim):
 term:
   | TOKEN {let name = $1 in name}
   | term OBRAC explst(term,COMMA) CBRAC {
-    error "fun_fxn_to_string" "function to paren doesn't exist"
+    "unknown"
   }
   | term OPAR explst(term,COMMA) CPAR {
-    error "fun_fxn_to_string" "function to brac doesn't exist"
+    "unknown"
   }
   | term DOT TOKEN {let a = $1 and b = $3 in a^"."^b}
+
+
 
 par:
   | OPAR expr CPAR { let e = $2 in e}
