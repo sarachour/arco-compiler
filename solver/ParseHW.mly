@@ -82,8 +82,8 @@ typ:
   | QMARK {UVariant}
 
 proptyplst:
-  | TOKEN IN TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
-  | TOKEN IN TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
+  | TOKEN COLON TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
+  | TOKEN COLON TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
 
 comp:
   | COMP TOKEN EOL {
@@ -99,11 +99,25 @@ comp:
     let _ = HwLib.mkport dat cname HKInput iname typlst in
     ()
   }
-  | comp OUTPUT TOKEN WHERE proptyplst EOL                     {()}
-  | comp PARAM TOKEN COLON typ EQ DECIMAL EOL {()}
+  | comp OUTPUT TOKEN WHERE proptyplst EOL  {
+    let iname = $3 in
+    let typlst = $5 in
+    let cname = get_cmpname() in
+    let _ = HwLib.mkport dat cname HKOutput iname typlst in
+    ()
+  }
+  | comp PARAM TOKEN COLON typ EQ DECIMAL EOL {
+    let iname = $3 in
+    let typ = $5 in
+    let vl = $7 in
+    let cname = get_cmpname() in
+    let _ = HwLib.mkparam dat cname iname vl typ in
+    ()
+  }
+  | comp EOL   {}
 
 block:
-  | comp END       {()}
+  | comp END EOL       {()}
 
 st:
   | TYPE TOKEN EOL  {

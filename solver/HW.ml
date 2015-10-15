@@ -9,7 +9,7 @@ type compid =
   | LocalCompId of string
   | GlobalCompId of string* int
 
-type hwkind = HKInput | HKOutput | HKParam of float
+type pkind = HKInput | HKOutput
 
 type hwvid =
   | HNInput of compid*string*propid
@@ -32,7 +32,8 @@ type hwcns =
 
 
 type hwtype =
-  | HPortType of hwkind*((propid,untid) map)
+  | HPortType of pkind*((propid,untid) map)
+  | HParamType of unt
 
 type hwcstr =
   | HCPropRange of propid*range*untid
@@ -120,6 +121,19 @@ struct
   let mkenv () = {units=UnitLib.mkenv(); comps=MAP.make(); props=MAP.make(); time=None}
 
   let print e =
+    let type2str v =
+      match v with
+      | HPortType(knd,tps) -> "port"
+      | HParamType(t) -> "param"
+    in
+    let print_var (x:hwvar) =
+      Printf.printf "   %s of %s\n" x.name (type2str x.typ)
+    in
+    let print_comp c =
+      let _ = Printf.printf "==> component %s \n" c.name in
+      let _ = MAP.iter c.vars  (fun k v -> print_var v) in
+      ()
+    in
     let print_prop k v =
       let print_units x r = r^" "^x in
       let units= SET.fold v print_units "" in
@@ -139,6 +153,8 @@ struct
    let _ = print_props () in
    let _ = Printf.printf "==== Time =====\n" in
    let _ = print_time () in
+   let _ = Printf.printf "==== Components =====\n" in
+   let _ = MAP.iter e.comps (fun k v -> print_comp v) in
    ()
 
   let hastime e =
@@ -159,7 +175,7 @@ struct
       let _ = MAP.put e.comps name c in
       e
 
-  let mkport e cname (hwkind:hwkind) iname (types:(propid*untid) list) =
+  let mkport e cname (hwkind:pkind) iname (types:(propid*untid) list) =
     if hascomp e cname = false then
       error "mkport" ("comp with name "^cname^" already defined.")
     else
@@ -181,6 +197,17 @@ struct
         let vrt = HPortType(hwkind,prps) in
         let vr = {name=iname; rel=HRNothing; typ=vrt} in
         MAP.put c.vars iname vr
+
+  let mkparam e cname iname vl (t:unt) =
+  if hascomp e cname = false then
+    error "mkparam" ("comp with name "^cname^" already defined.")
+  else
+    let c = MAP.get e.comps cname in
+    if MAP.has c.vars iname then
+      error "mkparam" ("variable with name "^iname^" already exists")
+    else
+    let vr = {name=iname; rel=HRNothing; typ=HParamType(t)} in
+    MAP.put c.vars iname vr
 
   let mktime e name units =
     if hastime e then
