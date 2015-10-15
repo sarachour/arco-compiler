@@ -42,11 +42,11 @@ struct
 
   let file_to_ast fn =
     let lb = file_to_lexbuf fn in
-    ParseAST.expr LexAST.expr lb
+    ParseAST.toplvl LexAST.expr lb
 
   let string_to_ast fn =
     let lb = string_to_lexbuf fn in
-    ParseAST.expr LexAST.expr lb
+    ParseAST.toplvl LexAST.expr lb
 
   let file_to_formula fn =
     let lb = file_to_lexbuf fn in

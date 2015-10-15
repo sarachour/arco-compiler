@@ -32,5 +32,6 @@ let parse_lexbuf prefix plroutine lexbuf  =
       throw_error e false
 
 let string_to_ast fn =
+  let _ = Printf.printf "PARSING:::: %s\n" fn in
   let lb = Lexing.from_string fn in
-  parse_lexbuf "ast" (fun x -> ParseAST.expr LexAST.expr x) lb
+  parse_lexbuf "ast" (fun x -> ParseAST.toplvl LexAST.expr x) lb

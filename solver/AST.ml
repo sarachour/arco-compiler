@@ -2,15 +2,14 @@ open SymCamlData
 open SymCaml
 open Util
 
-type 'a ast_term =
-  | Literal of 'a
-  | Deriv of ('a*'a)
+
 
 
 type ast_opn =
   | Mult
   | Add
   | Sub
+  | Func of string
 
 type ast_op2 =
   | Power
@@ -20,11 +19,20 @@ type ast_op1 =
   | Exp
   | Neg
 
+type indices =
+  | And of indices list
+  | Range of int*int
+  | Index of int
+  | ToStart of int
+  | ToEnd of int
+
 type 'a ast =
-  | Term of 'a ast_term
+  | Term of 'a
+  | Acc of ('a ast)*(indices)
   | OpN of ast_opn*(('a ast) list)
   | Op2 of ast_op2*('a ast)*('a ast)
   | Op1 of ast_op1*(('a ast))
+  | Deriv of ('a ast)*('a)
   | Decimal of float
   | Integer of int
 
@@ -54,10 +62,6 @@ struct
         | [h] -> ast2str h fn
         | [] -> ""
       in
-      let term2str t = match t with
-      | Literal(x) -> fn x
-      | Deriv(x,v) -> "deriv("^(fn x)^","^(fn v)^")"
-      in
       let opn2str t = match t with
       | Mult -> "*"
       | Add -> "+"
@@ -72,10 +76,11 @@ struct
       | Div -> "/"
       in
       match a with
-      | Term(x) -> term2str x
+      | Term(x) -> fn x
       | OpN(v,lst) -> list2str lst (opn2str v)
       | Op2(v,a,b) -> (ast2str a fn)^(op22str v)^(ast2str b fn)
       | Op1(v,a) -> (op12str v)^"("^(ast2str a fn)^")"
+      | Deriv(a,v) -> "deriv("^(ast2str a fn)^","^(fn v)^")"
       | Decimal(d) -> string_of_float d
       | Integer(i) -> string_of_int i
 
@@ -89,11 +94,8 @@ struct
             match conv_elem ne with Some(re) -> re | None -> ne
           in
           match el with
-            | Term(Literal(x)) ->
-              let ne = Term(Literal (conv_term x)) in
-              choose ne
-            | Term(Deriv(x,v)) ->
-              let ne = Term(Deriv( conv_term x, conv_term v)) in
+            | Term(l) ->
+              let ne = Term(conv_term l) in
               choose ne
             | Op2(op,e1,e2) ->
               let ne1 = _map e1 and ne2 = _map e2 in
@@ -105,6 +107,9 @@ struct
               choose ne
             | Op1(op,e) ->
               let ne = Op1(op,_map e) in
+              choose ne
+            | Deriv(e,v) ->
+              let ne = Deriv(_map e, conv_term v) in
               choose ne
             | Decimal(d) ->
               choose (Decimal(d))
@@ -158,10 +163,11 @@ struct
         | Sub -> Sub
       in
       let rec _tosym (e:a ast) = match e with
-        | Term(Literal(x)) -> let sx = fn x in Symbol(sx)
-        | Term(Deriv(x,v)) -> let sx = fn x and sv  = fn v in
+        | Term(x) -> let sx = fn x in Symbol(sx)
+        | Deriv(Term(x),v) -> let sx = fn x and sv  = fn v in
           let wrt = [(sv,1)] in
           Op1(Deriv(wrt),Symbol(sx))
+        | Deriv(_,_) -> error "to_symcaml" "unsupported expression: deriv of expression"
         | Op1(op,e1) -> Op1((op1_ast2sym op), _tosym e1)
         | Op2(op,e1,e2) -> Op2(op2_ast2sym op, _tosym e1, _tosym e2)
         | OpN(op,elst) -> let nlst = List.map (fun x -> _tosym x) elst in
@@ -177,8 +183,8 @@ struct
       let env = SymCaml.init() in
       let _ = SymCaml.clear env in
       let getvars (x:a ast) (r:(a symdecl) set) : (a symdecl) set = match x with
-        | Term(Literal(x)) -> SET.add r (decl x)
-        | Term(Deriv(x,v)) -> SET.add r (decl x)
+        | Term(x) -> SET.add r (decl x)
+        | Deriv(Term(x),v) -> SET.add r (decl x)
         | _ -> r
       in
       let onevarset (ast:a ast) (r: (a symdecl) set) : (a symdecl) set =

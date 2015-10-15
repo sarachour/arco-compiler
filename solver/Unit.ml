@@ -82,10 +82,10 @@ struct
     | UVariant -> true
     | UExpr(a) ->
       let check x = match x with
-        | Term(Literal(n)) ->
+        | Term(n) ->
           if UnitLib.has e n then ()
           else error "type error" ("unit "^n^" does not exist in environment.")
-        | Term(Deriv(n,t)) ->
+        | Deriv(Term(n),t) ->
           if UnitLib.has e n then
           if UnitLib.has e t then ()
           else error "type error" ("unit "^t^" does not exist in environment.")
@@ -114,9 +114,9 @@ struct
     in
     let conv (v:untid ast) : (untid ast) option =
       match v with
-      | Term(Deriv(name,t)) -> let num = get_expr name and den = get_expr t in
+      | Deriv(Term(name),t) -> let num = get_expr name and den = get_expr t in
         Some (Op2(Div,num,den))
-      | Term(Literal(name)) -> let ty = get_expr name in
+      | Term(name) -> let ty = get_expr name in
         Some ty
       | OpN(Add, lst) -> Some(tclist lst)
       | OpN(Sub,lst) -> Some(tclist lst)

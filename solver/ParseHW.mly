@@ -86,7 +86,7 @@ expr:
     let cname = get_cmpname() in
     let tname,ttypes = HwLib.gettime dat in
     let str2hwid x =
-      if x = tname then HNTime else 
+      if x = tname then HNTime else
       let x = HwLib.getvar dat cname x in
       let xn = x.name in
       match x.typ with
@@ -94,7 +94,15 @@ expr:
       | HPortType(HKOutput,_) -> HNOutput(LocalCompId(cname),xn,"?","?")
       | HParamType(vl, un) -> HNParam(xn,vl,un)
     in
+    let hwid2prophwid x =
+      match x with
+      | OpN(Func(prop), [Term(id)]) -> None
+      | OpN(Func(_),_) -> error "expr" "cannot have functions"
+      | Acc(_,_) -> error "expr" "cannot have accesses"
+      | _ -> None
+    in
     let hwast = ASTLib.map strast str2hwid in
+    let hwpropast = ASTLib.map strast str2hwid in
     hwast
   }
 

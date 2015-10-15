@@ -65,9 +65,9 @@ rel:
         error "rel_parse" "initial condition must be for t=0"
       else
       match lhs with
-      |Term(Literal(name)) ->
+      |Term(name) ->
         error "rel_parse" ("stateless variable "^name^" is qualitifed with 'with' statement")
-      |Term(Deriv(name, wrt)) ->
+      |Deriv(Term(name), wrt) ->
         if wrt <> "t" then
           error "rel_parse" ("derivative of "^name^" can only be wrt t")
         else if icn <> name then
@@ -79,9 +79,9 @@ rel:
     let lhs = string_to_ast $1 in
     let rhs = string_to_ast $3 in
     match lhs with
-      | Term(Literal(name)) ->
+      | Term(name) ->
         MathLib.mkrel dat name rhs
-      | Term(Deriv(name,wrt)) ->
+      | Deriv(Term(name),wrt) ->
         error "rel_parse" ("variable with state "^name^" missing the 'with V(0) = 0.001' clause")
 
   }

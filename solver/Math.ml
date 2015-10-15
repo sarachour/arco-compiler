@@ -111,7 +111,7 @@ struct
         let get_type x = getunit e x in
         match e.time with
         | Some(tv) ->
-          let tl = UnitTypeChecker.typeof (Term(Deriv(name,tv))) get_type in
+          let tl = UnitTypeChecker.typeof (Deriv(Term(name),tv)) get_type in
           let tr = UnitTypeChecker.typeof rhs get_type in
           if UnitTypeChecker.typecheck tl tr then
             let _ = dat.rel <- MState(rhs,ic) in
@@ -132,7 +132,7 @@ struct
         error "mkrel" ("variable "^name^" already has relation defined.")
       else
         let get_type x = getunit e x in
-        let tl = UnitTypeChecker.typeof (Term(Literal(name))) get_type in
+        let tl = UnitTypeChecker.typeof (Term(name)) get_type in
         let tr = UnitTypeChecker.typeof rhs get_type in
         if UnitTypeChecker.typecheck tl tr then
           let _ = dat.rel <- MFunction(rhs) in
