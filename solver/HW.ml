@@ -121,9 +121,13 @@ struct
   let mkenv () = {units=UnitLib.mkenv(); comps=MAP.make(); props=MAP.make(); time=None}
 
   let print e =
+    let pkind2str v =
+      match v with
+      | HKInput -> "input"
+      | HKOutput -> "output"
     let type2str v =
       match v with
-      | HPortType(knd,tps) -> "port"
+      | HPortType(knd,tps) -> "port "^(pkind2str knd)
       | HParamType(t) -> "param"
     in
     let print_var (x:hwvar) =
