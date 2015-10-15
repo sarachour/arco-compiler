@@ -125,6 +125,7 @@ struct
       match v with
       | HKInput -> "input"
       | HKOutput -> "output"
+    in
     let type2str v =
       match v with
       | HPortType(knd,tps) -> "port "^(pkind2str knd)
