@@ -6,14 +6,26 @@
   open AST
   open ParseGenUtil
 
-  let dat = HwLib.mkenv()
+  type parser_meta = {
+    mutable comp : string option;
+  }
 
+  let dat = HwLib.mkenv()
+  let meta = {comp=None}
   exception ParseHwError of string*string
 
   let error s n =
     let _ = Printf.printf "==== %s ====\n%s\n========\n" s n in
     let _ = flush_all () in
     raise (ParseHwError(s,n))
+
+  let set_cmpname n =
+    meta.comp <- Some(n)
+
+  let get_cmpname () =
+    match meta.comp with
+    | Some(v) -> v
+    | None -> error "get_cmpname" "no component name defined"
 
 %}
 
@@ -23,6 +35,7 @@
 %token TYPE LET NONE
 
 %token PROP TIME
+%token COMP END
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
@@ -32,6 +45,8 @@
 %type <unt> typ
 %type <float> number
 
+%type <unit> comp
+%type <unit> block
 %type <unit> st
 %type <unit> seq
 %type <HW.hwenv option> env
@@ -65,6 +80,12 @@ typ:
   | NONE {UNone}
   | QMARK {UVariant}
 
+comp:
+  | COMP TOKEN EOL {let name = $2 in let _ = HwLib.mkcomp dat name in ()}
+
+block:
+  | comp END       {()}
+
 st:
   | TYPE TOKEN EOL  {
     let t = $2 in
@@ -84,6 +105,9 @@ st:
     let units = $4 and name = $2 in
     let _ = HwLib.mktime dat name units in
     ()
+  }
+  | block {
+
   }
   | EOL             {}
 

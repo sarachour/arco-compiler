@@ -30,6 +30,8 @@ rule env = parse
   | "type"                  {TYPE}
   | "prop"                  {PROP}
   | "time"                  {TIME}
+  | "comp"                  {COMP}
+  | "end"                   {END}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}

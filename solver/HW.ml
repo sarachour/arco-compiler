@@ -4,6 +4,7 @@ open Util
 
 type propid = string
 
+
 type compid =
   | LocalCompId of string
   | GlobalCompId of string* int
@@ -20,23 +21,37 @@ type hwrel =
   | HwState of hwvid ast
   | HwNothing
 
-type hwensure = string
-type hwassume = string
+type hwcnskind =
+  | PropRange of string
+  | PropError of string
+
+type hwcns =
+  | GlobalPropRange of propid*range
+  | LocalPropRange of string*propid*range
+  | PropError of string*propid*string
+
 
 type hwtype = hwkind*unt
 
 type hwvar = {
   name: string;
   rel : hwrel;
-  mutable ens : hwensure set;
-  mutable asm : hwassume set;
   typ: hwtype;
 }
+
+type hwcstr =
+  | HCPropRange of propid*range*untid
+
+type hwcstrs = {
+  mutable glbl : hwcstr set;
+  mutable local : (string,hwcstr set) map
+}
+
+
 type hwcomp = {
   name : string;
-  vars: (string,hwvar) map;
-  mutable ens : hwensure set;
-  mutable asm : hwassume set;
+  mutable vars: (string,hwvar) map;
+  mutable cstrs : hwcstrs;
 }
 
 type hwenv = {
@@ -46,6 +61,58 @@ type hwenv = {
   mutable time : (string*(untid set)) option;
 
 }
+
+
+exception HwCstrError of string
+exception HwLibError of string
+
+let cstr_error s n =
+  raise (HwCstrError (s^": "^n))
+
+module HwCstrLib =
+struct
+  let _cmpcstrs x y = match (x,y) with
+    | (HCPropRange(a,_,_),HCPropRange(b,_,_)) -> a = b
+    | _ -> false
+
+  let mkcstrs () = {glbl=SET.make _cmpcstrs; local=MAP.make()}
+
+  let hascstr e cstr port =
+    match port with
+    | Some(pname) ->
+      if MAP.has e.local pname then
+        let st = MAP.get e.local pname in
+        SET.has st cstr
+      else
+        false
+    | None -> SET.has e.glbl cstr
+
+  let hasrange e prop port =
+    let dummyrange = HCPropRange (prop,(0.,0.),"") in
+    hascstr e dummyrange port
+
+  let mkrange e prop min max unt (port:string option) =
+    if hasrange e prop port then
+      cstr_error "mkrangee" ("range for prop "^prop^" already exists")
+    else
+    let newrange = HCPropRange(prop,(min,max),unt) in
+    match port with
+    | Some(pname) ->
+      if MAP.has e.local pname  = false then
+          let s = SET.make _cmpcstrs in
+          let _ = SET.add s newrange in
+          let _ = MAP.put e.local pname s in
+          e
+      else
+          let s = MAP.get e.local pname in
+          let _ = SET.add s newrange in
+          e
+    | None ->
+      let _ = SET.add e.glbl newrange in
+      e
+
+end
+
 module HwLib =
 struct
 
@@ -75,6 +142,17 @@ struct
 
   let hastime e =
     match (e.time) with Some(_) -> true | None -> false
+
+  let hascomp e n =
+    MAP.has (e.comps) n
+
+  let mkcomp e name =
+    if hascomp e name then
+      error "mkcomp" ("comp with name "^name^"already defined.")
+    else
+      let c : hwcomp = {name=name;vars=MAP.make(); cstrs=HwCstrLib.mkcstrs()} in
+      let _ = MAP.put e.comps name c in
+      e
 
   let mktime e name units =
     if hastime e then

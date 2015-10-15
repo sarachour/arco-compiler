@@ -9,7 +9,7 @@ type 'a set = {
   cmp : 'a -> 'a -> bool
 }
 
-
+type range = float*float
 
 type ('a,'b) map = ('a, 'b) Hashtbl.t
 
