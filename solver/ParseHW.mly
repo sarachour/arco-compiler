@@ -22,7 +22,7 @@
 %token EQ COLON QMARK COMMA
 %token TYPE LET NONE
 
-%token PROP
+%token PROP TIME
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
@@ -77,8 +77,12 @@ st:
   }
   | PROP TOKEN COLON strlist EOL {
     let units = $4 and name = $2 in
-    let _ = HwLib.mkprop dat name in
-    let _ = List.iter (fun x -> let _ = HwLib.mkunit4prop dat name x in ()) units in
+    let _ = HwLib.mkprop dat name units in
+    ()
+  }
+  | TIME TOKEN COLON strlist EOL {
+    let units = $4 and name = $2 in
+    let _ = HwLib.mktime dat name units in
     ()
   }
   | EOL             {}
