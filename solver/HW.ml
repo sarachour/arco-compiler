@@ -9,7 +9,6 @@ type compid =
   | LocalCompId of string
   | GlobalCompId of string* int
 
-type pkind = HKInput | HKOutput
 
 type hwvid =
   | HNInput of compid*string*propid
@@ -31,9 +30,11 @@ type hwcns =
   | HCPropError of string*propid*string
 
 
+type pkind = HKInput | HKOutput
+
 type hwtype =
   | HPortType of pkind*((propid,untid) map)
-  | HParamType of unt
+  | HParamType of float*unt
 
 type hwcstr =
   | HCPropRange of propid*range*untid
@@ -129,7 +130,7 @@ struct
     let type2str v =
       match v with
       | HPortType(knd,tps) -> "port "^(pkind2str knd)
-      | HParamType(t) -> "param"
+      | HParamType(v,t) -> "param : "^(UnitLib.unit2str t)^" = "^(string_of_float v)
     in
     let print_var (x:hwvar) =
       Printf.printf "   %s of %s\n" x.name (type2str x.typ)
@@ -211,7 +212,7 @@ struct
     if MAP.has c.vars iname then
       error "mkparam" ("variable with name "^iname^" already exists")
     else
-    let vr = {name=iname; rel=HRNothing; typ=HParamType(t)} in
+    let vr = {name=iname; rel=HRNothing; typ=HParamType(vl,t)} in
     MAP.put c.vars iname vr
 
   let mktime e name units =
