@@ -67,7 +67,7 @@ rel:
       match lhs with
       |Term(name) ->
         error "rel_parse" ("stateless variable "^name^" is qualitifed with 'with' statement")
-      |Deriv(Term(name), wrt) ->
+      |Deriv(Term(name), Term(wrt)) ->
         if wrt <> "t" then
           error "rel_parse" ("derivative of "^name^" can only be wrt t")
         else if icn <> name then

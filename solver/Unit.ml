@@ -85,11 +85,6 @@ struct
         | Term(n) ->
           if UnitLib.has e n then ()
           else error "type error" ("unit "^n^" does not exist in environment.")
-        | Deriv(Term(n),t) ->
-          if UnitLib.has e n then
-          if UnitLib.has e t then ()
-          else error "type error" ("unit "^t^" does not exist in environment.")
-          else error "type error" ("unit "^n^" does not exist in environment.")
         | _ -> ()
       in
       let _ = ASTLib.iter a (fun x -> check x) in
@@ -114,8 +109,6 @@ struct
     in
     let conv (v:untid ast) : (untid ast) option =
       match v with
-      | Deriv(Term(name),t) -> let num = get_expr name and den = get_expr t in
-        Some (Op2(Div,num,den))
       | Term(name) -> let ty = get_expr name in
         Some ty
       | OpN(Add, lst) -> Some(tclist lst)

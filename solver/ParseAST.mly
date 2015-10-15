@@ -61,7 +61,7 @@ par:
   | term OPAR explst(expr,COMMA) CPAR {let name = $1 and args = $3 in OpN(Func(name),args)}
   | expr OBRAC ind CBRAC {let name = $1 and ind = $3 in Acc(name,ind)}
   | expr OBRAC explst(ind,COMMA) CBRAC {let name = $1 and inds = $3 in Acc(name, And(inds))}
-  | DERIV OPAR expr COMMA term CPAR {
+  | DERIV OPAR expr COMMA expr CPAR {
       let a = $3 and b =$5 in
       match (a,b) with
       | (x,v) -> Deriv(a, b)

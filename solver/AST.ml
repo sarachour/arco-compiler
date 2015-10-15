@@ -32,7 +32,7 @@ type 'a ast =
   | OpN of ast_opn*(('a ast) list)
   | Op2 of ast_op2*('a ast)*('a ast)
   | Op1 of ast_op1*(('a ast))
-  | Deriv of ('a ast)*('a)
+  | Deriv of ('a ast)*('a ast)
   | Decimal of float
   | Integer of int
 
@@ -80,7 +80,7 @@ struct
       | OpN(v,lst) -> list2str lst (opn2str v)
       | Op2(v,a,b) -> (ast2str a fn)^(op22str v)^(ast2str b fn)
       | Op1(v,a) -> (op12str v)^"("^(ast2str a fn)^")"
-      | Deriv(a,v) -> "deriv("^(ast2str a fn)^","^(fn v)^")"
+      | Deriv(a,v) -> "deriv("^(ast2str a fn)^","^(ast2str v fn)^")"
       | Decimal(d) -> string_of_float d
       | Integer(i) -> string_of_int i
 
@@ -109,7 +109,7 @@ struct
               let ne = Op1(op,_map e) in
               choose ne
             | Deriv(e,v) ->
-              let ne = Deriv(_map e, conv_term v) in
+              let ne = Deriv(_map e, _map v) in
               choose ne
             | Decimal(d) ->
               choose (Decimal(d))
@@ -164,7 +164,7 @@ struct
       in
       let rec _tosym (e:a ast) = match e with
         | Term(x) -> let sx = fn x in Symbol(sx)
-        | Deriv(Term(x),v) -> let sx = fn x and sv  = fn v in
+        | Deriv(Term(x),Term(v)) -> let sx = fn x and sv  = fn v in
           let wrt = [(sv,1)] in
           Op1(Deriv(wrt),Symbol(sx))
         | Deriv(_,_) -> error "to_symcaml" "unsupported expression: deriv of expression"
