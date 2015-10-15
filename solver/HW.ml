@@ -9,35 +9,30 @@ type compid =
   | LocalCompId of string
   | GlobalCompId of string* int
 
-type hwkind = HWInput | HwOutput | HwParam of float
+type hwkind = HKInput | HKOutput | HKParam of float
 
 type hwvid =
-  | HwInput of compid*string*propid
-  | HwOutput of compid*string*propid
-  | HwParam of string*float
+  | HNInput of compid*string*propid
+  | HNOutput of compid*string*propid
+  | HNParam of string*float
 
 type hwrel =
-  | HwFunction of hwvid ast
-  | HwState of hwvid ast
-  | HwNothing
+  | HRFunction of hwvid ast
+  | HRState of hwvid ast
+  | HRNothing
 
 type hwcnskind =
-  | PropRange of string
-  | PropError of string
+  | HCKPropRange of string
+  | HCKPropError of string
 
 type hwcns =
-  | GlobalPropRange of propid*range
-  | LocalPropRange of string*propid*range
-  | PropError of string*propid*string
+  | HCGlobalPropRange of propid*range
+  | HCLocalPropRange of string*propid*range
+  | HCPropError of string*propid*string
 
 
-type hwtype = hwkind*unt
-
-type hwvar = {
-  name: string;
-  rel : hwrel;
-  typ: hwtype;
-}
+type hwtype =
+  | HPortType of hwkind*((propid,untid) map)
 
 type hwcstr =
   | HCPropRange of propid*range*untid
@@ -45,6 +40,12 @@ type hwcstr =
 type hwcstrs = {
   mutable glbl : hwcstr set;
   mutable local : (string,hwcstr set) map
+}
+
+type hwvar = {
+  name: string;
+  rel : hwrel;
+  typ: hwtype;
 }
 
 
@@ -143,8 +144,12 @@ struct
   let hastime e =
     match (e.time) with Some(_) -> true | None -> false
 
+
   let hascomp e n =
     MAP.has (e.comps) n
+
+  let hasprop e n =
+    MAP.has (e.props) n
 
   let mkcomp e name =
     if hascomp e name then
@@ -153,6 +158,29 @@ struct
       let c : hwcomp = {name=name;vars=MAP.make(); cstrs=HwCstrLib.mkcstrs()} in
       let _ = MAP.put e.comps name c in
       e
+
+  let mkport e cname (hwkind:hwkind) iname (types:(propid*untid) list) =
+    if hascomp e cname = false then
+      error "mkport" ("comp with name "^cname^" already defined.")
+    else
+      let c = MAP.get e.comps cname in
+      if MAP.has c.vars iname then
+        error "mkport" ("variable with name "^iname^" already exists")
+      else
+        let prps : (propid,untid) map = MAP.make () in
+        let add_propunit ((p,x):propid*untid) =
+          if hasprop e p = false then
+            error "mkport" "prop doesn't exist"
+          else if UnitLib.has e.units x = false then
+            error "mkport" "unit doesn't exist"
+          else
+            let _ = MAP.put prps p x in
+            ()
+        in
+        let _ = List.iter add_propunit types in
+        let vrt = HPortType(hwkind,prps) in
+        let vr = {name=iname; rel=HRNothing; typ=vrt} in
+        MAP.put c.vars iname vr
 
   let mktime e name units =
     if hastime e then
@@ -170,8 +198,6 @@ struct
       let _ = e.time <- Some(name,s) in
       e
 
-  let hasprop e name =
-    MAP.has (e.props) name
 
   let mkprop e name units =
     if hasprop e name then

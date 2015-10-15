@@ -84,6 +84,9 @@ struct
 
   let to_list (type a) (s: a set) : a list=
     s.lst
+  let add_all (type a) (s: a set) (lst: a list): a set =
+    List.iter (fun x -> add s x; ()) lst;
+    s
 end
 
 

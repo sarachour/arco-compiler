@@ -32,10 +32,10 @@
 
 %token EOF EOL
 %token EQ COLON QMARK COMMA
-%token TYPE LET NONE
+%token TYPE LET NONE WHERE IN
 
 %token PROP TIME
-%token COMP END
+%token COMP INPUT OUTPUT PARAM END
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
@@ -43,6 +43,7 @@
 %type<string list> strlist
 %type <string> expr
 %type <unt> typ
+%type <(propid*untid) list> proptyplst
 %type <float> number
 
 %type <unit> comp
@@ -80,8 +81,26 @@ typ:
   | NONE {UNone}
   | QMARK {UVariant}
 
+proptyplst:
+  | TOKEN IN TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
+  | TOKEN IN TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
+
 comp:
-  | COMP TOKEN EOL {let name = $2 in let _ = HwLib.mkcomp dat name in ()}
+  | COMP TOKEN EOL {
+    let name = $2 in
+    let _ = set_cmpname name in
+    let _ = HwLib.mkcomp dat name in
+    ()
+  }
+  | comp INPUT TOKEN WHERE proptyplst EOL  {
+    let iname = $3 in
+    let typlst = $5 in
+    let cname = get_cmpname() in
+    let _ = HwLib.mkport dat cname HKInput iname typlst in
+    ()
+  }
+  | comp OUTPUT TOKEN WHERE proptyplst EOL                     {()}
+  | comp PARAM TOKEN COLON typ EQ DECIMAL EOL {()}
 
 block:
   | comp END       {()}
