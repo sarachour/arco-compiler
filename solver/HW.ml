@@ -41,6 +41,7 @@ type hwcomp = {
 
 type hwenv = {
   mutable units : unt_env;
+  mutable props : (string, untid set) map;
   mutable comps : (string,hwcomp) map;
 
 
@@ -48,10 +49,42 @@ type hwenv = {
 module HwLib =
 struct
 
-  let mkenv () = {units=UnitLib.mkenv(); comps=MAP.make() }
+  let mkenv () = {units=UnitLib.mkenv(); comps=MAP.make(); props=MAP.make()}
+
   let print e =
-   Printf.printf "==== Units ====\n";
-   UnitLib.print (e.units);
+   let print_props () =
+    let print_prop k v =
+      let print_units x r = r^" "^x in
+      let units= SET.fold v print_units "" in
+      Printf.printf "%s : %s\n" k units
+    in
+    MAP.iter (e.props) (fun k v -> print_prop k v)
+   in
+   let _ = Printf.printf "==== Units ====\n" in
+   let _ = UnitLib.print (e.units) in
+   let _ = Printf.printf "==== Props ====\n" in
+   let _ = print_props () in
+   ()
+
+  let hasprop e name =
+    MAP.has (e.props) name
+
+  let mkprop e name =
+    if hasprop e name then
+      error "mkprop" ("prop "^name^" already exists")
+    else
+      let _ = e.props <- MAP.put (e.props) name (SET.make (fun x y -> x = y)) in
+      e
+
+  let mkunit4prop e name uname =
+    if hasprop e name = false then
+      error "mkunit4prop" ("property "^name^" does not exist")
+    else if UnitLib.has (e.units) uname = false then
+      error "mkunit4prop" ("unit "^uname^" does not exist")
+    else
+      let st = MAP.get (e.props) name in
+      let _ = SET.add st uname in
+      e
 
 end
 

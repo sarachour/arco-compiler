@@ -19,12 +19,15 @@
 
 
 %token EOF EOL
-%token EQ COLON QMARK
+%token EQ COLON QMARK COMMA
 %token TYPE LET NONE
+
+%token PROP
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
 
+%type<string list> strlist
 %type <string> expr
 %type <unt> typ
 %type <float> number
@@ -37,6 +40,10 @@
 
 %%
 
+strlist:
+  | TOKEN                    {let e = $1 in [e]}
+  | TOKEN COMMA strlist      {let lst = $3 and e = $1 in e::lst }
+
 expr:
   | OPERATOR          {let e = $1 in e}
   | TOKEN             {let e = $1 in e}
@@ -46,6 +53,7 @@ expr:
   | expr DECIMAL      {let rest = $1 and e = string_of_float $2 in rest^e}
   | expr TOKEN        {let rest = $1 and e = $2 in rest^e}
   | expr OPERATOR     {let rest = $1 and e = $2 in rest^e}
+  | expr COMMA        {let rest = $1 in rest^"," }
 
 
 number:
@@ -66,6 +74,12 @@ st:
     let u1 = $3 and n1 = $2 in
     let u2 = $6 and n2 = $5 in
     dat.units <- UnitLib.mkrule (dat.units) u1 n1 u2 n2
+  }
+  | PROP TOKEN COLON strlist EOL {
+    let units = $4 and name = $2 in
+    let _ = HwLib.mkprop dat name in
+    let _ = List.iter (fun x -> let _ = HwLib.mkunit4prop dat name x in ()) units in
+    ()
   }
   | EOL             {}
 
