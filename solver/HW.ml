@@ -209,12 +209,19 @@ struct
     else
         MAP.get e.comps cname
 
+
   let getvar e cname iname =
     let c = getcomp e cname in
     if MAP.has c.vars iname = false then
       error "getport" ("port with name "^iname^" does not exist.")
     else
       MAP.get c.vars iname
+
+  let getunit e (cname:string) pname propname =
+    let p = getvar e cname pname in
+    match p.typ with
+    | HPortType(_,unts) -> MAP.get unts propname
+    | _ -> error "getunit" "param doesn't have type unit."
 
 
   let mkport e cname (hwkind:pkind) iname (types:(propid*untid) list) =

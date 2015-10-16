@@ -96,13 +96,22 @@ expr:
       | HPortType(HKOutput,_) -> HNOutput(LocalCompId(cname),xn,"?","?")
       | HParamType(vl, un) -> HNParam(xn,vl,un)
     in
+    let getcmpid c =
+      match c with
+      | LocalCompId(v) -> v
+      | GlobalCompId(v,i) -> v
+    in
     let hwid2propid x =
       match x with
       | OpN(Func(prop), [Term(id)]) ->
         begin
         match id with
-        | HNInput(c,v,pr,unt) -> Some(Term(HNInput(c,v,prop,unt)))
-        | HNOutput(c,v,pr,unt) -> Some(Term(HNOutput(c,v,prop,unt)))
+        | HNInput(c,v,pr,unt) ->
+          let nunt = HwLib.getunit dat (getcmpid c) v prop in
+          Some(Term(HNInput(c,v,prop,nunt)))
+        | HNOutput(c,v,pr,unt) ->
+          let nunt = HwLib.getunit dat (getcmpid c) v prop in
+          Some(Term(HNOutput(c,v,prop,nunt)))
         | HNParam(c,v,u) -> error "expr" "param doesn't have physical properties"
         | HNTime -> error "expr" "time doesn't have physical properties"
         end
