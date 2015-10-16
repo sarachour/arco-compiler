@@ -66,6 +66,7 @@ struct
       | Mult -> "*"
       | Add -> "+"
       | Sub -> "-"
+      | Func(_) -> ","
       in
       let op12str t = match t with
       | Exp -> "exp"
@@ -77,6 +78,7 @@ struct
       in
       match a with
       | Term(x) -> fn x
+      | OpN(Func(name),lst) ->name^"("^(list2str lst (opn2str (Func(name))  ))^")"
       | OpN(v,lst) -> list2str lst (opn2str v)
       | Op2(v,a,b) -> (ast2str a fn)^(op22str v)^(ast2str b fn)
       | Op1(v,a) -> (op12str v)^"("^(ast2str a fn)^")"

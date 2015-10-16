@@ -18,7 +18,7 @@ type hwvid =
 
 type hwrel =
   | HRFunction of hwvid ast
-  | HRState of hwvid ast
+  | HRState of (hwvid ast)*(hwvid)
   | HRNothing
 
 type hwcnskind =
@@ -47,7 +47,7 @@ type hwcstrs = {
 
 type hwvar = {
   name: string;
-  rel : hwrel;
+  mutable rel : hwrel;
   typ: hwtype;
 }
 
@@ -122,6 +122,13 @@ struct
 
   let mkenv () = {units=UnitLib.mkenv(); comps=MAP.make(); props=MAP.make(); time=None}
 
+  let hwvid2str e =
+    match e with
+    | HNInput(c,v,prop,unt) -> prop^"{"^v^"}:"^unt
+    | HNOutput(c,v,prop,unt) -> prop^"{"^v^"}:"^unt
+    | HNParam(v,vl,u) -> v
+    | HNTime -> "t"
+
   let print e =
     let pkind2str v =
       match v with
@@ -133,8 +140,17 @@ struct
       | HPortType(knd,tps) -> "port "^(pkind2str knd)
       | HParamType(v,t) -> "param : "^(UnitLib.unit2str t)^" = "^(string_of_float v)
     in
+    let rel2str v =
+      match v with
+      | HRNothing -> "(none)"
+      | HRFunction(r) -> "fun "^ASTLib.ast2str r (fun x -> hwvid2str x)
+      | HRState(r,ic) -> "state "^ASTLib.ast2str r (fun x -> hwvid2str x)^" initial:"^(hwvid2str ic)
+    in
     let print_var (x:hwvar) =
-      Printf.printf "   %s of %s\n" x.name (type2str x.typ)
+      let _ = Printf.printf "   %s of %s" x.name (type2str x.typ) in
+      let _ = Printf.printf " : %s " (rel2str x.rel) in
+      let _ = Printf.printf "\n" in
+      ()
     in
     let print_comp c =
       let _ = Printf.printf "==> component %s \n" c.name in
@@ -234,6 +250,13 @@ struct
     else
     let vr = {name=iname; rel=HRNothing; typ=HParamType(vl,t)} in
     MAP.put c.vars iname vr
+
+  let mkrel e cname pname (rel:hwrel) =
+    let p = getvar e cname pname in
+    match p.rel with
+    | HRNothing -> p.rel <- rel
+    | _ -> error "mkrel" ("relation already exists for port "^pname)
+
 
   let mktime e name units =
     if hastime e then

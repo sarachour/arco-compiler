@@ -34,6 +34,7 @@ rule env = parse
   | "end"                   {END}
   | "input"                 {INPUT}
   | "output"                {OUTPUT}
+  | "initially"             {INITIALLY}
   | "where"                 {WHERE}
   | "param"                 {PARAM}
   | "in"                    {IN}

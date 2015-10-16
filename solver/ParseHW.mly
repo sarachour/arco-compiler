@@ -27,12 +27,14 @@
     | Some(v) -> v
     | None -> error "get_cmpname" "no component name defined"
 
+  let print_expr e =
+    ASTLib.ast2str e (fun x -> HwLib.hwvid2str x)
 %}
 
 
 %token EOF EOL
 %token EQ COLON QMARK COMMA
-%token TYPE LET NONE WHERE IN
+%token TYPE LET NONE INITIALLY IN WHERE
 
 %token PROP TIME
 %token COMP INPUT OUTPUT PARAM REL END
@@ -47,7 +49,7 @@
 %type <(propid*untid) list> proptyplst
 %type <float> number
 
-%type <hwrel> rel
+%type <string*hwrel> rel
 %type <unit> comp
 %type <unit> block
 %type <unit> st
@@ -94,29 +96,47 @@ expr:
       | HPortType(HKOutput,_) -> HNOutput(LocalCompId(cname),xn,"?","?")
       | HParamType(vl, un) -> HNParam(xn,vl,un)
     in
-    let hwid2prophwid x =
+    let hwid2propid x =
       match x with
-      | OpN(Func(prop), [Term(id)]) -> None
+      | OpN(Func(prop), [Term(id)]) ->
+        begin
+        match id with
+        | HNInput(c,v,pr,unt) -> Some(Term(HNInput(c,v,prop,unt)))
+        | HNOutput(c,v,pr,unt) -> Some(Term(HNOutput(c,v,prop,unt)))
+        | HNParam(c,v,u) -> error "expr" "param doesn't have physical properties"
+        | HNTime -> error "expr" "time doesn't have physical properties"
+        end
       | OpN(Func(_),_) -> error "expr" "cannot have functions"
       | Acc(_,_) -> error "expr" "cannot have accesses"
       | _ -> None
     in
     let hwast = ASTLib.map strast str2hwid in
-    let hwpropast = ASTLib.map strast str2hwid in
-    hwast
+    let hwpropast = ASTLib.trans hwast hwid2propid  in
+    hwpropast
   }
 
 rel:
     | expr EQ expr {
-      HRNothing
+      let lhs = $1 and rhs = $3 in
+      match lhs with
+      | Term(HNOutput(x,oname,z,w)) -> (oname,HRFunction(rhs))
+      | Deriv(_,_) -> error "fnrel" "must provide an initial condition for derivative."
+      | _ -> error "fnrel" "left hand side is too complex."
     }
-    | expr EQ expr WHERE TOKEN OPERATOR INTEGER OPERATOR EQ expr {
-      let lhs = $1 and rhs = $3 and
-        icn = $5 and opl = $6 and opr = $8 and icv = $7 in
-      if opl <> "(" or opr <> ")" then
-        error "strel" "expected parenthesis"
-      else
-        HRNothing
+    | expr EQ expr INITIALLY expr {
+      let lhs = $1 and rhs = $3 and icn = $5 in
+      match lhs with
+      | Deriv(Term(HNOutput(x,oname,z,w)), Term(r)) ->
+        if r <> HNTime then
+          error "strel" "derivative must be with respect to time."
+        else
+          begin
+          match icn with
+          | Term(HNInput(a,icname,c,d)) -> (oname,HRState(rhs,HNInput(a,icname,c,d)))
+          | _ -> error "strel" ""
+          end
+      | Term(v) -> error "strel" "left hand side must by deriv if initial condition is specified."
+      | _ -> error "strel" ("left hand side must be simple derivative or term of output: "^(print_expr lhs))
     }
 
 
@@ -159,7 +179,9 @@ comp:
     ()
   }
   | comp REL rel EOL {
-
+    let pname,r = $3 and cname = get_cmpname() in
+    let _ = HwLib.mkrel dat cname pname r in
+    ()
   }
   | comp EOL   {}
 
