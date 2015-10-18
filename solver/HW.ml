@@ -10,9 +10,9 @@ type compid =
   | HCMGlobal of string* int
 
 
+type hwvkind = HNInput | HNOutput
 type hwvid =
-  | HNInput of compid*string*propid*untid
-  | HNOutput of compid*string*propid*untid
+  | HNPort of hwvkind*compid*string*propid*untid
   | HNParam of string*float*unt
   | HNTime
 
@@ -66,8 +66,7 @@ struct
 
   let hwvid2str e =
     match e with
-    | HNInput(c,v,prop,unt) -> prop^"{"^v^"}:"^unt
-    | HNOutput(c,v,prop,unt) -> prop^"{"^v^"}:"^unt
+    | HNPort(_,c,v,prop,unt) -> prop^"{"^v^"}:"^unt
     | HNParam(v,vl,u) -> v
     | HNTime -> "t"
 
@@ -151,6 +150,9 @@ struct
     else
         MAP.get e.comps cname
 
+  let hasvar e cname iname =
+    let c = getcomp e cname in
+    MAP.has c.vars iname
 
   let getvar e cname iname =
     let c = getcomp e cname in
@@ -162,7 +164,11 @@ struct
   let getunit e (cname:string) pname propname =
     let p = getvar e cname pname in
     match p.typ with
-    | HPortType(_,unts) -> MAP.get unts propname
+    | HPortType(_,unts) ->
+      if MAP.has unts propname then
+        MAP.get unts propname
+      else
+        error "getunit" ("unit does not exist for param "^propname)
     | _ -> error "getunit" "param doesn't have type unit."
 
 

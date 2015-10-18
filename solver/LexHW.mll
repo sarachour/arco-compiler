@@ -32,6 +32,7 @@ rule env = parse
   | "time"                  {TIME}
   | "comp"                  {COMP}
   | "end"                   {END}
+
   | "input"                 {INPUT}
   | "output"                {OUTPUT}
   | "initially"             {INITIALLY}
@@ -39,9 +40,15 @@ rule env = parse
   | "param"                 {PARAM}
   | "in"                    {IN}
   | "rel"                   {REL}
+
+  | "ensure"                {ENSURE}
+  | "assume"                {ASSUME}
+  | "mag"                   {MAG}
+  | "err"                   {ERR}
+
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}
-  | op as t                 {OPERATOR(t)}
+  | op as t                 {OP(t)}
   | str as t                {STRING(t)}
   | eof                     {EOF}

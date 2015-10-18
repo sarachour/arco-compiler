@@ -85,14 +85,14 @@ pow:
 
 md:
   | pow {let e = $1 in e}
-  | explst(pow,MULT) {
-    let args = $1 in
-    OpN(Mult, args)
-  }
   | explst(pow,DIV) {
     let args = $1 in
     let _ = assert_len args 2 "div must have two args" in
     Op2(Div, get args 0, get args 1)
+  }
+  | explst(pow,MULT) {
+    let args = $1 in
+    OpN(Mult, args)
   }
   | SUB md {
       let e = $2 in Op1(Neg,e)

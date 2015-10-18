@@ -1,5 +1,6 @@
 %{
   open HW
+  open HWCstr
   open Util
   open Unit
 
@@ -38,13 +39,17 @@
 
 %token PROP TIME
 %token COMP INPUT OUTPUT PARAM REL END
-%token <string> STRING TOKEN OPERATOR
+
+%token ENSURE ASSUME MAG ERR
+
+%token <string> STRING TOKEN OP
 %token <float> DECIMAL
 %token <int> INTEGER
 
 %type<string list> strlist
 %type <string> sexpr
 %type <hwvid ast> expr
+%type <hcvid ast> errexpr
 %type <unt> typ
 %type <(propid*untid) list> proptyplst
 %type <float> number
@@ -65,14 +70,14 @@ strlist:
   | TOKEN COMMA strlist      {let lst = $3 and e = $1 in e::lst }
 
 sexpr:
-  | OPERATOR          {let e = $1 in e}
+  | OP          {let e = $1 in e}
   | TOKEN             {let e = $1 in e}
   | INTEGER           {let e = $1 in string_of_int e}
   | DECIMAL           {let e = $1 in string_of_float e}
   | sexpr INTEGER      {let rest = $1 and e = string_of_int $2 in rest^e}
   | sexpr DECIMAL      {let rest = $1 and e = string_of_float $2 in rest^e}
   | sexpr TOKEN        {let rest = $1 and e = $2 in rest^e}
-  | sexpr OPERATOR     {let rest = $1 and e = $2 in rest^e}
+  | sexpr OP     {let rest = $1 and e = $2 in rest^e}
   | sexpr COMMA        {let rest = $1 in rest^"," }
 
 
@@ -80,6 +85,45 @@ number:
   | DECIMAL   {let e = $1 in e}
   | INTEGER   {let e = $1 in float(e)}
 
+errexpr:
+  | sexpr {
+    let exprstr = $1 in
+    let strast : string ast = string_to_ast exprstr in
+    let cname = get_cmpname() in
+    let tname,ttypes = HwLib.gettime dat in
+    let str2hwid x : hcvid=
+      if x = tname then HCNTime else
+      let x = HwLib.getvar dat cname x in
+      let xn = x.name in
+      match x.typ with
+      | HPortType(k, _) ->
+        let knd = if k = HKInput then HCNInput else HCNOutput in
+        HCNPort(knd,HCCMLocal(cname),xn,"?","?")
+      | HParamType(vl, un) -> HCNParam(xn,vl,un)
+    in
+    let getcmpid c =
+      match c with
+      | HCCMLocal(v) -> v
+    in
+    let hwid2propid x =
+      match x with
+      | OpN(Func("E"), [Term(HCNPort(k,c,v,pr,unt))]) ->
+        begin
+        match k with
+          | HCNOutput -> Some(Term(HCNPort(HCNOutputErr,c,v,pr,unt)))
+          | HCNInput -> Some(Term(HCNPort(HCNInputErr,c,v,pr,unt)))
+        end
+      | OpN(Func(nprop), [Term(HCNPort(k,c,v,pr,unt))]) ->
+        let nunt = HwLib.getunit dat (getcmpid c) v nprop in
+        Some(Term(HCNPort(k,c,v,nprop,nunt)))
+      | OpN(Func(_),_) -> error "expr" "cannot have functions"
+      | Acc(_,_) -> error "expr" "cannot have accesses"
+      | _ -> None
+    in
+    let hwast = ASTLib.map strast str2hwid in
+    let hwpropast = ASTLib.trans hwast hwid2propid  in
+    hwpropast
+  }
 
 expr:
   | sexpr {
@@ -89,11 +133,14 @@ expr:
     let tname,ttypes = HwLib.gettime dat in
     let str2hwid x =
       if x = tname then HNTime else
-      let x = HwLib.getvar dat cname x in
+      let x = if HwLib.hasvar dat cname x
+        then HwLib.getvar dat cname x
+        else error "expr" ("variable "^x^" not found in "^cname)
+      in
       let xn = x.name in
       match x.typ with
-      | HPortType(HKInput, _) -> HNInput(HCMLocal(cname),xn,"?","?")
-      | HPortType(HKOutput,_) -> HNOutput(HCMLocal(cname),xn,"?","?")
+      | HPortType(HKInput, _) -> HNPort(HNInput,HCMLocal(cname),xn,"?","?")
+      | HPortType(HKOutput,_) -> HNPort(HNOutput,HCMLocal(cname),xn,"?","?")
       | HParamType(vl, un) -> HNParam(xn,vl,un)
     in
     let getcmpid c =
@@ -103,17 +150,10 @@ expr:
     in
     let hwid2propid x =
       match x with
-      | OpN(Func(prop), [Term(id)]) ->
+      | OpN(Func(nprop), [Term(HNPort(k,cmp,vname,prop,unt))]) ->
         begin
-        match id with
-        | HNInput(c,v,pr,unt) ->
-          let nunt = HwLib.getunit dat (getcmpid c) v prop in
-          Some(Term(HNInput(c,v,prop,nunt)))
-        | HNOutput(c,v,pr,unt) ->
-          let nunt = HwLib.getunit dat (getcmpid c) v prop in
-          Some(Term(HNOutput(c,v,prop,nunt)))
-        | HNParam(c,v,u) -> error "expr" "param doesn't have physical properties"
-        | HNTime -> error "expr" "time doesn't have physical properties"
+        let nunt = HwLib.getunit dat (getcmpid cmp) vname nprop in
+        Some(Term(HNPort(k,cmp,vname,nprop,nunt)))
         end
       | OpN(Func(_),_) -> error "expr" "cannot have functions"
       | Acc(_,_) -> error "expr" "cannot have accesses"
@@ -128,20 +168,20 @@ rel:
     | expr EQ expr {
       let lhs = $1 and rhs = $3 in
       match lhs with
-      | Term(HNOutput(x,oname,z,w)) -> (oname,HRFunction(rhs))
+      | Term(HNPort(HNOutput,x,oname,z,w)) -> (oname,HRFunction(rhs))
       | Deriv(_,_) -> error "fnrel" "must provide an initial condition for derivative."
       | _ -> error "fnrel" "left hand side is too complex."
     }
     | expr EQ expr INITIALLY expr {
       let lhs = $1 and rhs = $3 and icn = $5 in
       match lhs with
-      | Deriv(Term(HNOutput(x,oname,z,w)), Term(r)) ->
+      | Deriv(Term(HNPort(HNOutput,x,oname,z,w)), Term(r)) ->
         if r <> HNTime then
           error "strel" "derivative must be with respect to time."
         else
           begin
           match icn with
-          | Term(HNInput(a,icname,c,d)) -> (oname,HRState(rhs,HNInput(a,icname,c,d)))
+          | Term(HNPort(HNInput,a,icname,c,d)) -> (oname,HRState(rhs,HNPort(HNInput,a,icname,c,d)))
           | _ -> error "strel" ""
           end
       | Term(v) -> error "strel" "left hand side must by deriv if initial condition is specified."
@@ -191,6 +231,17 @@ comp:
     let pname,r = $3 and cname = get_cmpname() in
     let _ = HwLib.mkrel dat cname pname r in
     ()
+  }
+  | comp ENSURE MAG expr IN OP number COMMA number OP COLON typ EOL {
+    if $6 <> "(" || $10 <> ")" then
+      error "ensure" "range must have the form (...,..)"
+    else
+      let p = $4 and min = $7 and max = $8 and typ = $13 in
+      ()
+  }
+  | comp ASSUME ERR errexpr EQ errexpr COLON typ EOL {
+      let p = $4 and exp = $6 and typ = $8 in
+      ()
   }
   | comp EOL   {}
 

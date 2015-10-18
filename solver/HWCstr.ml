@@ -8,12 +8,10 @@ type compid =
   | HCCMLocal of string
 
 type propid = string
+type hcvkind = HCNInput | HCNOutput | HCNInputErr | HCNOutputErr
 type hcvid =
-  | HCNInput of compid*string*propid*untid
-  | HCNOutput of compid*string*propid*untid
+  | HCNPort of hcvkind*compid*string*propid*untid
   | HCNParam of string*float*unt
-  | HCNInputErr of compid*string*propid*untid
-  | HCNOutputErr of compid*string*propid*untid
   | HCNTime
 
 type hcrel =
