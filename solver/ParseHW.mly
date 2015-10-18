@@ -92,14 +92,14 @@ expr:
       let x = HwLib.getvar dat cname x in
       let xn = x.name in
       match x.typ with
-      | HPortType(HKInput, _) -> HNInput(LocalCompId(cname),xn,"?","?")
-      | HPortType(HKOutput,_) -> HNOutput(LocalCompId(cname),xn,"?","?")
+      | HPortType(HKInput, _) -> HNInput(HCMLocal(cname),xn,"?","?")
+      | HPortType(HKOutput,_) -> HNOutput(HCMLocal(cname),xn,"?","?")
       | HParamType(vl, un) -> HNParam(xn,vl,un)
     in
     let getcmpid c =
       match c with
-      | LocalCompId(v) -> v
-      | GlobalCompId(v,i) -> v
+      | HCMLocal(v) -> v
+      | HCMGlobal(v,i) -> v
     in
     let hwid2propid x =
       match x with
