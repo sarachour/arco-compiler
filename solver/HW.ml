@@ -28,7 +28,6 @@ type hwtype =
   | HPortType of pkind*((propid,untid) map)
   | HParamType of float*unt
 
-
 type hwvar = {
   name: string;
   mutable rel : hwrel;
