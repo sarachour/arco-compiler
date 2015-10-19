@@ -61,6 +61,7 @@
 
 %type<string list> strlist
 %type <string> sexpr
+%type <range> rng
 %type <hwvid ast> expr
 %type <hcvid ast> errexpr
 %type <unt> typ
@@ -108,6 +109,9 @@ sexpr:
 number:
   | DECIMAL   {let e = $1 in e}
   | INTEGER   {let e = $1 in float(e)}
+
+rng:
+  | OPARAN number COMMA number CPARAN {($2,$4)}
 
 errexpr:
   | sexpr {
@@ -266,12 +270,15 @@ comp:
   | comp ASSUME TIME number TOKEN EQ number TOKEN EOL {
 
   }
-  | comp ENSURE MAG expr IN OPARAN number COMMA number CPARAN COLON typ EOL {
-      let p = $4 and min = $7 and max = $8 and typ = $13 in
+  | comp ENSURE MAG expr IN rng COLON typ EOL {
+      let p = $4 and min,max = $6 and typ = $8 in
       ()
   }
   | comp ASSUME ERR errexpr EQ errexpr COLON typ EOL {
       let p = $4 and exp = $6 and typ = $8 in
+      ()
+  }
+  | comp ENSURE TIME IN rng COLON TOKEN EOL {
       ()
   }
   | comp EOL   {}
@@ -317,6 +324,12 @@ schem:
     ()
   }
   | schem CONN connterm ARROW connterm EOL {
+    ()
+  }
+  | schem ENSURE MAG TOKEN IN rng COLON TOKEN {
+    ()
+  }
+  | schem ENSURE TIME IN rng COLON TOKEN {
     ()
   }
   | schem EOL {
