@@ -3,6 +3,7 @@
   open HWCstr
   open Util
   open Unit
+  open Common
 
   open AST
   open ParseGenUtil
@@ -120,27 +121,23 @@ errexpr:
     let cname = get_cmpname() in
     let tname,ttypes = HwLib.gettime dat in
     let str2hwid x : hcvid=
-      if x = tname then HCNTime else
+      if x = tname then HCNTime("?") else
       let x = HwLib.getvar dat cname x in
       let xn = x.name in
       match x.typ with
       | HPortType(k, _) ->
-        let knd = if k = HKInput then HCNInput else HCNOutput in
-        HCNPort(knd,HCCMLocal(cname),xn,"?","?")
+        HCNPort(k,HCMLocal(cname),xn,"?","?")
       | HParamType(vl, un) -> HCNParam(xn,vl,un)
     in
     let getcmpid c =
       match c with
-      | HCCMLocal(v) -> v
+      | HCMLocal(v) -> v
+      | HCMGlobal(v,i) -> v
     in
     let hwid2propid x =
       match x with
       | OpN(Func("E"), [Term(HCNPort(k,c,v,pr,unt))]) ->
-        begin
-        match k with
-          | HCNOutput -> Some(Term(HCNPort(HCNOutputErr,c,v,pr,unt)))
-          | HCNInput -> Some(Term(HCNPort(HCNInputErr,c,v,pr,unt)))
-        end
+          Some(Term(HCNPortErr(k,c,v,pr,unt)))
       | OpN(Func(nprop), [Term(HCNPort(k,c,v,pr,unt))]) ->
         let nunt = HwLib.getunit dat (getcmpid c) v nprop in
         Some(Term(HCNPort(k,c,v,nprop,nunt)))
@@ -160,15 +157,14 @@ expr:
     let cname = get_cmpname() in
     let tname,ttypes = HwLib.gettime dat in
     let str2hwid x =
-      if x = tname then HNTime else
+      if x = tname then HNTime("?") else
       let x = if HwLib.hasvar dat cname x
         then HwLib.getvar dat cname x
         else error "expr" ("variable "^x^" not found in "^cname)
       in
       let xn = x.name in
       match x.typ with
-      | HPortType(HKInput, _) -> HNPort(HNInput,HCMLocal(cname),xn,"?","?")
-      | HPortType(HKOutput,_) -> HNPort(HNOutput,HCMLocal(cname),xn,"?","?")
+      | HPortType(k, _) -> HNPort(k,HCMLocal(cname),xn,"?","?")
       | HParamType(vl, un) -> HNParam(xn,vl,un)
     in
     let getcmpid c =
@@ -202,9 +198,10 @@ rel:
     }
     | expr EQ expr INITIALLY expr {
       let lhs = $1 and rhs = $3 and icn = $5 in
+      let istime x = match x with HNTime(_) -> true | _ -> false in
       match lhs with
       | Deriv(Term(HNPort(HNOutput,x,oname,z,w)), Term(r)) ->
-        if r <> HNTime then
+        if istime r then
           error "strel" "derivative must be with respect to time."
         else
           begin
@@ -244,14 +241,14 @@ comp:
     let iname = $3 in
     let typlst = $5 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HKInput iname typlst in
+    let _ = HwLib.mkport dat cname HNInput iname typlst in
     ()
   }
   | comp OUTPUT TOKEN WHERE proptyplst EOL  {
     let iname = $3 in
     let typlst = $5 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HKOutput iname typlst in
+    let _ = HwLib.mkport dat cname HNOutput iname typlst in
     ()
   }
   | comp PARAM TOKEN COLON typ EQ number EOL {

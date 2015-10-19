@@ -15,7 +15,7 @@ let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
 let str = '"' [^ '"']* '"'
 let decimal = ['0'-'9']*'.'['0'-'9']+
 let integer = ['0'-'9']+
-let op = ['[' ']' '(' ')' '+' '-' '*' '^' '.' '/' ',']+
+let op = ['[' ']' '+' '-' '*' '^' '.' '/']+
 
 rule env = parse
   | whitespace              {env lexbuf}
@@ -24,16 +24,29 @@ rule env = parse
   | eof                     {EOF}
   | "with"                  {WITH}
   | "rel"                   {REL}
+
   | ":"                     {COLON}
   | "="                     {EQ}
+  | "("                     {OPARAN}
+  | ")"                     {CPARAN}
+  | ","                     {COMMA}
+
   | "name"                  {NAME}
   | "let"                   {LET}
   | "type"                  {TYPE}
+  | "in"                    {IN}
+
   | "input"                 {INPUT}
   | "output"                {OUTPUT}
   | "local"                 {LOCAL}
   | "param"                 {PARAM}
   | "time"                  {TIME}
+
+  | "ensure"                {ENSURE}
+  | "assume"                {ASSUME}
+  | "mag"                   {MAG}
+  | "err"                   {ERR}
+
   | "none"                  {NONE}
   | "?"                     {QMARK}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}

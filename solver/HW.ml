@@ -2,19 +2,14 @@ open AST
 open Unit
 open Util
 open HWCstr
+open Common
+
 type propid = string
 
-
-type compid =
-  | HCMLocal of string
-  | HCMGlobal of string* int
-
-
-type hwvkind = HNInput | HNOutput
 type hwvid =
   | HNPort of hwvkind*compid*string*propid*untid
   | HNParam of string*float*unt
-  | HNTime
+  | HNTime of untid
 
 type hwrel =
   | HRFunction of hwvid ast
@@ -22,10 +17,8 @@ type hwrel =
   | HRNothing
 
 
-type pkind = HKInput | HKOutput
-
 type hwtype =
-  | HPortType of pkind*((propid,untid) map)
+  | HPortType of hwvkind*((propid,untid) map)
   | HParamType of float*unt
 
 type hwvar = {
@@ -72,13 +65,13 @@ struct
     match e with
     | HNPort(_,c,v,prop,unt) -> prop^"{"^v^"}:"^unt
     | HNParam(v,vl,u) -> v
-    | HNTime -> "t"
+    | HNTime(_) -> "t"
 
   let print e =
     let pkind2str v =
       match v with
-      | HKInput -> "input"
-      | HKOutput -> "output"
+      | HNInput -> "input"
+      | HNOutput -> "output"
     in
     let type2str v =
       match v with
@@ -113,7 +106,7 @@ struct
    let print_time () =
     match (e.time) with
     | Some(x,v) -> print_prop x v
-    | None -> Printf.printf "(no time variable defined)"
+    | None -> Printf.printf "(no time variable defined)\n"
   in
    let _ = Printf.printf "==== Units ====\n" in
    let _ = UnitLib.print (e.units) in
@@ -176,7 +169,7 @@ struct
     | _ -> error "getunit" "param doesn't have type unit."
 
 
-  let mkport e cname (hwkind:pkind) iname (types:(propid*untid) list) =
+  let mkport e cname (hwkind:hwvkind) iname (types:(propid*untid) list) =
     if hascomp e cname = false then
       error "mkport" ("comp with name "^cname^" already defined.")
     else

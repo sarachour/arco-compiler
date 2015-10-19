@@ -1,38 +1,36 @@
 open AST
 open Unit
 open Util
+open MathCstr
+open Common
 
 exception MathException of string
 
 let error n s = raise (MathException (n^": "^s))
-type mid = string
 
-type mrel = MState of (mid ast)*float | MFunction of (mid ast) | MNothing
 
-type mkind = Time | Input | Output | Local | Param of float
 
-type mv_ensure =
-  | MMagEns of float*float
-  | MErrEns of (mid ast)
+type mid =
+  | MNVar of mkind*string*unt
+  | MNParam of string*float*unt
+  | MNTime of unt
 
-type mv_assume =
-  | MMagAsm of float*float
-  | MErrAsm of (mid ast)
+type mrel = MRState of (mid ast)*float | MRFunction of (mid ast) | MRNone
 
-type mtype = mkind*unt
+
+type mtype = mid
 
 type mvar = {
-  name: mid;
-  mutable ens: mv_ensure set;
-  mutable asm: mv_assume set;
+  name: string;
   mutable rel: mrel;
   typ: mtype;
 }
 
 type menv = {
-  mutable vars : (mid, mvar) map;
+  mutable vars : (string, mvar) map;
   mutable units: unt_env;
-  mutable time : mid option;
+  mutable time : string option;
+  mutable cstr: string;
 }
 
 
@@ -40,29 +38,41 @@ module MathLib:
 sig
   val mkenv : unit -> menv
   val print : menv -> unit
-  val mkvar : menv -> mid -> mkind -> unt -> menv
-  val mkstrel : menv -> mid -> mid ast -> float -> menv
-  val mkrel : menv -> mid -> mid ast -> menv
+  val mkvar : menv -> string -> mkind -> unt -> menv
+  val mktime : menv -> string -> unt -> menv
+  val getvar : menv -> string -> mvar
+  val mkparam : menv -> string -> float -> unt -> menv
+  val mkstrel : menv -> string -> mid ast -> float -> menv
+  val mkrel : menv -> string -> mid ast -> menv
 end =
 struct
   let refl x y = (x = y)
   let mkenv () : menv =
-    {vars=MAP.make(); time=None; units=UnitLib.mkenv()}
+    {vars=MAP.make(); time=None; units=UnitLib.mkenv(); cstr=""}
+
+  let mid2str x =
+    match x with
+    | MNVar(_,n,u) -> n^":"^(UnitLib.unit2str u)
+    | MNParam(n,v,u) -> n^":"^(UnitLib.unit2str u)
+    | MNTime(u) -> "t:"^(UnitLib.unit2str u)
 
   let kind2str (k:mkind) : string = match k with
-    | Input -> "input"
-    | Output -> "output"
-    | Local -> "local"
-    | Param(v) -> "param ("^(string_of_float v)^")"
-    | Time -> "time"
+    | MInput -> "input"
+    | MOutput -> "output"
+    | MLocal -> "local"
 
   let rel2str (v:mrel) : string = match v with
-    | MState(r,ic) -> (ASTLib.ast2str r (fun x -> x))^" | ic = "^(string_of_float ic)
-    | MFunction(r) -> (ASTLib.ast2str r (fun x -> x))
-    | MNothing -> "(none)"
+    | MRState(r,ic) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_float ic)
+    | MRFunction(r) -> (ASTLib.ast2str r (fun x -> mid2str x))
+    | MRNone -> "(none)"
 
-  let typ2str (v:mtype) : string = match v with
-    |(k,u) -> (kind2str k)^":"^(UnitLib.unit2str u)
+  let mid2unit (x:mid) : unt = match x with
+    |MNVar(_,_,u) -> u
+    |MNParam(_,_,u) -> u
+    |MNTime(u) -> u
+
+
+  let typ2str (v:mtype) : string = mid2str v
 
   let print_var (v:mvar) : unit=
     Printf.printf "%s : %s = %s\n" (v.name) (typ2str v.typ) (rel2str v.rel)
@@ -74,6 +84,9 @@ struct
    Printf.printf "==== Vars =====\n";
    MAP.iter (m.vars) (fun k v -> print_var v)
 
+  let gettime e =
+   e.time
+
   let getvar e name =
     if MAP.has (e.vars) name = false then
       error "mkrel" ("variable "^name^" does not exist.")
@@ -83,7 +96,21 @@ struct
   let getunit e name =
     let n = getvar e name in
     match n.typ with
-    | (k,u) -> u
+    | MNVar(_,_,u) -> u
+    | MNParam(_,_,u) -> u
+    | MNTime(u) -> u
+
+  let mktime e name un : menv =
+    if MAP.has (e.vars) name then
+      error "mkvar" ("variable "^name^" already exists.")
+    else
+    let _ = e.time <- Some(name) in
+    if UnitTypeChecker.valid (e.units) un then
+      let v = {name=name; rel=MRNone; typ=MNTime(un)} in
+      let _ = e.vars <- MAP.put (e.vars) name v in
+      e
+    else
+      error "mkvar" "type is invalid"
 
 
   let mkvar e name knd un : menv =
@@ -91,30 +118,49 @@ struct
       error "mkvar" ("variable "^name^" already exists.")
     else
       begin
-      if knd = Time then
-        e.time <- Some(name);
       if UnitTypeChecker.valid (e.units) un then
-        let v = {name=name; ens=(SET.make refl); asm=(SET.make refl); rel=MNothing; typ=(knd,un)} in
+        let v = {name=name; rel=MRNone; typ=MNVar(knd,name,un)} in
         let _ = e.vars <- MAP.put (e.vars) name v in
         e
       else
         error "mkvar" "type is invalid"
       end
-  let mkstrel e name rhs ic =
+
+  let mkparam e name vl un : menv =
+    if MAP.has (e.vars) name then
+      error "mkparam" ("param "^name^" already exists.")
+    else
+      begin
+      if UnitTypeChecker.valid (e.units) un then
+        let v = {name=name; rel=MRNone; typ=MNParam(name,vl,un)} in
+        let _ = e.vars <- MAP.put (e.vars) name v in
+        e
+      else
+        error "mkvar" "type is invalid"
+      end
+
+  let mkstrel e name (rhs:mid ast) ic =
     if MAP.has (e.vars) name = false then
       error "mkstrel" ("variable "^name^" does not exist.")
     else
       let dat = MAP.get (e.vars) name in
-      if dat.rel <> MNothing then
+      if dat.rel <> MRNone then
         error "mkstrel" ("variable "^name^" already has relation defined.")
       else
-        let get_type x = getunit e x in
+        let getkind x = match x with
+        |MNVar(k,_,_) -> k
+        | _ -> error "mkstrel" "must be var"
+        in
         match e.time with
         | Some(tv) ->
-          let tl = UnitTypeChecker.typeof (Deriv(Term(name),Term(tv))) get_type in
-          let tr = UnitTypeChecker.typeof rhs get_type in
+          let tu = (getvar e tv).typ in
+          let lu = (getvar e name).typ in
+          let lk = getkind ((getvar e name).typ) in
+          let lhs : mid ast= (Deriv(Term(lu),Term(tu))) in
+          let tr : untid ast = UnitTypeChecker.typeof rhs mid2unit in
+          let tl : untid ast= UnitTypeChecker.typeof lhs mid2unit in
           if UnitTypeChecker.typecheck tl tr then
-            let _ = dat.rel <- MState(rhs,ic) in
+            let _ = dat.rel <- MRState(rhs,ic) in
             e
           else
             error "mkstrel" ("variable "^name^" doesn't type check with expression: "^
@@ -128,14 +174,15 @@ struct
       error "mkrel" ("variable "^name^" does not exist.")
     else
       let dat = MAP.get (e.vars) name in
-      if dat.rel <> MNothing then
+      if dat.rel <> MRNone then
         error "mkrel" ("variable "^name^" already has relation defined.")
       else
         let get_type x = getunit e x in
-        let tl = UnitTypeChecker.typeof (Term(name)) get_type in
-        let tr = UnitTypeChecker.typeof rhs get_type in
+        let mid = (getvar e name).typ in
+        let tl = UnitTypeChecker.typeof (Term(mid)) mid2unit in
+        let tr = UnitTypeChecker.typeof rhs mid2unit in
         if UnitTypeChecker.typecheck tl tr then
-          let _ = dat.rel <- MFunction(rhs) in
+          let _ = dat.rel <- MRFunction(rhs) in
           e
         else
           error "mkrel"  ("variable "^name^" doesn't type check with expression: "^

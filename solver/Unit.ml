@@ -90,9 +90,9 @@ struct
       let _ = ASTLib.iter a (fun x -> check x) in
       true
 
-  let typeof (expr:'b ast) (lookup : 'b -> unt) : untid ast =
+  let typeof (type b) (expr:b ast) (lookup : b -> unt) : untid ast =
     let tostr (v: untid ast) : string = ASTLib.ast2str v (fun x -> x) in
-    let get_expr (v: 'b) : untid ast =
+    let get_expr (v: b) : untid ast =
     let t = lookup v in
       match t with
       | UNone -> Integer(1)
@@ -107,14 +107,14 @@ struct
       | h::t -> List.fold_right tc t h
       | [] -> Integer(1)
     in
-    let conv (v:untid ast) : (untid ast) option =
+    let conv (v:(untid ast)) : (untid ast) option =
       match v with
-      | Term(name) -> let ty = get_expr name in
-        Some ty
       | OpN(Add, lst) -> Some(tclist lst)
       | OpN(Sub,lst) -> Some(tclist lst)
+      | Deriv(u1,u2) -> Some(Op2(Div,u1,u2))
       | _ -> None
     in
+    let expr : untid ast= ASTLib.expand expr get_expr in
     ASTLib.trans expr conv
 
 

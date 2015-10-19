@@ -9,24 +9,22 @@ time t : s
 
 input A : m
 local B : m
-output O : m^2/s^2
+output O : (m^2)/(s^2)
 param K1 : 1/s = 0.123
 param K2 : 1/s = 0.245
 
 %assume the magnitude of the stimulus is beteween 0 and 1
-assume mag A is [0,1] : m
+assume mag A in (0,1) : m
 
 %automagically determine the magnitude of B
-assume mag B is [0,1] : m
+assume mag B in (0,1) : m
 
 % automagically derive range of O
-assume mag O is [0,1] : m
+assume mag O in (0,1) : m
+assume err E(A) = 0 : m
 
-assume error A is 0 : m
-
-ensure err O | E[A]*E[B]*K1*K2
-ensure err deriv B | (K1*E[A] + K2*E[B])*0.01 + 0.04
-
+ensure err E(O) = E(A)*E(B)*K1*K2 : m
+ensure err deriv(E(B),t) = (K1*E(A) + K2*E(B))*0.01 + 0.04 : m
 
 
 rel deriv(B,t) = K1*A - K2*B with B(0) = 0.25

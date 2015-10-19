@@ -9,8 +9,8 @@ time t : s
 
 input A : m
 local B : m
-output O : m^2/s^2
-output O2 : m^2
+output O : (m^2)/(s^2)
+output O2 : (m^2)/(s^2)
 param K1 : 1/s = 0.123
 param K2 : 1/s = 0.245
 

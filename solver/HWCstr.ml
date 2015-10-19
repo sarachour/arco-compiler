@@ -1,18 +1,18 @@
 open Util
 open Unit
 open AST
+open Common
 
 exception HwCstrError of string
 
-type compid =
-  | HCCMLocal of string
 
 type propid = string
-type hcvkind = HCNInput | HCNOutput | HCNInputErr | HCNOutputErr
+
 type hcvid =
-  | HCNPort of hcvkind*compid*string*propid*untid
+  | HCNPort of hwvkind*compid*string*propid*untid
+  | HCNPortErr of hwvkind*compid*string*propid*untid
   | HCNParam of string*float*unt
-  | HCNTime
+  | HCNTime of untid
 
 type hcrel =
   | HCRFun of hcvid ast

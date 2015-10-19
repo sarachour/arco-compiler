@@ -47,6 +47,7 @@ module ASTLib : sig
     val ast2str : ('a ast) -> ('a -> string) -> string
     val trans : ('b ast) -> ('b ast ->  ('b ast) option)  -> ('b ast)
     val map : ('a ast)  -> ('a -> 'b)  -> ('b ast)
+    val expand : ('a ast)  -> ('a -> 'b ast)  -> ('b ast)
     val iter : ('a ast) -> ('a ast -> unit) -> unit
     val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
@@ -86,7 +87,7 @@ struct
       | Integer(i) -> string_of_int i
 
 
-      let _MAP (type a) (type b) (a:a ast) (conv_elem:b ast -> b ast option) (conv_term: a -> b) : b ast  =
+      let _MAP (type a) (type b) (a:a ast) (conv_elem:b ast -> b ast option) (conv_term: a -> b ast) : b ast  =
         let rec _map (el:a ast) : b ast =
           let maplst (lst:(a ast) list) : (b ast) list =
             List.fold_left (fun r x -> (_map x)::r) [] lst
@@ -96,7 +97,7 @@ struct
           in
           match el with
             | Term(l) ->
-              let ne = Term(conv_term l) in
+              let ne = conv_term l in
               choose ne
             | Op2(op,e1,e2) ->
               let ne1 = _map e1 and ne2 = _map e2 in
@@ -120,12 +121,18 @@ struct
         _map a
 
     let trans (a:'b ast) (conv_elem: 'b ast -> ('b ast) option) : 'b ast =
-      _MAP a conv_elem (fun x -> x)
+      _MAP a conv_elem (fun x -> Term(x))
 
     let map (type x) (type y) (a:x ast) (cnv_term:x -> y) : y ast =
      let cnv_el (v:y ast) : (y ast) option = None in
-     let res : y ast = _MAP a cnv_el cnv_term in
+     let cnv_t (v:x) = Term(cnv_term v) in
+     let res : y ast = _MAP a cnv_el cnv_t in
      res
+
+    let expand (type x) (type y) (a:x ast) (cnv_term:x -> y ast) : y ast =
+      let cnv_el (v) = None in
+      let res : y ast = _MAP a cnv_el cnv_term in
+      res
 
     let fold (type x) (type y) (a:x ast) (fld:x ast -> y ->y)  (b0:y) : y =
       let rec _fold (el: x ast) (b: y) : y =
