@@ -15,7 +15,7 @@ let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
 let str = '"' [^ '"']* '"'
 let decimal = ['0'-'9']*'.'['0'-'9']+
 let integer = ['0'-'9']+
-let op = ['[' ']' '(' ')' '+' '-' '*' '^' '.' '/' ]+
+let op = ['[' ']' '(' ')' '+' '-' '*' '^' '.' '/' '@']+
 
 rule env = parse
   | ['\n']                  {Lexing.new_line lexbuf; EOL}
@@ -45,6 +45,8 @@ rule env = parse
   | "assume"                {ASSUME}
   | "mag"                   {MAG}
   | "err"                   {ERR}
+
+  | "copy"                  {COPY}
 
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}

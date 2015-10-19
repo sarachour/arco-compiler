@@ -64,6 +64,10 @@ struct
     cstrs=HwCstrLib.mkcstrs();
     time=None}
 
+  let copy_cid prop = "copy."^prop
+  let input_cid prop = "input."^prop
+  let output_cid prop = "output."^prop
+
   let hwvid2str e =
     match e with
     | HNPort(_,c,v,prop,unt) -> prop^"{"^v^"}:"^unt

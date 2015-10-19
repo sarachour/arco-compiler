@@ -42,6 +42,7 @@
 
 %token ENSURE ASSUME MAG ERR
 
+%token COPY
 %token <string> STRING TOKEN OP
 %token <float> DECIMAL
 %token <int> INTEGER
@@ -201,6 +202,24 @@ proptyplst:
 comp:
   | COMP TOKEN EOL {
     let name = $2 in
+    let _ = set_cmpname name in
+    let _ = HwLib.mkcomp dat name in
+    ()
+  }
+  | COMP COPY TOKEN EOL {
+    let name =HwLib.copy_cid ($3) in
+    let _ = set_cmpname name in
+    let _ = HwLib.mkcomp dat name in
+    ()
+  }
+  | COMP INPUT TOKEN EOL {
+    let name =HwLib.input_cid ($3) in
+    let _ = set_cmpname name in
+    let _ = HwLib.mkcomp dat name in
+    ()
+  }
+  | COMP OUTPUT TOKEN EOL {
+    let name = HwLib.output_cid ($3) in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()
