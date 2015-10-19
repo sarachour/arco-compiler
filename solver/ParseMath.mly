@@ -198,8 +198,15 @@ st:
     MathLib.mktime dat name typ;
     ()
   }
-  | ASSUME MAG TOKEN IN OPARAN INTEGER COMMA INTEGER CPARAN COLON typ EOL {
-
+  | ASSUME MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
+    let min = $6 and max = $8 and name = $3 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkmagasm c name min max in
+    ()
+  }
+  | ENSURE MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
+    let min = $6 and max = $8 and name = $3 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkmagens c name min max in
+    ()
   }
   | ASSUME ERR erel COLON typ EOL {
 

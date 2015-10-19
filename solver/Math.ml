@@ -30,7 +30,7 @@ type menv = {
   mutable vars : (string, mvar) map;
   mutable units: unt_env;
   mutable time : string option;
-  mutable cstr: string;
+  mutable cstr: mcstrs;
 }
 
 
@@ -38,6 +38,7 @@ module MathLib:
 sig
   val mkenv : unit -> menv
   val print : menv -> unit
+  val cstrs : menv -> mcstrs
   val mkvar : menv -> string -> mkind -> unt -> menv
   val mktime : menv -> string -> unt -> menv
   val getvar : menv -> string -> mvar
@@ -48,8 +49,9 @@ end =
 struct
   let refl x y = (x = y)
   let mkenv () : menv =
-    {vars=MAP.make(); time=None; units=UnitLib.mkenv(); cstr=""}
+    {vars=MAP.make(); time=None; units=UnitLib.mkenv(); cstr=MathCstrLib.mkcstrs()}
 
+  let cstrs e = e.cstr
   let mid2str x =
     match x with
     | MNVar(_,n,u) -> n^":"^(UnitLib.unit2str u)
