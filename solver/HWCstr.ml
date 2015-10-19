@@ -22,8 +22,12 @@ type hcinst =
   | HCFinite of int
   | HCInfinite
 
+type hcconn =
+ | HCConnInstPort of (string*string*int)
+ | HCConnCompPort of (string*string)
+
 type hwcstrs = {
-  conns: (string*string*int, (string*string*int) set) map;
+  conns: (string*string*int,hcconn set) map;
   mags: (string*string,range) map;
   errs: (string*string, hcrel) map;
   insts: (string,hcinst) map;
