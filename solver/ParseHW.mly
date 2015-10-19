@@ -18,9 +18,9 @@
   type conn =
     | AllConn
     | CompConn of string
-    | CompPortConn of string
-    | InstConn of string*indices
-    | InstPortConn of string*indices*string
+    | CompPortConn of string*string
+    | InstConn of string*(index list)
+    | InstPortConn of string*(index list)*string
 
   exception ParseHwError of string*string
 
@@ -53,7 +53,7 @@
 
 %token COPY
 
-%token SCHEMATIC INST CONN PORT
+%token SCHEMATIC INST CONN
 
 %token <string> STRING TOKEN OP
 %token <float> DECIMAL
@@ -67,6 +67,8 @@
 %type <(propid*untid) list> proptyplst
 %type <float> number
 
+%type <index> ind
+%type <index list> inds
 %type <conn> connterm
 %type <string> compname
 %type <string*hwrel> rel
@@ -277,19 +279,19 @@ comp:
 ind:
   | INTEGER COLON {let s = $1 in IToEnd(s)}
   | COLON INTEGER {let s = $2 in IToStart(s)}
-  | INTEGER COLON INTEGER {let s = $1 and e = $2 in IRange(s,e)}
-  | INTEGER COLON INTEGER
+  | INTEGER COLON INTEGER {let s = $1 and e = $3 in IRange(s,e)}
+  | INTEGER           {let i = $1 in IIndex(i)}
+
+inds:
+  | ind {let a = $1 in [a]}
+  | ind COMMA inds {let a = $1 and lst = $3 in a::lst}
+
 connterm:
   | STAR                      {AllConn}
   | TOKEN                     {let name = $1 in CompConn name}
-  | TOKEN OPARAN TOKEN CPARAN {
-    let prop = $3 and kind = $1 in
-    match kind with
-    | "copy" -> let name = HwLib.copy_cid prop in CompConn name
-    | "input" -> let name = HwLib.input_cid prop in CompConn name
-    | "output" -> let name = HwLib.output_cid prop in CompConn name
-    | _ -> error "connterm" "special property doesn't exist"
-  }
+  | COPY OPARAN TOKEN CPARAN { let name = HwLib.copy_cid $3 in CompConn name }
+  | INPUT OPARAN TOKEN CPARAN { let name = HwLib.input_cid $3 in CompConn name}
+  | OUTPUT OPARAN TOKEN CPARAN { let name = HwLib.output_cid $3 in CompConn name}
   | connterm OBRAC inds CBRAC {
     let basic = $1 and inds = $3 in
     match basic with
@@ -303,6 +305,7 @@ connterm:
     | InstConn(name,inds) -> InstPortConn(name,inds,port)
     | _ -> error "connterm" "unsupported port of term."
   }
+
 schem:
   | SCHEMATIC EOL {
     ()
@@ -313,7 +316,12 @@ schem:
   | schem INST compname COLON INTEGER EOL {
     ()
   }
-  | schem CONN
+  | schem CONN connterm ARROW connterm EOL {
+    ()
+  }
+  | schem EOL {
+    ()
+  }
 
 block:
   | comp END EOL       {()}

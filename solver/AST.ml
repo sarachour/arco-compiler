@@ -19,7 +19,7 @@ type ast_op1 =
   | Exp
   | Neg
 
-type indices =
+type index =
   | IRange of int*int
   | IIndex of int
   | IToStart of int
@@ -27,7 +27,7 @@ type indices =
 
 type 'a ast =
   | Term of 'a
-  | Acc of ('a ast)*(indices list)
+  | Acc of ('a ast)*(index list)
   | OpN of ast_opn*(('a ast) list)
   | Op2 of ast_op2*('a ast)*('a ast)
   | Op1 of ast_op1*(('a ast))

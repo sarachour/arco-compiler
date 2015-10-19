@@ -32,7 +32,7 @@
 %type <string> term
 %type <(string AST.ast) list> explst
 
-%type <indices> ind
+%type <index> ind
 %type <string AST.ast> par
 %type <string AST.ast> pow
 %type <string AST.ast> md
@@ -51,16 +51,16 @@ term:
   | TOKEN {let name = $1 in name}
 
 ind:
-  | INTEGER {let n = $1 in Index(n)}
-  | INTEGER SCOLON INTEGER   {let s = $1 and e = $3 in Range(s,e)}
-  | SCOLON INTEGER          {let n = $2 in ToStart(n)}
-  | INTEGER SCOLON          {let n = $1 in ToEnd(n)}
+  | INTEGER {let n = $1 in IIndex(n)}
+  | INTEGER SCOLON INTEGER   {let s = $1 and e = $3 in IRange(s,e)}
+  | SCOLON INTEGER          {let n = $2 in IToStart(n)}
+  | INTEGER SCOLON          {let n = $1 in IToEnd(n)}
 
 par:
   | term OPAR expr CPAR {let name = $1 and arg = $3 in OpN(Func(name),[arg])}
   | term OPAR explst(expr,COMMA) CPAR {let name = $1 and args = $3 in OpN(Func(name),args)}
-  | expr OBRAC ind CBRAC {let name = $1 and ind = $3 in Acc(name,ind)}
-  | expr OBRAC explst(ind,COMMA) CBRAC {let name = $1 and inds = $3 in Acc(name, And(inds))}
+  | expr OBRAC ind CBRAC {let name = $1 and ind = $3 in Acc(name,[ind])}
+  | expr OBRAC explst(ind,COMMA) CBRAC {let name = $1 and inds = $3 in Acc(name, inds)}
   | DERIV OPAR expr COMMA expr CPAR {
       let a = $3 and b =$5 in
       match (a,b) with
