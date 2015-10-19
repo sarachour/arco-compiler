@@ -48,6 +48,10 @@ rule env = parse
 
   | "copy"                  {COPY}
 
+  | "schematic"             {SCHEMATIC}
+  | "inst"                  {INST}
+  | "port"                  {PORT}
+
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}

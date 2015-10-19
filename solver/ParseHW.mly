@@ -43,6 +43,9 @@
 %token ENSURE ASSUME MAG ERR
 
 %token COPY
+
+%token SCHEMATIC INST CONN PORT
+
 %token <string> STRING TOKEN OP
 %token <float> DECIMAL
 %token <int> INTEGER
@@ -55,7 +58,9 @@
 %type <(propid*untid) list> proptyplst
 %type <float> number
 
+%type <string> compname
 %type <string*hwrel> rel
+%type <unit> schem
 %type <unit> comp
 %type <unit> block
 %type <unit> st
@@ -199,27 +204,15 @@ proptyplst:
   | TOKEN COLON TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
   | TOKEN COLON TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
 
+compname:
+  | TOKEN         {let name = $1 in name }
+  | COPY TOKEN    {let prop = $2 in HwLib.copy_cid prop}
+  | INPUT TOKEN   {let prop = $2 in HwLib.input_cid prop}
+  | OUTPUT TOKEN  {let prop = $2 in HwLib.output_cid prop}
+
 comp:
-  | COMP TOKEN EOL {
+  | COMP compname EOL {
     let name = $2 in
-    let _ = set_cmpname name in
-    let _ = HwLib.mkcomp dat name in
-    ()
-  }
-  | COMP COPY TOKEN EOL {
-    let name =HwLib.copy_cid ($3) in
-    let _ = set_cmpname name in
-    let _ = HwLib.mkcomp dat name in
-    ()
-  }
-  | COMP INPUT TOKEN EOL {
-    let name =HwLib.input_cid ($3) in
-    let _ = set_cmpname name in
-    let _ = HwLib.mkcomp dat name in
-    ()
-  }
-  | COMP OUTPUT TOKEN EOL {
-    let name = HwLib.output_cid ($3) in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()
@@ -251,6 +244,9 @@ comp:
     let _ = HwLib.mkrel dat cname pname r in
     ()
   }
+  | comp ASSUME TIME number TOKEN EQ number TOKEN EOL {
+
+  }
   | comp ENSURE MAG expr IN OP number COMMA number OP COLON typ EOL {
     if $6 <> "(" || $10 <> ")" then
       error "ensure" "range must have the form (...,..)"
@@ -264,8 +260,15 @@ comp:
   }
   | comp EOL   {}
 
+
+schem:
+  | SCHEMATIC EOL {()}
+  | schem INST compname EOL {()}
+  | schem INST compname COLON INTEGER EOL {()}
+
 block:
   | comp END EOL       {()}
+  | schem END EOL      {()}
 
 st:
   | TYPE TOKEN EOL  {
