@@ -13,6 +13,15 @@
 
   let dat = HwLib.mkenv()
   let meta = {comp=None}
+
+
+  type conn =
+    | AllConn
+    | CompConn of string
+    | CompPortConn of string
+    | InstConn of string*indices
+    | InstPortConn of string*indices*string
+
   exception ParseHwError of string*string
 
   let error s n =
@@ -34,7 +43,7 @@
 
 
 %token EOF EOL
-%token EQ COLON QMARK COMMA
+%token EQ COLON QMARK COMMA STAR ARROW OPARAN CPARAN OBRAC CBRAC DOT
 %token TYPE LET NONE INITIALLY IN WHERE
 
 %token PROP TIME
@@ -58,6 +67,7 @@
 %type <(propid*untid) list> proptyplst
 %type <float> number
 
+%type <conn> connterm
 %type <string> compname
 %type <string*hwrel> rel
 %type <unit> schem
@@ -80,12 +90,18 @@ sexpr:
   | TOKEN             {let e = $1 in e}
   | INTEGER           {let e = $1 in string_of_int e}
   | DECIMAL           {let e = $1 in string_of_float e}
+  | OPARAN            {"("}
+  | OBRAC             {"["}
   | sexpr INTEGER      {let rest = $1 and e = string_of_int $2 in rest^e}
   | sexpr DECIMAL      {let rest = $1 and e = string_of_float $2 in rest^e}
   | sexpr TOKEN        {let rest = $1 and e = $2 in rest^e}
   | sexpr OP     {let rest = $1 and e = $2 in rest^e}
   | sexpr COMMA        {let rest = $1 in rest^"," }
-
+  | sexpr STAR         {let rest = $1 in rest^"*"}
+  | sexpr OBRAC        {let rest = $1 in rest^"["}
+  | sexpr CBRAC        {let rest = $1 in rest^"]"}
+  | sexpr OPARAN       {let rest = $1 in rest^"("}
+  | sexpr CPARAN       {let rest = $1 in rest^")"}
 
 number:
   | DECIMAL   {let e = $1 in e}
@@ -210,6 +226,7 @@ compname:
   | INPUT TOKEN   {let prop = $2 in HwLib.input_cid prop}
   | OUTPUT TOKEN  {let prop = $2 in HwLib.output_cid prop}
 
+
 comp:
   | COMP compname EOL {
     let name = $2 in
@@ -247,10 +264,7 @@ comp:
   | comp ASSUME TIME number TOKEN EQ number TOKEN EOL {
 
   }
-  | comp ENSURE MAG expr IN OP number COMMA number OP COLON typ EOL {
-    if $6 <> "(" || $10 <> ")" then
-      error "ensure" "range must have the form (...,..)"
-    else
+  | comp ENSURE MAG expr IN OPARAN number COMMA number CPARAN COLON typ EOL {
       let p = $4 and min = $7 and max = $8 and typ = $13 in
       ()
   }
@@ -260,11 +274,46 @@ comp:
   }
   | comp EOL   {}
 
-
+ind:
+  | INTEGER COLON {let s = $1 in IToEnd(s)}
+  | COLON INTEGER {let s = $2 in IToStart(s)}
+  | INTEGER COLON INTEGER {let s = $1 and e = $2 in IRange(s,e)}
+  | INTEGER COLON INTEGER
+connterm:
+  | STAR                      {AllConn}
+  | TOKEN                     {let name = $1 in CompConn name}
+  | TOKEN OPARAN TOKEN CPARAN {
+    let prop = $3 and kind = $1 in
+    match kind with
+    | "copy" -> let name = HwLib.copy_cid prop in CompConn name
+    | "input" -> let name = HwLib.input_cid prop in CompConn name
+    | "output" -> let name = HwLib.output_cid prop in CompConn name
+    | _ -> error "connterm" "special property doesn't exist"
+  }
+  | connterm OBRAC inds CBRAC {
+    let basic = $1 and inds = $3 in
+    match basic with
+    | CompConn(name) -> InstConn(name,inds)
+    | _ -> error "connterm" "unsupported term as instance"
+  }
+  | connterm DOT TOKEN {
+    let basic = $1 and port = $3 in
+    match basic with
+    | CompConn(name) -> CompPortConn(name,port)
+    | InstConn(name,inds) -> InstPortConn(name,inds,port)
+    | _ -> error "connterm" "unsupported port of term."
+  }
 schem:
-  | SCHEMATIC EOL {()}
-  | schem INST compname EOL {()}
-  | schem INST compname COLON INTEGER EOL {()}
+  | SCHEMATIC EOL {
+    ()
+  }
+  | schem INST compname EOL {
+    ()
+  }
+  | schem INST compname COLON INTEGER EOL {
+    ()
+  }
+  | schem CONN
 
 block:
   | comp END EOL       {()}

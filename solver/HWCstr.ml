@@ -18,14 +18,15 @@ type hcrel =
   | HCRFun of hcvid ast
   | HCRState of hcvid ast
 
-type hcconn =
-  | HCInstConn of int*string*string
+type hcinst =
+  | HCFinite of int
+  | HCInfinite
 
 type hwcstrs = {
-  conns: (string*string*int, hcconn set) map;
+  conns: (string*string*int, (string*string*int) set) map;
   mags: (string*string,range) map;
   errs: (string*string, hcrel) map;
-  insts: (string,int) map;
+  insts: (string,hcinst) map;
 }
 
 let error s n =

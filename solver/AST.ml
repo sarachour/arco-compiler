@@ -20,15 +20,14 @@ type ast_op1 =
   | Neg
 
 type indices =
-  | And of indices list
-  | Range of int*int
-  | Index of int
-  | ToStart of int
-  | ToEnd of int
+  | IRange of int*int
+  | IIndex of int
+  | IToStart of int
+  | IToEnd of int
 
 type 'a ast =
   | Term of 'a
-  | Acc of ('a ast)*(indices)
+  | Acc of ('a ast)*(indices list)
   | OpN of ast_opn*(('a ast) list)
   | Op2 of ast_op2*('a ast)*('a ast)
   | Op1 of ast_op1*(('a ast))
