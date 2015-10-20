@@ -23,6 +23,11 @@
     | InstConn of string*(index list)
     | InstPortConn of string*(index list)*string
 
+  let mkdfl cname iname =
+    let defl p = HwCstrLib.dflport (HwLib.getcstr dat) cname iname p in
+    let _ = MAP.iter (dat.props) (fun k v -> defl k) in
+    ()
+
   exception ParseHwError of string*string
 
   let error s n =
@@ -254,6 +259,7 @@ comp:
     let typlst = $5 in
     let cname = get_cmpname() in
     let _ = HwLib.mkport dat cname HNInput iname typlst in
+    let _ = mkdfl cname iname in
     ()
   }
   | comp OUTPUT TOKEN WHERE proptyplst EOL  {
@@ -261,6 +267,7 @@ comp:
     let typlst = $5 in
     let cname = get_cmpname() in
     let _ = HwLib.mkport dat cname HNOutput iname typlst in
+    let _ = mkdfl cname iname in
     ()
   }
   | comp PARAM TOKEN COLON typ EQ number EOL {
@@ -350,6 +357,8 @@ schem:
     ()
   }
   | schem ENSURE MAG TOKEN IN rng COLON TOKEN {
+    let pname = $4 and r = $6 and c = HwLib.getcstr dat in
+    let _ = HwCstrLib.mkglblmag c pname r in
     ()
   }
   | schem ENSURE TIME IN rng COLON TOKEN {
