@@ -19,7 +19,10 @@ type ('a,'b) either = Left of 'a | Right of 'b
 module RANGE =
 struct
   let range2str ((a,b):range) = "("^(string_of_float a)^","^(string_of_float b)^")"
-
+  let resolve ((a,b):range) ((x,y):range) =
+    let min = if a < x then a else x in
+    let max = if b < y then b else y in
+    (min,max)
 end
 
 module LIST =

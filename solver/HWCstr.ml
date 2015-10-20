@@ -57,6 +57,16 @@ struct
       let _ = MAP.put e.insts iname cnt in
       ()
 
+  let mkmag e iname pname rng =
+    if MAP.has e.mags (iname,pname) then
+      let orng = MAP.get emags (iname,pname) in
+      let nrng = RANGE.resolve orng rng in
+      let _ = MAP.put e.mags (iname,pname) nrng in
+      ()
+    else
+      let _ = MAP.put e.mags (iname,pname) rng in
+      ()
+
   let print e =
     let pr_inst k v = match v with
       | HCInstFinite(x) -> k^" has "^(string_of_int x)^" instances"
