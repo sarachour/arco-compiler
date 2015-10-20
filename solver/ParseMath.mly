@@ -199,23 +199,23 @@ st:
     ()
   }
   | ASSUME MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let r = MCAsmMag($6,$8) and name = $3 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkrng c name r in
+    let r = ($6,$8) and name = $3 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkrng c name MCAssume r in
     ()
   }
   | ENSURE MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let r = MCEnsMag($6,$8) and name = $3 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkrng c name r in
+    let r = ($6,$8) and name = $3 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkrng c name MCEnsure r in
     ()
   }
   | ASSUME ERR erel COLON typ EOL {
     let name,er = $3 and t = $5 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkerr c name er in
+    let _ = MathCstrLib.mkerr c name MCAssume er in
     ()
   }
   | ENSURE ERR erel COLON typ EOL {
     let name,er = $3 and t = $5 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkerr c name er in
+    let _ = MathCstrLib.mkerr c name MCEnsure er in
     ()
   }
   | REL rel EOL {
