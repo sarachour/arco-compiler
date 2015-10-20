@@ -49,6 +49,8 @@ let error s n = raise (HwCstrLibException (s^": "^n))
 
 module HwCstrLib =
 struct
+  let refl x y = x = y
+
   let mkcstrs ()  : hwcstrs=
     {
       conns= MAP.make();
@@ -147,6 +149,30 @@ struct
     else
       let _ = MAP.put e.errs key efun in
       ()
+
+  let mkconn e srccomp srcport srcinst destcomp destport destinst =
+    let ksrc = (srccomp,srcport) and ksnk = (destcomp,destport) in
+    let src2dest = (srcinst,destinst) and dest2src = (destinst,srcinst) in
+    let _ = if MAP.has e.conns ksrc = false || MAP.get e.conns ksrc = HCConnNoLimit then
+      let _ = MAP.put e.conns ksrc (HCConnLimit (MAP.make())) in ()
+    in
+    let _ = if MAP.has e.conns ksnk = false || MAP.get e.conns ksnk = HCConnNoLimit then
+      let _ = MAP.put e.conns ksnk (HCConnLimit (MAP.make())) in ()
+    in
+    let tblsrc = MAP.get e.conns ksrc and tblsnk = MAP.get e.conns ksnk in
+    match (tblsrc,tblsnk) with
+    | (HCConnLimit(mapsrc), HCConnLimit(mapsnk)) ->
+      begin
+        let _ = if MAP.has mapsrc ksnk = false then MAP.put mapsrc ksnk (SET.make refl) else mapsrc in
+        let _ = if MAP.has mapsnk ksrc = false then MAP.put mapsnk ksrc (SET.make refl) else mapsnk in
+        let setsrc = MAP.get mapsrc ksnk in
+        let setsnk = MAP.get mapsnk ksrc in
+        let _ = SET.add setsrc src2dest in
+        let _ = SET.add setsnk dest2src in
+        e
+      end
+    | _ -> error "mkconn" "doesn't make sense bro."
+
 
   let print e =
     let pr_inst k v = match v with
