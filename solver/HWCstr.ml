@@ -34,6 +34,7 @@ type hcmag =
 type hwcstrs = {
   conns: (string*string*int,hcconn set) map;
   mags: (string*string*string,hcmag) map;
+  tcs: (string,hcmag) map;
   errs: (string*string*string, herel) map;
   insts: (string,hcinst) map;
 }
@@ -52,7 +53,8 @@ struct
       conns= MAP.make();
       mags= MAP.make();
       errs = MAP.make();
-      insts = MAP.make()
+      insts = MAP.make();
+      tcs = MAP.make();
     }
   let hevid2str x =
     match x with
@@ -73,6 +75,9 @@ struct
     let _ = if MAP.has e.insts cname = false then
       MAP.put e.insts cname HCInstInfinite else e.insts
     in
+    let _ = if MAP.has e.tcs cname = false then
+      MAP.put e.tcs cname HCNoMag else e.tcs
+    in
     let _ = if MAP.has e.mags k = false then
       MAP.put e.mags k HCNoMag else e.mags
     in
@@ -81,6 +86,28 @@ struct
     in
     ()
 
+  let mktc e iname rng =
+    let key = (iname) in
+    if MAP.has e.tcs key then
+      let ov = MAP.get e.tcs key in
+        match ov with
+        | HCMagRange(orng) ->
+          let nrng = RANGE.resolve orng rng in
+          let _ = MAP.put e.tcs key (HCMagRange nrng) in
+          ()
+        | HCNoMag -> let _ =  MAP.put e.tcs key (HCMagRange rng) in ()
+    else
+      let _ = MAP.put e.tcs key (HCMagRange rng) in
+      ()
+
+  let mkglbltc e rng =
+    let mkg  k v =
+        match v with
+        | HCMagRange(orng) -> HCMagRange(RANGE.resolve orng rng)
+        | HCNoMag -> HCMagRange rng
+    in
+    let _ = MAP.map e.tcs mkg in
+    ()
 
   let mkmag e iname portname propname rng =
     let key = (iname,portname,propname) in
@@ -134,11 +161,18 @@ struct
       | HERFunction(a) -> prefix^" error <= "^(ASTLib.ast2str a hevid2str)
       | HERNoError -> prefix^" no error"
     in
+    let pr_tc (c) v =
+      let prefix = "comp "^c^" time-const" in
+      match v with
+      | HCMagRange(v) -> prefix^" in "^(RANGE.range2str v)
+      | HCNoMag -> prefix^" infinite operating range"
+    in
     let apply f k x r = r^"\n"^(f k x) in
     let istr = MAP.fold e.insts (apply pr_inst) "" in
     let mstr = MAP.fold e.mags (apply pr_mag) "" in
     let estr = MAP.fold e.errs (apply pr_err) "" in
-    let _ = Printf.printf "%s\n%s\n%s\n" istr mstr estr in
+    let tcstr = MAP.fold e.tcs (apply pr_tc) "" in
+    let _ = Printf.printf "%s\n%s\n%s\n%s\n" istr mstr estr tcstr in
     ()
 
 end

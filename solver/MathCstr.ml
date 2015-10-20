@@ -51,7 +51,7 @@ struct
       |MEVar(k,s,i)->s
       |MEError(k,s,i)->"E("^s^")"
       |MEParam(s,f,i) -> string_of_float f
-      |METime(i) -> "i"
+      |METime(i) -> "t"
     in
     let ckind2str k = match k with
       | MCAssume -> "assume"

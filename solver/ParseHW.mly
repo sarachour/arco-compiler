@@ -23,6 +23,7 @@
     | InstConn of string*(index list)
     | InstPortConn of string*(index list)*string
 
+
   let mkdfl cname iname =
     let defl p = HwCstrLib.dflport (HwLib.getcstr dat) cname iname p in
     let _ = MAP.iter (dat.props) (fun k v -> defl k) in
@@ -305,6 +306,8 @@ comp:
       ()
   }
   | comp ENSURE TIME IN rng COLON TOKEN EOL {
+      let r = $5 and cname = get_cmpname() and c = HwLib.getcstr dat in
+      let _ = HwCstrLib.mktc c cname r in
       ()
   }
   | comp EOL   {}
@@ -362,6 +365,8 @@ schem:
     ()
   }
   | schem ENSURE TIME IN rng COLON TOKEN {
+    let r = $5 and c = HwLib.getcstr dat in
+    let _ = HwCstrLib.mkglbltc c r in
     ()
   }
   | schem EOL {
