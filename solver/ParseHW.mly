@@ -271,8 +271,13 @@ comp:
 
   }
   | comp ENSURE MAG expr IN rng COLON typ EOL {
-      let p = $4 and min,max = $6 and typ = $8 in
-      ()
+      let lhs = $4 and r = $6 and typ = $8 and c = HwLib.getcstr dat in
+      let cmpname,portname,prop = match lhs with
+      | Term(HNPort(_,HCMLocal(cmpname),portname,prop,_)) -> (cmpname,portname,prop)
+      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop,_)) -> (cmpname,portname,prop)
+      | _ -> error "magparse" "unknown term to constrain."
+      in
+      HwCstrLib.mkmag c cmpname portname prop r
   }
   | comp ASSUME ERR errexpr EQ errexpr COLON typ EOL {
       let p = $4 and exp = $6 and typ = $8 in

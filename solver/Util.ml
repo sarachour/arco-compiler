@@ -61,6 +61,11 @@ struct
   let iter (type a) (type b) (x:(a,b) map) (f: a -> b -> unit) : unit =
     Hashtbl.iter f x
 
+  let map (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> b) : (a,b) map =
+    let repl k v = let _ = put x k (f k v) in () in
+    let _ = iter x repl in
+    x
+
 end
 
 module SET =

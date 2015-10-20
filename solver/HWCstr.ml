@@ -28,8 +28,8 @@ type hcconn =
 
 type hwcstrs = {
   conns: (string*string*int,hcconn set) map;
-  mags: (string*string,range) map;
-  errs: (string*string, hcrel) map;
+  mags: (string*string*string,range) map;
+  errs: (string*string*string, hcrel) map;
   insts: (string,hcinst) map;
 }
 
@@ -57,24 +57,33 @@ struct
       let _ = MAP.put e.insts iname cnt in
       ()
 
-  let mkmag e iname pname rng =
-    if MAP.has e.mags (iname,pname) then
-      let orng = MAP.get emags (iname,pname) in
+  let mkmag e iname portname propname rng =
+    let key = (iname,portname,propname) in
+    if MAP.has e.mags key then
+      let orng = MAP.get e.mags key in
       let nrng = RANGE.resolve orng rng in
-      let _ = MAP.put e.mags (iname,pname) nrng in
+      let _ = MAP.put e.mags key nrng in
       ()
     else
-      let _ = MAP.put e.mags (iname,pname) rng in
+      let _ = MAP.put e.mags key rng in
       ()
+
+  let mkglblmag e rng =
+    let _ = MAP.map e.mags (fun k v -> RANGE.resolve v rng) in
+    ()
 
   let print e =
     let pr_inst k v = match v with
       | HCInstFinite(x) -> k^" has "^(string_of_int x)^" instances"
       | HCInstInfinite -> k^" has infinite instances"
     in
+    let pr_mag (c,port,prop) v =
+      "comp "^c^"."^port^" prop "^prop^" in "^(RANGE.range2str v)
+    in
     let apply f k x r = r^"\n"^(f k x) in
     let istr = MAP.fold e.insts (apply pr_inst) "" in
-    let _ = Printf.printf "%s\n" istr in
+    let mstr = MAP.fold e.mags (apply pr_mag) "" in
+    let _ = Printf.printf "%s\n%s\n" istr mstr in
     ()
 
 end
