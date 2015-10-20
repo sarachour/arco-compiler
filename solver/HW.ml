@@ -38,7 +38,7 @@ type hwenv = {
   mutable props : (string, untid set) map;
   mutable comps : (string,hwcomp) map;
   mutable time : (string*(untid set)) option;
-  mutable cstrs : hwcstrs
+  mutable cstr : hwcstrs
 }
 
 
@@ -54,13 +54,13 @@ struct
     units=UnitLib.mkenv();
     comps=MAP.make();
     props=MAP.make();
-    cstrs=HwCstrLib.mkcstrs();
+    cstr=HwCstrLib.mkcstrs();
     time=None}
 
   let copy_cid prop = "copy."^prop
   let input_cid prop = "input."^prop
   let output_cid prop = "output."^prop
-
+  let getcstr c = c.cstr
   let hwvid2str e =
     match e with
     | HNPort(_,c,v,prop,unt) -> prop^"{"^v^"}:"^unt
@@ -116,6 +116,8 @@ struct
    let _ = print_time () in
    let _ = Printf.printf "==== Components =====\n" in
    let _ = MAP.iter e.comps (fun k v -> print_comp v) in
+   let _ = Printf.printf "==== Constraints =====\n" in
+   let _ = HwCstrLib.print e.cstr in 
    ()
 
   let hastime e =

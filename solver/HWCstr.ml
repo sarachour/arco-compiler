@@ -19,8 +19,8 @@ type hcrel =
   | HCRState of hcvid ast
 
 type hcinst =
-  | HCFinite of int
-  | HCInfinite
+  | HCInstFinite of int
+  | HCInstInfinite
 
 type hcconn =
  | HCConnInstPort of (string*string*int)
@@ -36,6 +36,10 @@ type hwcstrs = {
 let error s n =
   raise (HwCstrError (s^": "^n))
 
+exception HwCstrLibException of string
+
+let error s n = raise (HwCstrLibException (s^": "^n))
+
 module HwCstrLib =
 struct
   let mkcstrs ()  : hwcstrs=
@@ -46,5 +50,21 @@ struct
       insts = MAP.make()
     }
 
+  let mkinst e iname cnt =
+    if MAP.has e.insts iname then
+      error "mkinst" "already exists"
+    else
+      let _ = MAP.put e.insts iname cnt in
+      ()
+
+  let print e =
+    let pr_inst k v = match v with
+      | HCInstFinite(x) -> k^" has "^(string_of_int x)^" instances"
+      | HCInstInfinite -> k^" has infinite instances"
+    in
+    let apply f k x r = r^"\n"^(f k x) in
+    let istr = MAP.fold e.insts (apply pr_inst) "" in
+    let _ = Printf.printf "%s\n" istr in
+    ()
 
 end

@@ -141,8 +141,11 @@ errexpr:
       | OpN(Func(nprop), [Term(HCNPort(k,c,v,pr,unt))]) ->
         let nunt = HwLib.getunit dat (getcmpid c) v nprop in
         Some(Term(HCNPort(k,c,v,nprop,nunt)))
-      | OpN(Func(_),_) -> error "expr" "cannot have functions"
-      | Acc(_,_) -> error "expr" "cannot have accesses"
+        | OpN(Func(nprop), [Term(HCNPortErr(k,c,v,pr,unt))]) ->
+          let nunt = HwLib.getunit dat (getcmpid c) v nprop in
+          Some(Term(HCNPortErr(k,c,v,nprop,nunt)))
+      | OpN(Func(s),_) -> error "errexpr" ("cannot have function with name "^s)
+      | Acc(_,_) -> error "errexpr" "cannot have accesses"
       | _ -> None
     in
     let hwast = ASTLib.map strast str2hwid in
@@ -179,7 +182,7 @@ expr:
         let nunt = HwLib.getunit dat (getcmpid cmp) vname nprop in
         Some(Term(HNPort(k,cmp,vname,nprop,nunt)))
         end
-      | OpN(Func(_),_) -> error "expr" "cannot have functions"
+      | OpN(Func(x),_) -> error "expr" ("cannot have function with name "^x)
       | Acc(_,_) -> error "expr" "cannot have accesses"
       | _ -> None
     in
@@ -201,7 +204,7 @@ rel:
       let istime x = match x with HNTime(_) -> true | _ -> false in
       match lhs with
       | Deriv(Term(HNPort(HNOutput,x,oname,z,w)), Term(r)) ->
-        if istime r then
+        if istime r = false then
           error "strel" "derivative must be with respect to time."
         else
           begin
@@ -315,9 +318,13 @@ schem:
     ()
   }
   | schem INST compname EOL {
+    let cname = $3 and amt = HCInstInfinite and c = HwLib.getcstr dat in
+    let _ = HwCstrLib.mkinst c cname amt in
     ()
   }
   | schem INST compname COLON INTEGER EOL {
+    let cname = $3 and amt = HCInstFinite($5) and c = HwLib.getcstr dat in
+    let _ = HwCstrLib.mkinst c cname amt in
     ()
   }
   | schem CONN connterm ARROW connterm EOL {
