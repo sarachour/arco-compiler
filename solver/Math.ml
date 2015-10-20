@@ -84,7 +84,10 @@ struct
    Printf.printf "==== Units ====\n";
    UnitLib.print (m.units);
    Printf.printf "==== Vars =====\n";
-   MAP.iter (m.vars) (fun k v -> print_var v)
+   MAP.iter (m.vars) (fun k v -> print_var v);
+   Printf.printf "==== Cstrs ======\n";
+   MathCstrLib.print m.cstr
+
 
   let gettime e =
    e.time

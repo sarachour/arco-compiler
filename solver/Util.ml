@@ -16,6 +16,12 @@ type ('a,'b) map = ('a, 'b) Hashtbl.t
 type ('a,'b) either = Left of 'a | Right of 'b
 
 
+module RANGE =
+struct
+  let range2str ((a,b):range) = "("^(string_of_float a)^","^(string_of_float b)^")"
+
+end
+
 module LIST =
 struct
   let has lst n =

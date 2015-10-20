@@ -111,8 +111,8 @@ erel:
     let lhs = ASTLib.trans (ASTLib.map lhs map_hwerr) trans_hwerr in
     let rhs = ASTLib.trans (ASTLib.map rhs map_hwerr) trans_hwerr in
     match lhs with
-    | Deriv(Term(MEError(knd,name,u)),Term(METime(ut))) -> ()
-    | Term(MEError(knd,name,u)) -> ()
+    | Deriv(Term(MEError(knd,name,u)),Term(METime(ut))) -> (name,MEState(rhs))
+    | Term(MEError(knd,name,u)) -> (name,MEFunction(rhs))
     | Deriv(Term(MEError(_,_,_)),_) -> error "erel" "unsupported time expression"
     | Deriv(Term(_),Term(_)) -> error "erel" "unsupported terms in derivative"
     | Deriv(_,_) -> error "erel" "unsupported derivative expression"
@@ -199,20 +199,24 @@ st:
     ()
   }
   | ASSUME MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let min = $6 and max = $8 and name = $3 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkmagasm c name min max in
+    let r = MCAsmMag($6,$8) and name = $3 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkrng c name r in
     ()
   }
   | ENSURE MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let min = $6 and max = $8 and name = $3 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkmagens c name min max in
+    let r = MCEnsMag($6,$8) and name = $3 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkrng c name r in
     ()
   }
   | ASSUME ERR erel COLON typ EOL {
-
+    let name,er = $3 and t = $5 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkerr c name er in
+    ()
   }
   | ENSURE ERR erel COLON typ EOL {
-
+    let name,er = $3 and t = $5 and c = MathLib.cstrs dat in
+    let _ = MathCstrLib.mkerr c name er in
+    ()
   }
   | REL rel EOL {
     ()
