@@ -64,7 +64,7 @@
 %type <string> sexpr
 %type <range> rng
 %type <hwvid ast> expr
-%type <hcvid ast> errexpr
+%type <hevid ast> errexpr
 %type <unt> typ
 %type <(propid*untid) list> proptyplst
 %type <float> number
@@ -120,14 +120,14 @@ errexpr:
     let strast : string ast = string_to_ast exprstr in
     let cname = get_cmpname() in
     let tname,ttypes = HwLib.gettime dat in
-    let str2hwid x : hcvid=
-      if x = tname then HCNTime("?") else
+    let str2hwid x : hevid=
+      if x = tname then HENTime("?") else
       let x = HwLib.getvar dat cname x in
       let xn = x.name in
       match x.typ with
       | HPortType(k, _) ->
-        HCNPort(k,HCMLocal(cname),xn,"?","?")
-      | HParamType(vl, un) -> HCNParam(xn,vl,un)
+        HENPort(k,HCMLocal(cname),xn,"?","?")
+      | HParamType(vl, un) -> HENParam(xn,vl,un)
     in
     let getcmpid c =
       match c with
@@ -136,14 +136,14 @@ errexpr:
     in
     let hwid2propid x =
       match x with
-      | OpN(Func("E"), [Term(HCNPort(k,c,v,pr,unt))]) ->
-          Some(Term(HCNPortErr(k,c,v,pr,unt)))
-      | OpN(Func(nprop), [Term(HCNPort(k,c,v,pr,unt))]) ->
+      | OpN(Func("E"), [Term(HENPort(k,c,v,pr,unt))]) ->
+          Some(Term(HENPortErr(k,c,v,pr,unt)))
+      | OpN(Func(nprop), [Term(HENPort(k,c,v,pr,unt))]) ->
         let nunt = HwLib.getunit dat (getcmpid c) v nprop in
-        Some(Term(HCNPort(k,c,v,nprop,nunt)))
-        | OpN(Func(nprop), [Term(HCNPortErr(k,c,v,pr,unt))]) ->
+        Some(Term(HENPort(k,c,v,nprop,nunt)))
+        | OpN(Func(nprop), [Term(HENPortErr(k,c,v,pr,unt))]) ->
           let nunt = HwLib.getunit dat (getcmpid c) v nprop in
-          Some(Term(HCNPortErr(k,c,v,nprop,nunt)))
+          Some(Term(HENPortErr(k,c,v,nprop,nunt)))
       | OpN(Func(s),_) -> error "errexpr" ("cannot have function with name "^s)
       | Acc(_,_) -> error "errexpr" "cannot have accesses"
       | _ -> None
@@ -153,6 +153,15 @@ errexpr:
     hwpropast
   }
 
+erel:
+| errexpr EQ errexpr {
+  let lhs = $1 and rhs = $3 in
+  match lhs with
+  | Term(HENPortErr(HNOutput,x,oname,z,w)) -> ((x,oname,z),HERFunction(rhs))
+  | Deriv(Term(HENPortErr(HNOutput,x,oname,z,w)),Term(HENTime(_))) -> ((x,oname,z), HERState(rhs))
+  | _ ->  error "erel" "must provide a term or derivative for lhs."
+  | _ -> error "erel" "left hand side is too complex."
+}
 expr:
   | sexpr {
     let exprstr = $1 in
@@ -279,8 +288,13 @@ comp:
       in
       HwCstrLib.mkmag c cmpname portname prop r
   }
-  | comp ASSUME ERR errexpr EQ errexpr COLON typ EOL {
-      let p = $4 and exp = $6 and typ = $8 in
+  | comp ASSUME ERR erel COLON typ EOL {
+      let (cmpid,portname,propname),rhs = $4 and typ = $6 and c = HwLib.getcstr dat in
+      let cmpname : string = match cmpid with
+      | HCMLocal(cmpname) -> cmpname
+      | HCMGlobal(cmpname,_) -> cmpname
+      in
+      let _ = HwCstrLib.mkerr c cmpname portname propname rhs in
       ()
   }
   | comp ENSURE TIME IN rng COLON TOKEN EOL {
