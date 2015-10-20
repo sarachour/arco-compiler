@@ -285,7 +285,15 @@ comp:
     ()
   }
   | comp ASSUME TIME number TOKEN EQ number TOKEN EOL {
-
+      let lv :float = $4 and ln :string = $5 in
+      let rv : float = $7 and rn : string = $8 and cname = get_cmpname() in
+      let ratio = rv /. lv in
+      let tname,_ =  HwLib.gettime dat in
+      if ln = tname then
+        let _ = HwLib.mkcompspd dat cname (OpN(Mult,[Decimal(ratio);Term(rn)])) in
+        ()
+      else
+        error "parseasmtime" "must define a speed assumption on time only."
   }
   | comp ENSURE MAG expr IN rng COLON typ EOL {
       let lhs = $4 and r = $6 and typ = $8 and c = HwLib.getcstr dat in

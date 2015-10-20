@@ -31,6 +31,7 @@ type hwvar = {
 type hwcomp = {
   name : string;
   mutable vars: (string,hwvar) map;
+  mutable time: unt;
 }
 
 type hwenv = {
@@ -93,6 +94,7 @@ struct
     let print_comp c =
       let _ = Printf.printf "==> component %s \n" c.name in
       let _ = MAP.iter c.vars  (fun k v -> print_var v) in
+      let _ = Printf.printf "   time t = %s\n" (UnitLib.unit2str c.time) in
       ()
     in
     let print_prop k v =
@@ -117,7 +119,7 @@ struct
    let _ = Printf.printf "==== Components =====\n" in
    let _ = MAP.iter e.comps (fun k v -> print_comp v) in
    let _ = Printf.printf "==== Constraints =====\n" in
-   let _ = HwCstrLib.print e.cstr in 
+   let _ = HwCstrLib.print e.cstr in
    ()
 
   let hastime e =
@@ -134,7 +136,7 @@ struct
     if hascomp e name then
       error "mkcomp" ("comp with name "^name^"already defined.")
     else
-      let c : hwcomp = {name=name;vars=MAP.make();} in
+      let c : hwcomp = {name=name;vars=MAP.make();time=UNone} in
       let _ = MAP.put e.comps name c in
       e
 
@@ -211,6 +213,10 @@ struct
     | HRNothing -> p.rel <- rel
     | _ -> error "mkrel" ("relation already exists for port "^pname)
 
+  let mkcompspd e name unt =
+    let p = getcomp e name in
+    let _ = p.time <- UExpr(unt) in
+    e
 
   let mktime e name units =
     if hastime e then
