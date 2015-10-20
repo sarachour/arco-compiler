@@ -23,6 +23,7 @@
     | InstConn of string*(index list)
     | InstPortConn of string*(index list)*string
 
+  let expndconn src snk = ()
 
   let mkdfl cname iname =
     let defl p = HwCstrLib.dflport (HwLib.getcstr dat) cname iname p in

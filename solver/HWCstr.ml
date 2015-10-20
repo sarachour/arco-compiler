@@ -23,16 +23,17 @@ type hcinst =
   | HCInstFinite of int
   | HCInstInfinite
 
-type hcconn =
- | HCConnInstPort of (string*string*int)
- | HCConnCompPort of (string*string)
 
 type hcmag =
   | HCMagRange of range
   | HCNoMag
 
+type hcconn =
+  | HCConnLimit of (string*string, (int*int) set) map
+  | HCConnNoLimit
+
 type hwcstrs = {
-  conns: (string*string*int,hcconn set) map;
+  conns: (string*string, hcconn) map;
   mags: (string*string*string,hcmag) map;
   tcs: (string,hcmag) map;
   errs: (string*string*string, herel) map;
@@ -83,6 +84,10 @@ struct
     in
     let _ = if MAP.has e.errs k = false then
       MAP.put e.errs k HERNoError else e.errs
+    in
+    let _ = if MAP.has e.conns (cname,pname) = false then
+      MAP.put e.conns (cname,pname) HCConnNoLimit
+      else e.conns
     in
     ()
 
@@ -167,12 +172,19 @@ struct
       | HCMagRange(v) -> prefix^" in "^(RANGE.range2str v)
       | HCNoMag -> prefix^" infinite operating range"
     in
+    let pr_conns (c,p) v =
+      let prefix = "comp "^c^" port "^p in
+      match v with
+      | HCConnLimit(snks) -> prefix^" has limited connections"
+      | HCConnNoLimit -> prefix^" unlimited connections"
+    in
     let apply f k x r = r^"\n"^(f k x) in
     let istr = MAP.fold e.insts (apply pr_inst) "" in
     let mstr = MAP.fold e.mags (apply pr_mag) "" in
     let estr = MAP.fold e.errs (apply pr_err) "" in
     let tcstr = MAP.fold e.tcs (apply pr_tc) "" in
-    let _ = Printf.printf "%s\n%s\n%s\n%s\n" istr mstr estr tcstr in
+    let cnstr = MAP.fold e.conns (apply pr_conns) "" in
+    let _ = Printf.printf "%s\n%s\n%s\n%s\n%s\n" istr mstr estr tcstr cnstr in
     ()
 
 end
