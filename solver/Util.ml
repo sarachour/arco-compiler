@@ -30,6 +30,9 @@ struct
   let has lst n =
       List.length (List.filter (fun x -> n = x) lst) > 0
 
+  let prod lst1 lst2 =
+    []
+
 end
 
 module MAP =
@@ -98,6 +101,10 @@ struct
 
   let to_list (type a) (s: a set) : a list=
     s.lst
+
+  let to_set (type a) (l: a list) fn : a set =
+    List.fold_right (fun x s -> add s x) l (make fn)
+
   let add_all (type a) (s: a set) (lst: a list): a set =
     List.iter (fun x -> add s x; ()) lst;
     s

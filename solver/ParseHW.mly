@@ -23,8 +23,36 @@
     | InstConn of string*(index list)
     | InstPortConn of string*(index list)*string
 
-  let expndconn src snk = ()
+  type pid =  (string*string*int)
 
+  let indices2intarr ilst n : int list =
+    let indice2intarr i : int list =
+      match i with
+      | IRange(s,e) -> [s;e]
+      | IIndex(i) -> [i]
+      | IToStart(e) -> [e]
+      | IToEnd(s) -> [s]
+    in
+    List.fold_right (fun x r -> (indice2intarr x) @ r) ilst []
+
+  let expandconn v : pid list = match v with
+    | AllConn ->  []
+    | CompConn(c) -> []
+    | CompPortConn(c,p) -> []
+    | InstConn(c,i) -> []
+    | InstPortConn(c,i,p) -> []
+
+  let addallconns src snk =
+    let e1 = expandconn src in
+    let e2 = expandconn snk in
+    let eprod : (pid*pid) list = LIST.prod e1 e2 in
+    let c = HwLib.getcstr dat in
+    let add (sc,sp,si) (dc,dp,di) =
+      let _ = HwCstrLib.mkconn c sc sp si dc dp di in
+      ()
+    in
+    let _ = List.iter (fun (src,snk) -> add src snk) eprod in
+    ()
   let mkdfl cname iname =
     let defl p = HwCstrLib.dflport (HwLib.getcstr dat) cname iname p in
     let _ = MAP.iter (dat.props) (fun k v -> defl k) in
