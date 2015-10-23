@@ -23,6 +23,8 @@
     | InstConn of string*(index list)
     | InstPortConn of string*(index list)*string
 
+  type conntype = Input | Output
+
   type pid =  (string*string*int)
 
   let indices2intarr ilst n : int list =
@@ -35,7 +37,8 @@
     in
     List.fold_right (fun x r -> (indice2intarr x) @ r) ilst []
 
-  let expandconn v : pid list =
+  let expandconn v conntype : pid list =
+    let skind = if conntype = Input then HNInput else HNOutput in
     let all_comps = [] in
     let all_ports p = [] in
     let n_insts c =
@@ -49,13 +52,19 @@
     in
     match v with
     | AllConn ->  []
-    | CompConn(c) -> []
+    | CompConn(c) ->
+      let fltvar v = match v.typ with HPortType(k,_) -> skind = k | _ -> false in
+      let n = n_insts c in
+      let vrs : string list = List.map (fun (x:hwvar) -> x.name) (getvars c fltvar) in
+      let inds = LIST.mkrange 0 n in
+      let vp = LIST.prod vrs inds in
+      List.map (fun ((v,i):string*int) -> (c,v,i)) vp
     | CompPortConn(c,p) ->
       let n = n_insts c in
       let nrng = LIST.mkrange 0 n in
       List.map (fun i -> (c,p,i)) nrng
     | InstConn(c,i) ->
-      let fltvar v = match v.typ with HPortType(_,_) -> true | _ -> false in
+      let fltvar v = match v.typ with HPortType(k,_) -> skind = k | _ -> false in
       let n = n_insts c in
       let vrs : string list = List.map (fun (x:hwvar) -> x.name) (getvars c fltvar) in
       let inds : int list= indices2intarr i n in
@@ -67,8 +76,8 @@
       List.map (fun i -> (c,p,i)) inds
 
   let addallconns src snk =
-    let e1 = expandconn src in
-    let e2 = expandconn snk in
+    let e1 = expandconn src Output in
+    let e2 = expandconn snk Input in
     let eprod : (pid*pid) list = LIST.prod e1 e2 in
     let c = HwLib.getcstr dat in
     let add (sc,sp,si) (dc,dp,di) =

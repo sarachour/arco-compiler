@@ -27,7 +27,7 @@ rule env = parse
   | ","                     {COMMA}
   | "."                     {DOT}
   | "*"                     {STAR}
-  | "<->"                   {ARROW}
+  | "->"                    {ARROW}
   | "("                     {OPARAN}
   | ")"                     {CPARAN}
   | "["                     {OBRAC}

@@ -58,9 +58,9 @@ struct
 
   let mkrange s e =
     let rec cnc x =
-      if x < e
+      if x < s+e
       then x::(cnc (x+1))
-      else [e]
+      else []
     in
     cnc s
 
@@ -106,7 +106,7 @@ struct
     fold x (fun k v rst -> v::rst) []
 
   let to_keys (type a) (type b) (x:(a,b) map) : a list =
-      fold x (fun k v rst -> k::rst) [] 
+      fold x (fun k v rst -> k::rst) []
 
   let iter (type a) (type b) (x:(a,b) map) (f: a -> b -> unit) : unit =
     Hashtbl.iter f x
