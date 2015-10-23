@@ -222,10 +222,14 @@ struct
       | HCNoMag -> prefix^" infinite operating range"
     in
     let pr_conns (c,p) v =
-      let prefix = "comp "^c^" port "^p in
+      let prefix = "conn "^c^"."^p in
+      let intpairlst2str lst =
+        let one (x,y) = "("^(string_of_int x)^","^(string_of_int y)^")" in
+        List.fold_right (fun x r -> (one x)^" "^r) (SET.to_list lst) ""
+      in
       match v with
-      | HCConnLimit(snks) -> prefix^" has limited connections"
-      | HCConnNoLimit -> prefix^" unlimited connections"
+      | HCConnLimit(snks) -> prefix^":"^(MAP.fold snks (fun (c,v) pairs r -> r^"\n   "^c^"."^v^"->"^(intpairlst2str pairs)) "")
+      | HCConnNoLimit -> prefix^" is *"
     in
     let apply f k x r = r^"\n"^(f k x) in
     let istr = MAP.fold e.insts (apply pr_inst) "" in
