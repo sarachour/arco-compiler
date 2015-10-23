@@ -59,6 +59,9 @@ rule env = parse
   | "inst"                  {INST}
   | "conn"                  {CONN}
 
+  | "every"                 {EVERY}
+  | "digital"               {DIGITAL}
+  | "sample"                {SAMPLE}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}

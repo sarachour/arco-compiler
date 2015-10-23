@@ -30,8 +30,49 @@ struct
   let has lst n =
       List.length (List.filter (fun x -> n = x) lst) > 0
 
-  let prod lst1 lst2 =
-    []
+  (*joins list into tuples*)
+  let zip a b =
+      let rec zip_i x y  =
+        match x,y with
+        | (h1::t1,h2::t2) -> (h1,h2)::(zip_i t1 t2)
+        | ([h],[]) -> error "zip" "list sizes mismatched"
+        | ([],[h]) -> error "zip" "list sizes mismatched"
+        | ([],[]) -> []
+      in
+      zip_i a b
+
+
+
+  (*makes a list of tuples that is the product of the two lists*)
+  let prod (a:'a list) (b:'b list) : ('a*'b) list =
+    let prod_sc a x =
+      List.map (fun r -> (a,r)) x
+    in
+    let rec _prod x =
+      match x with
+      | h::t -> (prod_sc h b) @ (_prod t)
+      | [] -> []
+    in
+    _prod a
+
+
+  let mkrange s e =
+    let rec cnc x =
+      if x < e
+      then x::(cnc (x+1))
+      else [e]
+    in
+    cnc s
+
+  let mkvalue v n =
+    let rec mk i =
+      if i < n
+      then
+        v::(mk (i+1))
+      else []
+    in
+    mk 0
+
 
 end
 
@@ -60,6 +101,12 @@ struct
 
   let fold (type a) (type b) (type c) (x:(a,b) map) (f: a -> b -> c -> c) (iv: c) : c =
     Hashtbl.fold f x iv
+
+  let to_values (type a) (type b) (x:(a,b) map) : b list =
+    fold x (fun k v rst -> v::rst) []
+
+  let to_keys (type a) (type b) (x:(a,b) map) : a list =
+      fold x (fun k v rst -> k::rst) [] 
 
   let iter (type a) (type b) (x:(a,b) map) (f: a -> b -> unit) : unit =
     Hashtbl.iter f x

@@ -28,19 +28,43 @@
   let indices2intarr ilst n : int list =
     let indice2intarr i : int list =
       match i with
-      | IRange(s,e) -> [s;e]
+      | IRange(s,e) -> LIST.mkrange s e
       | IIndex(i) -> [i]
-      | IToStart(e) -> [e]
-      | IToEnd(s) -> [s]
+      | IToStart(e) -> LIST.mkrange 0 e
+      | IToEnd(s) -> LIST.mkrange s (n-1)
     in
     List.fold_right (fun x r -> (indice2intarr x) @ r) ilst []
 
-  let expandconn v : pid list = match v with
+  let expandconn v : pid list =
+    let all_comps = [] in
+    let all_ports p = [] in
+    let n_insts c =
+      let cstr = HwLib.getcstr dat in
+      match HwCstrLib.getinsts cstr c with
+      | HCInstFinite(n) -> n
+      | HCInstInfinite -> error "expandconn" ("cannot expand component "^c^" with infinite number of instances.")
+    in
+    let getvars c flt = let vars = HwLib.getvars dat c in
+      List.filter (fun x -> flt x) vars
+    in
+    match v with
     | AllConn ->  []
     | CompConn(c) -> []
-    | CompPortConn(c,p) -> []
-    | InstConn(c,i) -> []
-    | InstPortConn(c,i,p) -> []
+    | CompPortConn(c,p) ->
+      let n = n_insts c in
+      let nrng = LIST.mkrange 0 n in
+      List.map (fun i -> (c,p,i)) nrng
+    | InstConn(c,i) ->
+      let fltvar v = match v.typ with HPortType(_,_) -> true | _ -> false in
+      let n = n_insts c in
+      let vrs : string list = List.map (fun (x:hwvar) -> x.name) (getvars c fltvar) in
+      let inds : int list= indices2intarr i n in
+      let vp = LIST.prod vrs inds in
+      List.map (fun ((v,i):string*int) -> (c,v,i)) vp
+    | InstPortConn(c,i,p) ->
+      let n =  n_insts c in
+      let inds : int list = indices2intarr i n in
+      List.map (fun i -> (c,p,i)) inds
 
   let addallconns src snk =
     let e1 = expandconn src in
@@ -53,6 +77,8 @@
     in
     let _ = List.iter (fun (src,snk) -> add src snk) eprod in
     ()
+
+
   let mkdfl cname iname =
     let defl p = HwCstrLib.dflport (HwLib.getcstr dat) cname iname p in
     let _ = MAP.iter (dat.props) (fun k v -> defl k) in
@@ -90,6 +116,8 @@
 %token COPY
 
 %token SCHEMATIC INST CONN
+
+%token DIGITAL SAMPLE EVERY
 
 %token <string> STRING TOKEN OP
 %token <float> DECIMAL
@@ -276,10 +304,71 @@ compname:
   | INPUT TOKEN   {let prop = $2 in HwLib.input_cid prop}
   | OUTPUT TOKEN  {let prop = $2 in HwLib.output_cid prop}
 
+digital:
+  | DIGITAL INPUT TOKEN EOL {
+    let name = HwLib.input_cid $3 in
+    let _ = set_cmpname name in
+    let _ = HwLib.mkcomp dat name in
+    ()
+  }
+  | DIGITAL OUTPUT TOKEN EOL {
+    let name = HwLib.input_cid $3 in
+    let name = $3 in
+    let _ = set_cmpname name in
+    let _ = HwLib.mkcomp dat name in
+    ()
+  }
+  | digital INPUT TOKEN WHERE proptyplst EOL  {
+    let iname = $3 in
+    let typlst = $5 in
+    let cname = get_cmpname() in
+    let _ = HwLib.mkport dat cname HNInput iname typlst in
+    let _ = mkdfl cname iname in
+    ()
+  }
+  | digital OUTPUT TOKEN WHERE proptyplst EOL  {
+    let iname = $3 in
+    let typlst = $5 in
+    let cname = get_cmpname() in
+    let _ = HwLib.mkport dat cname HNOutput iname typlst in
+    let _ = mkdfl cname iname in
+    ()
+  }
+  | digital INPUT TOKEN EOL {
+    let iname = $3 in
+    let cname = get_cmpname() in
+    let _ = HwLib.mkport dat cname HNOutput iname [] in
+    let _ = mkdfl cname iname in
+    ()
+  }
+  | digital OUTPUT TOKEN EOL {
+    let iname = $3 in
+    let cname = get_cmpname() in
+    let _ = HwLib.mkport dat cname HNOutput iname [] in
+    let _ = mkdfl cname iname in
+    ()
+  }
+  | digital EOL {()}
+  | digital ASSUME SAMPLE expr EVERY number TOKEN EOL {
+    let e = $4 in
+    let n = $6 in
+    let u = $7 in
+    match e with
+    |Term(HNPort(_,c,v,p,_)) -> let cn = HwLib.compid2str c in
+      let cstr = HwLib.getcstr dat in
+      let _ = HwCstrLib.mkdigital cstr cn (HCDigSample (v,p,n,u)) in
+      ()
+  }
 
 comp:
-  | COMP compname EOL {
+  | COMP TOKEN EOL {
     let name = $2 in
+    let _ = set_cmpname name in
+    let _ = HwLib.mkcomp dat name in
+    ()
+  }
+  | COMP COPY TOKEN EOL {
+    let name = HwLib.copy_cid  $3 in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()
@@ -394,6 +483,8 @@ schem:
     ()
   }
   | schem CONN connterm ARROW connterm EOL {
+    let src = $3 and snk = $5 in
+    let _ = addallconns src snk in
     ()
   }
   | schem ENSURE MAG TOKEN IN rng COLON TOKEN {
@@ -412,6 +503,7 @@ schem:
 
 block:
   | comp END EOL       {()}
+  | digital END EOL    {()}
   | schem END EOL      {()}
 
 st:

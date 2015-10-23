@@ -32,11 +32,15 @@ type hcconn =
   | HCConnLimit of (string*string, (int*int) set) map
   | HCConnNoLimit
 
+type hcdigital =
+  | HCDigSample of string*string*float*untid
+
 type hwcstrs = {
   conns: (string*string, hcconn) map;
   mags: (string*string*string,hcmag) map;
   tcs: (string,hcmag) map;
   errs: (string*string*string, herel) map;
+  digs: (string, hcdigital list) map;
   insts: (string,hcinst) map;
 }
 
@@ -58,6 +62,7 @@ struct
       errs = MAP.make();
       insts = MAP.make();
       tcs = MAP.make();
+      digs=MAP.make();
     }
   let hevid2str x =
     match x with
@@ -72,6 +77,12 @@ struct
     else
       let _ = MAP.put e.insts iname cnt in
       ()
+
+  let getinsts e cname =
+    if MAP.has e.insts cname = false then
+      error "getinsts" "there is no instance count."
+    else
+      MAP.get e.insts cname
 
   let dflport e cname pname prop =
     let k = (cname,pname,prop) in
@@ -91,6 +102,10 @@ struct
       MAP.put e.conns (cname,pname) HCConnNoLimit
       else e.conns
     in
+    let _ = if MAP.has e.digs cname = false then
+      MAP.put e.digs cname []
+      else e.digs
+    in
     ()
 
   let mktc e iname rng =
@@ -106,6 +121,14 @@ struct
     else
       let _ = MAP.put e.tcs key (HCMagRange rng) in
       ()
+
+  let mkdigital e cname v =
+    if MAP.has e.digs cname = false then
+      let _ = MAP.put e.digs cname [v] in e
+    else
+      let rest = MAP.get e.digs cname in
+      let _ = MAP.put e.digs cname (v::rest) in
+      e
 
   let mkglbltc e rng =
     let mkg  k v =

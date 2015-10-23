@@ -62,6 +62,10 @@ struct
   let input_cid prop = "input."^prop
   let output_cid prop = "output."^prop
   let getcstr c = c.cstr
+  let compid2str c = match c with
+  | HCMGlobal(n,i) -> n
+  | HCMLocal(n) -> n
+
   let hwvid2str e =
     match e with
     | HNPort(_,c,v,prop,unt) -> prop^"{"^v^"}:"^unt
@@ -161,6 +165,10 @@ struct
       error "getport" ("port with name "^iname^" does not exist.")
     else
       MAP.get c.vars iname
+
+  let getvars e cname =
+    let c = getcomp e cname in
+    MAP.to_values c.vars
 
   let getunit e (cname:string) pname propname =
     let p = getvar e cname pname in
