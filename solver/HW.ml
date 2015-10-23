@@ -62,6 +62,7 @@ struct
   let input_cid prop = "input."^prop
   let output_cid prop = "output."^prop
   let getcstr c = c.cstr
+
   let compid2str c = match c with
   | HCMGlobal(n,i) -> n
   | HCMLocal(n) -> n
@@ -169,6 +170,9 @@ struct
   let getvars e cname =
     let c = getcomp e cname in
     MAP.to_values c.vars
+
+  let getcomps e  =
+    MAP.to_values e.comps 
 
   let getunit e (cname:string) pname propname =
     let p = getvar e cname pname in

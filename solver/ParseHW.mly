@@ -37,7 +37,7 @@
     in
     List.fold_right (fun x r -> (indice2intarr x) @ r) ilst []
 
-  let expandconn v conntype : pid list =
+  let rec expandconn v conntype : pid list =
     let skind = if conntype = Input then HNInput else HNOutput in
     let all_comps = [] in
     let all_ports p = [] in
@@ -51,7 +51,15 @@
       List.filter (fun x -> flt x) vars
     in
     match v with
-    | AllConn ->  []
+    | AllConn ->
+      let cmps = List.map (fun x -> x.name) (HwLib.getcomps dat) in
+      let cstr = HwLib.getcstr dat in
+      let handle x r =
+        if HwCstrLib.getinsts cstr x = HCInstInfinite
+        then  r
+        else  (expandconn (CompConn x) conntype) @ r
+      in
+      List.fold_right (fun x r -> handle x r) cmps []
     | CompConn(c) ->
       let fltvar v = match v.typ with HPortType(k,_) -> skind = k | _ -> false in
       let n = n_insts c in
