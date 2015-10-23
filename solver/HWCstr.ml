@@ -19,9 +19,7 @@ type herel =
   | HERState of hevid ast
   | HERNoError
 
-type hcinst =
-  | HCInstFinite of int
-  | HCInstInfinite
+type hcinst = int
 
 
 type hcmag =
@@ -72,7 +70,7 @@ struct
     |HENParam(n,v,_) -> n
 
   let mkinst e iname cnt =
-    if MAP.has e.insts iname && MAP.get e.insts iname <> HCInstInfinite then
+    if MAP.has e.insts iname && MAP.get e.insts iname <> 0 then
       error "mkinst" "already exists"
     else
       let _ = MAP.put e.insts iname cnt in
@@ -87,7 +85,7 @@ struct
   let dflport e cname pname prop =
     let k = (cname,pname,prop) in
     let _ = if MAP.has e.insts cname = false then
-      MAP.put e.insts cname HCInstInfinite else e.insts
+      MAP.put e.insts cname 0 else e.insts
     in
     let _ = if MAP.has e.tcs cname = false then
       MAP.put e.tcs cname HCNoMag else e.tcs
@@ -198,9 +196,7 @@ struct
 
 
   let print e =
-    let pr_inst k v = match v with
-      | HCInstFinite(x) -> k^" has "^(string_of_int x)^" instances"
-      | HCInstInfinite -> k^" has infinite instances"
+    let pr_inst k v = k^" has "^(string_of_int v)^" instances"
     in
     let pr_mag (c,port,prop) v =
       let prefix = "comp "^c^"."^port^" prop "^prop in

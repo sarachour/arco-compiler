@@ -43,9 +43,7 @@
     let all_ports p = [] in
     let n_insts c =
       let cstr = HwLib.getcstr dat in
-      match HwCstrLib.getinsts cstr c with
-      | HCInstFinite(n) -> n
-      | HCInstInfinite -> error "expandconn" ("cannot expand component "^c^" with infinite number of instances.")
+      HwCstrLib.getinsts cstr c
     in
     let getvars c flt = let vars = HwLib.getvars dat c in
       List.filter (fun x -> flt x) vars
@@ -54,10 +52,7 @@
     | AllConn ->
       let cmps = List.map (fun x -> x.name) (HwLib.getcomps dat) in
       let cstr = HwLib.getcstr dat in
-      let handle x r =
-        if HwCstrLib.getinsts cstr x = HCInstInfinite
-        then  r
-        else  (expandconn (CompConn x) conntype) @ r
+      let handle x r = (expandconn (CompConn x) conntype) @ r
       in
       List.fold_right (fun x r -> handle x r) cmps []
     | CompConn(c) ->
@@ -498,13 +493,8 @@ schem:
   | SCHEMATIC EOL {
     ()
   }
-  | schem INST compname EOL {
-    let cname = $3 and amt = HCInstInfinite and c = HwLib.getcstr dat in
-    let _ = HwCstrLib.mkinst c cname amt in
-    ()
-  }
   | schem INST compname COLON INTEGER EOL {
-    let cname = $3 and amt = HCInstFinite($5) and c = HwLib.getcstr dat in
+    let cname = $3 and amt = ($5) and c = HwLib.getcstr dat in
     let _ = HwCstrLib.mkinst c cname amt in
     ()
   }
