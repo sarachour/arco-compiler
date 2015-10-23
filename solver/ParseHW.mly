@@ -359,6 +359,15 @@ digital:
       let _ = HwCstrLib.mkdigital cstr cn (HCDigSample (v,p,n,u)) in
       ()
   }
+  | digital ENSURE MAG expr IN rng COLON typ EOL {
+      let lhs = $4 and r = $6 and typ = $8 and c = HwLib.getcstr dat in
+      let cmpname,portname,prop = match lhs with
+      | Term(HNPort(_,HCMLocal(cmpname),portname,prop,_)) -> (cmpname,portname,prop)
+      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop,_)) -> (cmpname,portname,prop)
+      | _ -> error "magparse" "unknown term to constrain."
+      in
+      HwCstrLib.mkmag c cmpname portname prop r
+  }
 
 comp:
   | COMP TOKEN EOL {
