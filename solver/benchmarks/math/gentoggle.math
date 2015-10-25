@@ -1,0 +1,30 @@
+name "genetic toggle switch with E.coli"
+
+% https://www.ebi.ac.uk/biomodels-main/BIOMD0000000507#_45b73793-03c6-4146-9ac1-3b498b4d4ea1
+
+type mol
+type
+
+param a2 : mol/s = 15.6
+param a1 : mol/s = 156.25
+param K : mol = 2.9618*10^(-5)
+param nu : _= 2.0015
+param beta : _= 2.5
+param gamma : _ = 1.0
+param Cv : _ = 1
+param Cu : _  = 1
+param kdeg : mol/s = 0.001
+
+
+local U : mol
+local V : mol
+local IPTG : mol
+local umodif : _
+
+assume mag U in (0,1) : mol
+assume mag V in (0,1) : mol
+assume mag IPTG in (0,1) : mol
+
+rel umodif = U/((1+IPTG/K)^nu)
+rel deriv(U,t) = Cu*a1/(1+V^beta)-Cu*kdeg*U
+rel deriv(V,t) = Cv*a2/(1 + umodif^gamma)-Cv*kdeg*V
