@@ -1,0 +1,28 @@
+name "michaelis menten reaction"
+
+% en.wikipedia.org/wiki/Michaelis-Menten_kinetics
+type s
+type M
+
+param kf : 1/s = 1
+param kr : 1/s = 1
+param kcat 1/s = 0.01
+
+input E : M
+input S : M
+local ES : M
+output P : M
+
+assume mag E in (0,1) : M
+assume mag S in (0,1) : M
+assume mag ES in (0,1) : M
+assume mag P in (0,1) : M
+
+ensure err E(P) = 0.01 : M
+
+time t : s
+
+rel deriv(E,t) = -kf*E*S + kr*ES + kcat*ES with E(0) = 0.124
+rel deriv(S,t) = -kf*E*S + kr*ES with S(0) = 0.256
+rel deriv(ES,t) = kf*E*S - kr*ES - kcat*ES with ES(0) = 0
+rek deriv(P,t) = kcat*ES with P(0) = 0

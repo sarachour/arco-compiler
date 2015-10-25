@@ -1,0 +1,22 @@
+name "kinematic falling ball model"
+
+type kg
+type m
+type s
+
+param d : kg = 0.45
+param k = 0.9
+param g : kg*m/(s^2)= 9.8
+
+local x  : m
+local v  :  m/s
+
+time t : s
+
+assume mag x in (0,25) : m
+assume mag v in (-100,100) : m/s
+
+ensure err E(x) = 1 : m
+
+rel deriv(x,t) = v with x(0) = 25
+rel deriv(v,t) = -g - d*v with v(0) = 0
