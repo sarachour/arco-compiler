@@ -1,0 +1,14 @@
+
+
+type pint
+
+input X : pint
+input Y : pint
+output Z : pint
+
+assume mag X in (-2,2) : pint
+assume mag Y  in (-2,2) : pint
+assume mag Z in (-20,20) : pint
+
+
+rel Z = X*Y + Y + 0.5
