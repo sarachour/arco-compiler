@@ -73,6 +73,9 @@ struct
   let typecheck (e1: untid ast) (e2:untid ast) : bool=
     let cnv x = x in
     let todecl x = SymbolVar(x) in
+    let tvar = UnitLib.unit2str UVariant in
+    if e1 = Term(tvar) || e2 = Term(tvar)  then true
+    else
     let res = ASTLib.eq e1 e2 cnv todecl in
     res
 
@@ -92,11 +95,13 @@ struct
 
   let typeof (type b) (expr:b ast) (lookup : b -> unt) : untid ast =
     let tostr (v: untid ast) : string = ASTLib.ast2str v (fun x -> x) in
+    let tvar = UnitLib.unit2str UVariant in
+    let nvar = UnitLib.unit2str UNone in
     let get_expr (v: b) : untid ast =
     let t = lookup v in
       match t with
-      | UNone -> Integer(1)
-      | UVariant -> error "typechecker.typeof" "cannot have variant types."
+      | UNone -> Term(nvar)
+      | UVariant -> Term(tvar)
       | UExpr(e) -> e
     in
     let tclist lst : untid ast =
@@ -105,13 +110,15 @@ struct
       in
       match lst with
       | h::t -> List.fold_right tc t h
-      | [] -> Integer(1)
+      | [] -> error "typeof" "empty list not expected"
     in
     let conv (v:(untid ast)) : (untid ast) option =
       match v with
       | OpN(Add, lst) -> Some(tclist lst)
       | OpN(Sub,lst) -> Some(tclist lst)
       | Deriv(u1,u2) -> Some(Op2(Div,u1,u2))
+      | Integer(_) -> Some(Term(tvar))
+      | Decimal(_) -> Some(Term(tvar))
       | _ -> None
     in
     let expr : untid ast= ASTLib.expand expr get_expr in

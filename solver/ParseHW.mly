@@ -324,8 +324,7 @@ digital:
     ()
   }
   | DIGITAL OUTPUT TOKEN EOL {
-    let name = HwLib.input_cid $3 in
-    let name = $3 in
+    let name = HwLib.output_cid $3 in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()

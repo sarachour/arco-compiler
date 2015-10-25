@@ -4,6 +4,7 @@
 NAME=$1
 ANALOGY=$2
 
+
 if [ "$NAME" = "test-math" ]; then
   NAME=$2
   make && ./solver -hwspec test/math/empty.spec -formula test/math-parser/$NAME.math -analogy voltage
@@ -16,7 +17,7 @@ if [ "$NAME" = "test-hw" ]; then
   exit 0
 fi
 
-if ["$NAME" = "test-solver"]; then
+if [ "$NAME" = "test-solver" ]; then
   NAME=$2
   make && ./solver -hwspec test/solver/$NAME.spec -formula test/solver/$NAME.math -analogy voltage
   exit 0
