@@ -14,8 +14,9 @@ time t: us
 comp vint
   input X where V:mV
   output O where V:mV
+  input IC where V:mV
 
-  rel deriv(V(O),t) = X
+  rel deriv(V(O),t) = X initially V(IC)
 
 end
 
