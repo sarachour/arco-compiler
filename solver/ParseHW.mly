@@ -279,7 +279,9 @@ rel:
     | expr EQ expr {
       let lhs = $1 and rhs = $3 in
       match lhs with
-      | Term(HNPort(HNOutput,x,oname,z,w)) -> (oname,HRFunction(rhs))
+      | Term(HNPort(HNOutput,x,oname,z,w)) ->
+        let lhs = HNPort(HNOutput,x,oname,z,w) in
+        (oname,HRFunction(lhs,rhs))
       | Deriv(_,_) -> error "fnrel" "must provide an initial condition for derivative."
       | _ -> error "fnrel" "left hand side is too complex."
     }
@@ -288,12 +290,13 @@ rel:
       let istime x = match x with HNTime(_) -> true | _ -> false in
       match lhs with
       | Deriv(Term(HNPort(HNOutput,x,oname,z,w)), Term(r)) ->
+        let lhs = HNPort(HNOutput,x,oname,z,w) in
         if istime r = false then
           error "strel" "derivative must be with respect to time."
         else
           begin
           match icn with
-          | Term(HNPort(HNInput,a,icname,c,d)) -> (oname,HRState(rhs,HNPort(HNInput,a,icname,c,d)))
+          | Term(HNPort(HNInput,a,icname,c,d)) -> (oname,HRState(lhs,rhs,HNPort(HNInput,a,icname,c,d)))
           | _ -> error "strel" ""
           end
       | Term(v) -> error "strel" "left hand side must by deriv if initial condition is specified."

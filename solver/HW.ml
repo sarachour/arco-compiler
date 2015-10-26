@@ -12,8 +12,8 @@ type hwvid =
   | HNTime of untid
 
 type hwrel =
-  | HRFunction of hwvid ast
-  | HRState of (hwvid ast)*(hwvid)
+  | HRFunction of hwvid*(hwvid ast)
+  | HRState of hwvid*(hwvid ast)*(hwvid)
   | HRNone
 
 
@@ -77,8 +77,8 @@ struct
   let rel2str v =
     match v with
     | HRNone -> "(none)"
-    | HRFunction(r) -> "fun "^ASTLib.ast2str r (fun x -> hwvid2str x)
-    | HRState(r,ic) -> "state "^ASTLib.ast2str r (fun x -> hwvid2str x)^" initial:"^(hwvid2str ic)
+    | HRFunction(l,r) -> "fun "^ASTLib.ast2str r (fun x -> hwvid2str x)
+    | HRState(l,r,ic) -> "state "^ASTLib.ast2str r (fun x -> hwvid2str x)^" initial:"^(hwvid2str ic)
 
 
   let print e =

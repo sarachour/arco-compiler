@@ -15,7 +15,7 @@ type mid =
   | MNParam of string*float*unt
   | MNTime of unt
 
-type mrel = MRState of (mid ast)*float | MRFunction of (mid ast) | MRNone
+type mrel = MRState of mid*(mid ast)*float | MRFunction of mid*(mid ast) | MRNone
 
 
 type mtype = mid
@@ -47,6 +47,8 @@ sig
   val mkparam : menv -> string -> float -> unt -> menv
   val mkstrel : menv -> string -> mid ast -> float -> menv
   val mkrel : menv -> string -> mid ast -> menv
+
+
 end =
 struct
   let refl x y = (x = y)
@@ -70,8 +72,8 @@ struct
     | MLocal -> "local"
 
   let rel2str (v:mrel) : string = match v with
-    | MRState(r,ic) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_float ic)
-    | MRFunction(r) -> (ASTLib.ast2str r (fun x -> mid2str x))
+    | MRState(l,r,ic) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_float ic)
+    | MRFunction(l,r) -> (ASTLib.ast2str r (fun x -> mid2str x))
     | MRNone -> "(none)"
 
   let mid2unit (x:mid) : unt = match x with
@@ -171,7 +173,7 @@ struct
           let tr : untid ast = UnitTypeChecker.typeof rhs mid2unit in
           let tl : untid ast= UnitTypeChecker.typeof lhs mid2unit in
           if UnitTypeChecker.typecheck tl tr then
-            let _ = dat.rel <- MRState(rhs,ic) in
+            let _ = dat.rel <- MRState(lu,rhs,ic) in
             e
           else
             error "mkstrel" ("variable "^name^" doesn't type check with expression: "^
@@ -193,7 +195,7 @@ struct
         let tl = UnitTypeChecker.typeof (Term(mid)) mid2unit in
         let tr = UnitTypeChecker.typeof rhs mid2unit in
         if UnitTypeChecker.typecheck tl tr then
-          let _ = dat.rel <- MRFunction(rhs) in
+          let _ = dat.rel <- MRFunction(mid,rhs) in
           e
         else
           error "mkrel"  ("variable "^name^" doesn't type check with expression: "^

@@ -40,6 +40,7 @@ type 'a symdecl =
   | SymbolVar of 'a
 
 
+
 exception ASTException of (string)
 let error n msg = raise (ASTException(n^": "^msg))
 
@@ -52,6 +53,7 @@ module ASTLib : sig
     val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
     val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> 'a symdecl) -> bool
+    val pattern : ('a ast) -> ('b ast) -> ('a -> symvar) -> ('b -> symvar) -> ('a -> 'a symdecl) -> ('b -> 'b symdecl) -> unit
 end =
 struct
 
@@ -190,9 +192,12 @@ struct
 
     let from_symcaml (type a) ast (fn:symvar -> a) : a ast = error "from_symcaml" "unimplemented"
 
-    let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> a symdecl) : symcaml =
+    let newenv () =
       let env = SymCaml.init() in
       let _ = SymCaml.clear env in
+      env
+
+    let mkenv (type a) (env) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> a symdecl) : symcaml =
       let getvars (x:a ast) (r:(a symdecl) set) : (a symdecl) set = match x with
         | Term(x) -> SET.add r (decl x)
         | Deriv(Term(x),v) -> SET.add r (decl x)
@@ -225,10 +230,21 @@ struct
     let simpl (type a) (ast: symexpr ast) : symexpr ast = error "simpl" "unimplemented"
 
     let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->a symdecl) : bool =
-      let env = mkenv [e1;e2] cnv decl in
+      let env = newenv () in
+      let env = mkenv env [e1;e2] cnv decl in
       let lhe = to_symcaml e1 cnv in
       let rhe = to_symcaml e2 cnv in
       SymCaml.eq env lhe rhe
 
+    let pattern (type a) (type b) (e1:a ast) (e2:b ast)
+      (cnv1:a->symvar) (cnv2: b->symvar)
+      (decl1:a->a symdecl) (decl2:b->b symdecl) : unit =
 
+      let env = newenv () in
+      let env = mkenv env [e1] cnv1 decl1 in
+      let env = mkenv env [e2] cnv2 decl2 in
+      let cand = to_symcaml e1 cnv1 in
+      let templ = to_symcaml e2 cnv2 in
+      let res = SymCaml.pattern env cand templ in
+      ()
 end
