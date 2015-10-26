@@ -5,11 +5,13 @@ type pint
 input X : pint
 input Y : pint
 output Z : pint
+output Z2 : pint
 param PF : pint = 0.5
 
 assume mag X in (-2,2) : pint
 assume mag Y  in (-2,2) : pint
 assume mag Z in (-20,20) : pint
-
+assume mag Z2 in (-100,100): pint 
 
 rel Z = (X*Y)/PF + Y + 0.5
+rel Z2 = (X*Y)/PF + Z + 0.3

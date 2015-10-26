@@ -39,6 +39,8 @@ sig
   val mkenv : unit -> menv
   val print : menv -> unit
   val cstrs : menv -> mcstrs
+  val mid2str : mid -> string
+  val rel2str : mrel -> string
   val mkvar : menv -> string -> mkind -> unt -> menv
   val mktime : menv -> string -> unt -> menv
   val getvar : menv -> string -> mvar
@@ -53,10 +55,14 @@ struct
 
   let cstrs e = e.cstr
   let mid2str x =
+    let pr_nuid n u =
+      (*n^":"^(UnitLib.unit2str u)*)
+      n
+    in
     match x with
-    | MNVar(_,n,u) -> n^":"^(UnitLib.unit2str u)
-    | MNParam(n,v,u) -> n^":"^(UnitLib.unit2str u)
-    | MNTime(u) -> "t:"^(UnitLib.unit2str u)
+    | MNVar(_,n,u) -> pr_nuid n u
+    | MNParam(n,v,u) ->pr_nuid n u
+    | MNTime(u) -> pr_nuid "t" u
 
   let kind2str (k:mkind) : string = match k with
     | MInput -> "input"

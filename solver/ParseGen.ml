@@ -53,7 +53,6 @@ struct
     let res = parse_lexbuf "math" (fun x -> ParseMath.env LexMath.env x) lb in
     match res with
     | Some(v) -> let res = v in
-      MathLib.print res;
       res
     | None -> error "file_to_formula" "could not parse math environment."
 
@@ -62,7 +61,6 @@ struct
     let res = parse_lexbuf "hw" (fun x -> ParseHW.env LexHW.env x) lb in
     match res with
     | Some (v) -> let res = v in
-      HwLib.print res;
       res
     | None -> error "file_to_formula" "could not parse the hw environment"
 

@@ -16,7 +16,7 @@ open ParseGen
 
 exception MainException of string*string;;
 
-let read_data f h a =
+let read_data f h =
   let fenv = ParserGenerator.file_to_formula f in
   let henv = ParserGenerator.file_to_hwspec h in
   (fenv,henv)
@@ -28,15 +28,15 @@ let command =
       empty
       +> flag "-hwspec" (optional string) ~doc:"hardware specification"
       +> flag "-formula" (optional string) ~doc:"formula specification"
-      +> flag "-analogy" (optional string) ~doc:"hardware analogy. Use 'voltage' or 'current'."
       +> flag "-interactive" no_arg ~doc:"interactively solve the system."
     )
-    (fun hwspec formula analogy is_interactive () ->
-      match (hwspec,formula,analogy) with
-      | (Some h, Some f, Some a) ->
-        let f,h = read_data f h a in
+    (fun hwspec formula is_interactive () ->
+      match (hwspec,formula) with
+      | (Some h, Some f) ->
+        let mathenv,hwenv = read_data f h in
+        let _ = Solver.solve hwenv mathenv is_interactive in
         ()
-      | (_,_,_) -> raise (MainException("command","Must provide hwspec and formula"))
+      | (_,_) -> raise (MainException("command","Must provide hwspec and formula"))
     )
 
 let main () = Command.run command;;

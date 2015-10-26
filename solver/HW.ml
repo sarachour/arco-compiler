@@ -14,7 +14,7 @@ type hwvid =
 type hwrel =
   | HRFunction of hwvid ast
   | HRState of (hwvid ast)*(hwvid)
-  | HRNothing
+  | HRNone
 
 
 type hwtype =
@@ -63,6 +63,7 @@ struct
   let output_cid prop = "output."^prop
   let getcstr c = c.cstr
 
+
   let compid2str c = match c with
   | HCMGlobal(n,i) -> n
   | HCMLocal(n) -> n
@@ -72,6 +73,13 @@ struct
     | HNPort(_,c,v,prop,unt) -> prop^"{"^v^"}:"^unt
     | HNParam(v,vl,u) -> v
     | HNTime(_) -> "t"
+
+  let rel2str v =
+    match v with
+    | HRNone -> "(none)"
+    | HRFunction(r) -> "fun "^ASTLib.ast2str r (fun x -> hwvid2str x)
+    | HRState(r,ic) -> "state "^ASTLib.ast2str r (fun x -> hwvid2str x)^" initial:"^(hwvid2str ic)
+
 
   let print e =
     let pkind2str v =
@@ -83,12 +91,6 @@ struct
       match v with
       | HPortType(knd,tps) -> "port "^(pkind2str knd)
       | HParamType(v,t) -> "param : "^(UnitLib.unit2str t)^" = "^(string_of_float v)
-    in
-    let rel2str v =
-      match v with
-      | HRNothing -> "(none)"
-      | HRFunction(r) -> "fun "^ASTLib.ast2str r (fun x -> hwvid2str x)
-      | HRState(r,ic) -> "state "^ASTLib.ast2str r (fun x -> hwvid2str x)^" initial:"^(hwvid2str ic)
     in
     let print_var (x:hwvar) =
       let _ = Printf.printf "   %s of %s" x.name (type2str x.typ) in
@@ -172,7 +174,7 @@ struct
     MAP.to_values c.vars
 
   let getcomps e  =
-    MAP.to_values e.comps 
+    MAP.to_values e.comps
 
   let getunit e (cname:string) pname propname =
     let p = getvar e cname pname in
@@ -205,7 +207,7 @@ struct
         in
         let _ = List.iter add_propunit types in
         let vrt = HPortType(hwkind,prps) in
-        let vr = {name=iname; rel=HRNothing; typ=vrt} in
+        let vr = {name=iname; rel=HRNone; typ=vrt} in
         MAP.put c.vars iname vr
 
   let mkparam e cname iname vl (t:unt) =
@@ -216,13 +218,13 @@ struct
     if MAP.has c.vars iname then
       error "mkparam" ("variable with name "^iname^" already exists")
     else
-    let vr = {name=iname; rel=HRNothing; typ=HParamType(vl,t)} in
+    let vr = {name=iname; rel=HRNone; typ=HParamType(vl,t)} in
     MAP.put c.vars iname vr
 
   let mkrel e cname pname (rel:hwrel) =
     let p = getvar e cname pname in
     match p.rel with
-    | HRNothing -> p.rel <- rel
+    | HRNone -> p.rel <- rel
     | _ -> error "mkrel" ("relation already exists for port "^pname)
 
   let mkcompspd e name unt =

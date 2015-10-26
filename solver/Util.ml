@@ -1,5 +1,7 @@
 open Core
 open Camlp4
+open Random
+
 
 exception UtilError of string
 
@@ -15,10 +17,15 @@ type ('a,'b) map = ('a, 'b) Hashtbl.t
 
 type ('a,'b) either = Left of 'a | Right of 'b
 
+let init_utils () =
+  let _ = Random.self_init () in
+  ()
+
 
 module RANGE =
 struct
   let range2str ((a,b):range) = "("^(string_of_float a)^","^(string_of_float b)^")"
+
   let resolve ((a,b):range) ((x,y):range) =
     let min = if a < x then a else x in
     let max = if b < y then b else y in
@@ -27,6 +34,9 @@ end
 
 module LIST =
 struct
+  type sortorder =
+    SortAscending | SortDescending
+
   let has lst n =
       List.length (List.filter (fun x -> n = x) lst) > 0
 
@@ -35,8 +45,8 @@ struct
       let rec zip_i x y  =
         match x,y with
         | (h1::t1,h2::t2) -> (h1,h2)::(zip_i t1 t2)
-        | ([h],[]) -> error "zip" "list sizes mismatched"
-        | ([],[h]) -> error "zip" "list sizes mismatched"
+        | (h::t,[]) -> error "zip" "list sizes mismatched"
+        | ([],h::t) -> error "zip" "list sizes mismatched"
         | ([],[]) -> []
       in
       zip_i a b
@@ -73,7 +83,19 @@ struct
     in
     mk 0
 
+  let sort (type a) (fn: a->int) (lst:a list) strategy=
+    if strategy = SortAscending then
+      List.sort (fun x y -> (fn x) - (fn y)) lst
+    else
+      List.sort (fun x y -> (fn y) - (fn x)) lst
 
+  let max (type a) (fxn: a -> int) (lst : a list) =
+    match lst with
+    | h::t ->
+      List.fold_right (fun q (sc,p) ->
+        let nsc = fxn q in
+        if sc < nsc then (nsc,q) else (sc,p) ) t (fxn h, h)
+    | [] -> error "max" "cannot take max of empty list."
 end
 
 module MAP =
@@ -97,6 +119,9 @@ struct
     let va = get x k in
     let vap = f va in
     put x k vap
+
+  let size x =
+    Hashtbl.length x
 
 
   let fold (type a) (type b) (type c) (x:(a,b) map) (f: a -> b -> c -> c) (iv: c) : c =
@@ -155,6 +180,19 @@ struct
   let add_all (type a) (s: a set) (lst: a list): a set =
     List.iter (fun x -> add s x; ()) lst;
     s
+
+  let from_list (type a) (a: a list) : a set =
+    let s = make (fun x y -> x = y) in
+    add_all s a
+
+  let size s =
+    List.length s.lst
+
+  let rand (type a) (s: a set) :a  =
+    let n = size s in
+    let i = Random.int(n) in
+    List.nth s.lst i
+
 end
 
 

@@ -150,6 +150,9 @@ struct
       in
         _fold a b0
 
+    let size (type x) (a:x ast) : int =
+      fold a (fun pt n -> n + 1) 0
+
     let iter (type x) (a: x ast) (fn: x ast -> unit) : unit =
       let fld x r = let _ = fn x in r in
       fold a fld ()
