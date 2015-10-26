@@ -11,6 +11,14 @@ prop V : V,mV
 
 time t: us
 
+comp vint
+  input X where V:mV
+  output O where V:mV
+
+  rel deriv(V(O),t) = X
+
+end
+
 comp vadd2
   input X where V:mV
   input Y where V:mV
