@@ -23,7 +23,7 @@ let init_utils () =
 module STRING =
 struct
   let split (s:string) (d:string) : string list =
-    Str.split (Str.regexp s) d
+    Str.split (Str.regexp d) s
 
 end
 

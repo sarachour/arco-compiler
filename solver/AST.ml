@@ -190,7 +190,33 @@ struct
       in
         _tosym x
 
-    let from_symcaml (type a) ast (fn:symvar -> a) : a ast = error "from_symcaml" "unimplemented"
+    let from_symcaml (type a) (ast:symexpr) (fn:symvar -> a) : a ast =
+      let op1_sym2ast (x:SymCamlData.op1)  = match x with
+      | NatExp -> Exp
+      | Neg -> Neg
+      in
+      let op2_sym2ast (x:SymCamlData.op2) = match x with
+      | Exp -> Power
+      | Div -> Div
+      in
+      let opn_sym2ast (x:SymCamlData.opn) = match x with
+      | Add -> Add
+      | Mult -> Mult
+      | Sub -> Sub
+      in
+      let rec _fromsym (e:symexpr) : a ast =
+        let _fromsymlist lst =
+          List.map (fun x -> _fromsym x) lst
+        in
+        match e with
+        | Symbol(v) -> Term(fn v)
+        | Decimal(v) -> Decimal(v)
+        | Integer(v) -> Integer(v)
+        | Op1(op,e1) -> Op1((op1_sym2ast op), _fromsym e1)
+        | Op2(op,e1,e2) -> Op2(op2_sym2ast op, _fromsym e1, _fromsym e2)
+        | OpN(op,en) -> OpN(opn_sym2ast op, _fromsymlist en)
+        in
+        _fromsym ast
 
     let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> a symdecl) : symcaml*(a symdecl list)*(a symdecl list) =
       let env = SymCaml.init() in
