@@ -20,6 +20,19 @@ comp vint
 
 end
 
+comp vintadd
+  input X where V:mV
+  input Y where V:mV
+  input Z where V:mV
+  output O2 where V:mV 
+  output O1 where V:mV
+  input IC where V:mV
+
+  rel V(O1) = V(X) + V(Y)
+  rel deriv(V(O2),t) = V(X) + V(Z) initially V(IC)
+
+end
+
 comp vadd2
   input X where V:mV
   input Y where V:mV
