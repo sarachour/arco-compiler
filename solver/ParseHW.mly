@@ -244,7 +244,7 @@ expr:
     let cname = get_cmpname() in
     let tname,ttypes = HwLib.gettime dat in
     let str2hwid x =
-      if x = tname then HNTime("?") else
+      if x = tname then HNTime(UNone) else
       let x = if HwLib.hasvar dat cname x
         then HwLib.getvar dat cname x
         else error "expr" ("variable "^x^" not found in "^cname)

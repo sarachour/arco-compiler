@@ -2,7 +2,6 @@ open Core
 open Camlp4
 open Random
 
-
 exception UtilError of string
 
 let error n m = raise (UtilError (n^":"^m))
@@ -21,6 +20,12 @@ let init_utils () =
   let _ = Random.self_init () in
   ()
 
+module STRING =
+struct
+  let split (s:string) (d:string) : string list =
+    Str.split (Str.regexp s) d
+
+end
 
 module RANGE =
 struct

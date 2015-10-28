@@ -9,7 +9,7 @@ type propid = string
 type hwvid =
   | HNPort of hwvkind*compid*string*propid*untid
   | HNParam of string*float*unt
-  | HNTime of untid
+  | HNTime of unt
 
 type hwrel =
   | HRFunction of hwvid*(hwvid ast)
@@ -80,6 +80,11 @@ struct
     | HRFunction(l,r) -> "fun "^ASTLib.ast2str r (fun x -> hwvid2str x)
     | HRState(l,r,ic) -> "state "^ASTLib.ast2str r (fun x -> hwvid2str x)^" initial:"^(hwvid2str ic)
 
+  let cv2hwid c v prop =
+    match v.typ,prop with
+    | (HPortType(k,m),Some(p)) ->
+      HNPort(k,HCMLocal(c.name),v.name,p,MAP.get m p)
+    | (HParamType(f,u),_) -> HNParam(v.name,f,u)
 
   let print e =
     let pkind2str v =

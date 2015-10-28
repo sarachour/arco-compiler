@@ -24,13 +24,20 @@ comp vintadd
   input X where V:mV
   input Y where V:mV
   input Z where V:mV
-  output O2 where V:mV 
-  output O1 where V:mV
   input IC where V:mV
+
+  output O2 where V:mV
+  output O1 where V:mV
 
   rel V(O1) = V(X) + V(Y)
   rel deriv(V(O2),t) = V(X) + V(Z) initially V(IC)
 
+  ensure mag V(X) in (0,5) : V
+  ensure mag V(Y) in (0,5) : V
+  ensure mag V(Z) in (0,5) : V
+  ensure mag V(IC) in (0,1) : V
+  ensure mag V(O1) in (0,5) : V
+  ensure mag V(O2) in (0,5) : V
 end
 
 comp vadd2
