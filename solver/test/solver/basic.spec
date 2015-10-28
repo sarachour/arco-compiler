@@ -16,7 +16,7 @@ comp vint
   output O where V:mV
   input IC where V:mV
 
-  rel deriv(V(O),t) = X initially V(IC)
+  rel deriv(V(O),t) = V(X) initially V(IC)
 
 end
 

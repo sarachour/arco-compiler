@@ -53,7 +53,7 @@ module ASTLib : sig
     val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
     val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> 'a symdecl) -> bool
-    val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) ->  ('a -> 'a symdecl) -> unit
+    val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) ->  ('a -> 'a symdecl) -> (string*symexpr) list option
 end =
 struct
 
@@ -194,6 +194,7 @@ struct
 
     let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> a symdecl) : symcaml*(a symdecl list)*(a symdecl list) =
       let env = SymCaml.init() in
+      (*let _ = SymCaml.set_debug env true in *)
       let _ = SymCaml.clear env in
       let getvars (x:a ast) (r:(a symdecl) set) : (a symdecl) set = match x with
         | Term(x) -> SET.add r (decl x)
@@ -237,10 +238,10 @@ struct
       let rhe = to_symcaml e2 cnv in
       SymCaml.eq env lhe rhe
 
-    let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->a symdecl) : unit =
+    let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->a symdecl)  =
       let env,_,_ = mkenv [e1;e2] cnv decl in
       let cand = to_symcaml e1 cnv in
       let templ = to_symcaml e2 cnv in
-      let res = SymCaml.pattern env cand templ in
-      ()
+      let res = SymCaml.pattern env templ cand in
+      res
 end
