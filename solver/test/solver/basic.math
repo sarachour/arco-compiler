@@ -16,5 +16,5 @@ assume mag Y  in (-2,2) : pint
 assume mag Z in (-20,20) : pint
 assume mag Z2 in (-100,100): pint
 
-rel Z = (X*Y)/PF + Y + 0.5
+rel Z =  Y + (X*Y)/PF + 0.5
 rel deriv(Z2,t) = (X*Y)/PF + Z + 0.3 with Z2(0) = 0.5

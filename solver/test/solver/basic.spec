@@ -30,7 +30,7 @@ comp vintadd
   output O1 where V:mV
 
   rel V(O1) = V(X) + V(Y)
-  rel deriv(V(O2),t) = V(X) + V(Z) initially V(IC)
+  rel deriv(V(O2),t) = V(X) + V(Y) + V(Z) initially V(IC)
 
   ensure mag V(X) in (0,5) : V
   ensure mag V(Y) in (0,5) : V
@@ -70,7 +70,7 @@ comp vexp
   input Y where V:mV
   output O where V:mV
 
-  rel V(O) = V(X)^V(Y)/27
+  rel V(O) = (V(X)^V(Y))/27
 
   ensure mag X in (0,3) :V
   ensure mag Y in (1,3) :V
