@@ -72,7 +72,7 @@ module UnitTypeChecker =
 struct
   let typecheck (e1: untid ast) (e2:untid ast) : bool=
     let cnv x = x in
-    let todecl x = SymbolVar(x) in
+    let todecl x cnv = SymbolVar(cnv x) in
     let tvar = UnitLib.unit2str UVariant in
     if e1 = Term(tvar) || e2 = Term(tvar)  then true
     else

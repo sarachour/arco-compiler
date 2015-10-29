@@ -35,14 +35,16 @@ type 'a ast =
   | Decimal of float
   | Integer of int
 
-type 'a symdecl =
-  | WildcardVar of 'a*('a  -> 'a list -> ('a ast) list)
-  | SymbolVar of 'a
+type symdecl =
+  | WildcardVar of symvar*((symexpr) list)
+  | SymbolVar of symvar
 
 
 
 exception ASTException of (string)
 let error n msg = raise (ASTException(n^": "^msg))
+
+type 'a symassign = ('a,'a ast) map
 
 module ASTLib : sig
     val ast2str : ('a ast) -> ('a -> string) -> string
@@ -52,8 +54,8 @@ module ASTLib : sig
     val iter : ('a ast) -> ('a ast -> unit) -> unit
     val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
-    val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> 'a symdecl) -> bool
-    val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> 'a symdecl) -> ('a*('a ast)) list option
+    val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> ('a->symvar)-> symdecl) -> bool
+    val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
 end =
 struct
 
@@ -218,16 +220,33 @@ struct
         in
         _fromsym ast
 
-    let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> a symdecl) : symcaml*(a symdecl list)*(a symdecl list) =
+    let defsyms env x cnv =
+      let define_sym x r =
+        match x with
+        | SymbolVar(n) -> let _ =  SymCaml.define_symbol env n in x::r
+        | _ -> r
+      in
+      let syms = List.fold_right define_sym x [] in
+      let define_wc x r =
+        match x with
+        | WildcardVar(n,sybans) ->
+          let _ = SymCaml.define_wildcard env (n) sybans in
+          x::r
+        | _ -> r
+      in
+      let wcs = List.fold_right define_wc x [] in
+      syms,wcs
+
+    let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> (a->symvar) -> symdecl) : symcaml*(symdecl list)*(symdecl list) =
       let env = SymCaml.init() in
       (*let _ = SymCaml.set_debug env true in *)
       let _ = SymCaml.clear env in
-      let getvars (x:a ast) (r:(a symdecl) set) : (a symdecl) set = match x with
-        | Term(x) -> SET.add r (decl x)
-        | Deriv(Term(x),v) -> SET.add r (decl x)
+      let getvars (x:a ast) (r:(symdecl) set) : (symdecl) set = match x with
+        | Term(x) -> SET.add r (decl x cnv)
+        | Deriv(Term(x),v) -> SET.add r (decl x cnv)
         | _ -> r
       in
-      let onevarset (ast:a ast) (r: (a symdecl) set) : (a symdecl) set =
+      let onevarset (ast:a ast) (r: (symdecl) set) : (symdecl) set =
         fold ast getvars r
       in
       let cmpvars x y = match x,y with
@@ -236,41 +255,54 @@ struct
       | _ -> false
       in
       let allvars = List.fold_right onevarset exprs (SET.make cmpvars) in
-      let syms = SET.filter allvars (fun x -> match x with SymbolVar(_) -> true | _ -> false) in
-      let wcs = SET.filter allvars (fun x -> match x with WildcardVar(_) -> true | _ -> false) in
-      let symbans =List.map (fun x -> match x with SymbolVar(n) -> n | _ -> error "mkenv/symbans" "must be a symbol") syms in
-      let define_sym x =
-        match x with
-        | SymbolVar(n) -> let _ =  SymCaml.define_symbol env (cnv n) in ()
-        | _ -> error "mkenv/define_sym" "impossible to have wildcard in symbol declaration"
-      in
-      let define_wc x =
-        match x with
-        | WildcardVar(n,trans) -> let bans = trans n symbans in
-          let sybans = List.map (fun x -> to_symcaml x cnv) bans in
-          let _ = SymCaml.define_wildcard env (cnv n) sybans in
-          ()
-        | _ -> error "mkenv/define_wc" "impossible to have symbol in wildcard declaration"
-      in
-      let _ = List.iter define_sym syms in
-      let _ = List.iter define_wc wcs in
+      let syms,wcs = defsyms env (SET.to_list allvars) cnv in
       (env,wcs,syms)
+
 
     let simpl (type a) (ast: symexpr ast) : symexpr ast = error "simpl" "unimplemented"
 
-    let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->a symdecl) : bool =
+    let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->(a->symvar)->symdecl) : bool =
       let env,_,_ = mkenv [e1;e2] cnv decl in
       let lhe = to_symcaml e1 cnv in
       let rhe = to_symcaml e2 cnv in
       SymCaml.eq env lhe rhe
 
-    let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->a symdecl)  =
-      let env,_,_ = mkenv [e1;e2] cnv decl in
+    let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->(a->symvar)->symdecl) (n:int) =
+      let env,wcs,syms = mkenv [e1;e2] cnv decl in
       let cand = to_symcaml e1 cnv in
       let templ = to_symcaml e2 cnv in
-      let res = SymCaml.pattern env templ cand in
-      let cnv_res (k,v) = (icnv k),(from_symcaml v icnv) in
-      match res with
-      | Some(r) -> Some (List.map cnv_res r)
-      | None -> None
+      let rec solve wcs sols i =
+        let res = SymCaml.pattern env templ cand in
+        let cnv_res (k,v) = (icnv k),(from_symcaml v icnv) in
+        match res with
+        | Some(r) ->
+            let symap = MAP.from_list r in
+            let redefine x =
+              match x with
+              | WildcardVar(n,bans) ->
+                if MAP.has symap n = false then x else
+                  let v : symexpr list = (MAP.get symap n)::(bans) in
+                  WildcardVar(n,v)
+              | _ -> x
+            in
+            let nwcs,_= defsyms env (List.map redefine wcs) cnv in
+            if i < n then
+              solve nwcs (symap::sols) (i+1)
+            else
+              (symap::sols)
+        | None -> sols
+      in
+      let symassigns = solve wcs [] 0 in
+      let mmap x =
+        let nm = MAP.make() in
+        let f k v =
+          let _ = MAP.put nm (icnv k) (from_symcaml v icnv) in ()
+        in
+        let _ = MAP.iter x (fun k v -> f k v) in
+        nm
+      in
+      let nlst = List.map mmap symassigns in
+      match nlst with
+      | h::t -> Some(h::t)
+      | [] -> None
 end
