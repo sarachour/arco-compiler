@@ -268,9 +268,10 @@ struct
       SymCaml.eq env lhe rhe
 
     let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->(a->symvar)->symdecl) (n:int) =
-      let env,wcs,syms = mkenv [e1;e2] cnv decl in
+      let env,iwcs,syms = mkenv [e1;e2] cnv decl in
       let cand = to_symcaml e1 cnv in
       let templ = to_symcaml e2 cnv in
+      (*let _ = SymCaml.set_debug env true in*)
       let rec solve wcs sols i =
         let res = SymCaml.pattern env templ cand in
         let cnv_res (k,v) = (icnv k),(from_symcaml v icnv) in
@@ -280,19 +281,19 @@ struct
             let redefine x =
               match x with
               | WildcardVar(n,bans) ->
-                if MAP.has symap n = false then x else
+                if MAP.has symap n = false then WildcardVar(n,bans) else
                   let v : symexpr list = (MAP.get symap n)::(bans) in
                   WildcardVar(n,v)
               | _ -> x
             in
-            let nwcs,_= defsyms env (List.map redefine wcs) cnv in
+            let _,nwcs= defsyms env (List.map redefine wcs) cnv in
             if i < n then
               solve nwcs (symap::sols) (i+1)
             else
               (symap::sols)
         | None -> sols
       in
-      let symassigns = solve wcs [] 0 in
+      let symassigns = solve iwcs [] 0 in
       let mmap x =
         let nm = MAP.make() in
         let f k v =
