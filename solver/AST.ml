@@ -55,7 +55,7 @@ module ASTLib : sig
     val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
     val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> ('a->symvar)-> symdecl) -> bool
-    val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
+    val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> bool-> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
 end =
 struct
 
@@ -237,24 +237,24 @@ struct
       let wcs = List.fold_right define_wc x [] in
       syms,wcs
 
-    let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl: a -> (a->symvar) -> symdecl) : symcaml*(symdecl list)*(symdecl list) =
+    let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl:  int -> a -> (a->symvar) -> symdecl) : symcaml*(symdecl list)*(symdecl list) =
       let env = SymCaml.init() in
       (*let _ = SymCaml.set_debug env true in *)
       let _ = SymCaml.clear env in
-      let getvars (x:a ast) (r:(symdecl) set) : (symdecl) set = match x with
-        | Term(x) -> SET.add r (decl x cnv)
-        | Deriv(Term(x),v) -> SET.add r (decl x cnv)
+      let getvars  (i:int)  (x:a ast) (r:(symdecl) set): (symdecl) set = match x with
+        | Term(x) -> SET.add r (decl i x cnv)
+        | Deriv(Term(x),v) -> SET.add r (decl i x cnv)
         | _ -> r
       in
-      let onevarset (ast:a ast) (r: (symdecl) set) : (symdecl) set =
-        fold ast getvars r
+      let onevarset (ast:a ast) (i:int)  (r: (symdecl) set) : (symdecl) set =
+        fold ast (getvars i) r
       in
       let cmpvars x y = match x,y with
       | (SymbolVar(ra),SymbolVar(rb)) -> ra = rb
       | (WildcardVar(ra,_), WildcardVar(rb,_)) -> ra = rb
       | _ -> false
       in
-      let allvars = List.fold_right onevarset exprs (SET.make cmpvars) in
+      let allvars = LIST.fold_i onevarset exprs (SET.make cmpvars) in
       let syms,wcs = defsyms env (SET.to_list allvars) cnv in
       (env,wcs,syms)
 
@@ -262,48 +262,50 @@ struct
     let simpl (type a) (ast: symexpr ast) : symexpr ast = error "simpl" "unimplemented"
 
     let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->(a->symvar)->symdecl) : bool =
-      let env,_,_ = mkenv [e1;e2] cnv decl in
+      let env,_,_ = mkenv [e1;e2] cnv (fun i x c -> decl x c) in
       let lhe = to_symcaml e1 cnv in
       let rhe = to_symcaml e2 cnv in
       SymCaml.eq env lhe rhe
 
-    let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->(a->symvar)->symdecl) (n:int) =
-      let env,iwcs,syms = mkenv [e1;e2] cnv decl in
+
+    let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl) (n:int) =
+      let max_depth = 4 in
+      let decl_tmpl_or_pat i x cnv =  if i = 0 then decl x false cnv else decl x true cnv in
+      let env,iwcs,syms = mkenv [e1;e2] cnv decl_tmpl_or_pat in
       let cand = to_symcaml e1 cnv in
       let templ = to_symcaml e2 cnv in
       (*let _ = SymCaml.set_debug env true in*)
-      let rec solve wcs sols i =
-        let res = SymCaml.pattern env templ cand in
-        let cnv_res (k,v) = (icnv k),(from_symcaml v icnv) in
-        match res with
-        | Some(r) ->
-            let symap = MAP.from_list r in
-            let redefine x =
-              match x with
-              | WildcardVar(n,bans) ->
-                if MAP.has symap n = false then WildcardVar(n,bans) else
-                  let v : symexpr list = (MAP.get symap n)::(bans) in
-                  WildcardVar(n,v)
-              | _ -> x
-            in
-            let _,nwcs= defsyms env (List.map redefine wcs) cnv in
-            if i < n then
-              solve nwcs (symap::sols) (i+1)
-            else
-              (symap::sols)
-        | None -> sols
-      in
-      let symassigns = solve iwcs [] 0 in
       let mmap x =
         let nm = MAP.make() in
-        let f k v =
-          let _ = MAP.put nm (icnv k) (from_symcaml v icnv) in ()
-        in
+        let f k v = MAP.put nm (icnv k) (from_symcaml v icnv); () in
         let _ = MAP.iter x (fun k v -> f k v) in
         nm
       in
-      let nlst = List.map mmap symassigns in
+      let sols : (symvar,symexpr) map set = SET.make (fun x y -> x = y) in
+      let rec solve wcs depth =
+        if (SET.size sols) = n || depth == max_depth then () else
+        let res = SymCaml.pattern env templ cand in
+        match res with
+        | Some(r) ->
+            let symap = MAP.from_list r in
+            let _ = SET.add sols symap in
+            let solve_with_one_ban (x:symdecl) =
+              match x with
+              | WildcardVar(n,bans) ->
+                if MAP.has symap n = false then () else
+                  let nx = WildcardVar(n, (MAP.get symap n)::(bans)) in
+                  let nwcs = LIST.sub  x nx wcs in
+                  let _,nwcs = defsyms env nwcs cnv in
+                  solve nwcs (depth+1)
+              | _ -> ()
+            in
+            let _ = List.iter solve_with_one_ban wcs  in
+            ()
+        | None -> ()
+      in
+      let _ = solve iwcs 0 in
+      let nlst : (a,a ast) map list = SET.map sols mmap in
       match nlst with
-      | h::t -> Some(h::t)
       | [] -> None
+      | h::t -> Some (nlst)
 end

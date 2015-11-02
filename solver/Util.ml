@@ -101,6 +101,16 @@ struct
         let nsc = fxn q in
         if sc < nsc then (nsc,q) else (sc,p) ) t (fxn h, h)
     | [] -> error "max" "cannot take max of empty list."
+
+  let fold_i (type a) (type b) (fxn : a -> int -> b -> b) (lst: a list) (init:b) =
+    let nfxn (x:a) ((i,v):(int*b)) =
+      let nv = fxn x i v in (i+1, nv)
+    in
+    let _, v = List.fold_right nfxn lst (0,init) in
+    v
+
+  let sub (type a) (t:a) (v:a) (lst:a list) =
+    List.map (fun x -> if x = t then v else x) lst
 end
 
 module MAP =
@@ -179,8 +189,9 @@ struct
   let fold s f iv =
     List.fold_right f (s.lst) iv
 
-  let map s f =
-    List.map f (s.lst)
+  let map (type a) (type b) (s:a set) (f:a->b): b list  =
+    let v = List.map f (s.lst) in
+    v
 
   let filter s f =
     List.filter f (s.lst)
@@ -280,7 +291,8 @@ struct
           else
             vl
         in
-          let subres : c list = SET.map (chldrn) (fun (x,v) -> visit x v)  in
+          let visitset ((x,v):a*b) :c = visit x v in
+          let subres : c list = SET.map (chldrn) visitset in
           red subres
     in
       let path = [st] in
