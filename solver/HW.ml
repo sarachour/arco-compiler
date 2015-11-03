@@ -63,7 +63,6 @@ struct
   let output_cid prop = "output."^prop
 
   let get_special nm =
-  let _ = Printf.printf "%s\n" nm in
   match STRING.split nm "\." with
   | ["copy";q] -> Some("copy",q)
   | ["input";q] -> Some("input",q)
