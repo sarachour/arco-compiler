@@ -443,7 +443,7 @@ struct
 
   let tostr (type a) (type b) (g:(a,b) tree) (a2str:a->string) =
     let fold_node n str =
-      str^(STRING.repeat " " (depth g n))^(a2str n)^"\n"
+      str^(STRING.repeat "  " (depth g n))^(a2str n)^"\n"
     in
     let fold_edge src snk v str =
       str
