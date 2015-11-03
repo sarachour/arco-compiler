@@ -25,6 +25,11 @@ struct
   let split (s:string) (d:string) : string list =
     Str.split (Str.regexp d) s
 
+  let rec repeat (s:string) (n:int) : string =
+    if n > 0 then
+      s^(repeat s (n-1))
+    else
+      ""
 end
 
 module RANGE =
@@ -125,6 +130,10 @@ struct
     Hashtbl.replace x k v;
     x
 
+  let remove  (type a) (type b) (x:(a,b) map) (k:a) : (a,b) map =
+    Hashtbl.remove x k;
+    x
+
   let has (type a) (type b) x k : bool =
     Hashtbl.mem x k
 
@@ -162,7 +171,7 @@ struct
 
   let filter (type a) (type b) (type c) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
     fold x (fun q v k -> if f q v then (q,v)::k else k) []
-    
+
   let from_list (type a) (type b) (x:(a*b) list) : (a,b) map =
     let mp = make() in
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
@@ -186,18 +195,28 @@ struct
     else
       s
 
+
   let iter s f =
     List.iter f (s.lst)
 
   let fold s f iv =
     List.fold_right f (s.lst) iv
 
+
   let map (type a) (type b) (s:a set) (f:a->b): b list  =
     let v = List.map f (s.lst) in
     v
 
+  let get s q =
+    match List.filter (fun x -> s.cmp x q) s.lst with
+    | [h] -> Some(h)
+    | _ -> None
+
   let filter s f =
     List.filter f (s.lst)
+
+  let remove s v =
+    filter s (fun x -> s.cmp x v)
 
   let to_list (type a) (s: a set) : a list=
     s.lst
@@ -251,7 +270,7 @@ struct
     if hasnode g n then
       error "mknode" "node already exists"
     else
-      let cmp ((n1,v1):a*b) (n2,v2) = n1 = n2 && g.vcmp v1 v2 in
+      let cmp ((n1,v1):a*b) (n2,v2) = (n1 = n2) && g.vcmp v1 v2 in
       let _ = MAP.put (g.adj) n (SET.make cmp) in
       g
 
@@ -300,7 +319,145 @@ struct
     in
       let path = [st] in
       _traverse st path init
+
+  let tostr g n =
+    let prodstr src snk edge r  =
+      let src_str = g.node2str src in
+      let dest_str = g.node2str snk in
+      let edge_str = g.val2str edge in
+      true, r^(src_str^" -> "^dest_str^" : "^edge_str)
+    in
+    let redstr lst =
+      List.fold_right (fun x r -> x^"\n"^r) lst ""
+    in
+    visit g n "" prodstr redstr
+
 end
+
+
+type ('a,'b) tree = {
+  mutable adj : ('a,(('a*'b) set)*('a option)) map;
+  mutable root : 'a option;
+  ecmp : 'b -> 'b -> bool;
+  ncmp : 'a -> 'a -> bool;
+}
+
+type ('a,'b) cursor = 'a
+
+module TREE =
+struct
+
+  let make ncmp ecmp  =
+    {
+      adj= MAP.make();
+      root= None;
+      ncmp= ncmp;
+      ecmp= ecmp;
+
+    }
+  let leaves g =
+    MAP.fold g.adj (fun k (v,p) r -> if SET.size v = 0 then k::r else r) []
+
+  let root g =
+    g.root
+
+  let edge  (type a) (type b) (g:(a,b) tree) (x:a) (y:a) : b =
+    let chld,_ = MAP.get g.adj x in
+    match SET.filter chld (fun (n,e) -> n = y)  with
+    | [(snk,edj)] -> edj
+    | _ -> error "edge" "does not exist"
+
+  let parent  (type a) (type b) (g:(a,b) tree) (n:a) : a option =
+    let _,p = MAP.get g.adj n in
+    p
+
+  let hasnode (type a) (type b) (g) (n:a) : bool =
+    MAP.has (g.adj) n
+
+  let hasedge (type a) (type b) g s e v : bool =
+    if hasnode g s == false || hasnode g e == false then
+      false
+    else
+      let chld,_ = MAP.get (g.adj) s in
+      SET.has chld (e,v)
+
+  let mknode (type a) (type b) (g) (n:a) : (a,b) tree =
+    if hasnode g n then
+      error "mknode" "node already exists"
+    else
+      let cmp ((n1,v1):a*b) (n2,v2) = g.ncmp n1 n2 && g.ecmp v1 v2 in
+      let _ = MAP.put (g.adj) n (SET.make cmp, None) in
+      g
+
+
+  let mkedge (type a) (type b) (g) (src:a) (snk:a) (v:b) : (a,b) tree =
+    let chld,_ = MAP.get g.adj src in
+    let _ = SET.add chld (snk,v) in
+    let chld,_ = MAP.get g.adj snk in
+    let _ = MAP.put g.adj snk (chld,Some src) in
+    g
+
+  let setroot (type a) (type b) (g:(a,b) tree) (src:a) =
+    if g.root = None then
+      let _ = g.root <- Some src in
+      g
+    else
+      error "setroot" "already exists"
+
+  let fold_path (type a) (type b) (type c) (fxn:a->b->c->c) (g:(a,b) tree) (node:a) (ic:c) =
+    let rec _fold_path (node:a) : c =
+      match parent g node with
+      | Some(par) ->
+        let nc = _fold_path par in
+        let edj :b = edge g par node in
+        fxn par edj nc
+      | None -> ic
+    in
+    _fold_path node
+
+  let get_path (type a) (type b) (g: (a,b) tree) (node:a) =
+    fold_path (fun x y lst -> x::lst) g node []
+
+  let depth (type a) (type b) (g: (a,b) tree) (node:a)  : int =
+    fold_path (fun x y v -> 1+v) g node 0
+
+
+  let fold_tree (type a) (type b) (type c) (nfx:a->c->c) (efx:a->a->b->c->c) (g:(a,b) tree) (ic:c)=
+    let rec _traverse src (res:c) : c =
+      if hasnode g src  = false then
+        error "graph:traverse" "node doesn't exist"
+      else
+        let res = nfx src res in
+        let chldrn,_  = MAP.get (g.adj) (src) in
+        let proc_chld (snk,e) x =
+          let x = _traverse snk x in
+          let x = efx src snk e x in
+          x
+        in
+        SET.fold chldrn proc_chld res
+    in
+      match g.root with
+      |Some(root) ->  _traverse root ic
+      |None -> ic
+
+
+  let tostr (type a) (type b) (g:(a,b) tree) (a2str:a->string) =
+    let fold_node n str =
+      str^(STRING.repeat " " (depth g n))^(a2str n)^"\n"
+    in
+    let fold_edge src snk v str =
+      str
+    in
+    let v = fold_tree fold_node fold_edge g "" in
+    v
+
+  let select (type a) (type b) (g:(a,b) tree) (x:a) =
+    if hasnode g x then
+      x
+    else
+      error "select" "cannot select node that does not exist in tree."
+end
+
 
 
 module REF :
