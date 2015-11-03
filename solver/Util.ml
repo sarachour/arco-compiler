@@ -160,6 +160,9 @@ struct
     let _ = iter x repl in
     x
 
+  let filter (type a) (type b) (type c) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
+    fold x (fun q v k -> if f q v then (q,v)::k else k) []
+    
   let from_list (type a) (type b) (x:(a*b) list) : (a,b) map =
     let mp = make() in
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
