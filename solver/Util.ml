@@ -153,7 +153,7 @@ struct
     Hashtbl.iter f x
 
   let str (type a) (type b) (x:(a,b) map) (kf: a -> string) (vf: b->string):string =
-    Hashtbl.fold (fun k v r -> r^(kf k)^":"^(vf v)^"\n") x ""
+    Hashtbl.fold (fun k v r -> r^(kf k)^" = "^(vf v)^"\n") x ""
 
   let map (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> b) : (a,b) map =
     let repl k v = let _ = put x k (f k v) in () in

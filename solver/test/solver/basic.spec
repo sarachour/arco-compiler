@@ -28,6 +28,7 @@ comp vintadd
 
   output O2 where V:mV
   output O1 where V:mV
+  output O3 where V:mV
 
   rel V(O1) = V(X) + V(Y)
   rel deriv(V(O2),t) = V(X) + V(Y) + V(Z) initially V(IC)

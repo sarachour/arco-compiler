@@ -75,6 +75,10 @@ struct
 
   let getcstr c = c.cstr
 
+  let hwid2port hwid = match hwid with
+  | HNPort(k,HCMGlobal(c,i),n,p,_) -> k,c,n,p,Some(i)
+  | HNPort(k,HCMLocal(c),n,p,_) -> k,c,n,p,None
+  | _ -> error "hwid2port" "only works for port hwids"
 
   let compid2str c = match c with
   | HCMGlobal(n,i) -> n
