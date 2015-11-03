@@ -15,7 +15,7 @@ type mid =
   | MNParam of string*float*unt
   | MNTime of unt
 
-type mrel = MRState of mid*(mid ast)*float | MRFunction of mid*(mid ast) | MRNone
+type mrel = MRState of mid*(mid ast)*mid | MRFunction of mid*(mid ast) | MRNone
 
 
 type mtype = mid
@@ -72,7 +72,7 @@ struct
     | MLocal -> "local"
 
   let rel2str (v:mrel) : string = match v with
-    | MRState(l,r,ic) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_float ic)
+    | MRState(l,r,MNParam(_,ic,_)) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_float ic)
     | MRFunction(l,r) -> (ASTLib.ast2str r (fun x -> mid2str x))
     | MRNone -> "(none)"
 
@@ -173,7 +173,10 @@ struct
           let tr : untid ast = UnitTypeChecker.typeof rhs mid2unit in
           let tl : untid ast= UnitTypeChecker.typeof lhs mid2unit in
           if UnitTypeChecker.typecheck tl tr then
-            let _ = dat.rel <- MRState(lu,rhs,ic) in
+            let icname = (name^"_0") in
+            let ictype = mid2unit lu in
+            let _ = mkparam e icname ic ictype in
+            let _ = dat.rel <- MRState(lu,rhs,MNParam(icname,ic,ictype)) in
             e
           else
             error "mkstrel" ("variable "^name^" doesn't type check with expression: "^

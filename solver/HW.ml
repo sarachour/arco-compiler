@@ -61,6 +61,19 @@ struct
   let copy_cid prop = "copy."^prop
   let input_cid prop = "input."^prop
   let output_cid prop = "output."^prop
+
+  let get_special nm =
+  let _ = Printf.printf "%s\n" nm in
+  match STRING.split nm "\." with
+  | ["copy";q] -> Some("copy",q)
+  | ["input";q] -> Some("input",q)
+  | ["output";q] -> Some("output",q)
+  | _ -> None
+
+  let is_special nm = match get_special nm with
+  | Some(_) -> true
+  | None -> false
+
   let getcstr c = c.cstr
 
 
