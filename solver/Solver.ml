@@ -299,13 +299,6 @@ struct
     let b = tbl.search in
     match b.curr with
     | Some(old) ->
-      (*let _ = Printf.printf "%d %d\n" (next.id) (old.id) in
-      let _ = Printf.printf "%s\n" (buf2str b) in*)
-      let _ = flush_all() in
-      let p1 = LIST.tostr (fun x -> steps2str b x) "\n" (TREE.get_path b.paths old) in
-      let p2 = LIST.tostr (fun x -> steps2str b x) "\n" (TREE.get_path b.paths next) in
-      let _ = Printf.printf "%d <-> %d\nold=\n%s\n\nnext\n%s\n\n" old.id next.id p1 p2 in
-      let _ = flush_all() in
       let anc = TREE.ancestor b.paths next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path b.paths old)) old anc in
       let from_anc = LIST.sublist (TREE.get_path b.paths next) anc next in
@@ -471,7 +464,14 @@ struct
         ()
       else ()
 
+  let resolve_trivial s t g =
+    match g with
+    | (UFunction(id,Decimal(_))) -> true
+    | (UFunction(id,Integer(_))) -> true
+    | _ -> false
+    
   let apply_nodes (slnenv:slenv) (tbl:gltbl) (g:goal) : unit =
+    if resolve_trivial slnenv tbl g then () else
     let comps = MAP.filter tbl.nodes (fun k v -> match k with SprComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with SprConcComp(_) -> true | _ -> false)  in
     let n = SearchLib.cursor tbl.search in
