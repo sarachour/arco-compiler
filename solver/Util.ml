@@ -130,7 +130,7 @@ struct
     Hashtbl.replace x k v;
     x
 
-  let remove  (type a) (type b) (x:(a,b) map) (k:a) : (a,b) map =
+  let rm  (type a) (type b) (x:(a,b) map) (k:a) : (a,b) map =
     Hashtbl.remove x k;
     x
 
@@ -215,7 +215,7 @@ struct
   let filter s f =
     List.filter f (s.lst)
 
-  let remove s v =
+  let rm s v =
     filter s (fun x -> s.cmp x v)
 
   let to_list (type a) (s: a set) : a list=
@@ -389,13 +389,35 @@ struct
       let _ = MAP.put (g.adj) n (SET.make cmp, None) in
       g
 
-
   let mkedge (type a) (type b) (g) (src:a) (snk:a) (v:b) : (a,b) tree =
     let chld,_ = MAP.get g.adj src in
     let _ = SET.add chld (snk,v) in
     let chld,_ = MAP.get g.adj snk in
     let _ = MAP.put g.adj snk (chld,Some src) in
     g
+
+
+  let rmnode (type a) (type b) (g) (n:a) : (a,b) tree =
+    let rec _rmnode (n:a) =
+      if hasnode g n = false then
+        error "mknode" "node does not exist"
+      else
+        let chld,_ = MAP.get (g.adj) n in
+        let _ = SET.iter chld (fun (x,v) -> _rmnode x) in
+        let _ = MAP.rm (g.adj) n in
+        ()
+    in
+    let _ = match parent g n with
+      | Some(par) ->
+        let parchld,parpar = MAP.get g.adj par in
+        let parchld = SET.to_set (SET.filter parchld (fun (x,v) -> g.ncmp x n == false)) parchld.cmp in
+        let _ = MAP.put g.adj par (parchld,parpar) in
+        ()
+      | None -> ()
+    in
+    let _ = _rmnode n in
+    g
+
 
   let setroot (type a) (type b) (g:(a,b) tree) (src:a) =
     if g.root = None then
@@ -425,7 +447,7 @@ struct
   let fold_tree (type a) (type b) (type c) (nfx:a->c->c) (efx:a->a->b->c->c) (g:(a,b) tree) (ic:c)=
     let rec _traverse src (res:c) : c =
       if hasnode g src  = false then
-        error "graph:traverse" "node doesn't exist"
+        error "graph/traverse" "node doesn't exist"
       else
         let res = nfx src res in
         let chldrn,_  = MAP.get (g.adj) (src) in
