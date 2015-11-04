@@ -56,6 +56,7 @@ module ASTLib : sig
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
     val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> ('a->symvar)-> symdecl) -> bool
     val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> bool-> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
+    val sub : ('a ast) -> (('a,'a ast) map) -> 'a ast
 end =
 struct
 
@@ -308,4 +309,11 @@ struct
       match nlst with
       | [] -> None
       | h::t -> Some (nlst)
+
+  let sub (type a) (expr:a ast) (subs: (a,a ast) map) : a ast =
+    let tf x = match x with
+    | Term(v) -> if MAP.has subs v then Some(MAP.get subs v) else None
+    | _ -> None
+    in
+    trans expr tf
 end

@@ -1,7 +1,12 @@
 open HW
+open HWCstr
+
 open Math
+open MathCstr
+
 open AST
 open Util
+open Unit
 open SymCamlData
 
 type slenv =  {
@@ -60,7 +65,7 @@ type unodeid =
   | SprOutput of string
   | SprCopy of string
   | SprComp of string
-  | SprRelOfComp of string
+  | SprConcComp of string
 
 type unode = {
   mutable rels : urel set;
@@ -79,7 +84,7 @@ struct
   | SprOutput(x) -> "output."^x
   | SprCopy(x) -> "copy."^x
   | SprComp(x) -> "comp."^x
-  | SprRelOfComp(x) -> "rel-of-comp."^x
+  | SprConcComp(x) -> "rel-of-comp."^x
 
   let hwid2var hwid = match hwid with
   | HNPort(knd,cid,name,prop,_) -> name^":"^prop
@@ -133,6 +138,24 @@ struct
   let urel2str uid = match uid with
   | UFunction(l,r) -> (unid2str l)^"="^(ASTLib.ast2str r unid2str)
   | UState(l,r,i) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)
+
+  let conc_node node assigns =
+  let sid id : unid=
+    if MAP.has assigns id then
+      match MAP.get assigns id with
+      | Term(v) -> v
+      | _ -> error "conc node" "was expecting simple assignment to var"
+    else
+      id
+  in
+  let conc_rel x =
+    match x with
+    | UFunction(l,r) -> UFunction(sid l,ASTLib.sub r assigns)
+    | UState(l,r,i) -> UState(sid l,ASTLib.sub r assigns,sid i)
+  in
+  let nr = SET.map node.rels (fun x -> conc_rel x) in
+  node
+
 
   let goal2str = urel2str
 
@@ -279,6 +302,10 @@ struct
       (*let _ = Printf.printf "%d %d\n" (next.id) (old.id) in
       let _ = Printf.printf "%s\n" (buf2str b) in*)
       let _ = flush_all() in
+      let p1 = LIST.tostr (fun x -> steps2str b x) "\n" (TREE.get_path b.paths old) in
+      let p2 = LIST.tostr (fun x -> steps2str b x) "\n" (TREE.get_path b.paths next) in
+      let _ = Printf.printf "%d <-> %d\nold=\n%s\n\nnext\n%s\n\n" old.id next.id p1 p2 in
+      let _ = flush_all() in
       let anc = TREE.ancestor b.paths next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path b.paths old)) old anc in
       let from_anc = LIST.sublist (TREE.get_path b.paths next) anc next in
@@ -312,6 +339,25 @@ struct
     |None -> error "mkbuf" "impossible to not have initial step"
 end
 
+module Shim =
+struct
+  let unt s uid : unt =
+    match uid with
+    | HwId(HNPort(_,_,_,_,u)) -> UExpr (Term u)
+    | MathId(MNVar(_,_,u)) -> u
+
+  let mag s uid : range option =
+    match uid with
+    | HwId(HNPort(k,HCMLocal(cname),name,prop,un)) ->
+      HwCstrLib.mag s.hw.cstr cname name prop
+    | HwId(HNPort(k,HCMGlobal(cname,_),name,prop,un)) ->
+      HwCstrLib.mag s.hw.cstr cname name prop
+    | MathId(MNVar(k,v,u)) ->
+      MathCstrLib.mag s.prob.cstr v
+    |_ -> None
+
+
+end
 
 module SolveLib =
 struct
@@ -359,6 +405,12 @@ struct
 
   let goal2str g = UnivLib.urel2str g
 
+  let mag_analysis (s:slenv) (port:unid) (qty:unid) =
+    let uq = Shim.unt s qty in
+    let urng = Shim.mag s qty in
+    let up = Shim.unt s port in
+    let urng = Shim.mag s port in
+    ()
 
   let apply_node (s:slenv) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : unit =
     let c = HwLib.getcomp s.hw node.name in
@@ -389,10 +441,12 @@ struct
       match g,v with
       | (UFunction(gl,gr), UFunction(nl,nr))->
         let res = unify_node_with_goal gl gr nl nr in
+        let _ = mag_analysis s nl gl in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
         slns @ res
       | (UState(gl,gr,gic), UState(nl,nr,ic))->
         let res = unify_node_with_goal gl gr nl nr in
+        let _ = mag_analysis s nl gl in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
         let _ = List.iter (fun mp -> let _ = MAP.put mp gic (Term ic) in () ) res in
         slns @ res
@@ -402,6 +456,9 @@ struct
       let _ = SearchLib.start gtbl.search in
       let _ = SearchLib.add_step gtbl.search (SRemoveGoal gl) in
       let _ = MAP.iter assigns (fun k v -> SearchLib.add_step gtbl.search (SAddGoal (UFunction(k,v)))) in
+      (*add special component.*)
+      let nnodes = UnivLib.conc_node node assigns in
+      (*let _ = SearchLib.add_step gtbl.search (SAddNode (SprConcComp "?", nnodes))  in*)
       let _ = SearchLib.commit gtbl.search in
       ()
     in
@@ -416,12 +473,13 @@ struct
 
   let apply_nodes (slnenv:slenv) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with SprComp(_) -> true | _ -> false)  in
-    let rels = MAP.filter tbl.nodes (fun k v -> match k with SprRelOfComp(_) -> true | _ -> false)  in
+    let rels = MAP.filter tbl.nodes (fun k v -> match k with SprConcComp(_) -> true | _ -> false)  in
     let n = SearchLib.cursor tbl.search in
     let handle_node (id,x) =
       let _ = apply_node slnenv tbl g id x in
       ()
     in
+    let _ = List.iter handle_node rels  in
     let _ = List.iter handle_node comps  in
     ()
 
@@ -452,17 +510,7 @@ struct
     else
       let _ = Printf.printf "no goals left.. done\n" in
       ()
-  (*
-    let apply_goal g =
-      let _ = prf s (fun () -> Printf.printf "   Goal: %s \n" (goal2str g)) in
-      let _ = apply_nodes s v g in
-      ()
-    in
-    let _ = prf s (fun () -> Printf.printf "=== Step #%d (depth = %d / %d) ===\n" (v.search.cnt) v.search.depth s.max_depth) in
-    let _ = apply_goal (SET.rand v.goals) in
-    let _ = Printf.printf "%s\n" (SearchLib.buf2str v.search) in
-    ()
-  *)
+
 end
 
 

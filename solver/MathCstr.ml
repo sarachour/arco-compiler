@@ -43,7 +43,10 @@ struct
     let _ = MAP.put (e.errs) vname (k,r) in
     e
 
-
+  let mag e vname =
+    match MAP.get e.mags vname with
+    | (MCAssume,(min,max))-> Some (min,max)
+    | _ -> None
 
 
   let print e =

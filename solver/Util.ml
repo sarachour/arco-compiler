@@ -97,6 +97,11 @@ struct
     in
     mk 0
 
+  let tostr (type a) (fn: a->string) (delim:string) (lst:a list) =
+    match lst with
+    | h::t -> List.fold_right (fun x r -> r^delim^(fn x)) (h::t) ""
+    | [] -> ""
+
   let sort (type a) (fn: a->int) (lst:a list) strategy=
     if strategy = SortAscending then
       List.sort (fun x y -> (fn x) - (fn y)) lst
@@ -345,6 +350,7 @@ struct
       let path = [st] in
       _traverse st path init
 
+
   let tostr g n =
     let prodstr src snk edge r  =
       let src_str = g.node2str src in
@@ -444,29 +450,29 @@ struct
     g
 
   let fold_path (type a) (type b) (type c) (nf:a->c->c) (ef:a->a->b->c->c) (g:(a,b) tree) (node:a) (ic:c) =
-    let rec _fold_path (node:a) : c =
+    let rec _fold_path (node:a) (r:c) : c =
       match parent g node with
       | Some(par) ->
         let edj :b = edge g par node in
-        let nc = _fold_path par in
-        let nc = nf node nc in
-        let nc = ef par node edj nc in
-        nc
+        let r = nf node r in
+        let r = ef par node edj r in
+        let r = _fold_path par r in
+        r
       | None ->
-        let nc = nf node ic in
-        nc
+        let r = nf node r in
+        r
     in
-    _fold_path node
+    _fold_path node ic
 
   let get_path (type a) (type b) (g: (a,b) tree) (en:a) : a list =
-    fold_path (fun x lst -> x::lst) (fun src snk v r -> r) g en []
+    fold_path (fun x lst -> lst @ [x]) (fun src snk v r -> r) g en []
 
 
   let ancestor (type a) (type b) (t:(a,b) tree) (a:a) (b:a) : a =
     let pa = get_path t a in
     let pb = get_path t b in
     (*let _ = Printf.printf "LENGTHS: a=%d b=%d\n" (List.length pa) (List.length pb) in*)
-    let anc = List.fold_left (fun (r:a option) (q:a) -> if r = None && LIST.has pb q then Some q else None) None pa in
+    let anc = List.fold_right (fun (q:a)  (r:a option)-> if LIST.has pb q then Some q else r) pa None in
     match anc with
     | Some(a) -> a
     | None -> error "ancestor" "two nodes must have an ancestor."

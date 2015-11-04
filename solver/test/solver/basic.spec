@@ -18,6 +18,7 @@ comp vint
 
   rel deriv(V(O),t) = V(X) initially V(IC)
 
+  ensure mag V(O) in (0,5): V
 end
 
 comp vintadd

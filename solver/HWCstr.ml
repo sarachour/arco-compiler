@@ -106,6 +106,11 @@ struct
     in
     ()
 
+  let mag e cmp port prop  =
+    match MAP.get e.mags (cmp,port,prop) with
+    | HCMagRange(min,max) -> Some (min,max)
+    | HCNoMag -> None
+
   let mktc e iname rng =
     let key = (iname) in
     if MAP.has e.tcs key then
