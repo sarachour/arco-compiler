@@ -30,6 +30,10 @@ struct
       s^(repeat s (n-1))
     else
       ""
+
+  let startswith (s:string) (p:string) : bool =
+    Str.string_match (Str.regexp p) s 0
+
 end
 
 module RANGE =
@@ -116,6 +120,26 @@ struct
 
   let sub (type a) (t:a) (v:a) (lst:a list) =
     List.map (fun x -> if x = t then v else x) lst
+
+  let rev (type a) (t:a list) =
+    List.rev t
+
+  let sublist (type a) (t:a list) (st:a) (en:a) =
+    let gen (lst,add) v  =
+      if add = true && v = st then
+        (v::lst,false)
+      else if add = true || v = en then
+        (v::lst,true)
+      else
+        (lst,false)
+    in
+    let f,_ = List.fold_left gen ([],false) t in
+    f
+
+  let rand (type a) (s: a list) :a  =
+    let n = List.length s in
+    let i = Random.int(n) in
+    List.nth s i
 end
 
 module MAP =
@@ -216,7 +240,8 @@ struct
     List.filter f (s.lst)
 
   let rm s v =
-    filter s (fun x -> s.cmp x v)
+    let _ = s.lst <- filter s (fun x -> s.cmp x v = false) in
+    ()
 
   let to_list (type a) (s: a set) : a list=
     s.lst
@@ -418,6 +443,33 @@ struct
     let _ = _rmnode n in
     g
 
+  let fold_path (type a) (type b) (type c) (nf:a->c->c) (ef:a->a->b->c->c) (g:(a,b) tree) (node:a) (ic:c) =
+    let rec _fold_path (node:a) : c =
+      match parent g node with
+      | Some(par) ->
+        let edj :b = edge g par node in
+        let nc = _fold_path par in
+        let nc = nf node nc in
+        let nc = ef par node edj nc in
+        nc
+      | None ->
+        let nc = nf node ic in
+        nc
+    in
+    _fold_path node
+
+  let get_path (type a) (type b) (g: (a,b) tree) (en:a) : a list =
+    fold_path (fun x lst -> x::lst) (fun src snk v r -> r) g en []
+
+
+  let ancestor (type a) (type b) (t:(a,b) tree) (a:a) (b:a) : a =
+    let pa = get_path t a in
+    let pb = get_path t b in
+    (*let _ = Printf.printf "LENGTHS: a=%d b=%d\n" (List.length pa) (List.length pb) in*)
+    let anc = List.fold_left (fun (r:a option) (q:a) -> if r = None && LIST.has pb q then Some q else None) None pa in
+    match anc with
+    | Some(a) -> a
+    | None -> error "ancestor" "two nodes must have an ancestor."
 
   let setroot (type a) (type b) (g:(a,b) tree) (src:a) =
     if g.root = None then
@@ -426,22 +478,10 @@ struct
     else
       error "setroot" "already exists"
 
-  let fold_path (type a) (type b) (type c) (fxn:a->b->c->c) (g:(a,b) tree) (node:a) (ic:c) =
-    let rec _fold_path (node:a) : c =
-      match parent g node with
-      | Some(par) ->
-        let nc = _fold_path par in
-        let edj :b = edge g par node in
-        fxn par edj nc
-      | None -> ic
-    in
-    _fold_path node
 
-  let get_path (type a) (type b) (g: (a,b) tree) (node:a) =
-    fold_path (fun x y lst -> x::lst) g node []
 
   let depth (type a) (type b) (g: (a,b) tree) (node:a)  : int =
-    fold_path (fun x y v -> 1+v) g node 0
+    fold_path (fun x v -> 1+v) (fun src snk v r -> r ) g node 0
 
 
   let fold_tree (type a) (type b) (type c) (nfx:a->c->c) (efx:a->a->b->c->c) (g:(a,b) tree) (ic:c)=
