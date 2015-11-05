@@ -686,6 +686,7 @@ struct
     let nid_name = match nid with UNoComp(n) -> n | _ -> error "conc_node" "unexpected" in
     let new_nid = UNoConcComp(nid_name,iid) in
     let nrels : urel list= SET.filter nd.rels (fun x -> x <> rl) in
+    if List.length nrels = 0 then None else
     let nrels : urel list = List.map (fun x -> sub_rel x) nrels in
     Some (nid,nrels)
 
