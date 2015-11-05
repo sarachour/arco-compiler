@@ -128,7 +128,7 @@ struct
 
   let rm (type a) (t:a) (lst: a list) =
     List.filter (fun x -> if x = t then false else true) lst
-    
+
   let rev (type a) (t:a list) =
     List.rev t
 
@@ -395,7 +395,11 @@ struct
   let root g =
     g.root
 
-  let edge  (type a) (type b) (g:(a,b) tree) (x:a) (y:a) : b =
+  let filter_nodes (type a) (type b) (g:(a,b) tree) (flt:a->bool) : a list =
+    let cands = MAP.filter g.adj (fun k v -> flt k)  in
+    List.map (fun (k,v) -> k) cands
+    
+  let edge (type a) (type b) (g:(a,b) tree) (x:a) (y:a) : b =
     let chld,_ = MAP.get g.adj x in
     match SET.filter chld (fun (n,e) -> n = y)  with
     | [(snk,edj)] -> edj

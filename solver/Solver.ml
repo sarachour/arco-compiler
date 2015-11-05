@@ -339,6 +339,8 @@ struct
   let mkconn_cons (s:slvr) (s:sln) =
     true
 
+
+
   let mkconn (sln:sln) (src:wireid) (snk:wireid) =
     let sinks = if MAP.has sln.conns src = false then
         let s = (SET.make (fun x y -> x = y) ) in
@@ -381,7 +383,7 @@ struct
 
   let usecomp (sln:sln) id =
     let l,n = MAP.get sln.comps id in
-    let _ = MAP.put sln.comps id (n::l,n+1) in
+    let _ = sln.comps <- MAP.put sln.comps id (n::l,n+1) in
     n
 
   let compiid (sln:sln) id =
@@ -405,12 +407,26 @@ struct
   let usecomp_mark (s:sln) id (i:int) =
     let lst,n = MAP.get s.comps id in
     let lst = i::lst in
-    MAP.put s.comps id (lst,n)
+    s.comps <- MAP.put s.comps id (lst,n)
 
   let usecomp_unmark (s:sln) id (i:int) =
     let lst,n = MAP.get s.comps id in
     let lst = LIST.rm i lst in
-    MAP.put s.comps id (lst,n)
+    s.comps <- MAP.put s.comps id (lst,n)
+
+  let tostr (s:sln) : string=
+    let comp2str cname clist id =
+      let instlist2str lst =
+        LIST.tostr (fun x -> string_of_int x) "," clist
+      in
+      (UnivLib.unodeid2name cname)^" | "^(string_of_int id)^" = ["^(instlist2str clist)^"]"
+    in
+    let comps2str c =
+      let res : string = MAP.fold c (fun k (l,n) r -> r^"\n"^(comp2str k l n)) "" in
+      res
+    in
+    let cstr = comps2str s.comps in
+    cstr
 
 end
 
@@ -421,8 +437,8 @@ struct
   | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
   | SAddNode(id,v) -> "add "^(UnivLib.unodeid2name id)
   | SRemoveNode(id,v) -> "rm"^(UnivLib.unodeid2name id)
-  | SSolUseNode(id,i) -> "sol use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
-  | SSolAddConn(src,snk) -> "sol mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
+  | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
+  | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | _ -> "?"
 
   let steps2str (b:buffer) (n:steps) =
@@ -444,6 +460,11 @@ struct
 
   let start b =
     b.step_buf <- mksteps b
+
+  let id2node b x =
+    match TREE.filter_nodes b.paths (fun q -> q.id = x) with
+    | [x] -> x
+    | _ -> error "id2node" "no node with that id exists."
 
   let add_step b s =
     match b.step_buf with
@@ -482,7 +503,7 @@ struct
 
 
   let apply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
-    (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)
+    let _ = Printf.printf "> do step %s\n" (step2str s) in
     match s with
     | SAddGoal(g) -> let _ = SET.add tbl.goals g in ()
     | SRemoveGoal(g) -> let _ = SET.rm tbl.goals g in ()
@@ -496,7 +517,7 @@ struct
     List.iter (fun x -> apply_step slvenv tbl x) s.s
 
   let unapply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
-  (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
+  let _ = Printf.printf "> undo step %s\n" (step2str s) in
   match s with
   | SAddGoal(g) -> let _ = SET.rm tbl.goals g in ()
   | SRemoveGoal(g) -> let _ = SET.add tbl.goals g in ()
@@ -506,6 +527,7 @@ struct
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
+    let _ = Printf.printf "\n" in
     List.iter (fun x -> unapply_step slvenv tbl x) s.s
 
   let move_cursor (s:slvr) (tbl:gltbl) (next:steps) =
@@ -656,6 +678,7 @@ struct
     if List.length res = 0
       then
         let _ = SearchLib.rm gtbl.search comp_cursor in
+        let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
         ()
       else ()
 
@@ -721,7 +744,17 @@ struct
         let _ = menu s menu_handle menu_desc in
         ()
       else if STRING.startswith inp "s" then
-        let _ = Printf.printf "\n%s\n\n" "<solution here>" in
+        let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
+        let _ = menu s menu_handle menu_desc in
+        ()
+      else if STRING.startswith inp "g" then
+        let _ = match STRING.split inp " " with
+        | [_;id] ->
+          let nid = int_of_string id in
+          let _ = SearchLib.move_cursor s v (SearchLib.id2node v.search nid) in
+          ()
+        | _ -> ()
+        in
         let _ = menu s menu_handle menu_desc in
         ()
       else
