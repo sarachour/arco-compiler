@@ -20,6 +20,8 @@ let init_utils () =
   let _ = Random.self_init () in
   ()
 
+
+
 module STRING =
 struct
   let split (s:string) (d:string) : string list =
@@ -39,6 +41,7 @@ end
 module RANGE =
 struct
   let range2str ((a,b):range) = "("^(string_of_float a)^","^(string_of_float b)^")"
+  let tostr rng = range2str rng
 
   let resolve ((a,b):range) ((x,y):range) =
     let min = if a < x then a else x in

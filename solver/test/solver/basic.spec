@@ -124,4 +124,7 @@ schematic
   conn * -> copy(V)
   conn copy(V) -> *
 
+  ensure mag V in (0,5) : mV
+  ensure mag I in (0,1) : mA
+
 end

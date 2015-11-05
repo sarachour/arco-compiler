@@ -272,7 +272,7 @@ may additionally contain any pertinent error and magnitude mappings
 type wireid = unodeid*int*string
 
 type label =
-  | LMagnitude
+  | LMagnitude of range*untid*range*unt
   | LError
   | LTime
   | LBindValue of float
@@ -335,7 +335,10 @@ struct
 
   let label2str pr =
     match pr with
-    | LMagnitude -> "mag prop"
+    | LMagnitude(hwrng,hwp,mrng,mp) ->
+      let hwr = (RANGE.tostr hwrng)^" "^(hwp) in
+      let mr = (RANGE.tostr mrng)^" "^(UnitLib.unit2str mp) in
+      "mag "^hwr^" => "^mr
     | LTime -> "time prop"
     | LError -> "error prop"
     | LBindValue(v) -> "bind "^(string_of_float v)
@@ -664,12 +667,7 @@ struct
 
   let goal2str g = UnivLib.urel2str g
 
-  let mag_analysis (s:slvr) (port:unid) (qty:unid) =
-    let uq = Shim.unt s qty in
-    let urng = Shim.mag s qty in
-    let up = Shim.unt s port in
-    let urng = Shim.mag s port in
-    ()
+
 
   let apply_node (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : unit =
     (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
@@ -699,12 +697,10 @@ struct
         let nl = Shim.lclid2glblid s inst_id nl in
         let nr = Shim.lcl2glbl s inst_id nr in
         let res = unify_node_with_goal gl gr nl nr in
-        let _ = mag_analysis s nl gl in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
         slns @ res
       | (UState(gl,gr,gic), UState(nl,nr,ic))->
         let res = unify_node_with_goal gl gr nl nr in
-        let _ = mag_analysis s nl gl in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
         let _ = List.iter (fun mp -> let _ = MAP.put mp gic (Term ic) in () ) res in
         slns @ res
@@ -730,6 +726,17 @@ struct
         ()
       else ()
 
+  let mkmag (s:slvr) (port:unid) (qty:unid) =
+    let mq = Shim.unt s qty in
+    let mrng = Shim.mag s qty in
+    let hwq = Shim.unt s port in
+    let hwrng = Shim.mag s port in
+    match hwq,hwrng,mrng with
+    | (UExpr(Term(id)),Some(hr),Some(mr)) ->   (LMagnitude (hr, id, mr, mq))
+    | (_,None,_) -> error "mkmag" ("quantity "^(UnivLib.unid2str port)^" must have range")
+    | (_,_,None) -> error "mkmag" ("quantity "^(UnivLib.unid2str qty)^" must have range")
+    | _ -> error "mkmag" "the hardware quantity has to be flat."
+
   let resolve_trivial s t goals =
     let is_trivial g =
       match g with
@@ -741,28 +748,34 @@ struct
       | UFunction(HwId(v),Term(MathId(_))) -> true
       | _ -> false
     in
-    let get_trivial_step g : step option =
+    let get_trivial_step g : step list =
       match g with
       | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
           if prop1 = prop2 then
-          Some (SSolAddConn (SlnLib.hwport2wire c1 v1,SlnLib.hwport2wire c2 v2))
-          else None
+          [SSolAddConn (SlnLib.hwport2wire c1 v1,SlnLib.hwport2wire c2 v2)]
+          else []
       | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
           let wire = SlnLib.hwport2wire c v in
           let lbl = LBindValue q in
-          Some (SSolAddLabel(wire,prop,lbl))
-      | UFunction(HwId(HNPort(_,c,v,prop,_)), Term(MathId(q)) ) ->
+          [SSolAddLabel(wire,prop,lbl)]
+      | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
           let wire = SlnLib.hwport2wire c v in
           let lbl = LBindVar q in
-          Some (SSolAddLabel(wire,prop,lbl))
-      | _ -> None
+          let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in
+          [SSolAddLabel(wire,prop,lbl);SSolAddLabel(wire,prop,mg)]
+      | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
+          let wire = SlnLib.hwport2wire c v in
+          let lbl = LBindVar q in
+          let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in
+          [SSolAddLabel(wire,prop,lbl);SSolAddLabel(wire,prop,mg)]
+      | _ -> []
     in
     let handle_goal g =
       if is_trivial g then
-      let _ = SearchLib.add_step t.search (SRemoveGoal g) in
-      match get_trivial_step g with
-      | Some q -> let _ = SearchLib.add_step t.search q in ()
-      | None -> ()
+        let _ = SearchLib.add_step t.search (SRemoveGoal g) in
+        let steps = get_trivial_step g  in
+        let _ = List.iter (fun x -> let _ = SearchLib.add_step t.search x in ()) steps in
+        ()
     in
     if (SET.fold goals (fun x r -> if is_trivial x then r+1 else r) 0) > 0 then
       let _ = SearchLib.start t.search in
@@ -830,6 +843,7 @@ struct
       let _ = print_goals() in
       let g = SET.rand v.goals in
       let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g) in
+      let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
       let _ = apply_nodes s v g in
       let _ = menu s menu_handle menu_desc in
       let p = SearchLib.random_path v.search in
