@@ -578,20 +578,29 @@ struct
 
   let mktbl s : gltbl =
     (* add all relations to the tableau of goals. *)
+    let rm_pars x : unid ast option =
+      match x with
+      | Term(HwId(HNParam(c,n,v,p))) -> Some (Decimal (v))
+      | Term(MathId(MNParam(n,v,u))) ->Some (Decimal(v))
+      | _ -> None
+    in
     let math2goal (x:mvar) =
       let m2u = UnivLib.mid2unid in
+      let tf x = ASTLib.trans (ASTLib.map x m2u) rm_pars in
       match x.rel with
-      | MRFunction(l,r) -> UFunction(m2u l, ASTLib.map r m2u)
-      | MRState(l,r,x) -> UState(m2u l, ASTLib.map r m2u, m2u x)
+      | MRFunction(l,r) -> UFunction(m2u l, tf r)
+      | MRState(l,r,x) -> UState(m2u l, tf r, m2u x)
       | MRNone -> error "math2goal" "impossible."
     in
     let fltmath x = x.rel <> MRNone in
     let comp2node (c:hwcomp) =
       let nvars = List.filter (fun (x:hwvar) -> x.rel <> HRNone) (MAP.to_values (c.vars)) in
-      let var2urel (x:hwvar) = let h2u = UnivLib.hwid2unid in
+      let var2urel (x:hwvar) =
+      let h2u = UnivLib.hwid2unid in
+      let tf x = ASTLib.trans (ASTLib.map x h2u) rm_pars in
       match x.rel with
-      | HRFunction(l,r) -> UFunction(h2u l, ASTLib.map r h2u)
-      | HRState(l,r,i) -> UState(h2u l, ASTLib.map r h2u, h2u i)
+      | HRFunction(l,r) -> UFunction(h2u l, tf r)
+      | HRState(l,r,i) -> UState(h2u l, tf r, h2u i)
       | _ -> error "comp2node" "impossible"
       in
       let nrels = List.map var2urel nvars in
