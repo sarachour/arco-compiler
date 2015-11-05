@@ -126,6 +126,9 @@ struct
   let sub (type a) (t:a) (v:a) (lst:a list) =
     List.map (fun x -> if x = t then v else x) lst
 
+  let rm (type a) (t:a) (lst: a list) =
+    List.filter (fun x -> if x = t then false else true) lst
+    
   let rev (type a) (t:a list) =
     List.rev t
 

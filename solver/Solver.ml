@@ -123,6 +123,7 @@ struct
   | (HwId(HNPort(k,HCMGlobal(c,i),port,prop,u)),true) -> if i = ciid && cmpname = c
     then WildcardVar(cnv uid,[])
     else SymbolVar(cnv uid)
+  | (HwId(v),_) -> SymbolVar(cnv uid)
   | (MathId(v),_) -> SymbolVar(cnv uid)
 
   let max4unodeid s id =
@@ -296,6 +297,49 @@ type gltbl = {
 }
 
 
+module SlnLib =
+struct
+  let mksln () : sln =
+    {comps=MAP.make();conns=MAP.make()}
+
+  let mkcomp (sln:sln) (id:unodeid) =
+    MAP.put sln.comps id ([],0)
+
+  let usecomp (sln:sln) id =
+    let l,n = MAP.get sln.comps id in
+    let _ = MAP.put sln.comps id (n::l,n+1) in
+    n
+
+  let compiid (sln:sln) id =
+    let l,n = MAP.get sln.comps id in
+    if List.length l  > 0 then List.nth l 0 else
+    error "compiid" "no components in use"
+
+  let usecomp_conserve (s:slvr) (sln:sln) id : bool =
+    let lst,_ = (MAP.get sln.comps id)  in
+    let nuses = List.length lst in
+    let maxuses = Shim.max4unodeid s id in
+    if maxuses >= nuses then true else false
+
+  let usecomp_valid (s:slvr) (sln:sln) id : bool =
+    let lst,_ = (MAP.get sln.comps id)  in
+    let nuses = List.length lst in
+    let maxuses = Shim.max4unodeid s id in
+    let _ = flush_all() in
+    if maxuses > nuses then true else false
+
+  let usecomp_mark (s:sln) id (i:int) =
+    let lst,n = MAP.get s.comps id in
+    let lst = i::lst in
+    MAP.put s.comps id (lst,n)
+
+  let usecomp_unmark (s:sln) id (i:int) =
+    let lst,n = MAP.get s.comps id in
+    let lst = LIST.rm i lst in
+    MAP.put s.comps id (lst,n)
+
+end
+
 module SearchLib =
 struct
   let step2str n = match n with
@@ -369,6 +413,7 @@ struct
     | SRemoveGoal(g) -> let _ = SET.rm tbl.goals g in ()
     | SAddNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
     | SRemoveNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
+    | SUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
     | _ -> ()
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
@@ -381,6 +426,7 @@ struct
   | SRemoveGoal(g) -> let _ = SET.add tbl.goals g in ()
   | SAddNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
   | SRemoveNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
+  | SUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
   | _ -> ()
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
@@ -425,39 +471,7 @@ end
 
 
 
-module SlnLib =
-struct
-  let mksln () : sln =
-    {comps=MAP.make();conns=MAP.make()}
 
-  let mkcomp (sln:sln) (id:unodeid) =
-    MAP.put sln.comps id ([],0)
-
-  let usecomp (sln:sln) id =
-    let l,n = MAP.get sln.comps id in
-    let _ = MAP.put sln.comps id (n::l,n+1) in
-    n
-
-  let compiid (sln:sln) id =
-    let l,n = MAP.get sln.comps id in
-    if List.length l  > 0 then List.nth l 0 else
-    error "compiid" "no components in use"
-
-  let usecomp_conserve (s:slvr) (sln:sln) id : bool =
-    let lst,_ = (MAP.get sln.comps id)  in
-    let nuses = List.length lst in
-    let maxuses = Shim.max4unodeid s id in
-    if maxuses >= nuses then true else false
-
-  let usecomp_valid (s:slvr) (sln:sln) id : bool =
-    let lst,_ = (MAP.get sln.comps id)  in
-    let nuses = List.length lst in
-    let maxuses = Shim.max4unodeid s id in
-    let _ = flush_all() in
-    if maxuses > nuses then true else false
-
-
-end
 module SolveLib =
 struct
 
@@ -569,14 +583,29 @@ struct
         ()
       else ()
 
-  let resolve_trivial s t g =
-    match g with
-    | (UFunction(id,Decimal(_))) -> true
-    | (UFunction(id,Integer(_))) -> true
-    | _ -> false
+  let resolve_trivial s t goals =
+    let is_trivial g =
+      match g with
+      | (UFunction(id,Decimal(_))) -> true
+      | (UFunction(id,Integer(_))) -> true
+      | _ -> false
+    in
+    let handle_goal g =
+      if is_trivial g then
+      let _ = SearchLib.add_step t.search (SRemoveGoal g) in
+      ()
+    in
+    if (SET.fold goals (fun x r -> if is_trivial x then r+1 else r) 0) > 0 then
+      let _ = SearchLib.start t.search in
+      let _ = SET.iter goals handle_goal in
+      let trivial_cursor = SearchLib.commit t.search in
+      let _ = SearchLib.move_cursor s t trivial_cursor in
+      ()
+    else
+    ()
+
 
   let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
-    if resolve_trivial slvenv tbl g then () else
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
     let handle_node (id,x) =
@@ -601,7 +630,14 @@ struct
     if SET.size v.goals > 0 then
       let _ = Printf.printf "==== Goals ===" in
       let _ = Printf.printf "%s\n" (goals2str v.goals) in
-        let _ = Printf.printf "============\n\n" in
+      let _ = Printf.printf "============\n\n" in
+
+      let _ = resolve_trivial s v v.goals in
+
+      let _ = Printf.printf "==== Goals ===" in
+      let _ = Printf.printf "%s\n" (goals2str v.goals) in
+      let _ = Printf.printf "============\n\n" in
+
       let g = SET.rand v.goals in
       let _ = Printf.printf "SOLVE GOAL: %s\n\n" (UnivLib.goal2str g) in
       let _ = apply_nodes s v g in
