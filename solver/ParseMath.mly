@@ -47,10 +47,10 @@ sexpr:
   | OPERATOR          {let e = $1 in e}
   | TOKEN             {let e = $1 in e}
   | INTEGER           {let e = $1 in string_of_int e}
-  | DECIMAL           {let e = $1 in string_of_float e}
+  | DECIMAL           {let e = $1 in str_of_float e}
   | OPARAN            {"("}
   | sexpr INTEGER      {let rest = $1 and e = string_of_int $2 in rest^e}
-  | sexpr DECIMAL      {let rest = $1 and e = string_of_float $2 in rest^e}
+  | sexpr DECIMAL      {let rest = $1 and e = str_of_float $2 in rest^e}
   | sexpr TOKEN        {let rest = $1 and e = $2 in rest^e}
   | sexpr OPERATOR     {let rest = $1 and e = $2 in rest^e}
   | sexpr OPARAN       {let rest = $1 in rest^"("}

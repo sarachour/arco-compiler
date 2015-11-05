@@ -113,6 +113,9 @@
 
   let print_expr e =
     ASTLib.ast2str e (fun x -> HwLib.hwvid2str x)
+
+
+
 %}
 
 
@@ -168,11 +171,11 @@ sexpr:
   | OP          {let e = $1 in e}
   | TOKEN             {let e = $1 in e}
   | INTEGER           {let e = $1 in string_of_int e}
-  | DECIMAL           {let e = $1 in string_of_float e}
+  | DECIMAL           {let e = $1 in str_of_float e}
   | OPARAN            {"("}
   | OBRAC             {"["}
   | sexpr INTEGER      {let rest = $1 and e = string_of_int $2 in rest^e}
-  | sexpr DECIMAL      {let rest = $1 and e = string_of_float $2 in rest^e}
+  | sexpr DECIMAL      {let rest = $1 and e = str_of_float $2 in rest^e}
   | sexpr TOKEN        {let rest = $1 and e = $2 in rest^e}
   | sexpr OP     {let rest = $1 and e = $2 in rest^e}
   | sexpr COMMA        {let rest = $1 in rest^"," }

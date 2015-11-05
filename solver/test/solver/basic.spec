@@ -19,6 +19,8 @@ comp vint
   rel deriv(V(O),t) = V(X) initially V(IC)
 
   ensure mag V(O) in (0,5): V
+
+  assume err deriv(V(E(O)),t) = 0.00001  + V(E(X)) + 0.0001*V(X) : V
 end
 
 comp vintadd
@@ -40,6 +42,9 @@ comp vintadd
   ensure mag V(IC) in (0,1) : V
   ensure mag V(O1) in (0,5) : V
   ensure mag V(O2) in (0,5) : V
+
+  %assume err V(E(O1)) = 0.00001 + V(E(X)) + V(E(Y)) + V(O1)*0.0001  : V
+
 end
 
 comp vadd2

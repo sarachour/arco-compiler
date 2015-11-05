@@ -273,8 +273,8 @@ type wireid = unodeid*int*string
 
 type label =
   | LMagnitude of range*untid*range*unt
+  | LTime of range*untid*range*untid
   | LError
-  | LTime
   | LBindValue of float
   | LBindVar of mid
 
@@ -339,7 +339,10 @@ struct
       let hwr = (RANGE.tostr hwrng)^" "^(hwp) in
       let mr = (RANGE.tostr mrng)^" "^(UnitLib.unit2str mp) in
       "mag "^hwr^" => "^mr
-    | LTime -> "time prop"
+    | LTime(hwrng,hwp,mrng,mp) ->
+      let hwr = (RANGE.tostr hwrng)^" "^(hwp) in
+      let mr = (RANGE.tostr mrng)^" "^(mp) in
+      "time "^hwr^" => "^mr
     | LError -> "error prop"
     | LBindValue(v) -> "bind "^(string_of_float v)
     | LBindVar(v) -> "bind "^(MathLib.mid2str v)

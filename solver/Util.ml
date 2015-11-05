@@ -21,6 +21,9 @@ let init_utils () =
   ()
 
 
+let str_of_float f =
+  let s : string = Printf.sprintf "%8.8f" f in
+  s
 
 module STRING =
 struct
