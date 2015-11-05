@@ -275,7 +275,7 @@ type prop = string
 
 type sln = {
   (*how many of each component is used *)
-  mutable comps: (unodeid,(int list)*int) map;
+  mutable comps: (unodeid,(int set)*int) map;
   mutable conns: (wireid, wireid set) map;
   mutable labels: (wireid, (string, prop set) map) map;
 }
@@ -331,7 +331,7 @@ struct
     {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
 
   let mkcomp (sln:sln) (id:unodeid) =
-    MAP.put sln.comps id ([],0)
+    MAP.put sln.comps id (SET.make (fun x y -> x = y),0)
 
   let mkconn_valid (s:slvr) (s:sln) (src:wireid) (snk:wireid) =
     true
@@ -383,41 +383,37 @@ struct
 
   let usecomp (sln:sln) id =
     let l,n = MAP.get sln.comps id in
-    let _ = sln.comps <- MAP.put sln.comps id (n::l,n+1) in
+    let _ = sln.comps <- MAP.put sln.comps id (SET.add l n,n+1) in
     n
 
-  let compiid (sln:sln) id =
-    let l,n = MAP.get sln.comps id in
-    if List.length l  > 0 then List.nth l 0 else
-    error "compiid" "no components in use"
 
   let usecomp_conserve (s:slvr) (sln:sln) id : bool =
     let lst,_ = (MAP.get sln.comps id)  in
-    let nuses = List.length lst in
+    let nuses = SET.size lst in
     let maxuses = Shim.max4unodeid s id in
     if maxuses >= nuses then true else false
 
   let usecomp_valid (s:slvr) (sln:sln) id : bool =
     let lst,_ = (MAP.get sln.comps id)  in
-    let nuses = List.length lst in
+    let nuses = SET.size lst in
     let maxuses = Shim.max4unodeid s id in
     let _ = flush_all() in
     if maxuses > nuses then true else false
 
   let usecomp_mark (s:sln) id (i:int) =
     let lst,n = MAP.get s.comps id in
-    let lst = i::lst in
+    let lst = SET.add lst i in
     s.comps <- MAP.put s.comps id (lst,n)
 
   let usecomp_unmark (s:sln) id (i:int) =
     let lst,n = MAP.get s.comps id in
-    let lst = LIST.rm i lst in
+    let _ = SET.rm lst i in
     s.comps <- MAP.put s.comps id (lst,n)
 
   let tostr (s:sln) : string=
     let comp2str cname clist id =
       let instlist2str lst =
-        LIST.tostr (fun x -> string_of_int x) "," clist
+        SET.tostr clist (fun x -> string_of_int x) "," 
       in
       (UnivLib.unodeid2name cname)^" | "^(string_of_int id)^" = ["^(instlist2str clist)^"]"
     in
@@ -514,6 +510,7 @@ struct
 
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
+    let _ = Printf.printf "\n" in
     List.iter (fun x -> apply_step slvenv tbl x) s.s
 
   let unapply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
@@ -537,8 +534,10 @@ struct
       let anc = TREE.ancestor b.paths next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path b.paths old)) old anc in
       let from_anc = LIST.sublist (TREE.get_path b.paths next) anc next in
+      let _ = Printf.printf "%d -> %d\n" (old.id) (next.id) in
       let _ = List.iter (fun x -> let _ = unapply_steps s tbl x in ()) to_anc in
       let _ = List.iter (fun x -> let _ = apply_steps s tbl x in ()) from_anc in
+        let _ = Printf.printf "---\n" in
       let _ = (b.curr <- Some next) in
       tbl
     | None -> let to_node = TREE.get_path b.paths next in

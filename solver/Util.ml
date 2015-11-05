@@ -99,7 +99,7 @@ struct
 
   let tostr (type a) (fn: a->string) (delim:string) (lst:a list) =
     match lst with
-    | h::t -> List.fold_right (fun x r -> r^delim^(fn x)) (h::t) ""
+    | h::t -> List.fold_left (fun r x -> r^delim^(fn x)) (fn h) t
     | [] -> ""
 
   let sort (type a) (fn: a->int) (lst:a list) strategy=
@@ -227,6 +227,8 @@ struct
     else
       s
 
+  let tostr (type a) (s:a set) (f:a->string) (delim:string) : string =
+    LIST.tostr f delim s.lst
 
   let iter s f =
     List.iter f (s.lst)
@@ -398,7 +400,7 @@ struct
   let filter_nodes (type a) (type b) (g:(a,b) tree) (flt:a->bool) : a list =
     let cands = MAP.filter g.adj (fun k v -> flt k)  in
     List.map (fun (k,v) -> k) cands
-    
+
   let edge (type a) (type b) (g:(a,b) tree) (x:a) (y:a) : b =
     let chld,_ = MAP.get g.adj x in
     match SET.filter chld (fun (n,e) -> n = y)  with
