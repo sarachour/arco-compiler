@@ -271,19 +271,25 @@ may additionally contain any pertinent error and magnitude mappings
 *)
 type wireid = unodeid*int*string
 
-type prop = string
+type label =
+  | LMagnitude
+  | LError
+  | LTime
+  | LBindValue of float
+  | LBindVar of mid
 
 type sln = {
   (*how many of each component is used *)
   mutable comps: (unodeid,(int set)*int) map;
   mutable conns: (wireid, wireid set) map;
-  mutable labels: (wireid, (string, prop set) map) map;
+  mutable labels: (wireid, (string, label set) map) map;
 }
 
 
 type step =
   | SSolUseNode of unodeid*int
   | SSolAddConn of wireid*wireid
+  | SSolAddLabel of wireid*propid*label
   | SRemoveGoal of goal
   | SAddGoal of goal
   | SAddNode of unodeid*unode
@@ -327,6 +333,14 @@ struct
     let n,i,p = wire in
     (UnivLib.unodeid2name n)^"["^(string_of_int i)^"]."^p
 
+  let label2str pr =
+    match pr with
+    | LMagnitude -> "mag prop"
+    | LTime -> "time prop"
+    | LError -> "error prop"
+    | LBindValue(v) -> "bind "^(string_of_float v)
+    | LBindVar(v) -> "bind "^(MathLib.mid2str v)
+
   let mksln () : sln =
     {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
 
@@ -362,7 +376,7 @@ struct
     else
       error "mkconn_undo" "cannot undo connection that doesn't exist."
 
-  let mklabel (sln:sln) (id:wireid) (prop:propid) (v:prop) =
+  let mklabel (sln:sln) (id:wireid) (prop:propid) (v:label) =
     let prps = if MAP.has sln.labels id = false then
         let pmap = MAP.make () in
         let _ = MAP.put sln.labels id pmap in
@@ -380,6 +394,15 @@ struct
     let _ = SET.add pset v in
     ()
 
+  let mklabel_undo (sln:sln) (id:wireid) (prop:propid) (v:label) =
+    if MAP.has sln.labels id then
+      let props = MAP.get sln.labels id in
+      if MAP.has props prop then
+        let lbls = MAP.get props prop in
+        let _ = SET.rm lbls v in
+        ()
+    else
+      ()
 
   let usecomp (sln:sln) id =
     let l,n = MAP.get sln.comps id in
@@ -426,9 +449,23 @@ struct
       let res : string = MAP.fold c (fun src snkset r -> (itersnks src snkset)^r) "" in
       res
     in
+    let labels2str c =
+      let props2str cmps prp labels =
+        if SET.size labels > 0 then
+          (SET.tostr labels (fun x -> prp^"("^cmps^"): "^(label2str x)) "\n")^"\n"
+        else
+          ""
+      in
+      let lbls2str k props =
+        let cmpstr = wire2str k in
+        (MAP.fold props (fun prp v r -> r^(props2str cmpstr prp v) ) "")
+      in
+      MAP.fold c (fun k v r -> r^(lbls2str k v)) ""
+    in
     let cstr = comps2str s.comps in
     let cnstr = conns2str s.conns in
-    "Comps:\n"^cstr^"\n\nConns:\n"^cnstr
+    let lstr = labels2str s.labels in
+    "Comps:\n"^cstr^"\n\nConns:"^cnstr^"\n\nLabels:\n"^lstr
 
 end
 
@@ -513,7 +550,7 @@ struct
     | SRemoveNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
     | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
     | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
-
+    | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
     List.iter (fun x -> apply_step slvenv tbl x) s.s
@@ -527,6 +564,7 @@ struct
   | SRemoveNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
   | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
+  | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
     List.iter (fun x -> unapply_step slvenv tbl x) s.s
@@ -709,6 +747,14 @@ struct
           if prop1 = prop2 then
           Some (SSolAddConn (SlnLib.hwport2wire c1 v1,SlnLib.hwport2wire c2 v2))
           else None
+      | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
+          let wire = SlnLib.hwport2wire c v in
+          let lbl = LBindValue q in
+          Some (SSolAddLabel(wire,prop,lbl))
+      | UFunction(HwId(HNPort(_,c,v,prop,_)), Term(MathId(q)) ) ->
+          let wire = SlnLib.hwport2wire c v in
+          let lbl = LBindVar q in
+          Some (SSolAddLabel(wire,prop,lbl))
       | _ -> None
     in
     let handle_goal g =

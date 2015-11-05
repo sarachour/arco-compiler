@@ -5,16 +5,16 @@ type s
 
 time t : s
 
-input X : pint
-input Y : pint
-output Z : pint
-output Z2 : pint
+input A : pint
+input B : pint
+output C : pint
+output C2 : pint
 param PF : pint = 0.5
 
-assume mag X in (-2,2) : pint
-assume mag Y  in (-2,2) : pint
-assume mag Z in (-20,20) : pint
-assume mag Z2 in (-100,100): pint
+assume mag A in (-2,2) : pint
+assume mag B  in (-2,2) : pint
+assume mag C in (-20,20) : pint
+assume mag C2 in (-100,100): pint
 
-rel Z =  Y + (X*Y)/PF + 0.5
-rel deriv(Z2,t) = (X*Y)/PF + Z + 0.3 with Z2(0) = 0.5
+rel C =  B + (A*B)/PF + 0.5
+rel deriv(C2,t) = (A*B)/PF + C + 0.3 with C2(0) = 0.5
