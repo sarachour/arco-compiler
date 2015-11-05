@@ -413,7 +413,7 @@ struct
   let tostr (s:sln) : string=
     let comp2str cname clist id =
       let instlist2str lst =
-        SET.tostr clist (fun x -> string_of_int x) "," 
+        SET.tostr clist (fun x -> string_of_int x) ","
       in
       (UnivLib.unodeid2name cname)^" | "^(string_of_int id)^" = ["^(instlist2str clist)^"]"
     in
@@ -421,8 +421,14 @@ struct
       let res : string = MAP.fold c (fun k (l,n) r -> r^"\n"^(comp2str k l n)) "" in
       res
     in
+    let conns2str c =
+      let itersnks src sset = SET.fold sset (fun snk r -> r^"\n"^(wire2str src)^"->"^(wire2str snk) ) "" in
+      let res : string = MAP.fold c (fun src snkset r -> (itersnks src snkset)^r) "" in
+      res
+    in
     let cstr = comps2str s.comps in
-    cstr
+    let cnstr = conns2str s.conns in
+    "Comps:\n"^cstr^"\n\nConns:\n"^cnstr
 
 end
 
@@ -499,7 +505,7 @@ struct
 
 
   let apply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
-    let _ = Printf.printf "> do step %s\n" (step2str s) in
+    (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)
     match s with
     | SAddGoal(g) -> let _ = SET.add tbl.goals g in ()
     | SRemoveGoal(g) -> let _ = SET.rm tbl.goals g in ()
@@ -510,11 +516,10 @@ struct
 
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
-    let _ = Printf.printf "\n" in
     List.iter (fun x -> apply_step slvenv tbl x) s.s
 
   let unapply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
-  let _ = Printf.printf "> undo step %s\n" (step2str s) in
+  (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
   match s with
   | SAddGoal(g) -> let _ = SET.rm tbl.goals g in ()
   | SRemoveGoal(g) -> let _ = SET.add tbl.goals g in ()
@@ -524,7 +529,6 @@ struct
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
-    let _ = Printf.printf "\n" in
     List.iter (fun x -> unapply_step slvenv tbl x) s.s
 
   let move_cursor (s:slvr) (tbl:gltbl) (next:steps) =
@@ -534,10 +538,8 @@ struct
       let anc = TREE.ancestor b.paths next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path b.paths old)) old anc in
       let from_anc = LIST.sublist (TREE.get_path b.paths next) anc next in
-      let _ = Printf.printf "%d -> %d\n" (old.id) (next.id) in
       let _ = List.iter (fun x -> let _ = unapply_steps s tbl x in ()) to_anc in
       let _ = List.iter (fun x -> let _ = apply_steps s tbl x in ()) from_anc in
-        let _ = Printf.printf "---\n" in
       let _ = (b.curr <- Some next) in
       tbl
     | None -> let to_node = TREE.get_path b.paths next in
