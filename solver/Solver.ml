@@ -84,7 +84,7 @@ type unodeid =
   | UNoOutput of string
   | UNoCopy of string
   | UNoComp of string
-  | UNoConcComp of string
+  | UNoConcComp of string*int
 
 type unode = {
   mutable rels : urel set;
@@ -147,7 +147,7 @@ struct
     let ginst x = HwCstrLib.getinsts s.hw.cstr x in
     match id with
     | UNoComp(x) -> ginst x
-    | UNoConcComp(x) -> 1
+    | UNoConcComp(x,inst) -> 1
     | UNoCopy(x) -> ginst (HwLib.copy_cid x)
     | UNoInput(x) -> ginst (HwLib.input_cid x)
     | UNoOutput(x) -> ginst (HwLib.output_cid x)
@@ -162,7 +162,7 @@ struct
   | UNoOutput(x) -> HwLib.output_cid x
   | UNoCopy(x) -> HwLib.copy_cid x
   | UNoComp(x) -> x
-  | UNoConcComp(x) -> "rel-of-comp."^x
+  | UNoConcComp(x,inst) -> x
 
   let hwid2var hwid =
   let proccmp (x:compid) = match x with
@@ -292,8 +292,8 @@ type step =
   | SSolAddLabel of wireid*propid*label
   | SRemoveGoal of goal
   | SAddGoal of goal
-  | SAddNode of unodeid*unode
-  | SRemoveNode of unodeid*unode
+  | SAddNode of unodeid*(urel list)
+  | SRemoveNode of unodeid
 
 
 type steps = {
@@ -480,8 +480,8 @@ struct
   let step2str n = match n with
   | SAddGoal(v) -> "add "^(UnivLib.urel2str v)
   | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
-  | SAddNode(id,v) -> "add "^(UnivLib.unodeid2name id)
-  | SRemoveNode(id,v) -> "rm"^(UnivLib.unodeid2name id)
+  | SAddNode(id,rels) -> "add "^(UnivLib.unodeid2name id)
+  | SRemoveNode(id) -> "rm"^(UnivLib.unodeid2name id)
   | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | _ -> "?"
@@ -552,8 +552,7 @@ struct
     match s with
     | SAddGoal(g) -> let _ = SET.add tbl.goals g in ()
     | SRemoveGoal(g) -> let _ = SET.rm tbl.goals g in ()
-    | SAddNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
-    | SRemoveNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
+    | SAddNode(id,u) -> let _ = MAP.put tbl.nodes id {name=(UnivLib.unodeid2name id);rels=SET.to_set u (fun x y -> x = y)} in ()
     | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
     | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
     | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
@@ -566,8 +565,7 @@ struct
   match s with
   | SAddGoal(g) -> let _ = SET.rm tbl.goals g in ()
   | SRemoveGoal(g) -> let _ = SET.add tbl.goals g in ()
-  | SAddNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
-  | SRemoveNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
+  | SAddNode(id,rels) -> let _ = MAP.rm tbl.nodes id in ()
   | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
   | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()
@@ -670,6 +668,26 @@ struct
 
   let goal2str g = UnivLib.urel2str g
 
+  let conc_node nid nd rl (assigns:(unid,unid ast) map) iid =
+    let sub_el x = match x with
+      | Term(id) -> if MAP.has assigns id then Some (MAP.get assigns id) else None
+      | _ -> None
+    in
+    let sub_ast x = ASTLib.trans x sub_el in
+    let sub_rel x = match x with
+    | UFunction(l,r) ->
+      if MAP.has assigns l then error "conc_node" "cannot sub lhs" else
+      UFunction(l,sub_ast r)
+    | UState(l,r,ic) ->
+      if MAP.has assigns l then error "conc_node" "cannot sub lhs" else
+      if MAP.has assigns ic then error "conc_node" "cannot sub ic" else
+      UState(l,sub_ast r, ic)
+    in
+    let nid_name = match nid with UNoComp(n) -> n | _ -> error "conc_node" "unexpected" in
+    let new_nid = UNoConcComp(nid_name,iid) in
+    let nrels : urel list= SET.filter nd.rels (fun x -> x <> rl) in
+    let nrels : urel list = List.map (fun x -> sub_rel x) nrels in
+    Some (nid,nrels)
 
 
   let apply_node (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : unit =
@@ -694,27 +712,32 @@ struct
       | Some(res) -> res
       | None ->  []
     in
-    let unify_rels (v:urel) slns  =
+    let unify_rels (v:urel) slns : (urel*(unid,unid ast) map) list =
       match g,v with
       | (UFunction(gl,gr), UFunction(nl,nr))->
         let nl = Shim.lclid2glblid s inst_id nl in
         let nr = Shim.lcl2glbl s inst_id nr in
         let res = unify_node_with_goal gl gr nl nr in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
+        let res = List.map (fun x -> (v,x)) res in
         slns @ res
       | (UState(gl,gr,gic), UState(nl,nr,ic))->
         let res = unify_node_with_goal gl gr nl nr in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
         let _ = List.iter (fun mp -> let _ = MAP.put mp gic (Term ic) in () ) res in
+        let res = List.map (fun x -> (v,x)) res in
         slns @ res
       | _ -> slns
     in
-    let add_sln_to_search (gl:goal) (assigns:(unid,unid ast) map) =
+    let add_sln_to_search (gl:goal) ((rl,assigns):(urel*(unid,unid ast) map)) =
       let _ = SearchLib.start gtbl.search in
       let _ = SearchLib.add_step gtbl.search (SRemoveGoal gl) in
       let _ = MAP.iter assigns (fun k v -> SearchLib.add_step gtbl.search (SAddGoal (UFunction(k,v)))) in
-      (*add special component.*)
-      let nnodes = UnivLib.conc_node node assigns in
+      (*concretize other goals in this particular node.*)
+      let _ = match conc_node node_id node rl assigns inst_id with
+        | Some(cnid,crels) -> let _ = SearchLib.add_step gtbl.search (SAddNode (cnid,crels)) in ()
+        | None -> ()
+      in
       (*let _ = SearchLib.add_step gtbl.search (SAddNode (UNoConcComp "?", nnodes))  in*)
       let _ = SearchLib.commit gtbl.search in
       ()
