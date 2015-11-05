@@ -38,7 +38,7 @@ let prf (s:slvr) (v:unit->unit) =
     in
     _if_interactive s fxn
 
-let menu (s:slvar) (handle:string->unit) (menu:string) =
+let menu (s:slvr) (handle:string->unit) (menu:string) =
 let fxn s =
   let _ = Printf.printf "select an action (%s):" menu in
   let _ = flush_all() in
@@ -714,18 +714,17 @@ struct
 
   let rec solve (_s:slvr ref) (v:gltbl) =
     let s = REF.dr _s in
-    let menu_desc = "t=search-tree, s=sol, g=goals" in
+    let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
     let rec menu_handle inp =
       if STRING.startswith inp "t" then
-        let _ = Printf.printf "\n%s\n" (SearchLib.buf2str v.search) in
-        let _ = menu menu_handle menu_desc in
+        let _ = Printf.printf "\n%s\n\n" (SearchLib.buf2str v.search) in
+        let _ = menu s menu_handle menu_desc in
         ()
-      else if STRING.startswith inp "s" in
-        let _ = Printf.printf "\n%s\n" "<solution here>" in
-        let _ = menu menu_handle menu_desc in
+      else if STRING.startswith inp "s" then
+        let _ = Printf.printf "\n%s\n\n" "<solution here>" in
+        let _ = menu s menu_handle menu_desc in
         ()
       else
-        let _ = Printf.printf "continuing.\n" in
         ()
     in
     let print_goals () =
@@ -743,7 +742,7 @@ struct
       let g = SET.rand v.goals in
       let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g) in
       let _ = apply_nodes s v g in
-      let _ = menu s handle_inp menu_desc in
+      let _ = menu s menu_handle menu_desc in
       let p = SearchLib.random_path v.search in
       let _ = SearchLib.move_cursor s v p in
       let _ = solve _s v in
