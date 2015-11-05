@@ -141,10 +141,10 @@ module UnivLib =
 struct
 
   let unodeid2name unodeid = match unodeid with
-  | UNoInput(x) -> "input."^x
-  | UNoOutput(x) -> "output."^x
-  | UNoCopy(x) -> "copy."^x
-  | UNoComp(x) -> "comp."^x
+  | UNoInput(x) -> HwLib.input_cid x
+  | UNoOutput(x) -> HwLib.output_cid x
+  | UNoCopy(x) -> HwLib.copy_cid x
+  | UNoComp(x) -> x
   | UNoConcComp(x) -> "rel-of-comp."^x
 
   let hwid2var hwid =
@@ -248,32 +248,31 @@ struct
 
 end
 
+(*
+A solution is a set of connections  and components. A solution
+may additionally contain any pertinent error and magnitude mappings
+*)
+type wireid = unodeid*int*string
+
+type prop = string
+
+type sln = {
+  (*how many of each component is used *)
+  mutable comps: (unodeid,(int list)*int) map;
+  mutable conns: (wireid, wireid set) map;
+  mutable labels: (wireid, (string, prop set) map) map;
+}
 
 
 type step =
-  | SUseNode of unodeid*int
+  | SSolUseNode of unodeid*int
+  | SSolAddConn of wireid*wireid
   | SRemoveGoal of goal
   | SAddGoal of goal
   | SAddNode of unodeid*unode
   | SRemoveNode of unodeid*unode
 
-type stepid =
-  | SIUseNode
-  | SIConnectPorts
-  | SIRemoveGoal
-  | SIAddGoal
-  | SIAddNode
-  | SIRemoveNode
 
-(*
-A solution is a set of connections  and components. A solution
-may additionally contain any pertinent error and magnitude mappings
-*)
-type sln = {
-  (*how many of each component is used *)
-  mutable comps: (unodeid,(int list)*int) map;
-  mutable conns: (unodeid*string*int,(unodeid*string*int) set) map;
-}
 type steps = {
   mutable s :step list;
   id : int;
@@ -299,11 +298,69 @@ type gltbl = {
 
 module SlnLib =
 struct
+  let hwport2wire cm port =
+    match cm with
+    | HCMLocal(c) -> error "hwport2wire" "underspecified identifier."
+    | HCMGlobal(q,i) ->
+      let nid = Shim.name2unodeid q in
+      let inst = i in
+      (nid,inst,port)
+
+  let wire2str wire =
+    let n,i,p = wire in
+    (UnivLib.unodeid2name n)^"["^(string_of_int i)^"]."^p
+
   let mksln () : sln =
-    {comps=MAP.make();conns=MAP.make()}
+    {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
 
   let mkcomp (sln:sln) (id:unodeid) =
     MAP.put sln.comps id ([],0)
+
+  let mkconn_valid (s:slvr) (s:sln) (src:wireid) (snk:wireid) =
+    true
+
+  let mkconn_cons (s:slvr) (s:sln) =
+    true
+
+  let mkconn (sln:sln) (src:wireid) (snk:wireid) =
+    let sinks = if MAP.has sln.conns src = false then
+        let s = (SET.make (fun x y -> x = y) ) in
+        let _ = MAP.put sln.conns src s in
+        s
+      else
+        MAP.get sln.conns src
+    in
+      let _ = SET.add sinks snk in
+      let _ = MAP.put sln.conns src sinks in
+      ()
+
+  let mkconn_undo (sln:sln) (src:wireid) (snk:wireid) =
+    if MAP.has sln.conns src then
+      let s = MAP.get sln.conns src in
+      let _ = SET.rm s snk in
+      let _ = MAP.put sln.conns src s in
+      ()
+    else
+      error "mkconn_undo" "cannot undo connection that doesn't exist."
+
+  let mklabel (sln:sln) (id:wireid) (prop:propid) (v:prop) =
+    let prps = if MAP.has sln.labels id = false then
+        let pmap = MAP.make () in
+        let _ = MAP.put sln.labels id pmap in
+        pmap
+      else
+        MAP.get sln.labels id
+    in
+    let pset = if MAP.has prps prop = false then
+      let pset = SET.make (fun x y -> x = y) in
+      let _ = MAP.put prps prop pset in
+      pset
+      else
+        MAP.get prps prop
+    in
+    let _ = SET.add pset v in
+    ()
+
 
   let usecomp (sln:sln) id =
     let l,n = MAP.get sln.comps id in
@@ -347,7 +404,8 @@ struct
   | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
   | SAddNode(id,v) -> "add "^(UnivLib.unodeid2name id)
   | SRemoveNode(id,v) -> "rm"^(UnivLib.unodeid2name id)
-  | SUseNode(id,i) -> "use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
+  | SSolUseNode(id,i) -> "sol use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
+  | SSolAddConn(src,snk) -> "sol mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | _ -> "?"
 
   let steps2str (b:buffer) (n:steps) =
@@ -413,8 +471,9 @@ struct
     | SRemoveGoal(g) -> let _ = SET.rm tbl.goals g in ()
     | SAddNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
     | SRemoveNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
-    | SUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
-    | _ -> ()
+    | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
+    | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
+
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
     List.iter (fun x -> apply_step slvenv tbl x) s.s
@@ -426,8 +485,8 @@ struct
   | SRemoveGoal(g) -> let _ = SET.add tbl.goals g in ()
   | SAddNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
   | SRemoveNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
-  | SUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
-  | _ -> ()
+  | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
+  | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
     List.iter (fun x -> unapply_step slvenv tbl x) s.s
@@ -532,7 +591,7 @@ struct
     let inst_id = SlnLib.usecomp gtbl.sln node_id in
     (*update search algorithm to include the usage*)
     let _ = SearchLib.start gtbl.search in
-    let _ = SearchLib.add_step gtbl.search (SUseNode(node_id,inst_id)) in
+    let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
     let goal_cursor = SearchLib.cursor gtbl.search in
     let comp_cursor = SearchLib.commit gtbl.search in
     (*use node*)
@@ -594,10 +653,20 @@ struct
       | UFunction(HwId(v),Term(MathId(_))) -> true
       | _ -> false
     in
+    let get_trivial_step g : step option =
+      match g with
+      | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
+          if prop1 = prop2 then
+          Some (SSolAddConn (SlnLib.hwport2wire c1 v1,SlnLib.hwport2wire c2 v2))
+          else None
+      | _ -> None
+    in
     let handle_goal g =
       if is_trivial g then
       let _ = SearchLib.add_step t.search (SRemoveGoal g) in
-      ()
+      match get_trivial_step g with
+      | Some q -> let _ = SearchLib.add_step t.search q in ()
+      | None -> ()
     in
     if (SET.fold goals (fun x r -> if is_trivial x then r+1 else r) 0) > 0 then
       let _ = SearchLib.start t.search in
