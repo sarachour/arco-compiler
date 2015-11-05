@@ -38,6 +38,23 @@ let prf (s:slvr) (v:unit->unit) =
     in
     _if_interactive s fxn
 
+let menu (s:slvar) (handle:string->unit) (menu:string) =
+let fxn s =
+  let _ = Printf.printf "select an action (%s):" menu in
+  let _ = flush_all() in
+  let inp = input_line stdin in
+  let _ = Printf.printf "\n" in
+  let _ = flush_all() in
+  let _ = handle(inp) in
+  let _ = flush_all() in
+  if STRING.startswith inp "q" then
+    let _ = exit 0 in
+    ()
+  else
+    ()
+in
+_if_interactive s fxn
+
 let wait (s:slvr)  =
   let fxn s =
     let _ = Printf.printf "<please press key to continue. 'q' to quit>:"  in
@@ -697,25 +714,36 @@ struct
 
   let rec solve (_s:slvr ref) (v:gltbl) =
     let s = REF.dr _s in
+    let menu_desc = "t=search-tree, s=sol, g=goals" in
+    let rec menu_handle inp =
+      if STRING.startswith inp "t" then
+        let _ = Printf.printf "\n%s\n" (SearchLib.buf2str v.search) in
+        let _ = menu menu_handle menu_desc in
+        ()
+      else if STRING.startswith inp "s" in
+        let _ = Printf.printf "\n%s\n" "<solution here>" in
+        let _ = menu menu_handle menu_desc in
+        ()
+      else
+        let _ = Printf.printf "continuing.\n" in
+        ()
+    in
+    let print_goals () =
+      let _ = Printf.printf "==== Goals ===" in
+      let _ = Printf.printf "%s\n" (goals2str v.goals) in
+      let _ = Printf.printf "============\n\n" in
+      ()
+    in
     (*apply the current step in the search algorithm*)
     (*let _ = apply_steps s v (SearchLib.cursor v.search) in*)
     (*choose a goal in the table*)
     if SET.size v.goals > 0 then
-      let _ = Printf.printf "==== Goals ===" in
-      let _ = Printf.printf "%s\n" (goals2str v.goals) in
-      let _ = Printf.printf "============\n\n" in
-
       let _ = resolve_trivial s v v.goals in
-
-      let _ = Printf.printf "==== Goals ===" in
-      let _ = Printf.printf "%s\n" (goals2str v.goals) in
-      let _ = Printf.printf "============\n\n" in
-
+      let _ = print_goals() in
       let g = SET.rand v.goals in
-      let _ = Printf.printf "SOLVE GOAL: %s\n\n" (UnivLib.goal2str g) in
+      let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g) in
       let _ = apply_nodes s v g in
-      let _ = Printf.printf "TREE:\n%s\n" (SearchLib.buf2str v.search) in
-      let _ = wait s in
+      let _ = menu s handle_inp menu_desc in
       let p = SearchLib.random_path v.search in
       let _ = SearchLib.move_cursor s v p in
       let _ = solve _s v in
