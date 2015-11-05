@@ -586,8 +586,12 @@ struct
   let resolve_trivial s t goals =
     let is_trivial g =
       match g with
-      | (UFunction(id,Decimal(_))) -> true
-      | (UFunction(id,Integer(_))) -> true
+      | UFunction(id,Decimal(_)) -> true
+      | UFunction(id,Integer(_)) -> true
+      | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
+          if prop1 = prop2 then true else false
+      | UFunction(MathId(v),Term(HwId(_))) -> true
+      | UFunction(HwId(v),Term(MathId(_))) -> true
       | _ -> false
     in
     let handle_goal g =
