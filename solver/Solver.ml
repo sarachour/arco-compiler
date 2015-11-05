@@ -1,3 +1,5 @@
+open Common
+
 open HW
 open HWCstr
 
@@ -9,34 +11,34 @@ open Util
 open Unit
 open SymCamlData
 
-type slenv =  {
+type slvr =  {
   interactive: bool;
   hw: hwenv;
   prob: menv;
   max_depth: int;
   cnt: int;
 }
-let _if_interactive (s:slenv) (f:slenv->'a) =
+let _if_interactive (s:slvr) (f:slvr->'a) =
   if s.interactive then
     let _ = f s in
     ()
   else ()
 
-let pr (s:slenv) (v:string) =
+let pr (s:slvr) (v:string) =
   let fxn s =
     let _ = Printf.printf "%s\n" v  in
     flush_all()
   in
   _if_interactive s fxn
 
-let prf (s:slenv) (v:unit->unit) =
+let prf (s:slvr) (v:unit->unit) =
     let fxn s =
       let _ = v ()  in
       flush_all()
     in
     _if_interactive s fxn
 
-let wait (s:slenv)  =
+let wait (s:slvr)  =
   let fxn s =
     let _ = Printf.printf "<please press key to continue. 'q' to quit>:"  in
     let _ = flush_all() in
@@ -61,11 +63,11 @@ type urel =
 
 
 type unodeid =
-  | SprInput of string
-  | SprOutput of string
-  | SprCopy of string
-  | SprComp of string
-  | SprConcComp of string
+  | UNoInput of string
+  | UNoOutput of string
+  | UNoCopy of string
+  | UNoComp of string
+  | UNoConcComp of string
 
 type unode = {
   mutable rels : urel set;
@@ -76,19 +78,83 @@ type unode = {
 type goal = urel
 
 
+module Shim =
+struct
+  let unt s uid : unt =
+    match uid with
+    | HwId(HNPort(_,_,_,_,u)) -> UExpr (Term u)
+    | MathId(MNVar(_,_,u)) -> u
+
+  let mag s uid : range option =
+    match uid with
+    | HwId(HNPort(k,HCMLocal(cname),name,prop,un)) ->
+      HwCstrLib.mag s.hw.cstr cname name prop
+    | HwId(HNPort(k,HCMGlobal(cname,_),name,prop,un)) ->
+      HwCstrLib.mag s.hw.cstr cname name prop
+    | MathId(MNVar(k,v,u)) ->
+      MathCstrLib.mag s.prob.cstr v
+    |_ -> None
+
+  let comp s name =
+    let c = HwLib.getcomp s.hw name in
+    c
+
+  let lclid2glblid sln iid x =
+    match x with
+    | HwId(HNPort(k,HCMLocal(c),p,prop,un)) ->
+      HwId(HNPort(k,HCMGlobal(c,iid),p,prop,un))
+    | _ -> x
+
+
+  let  lcl2glbl sln iid a =
+    let mp x = lclid2glblid sln iid x in
+    ASTLib.map a mp
+
+  let name2unodeid (c:string) = match HwLib.get_special c with
+    | Some("copy",prop) -> UNoCopy(prop)
+    | Some("input",prop) -> UNoInput(prop)
+    | Some("output",prop) -> UNoOutput(prop)
+    | Some(_) -> error "name2UNot" "illegal name"
+    | None -> UNoComp c
+
+  let unid2sym cmpname ciid uid is_templ cnv= match uid, is_templ with
+  | (HwId(HNPort(k,HCMLocal(c),port,prop,u)), true) ->
+    error "unid2sym" "no non-concretized ports allowed."
+  | (HwId(HNPort(k,HCMGlobal(c,i),port,prop,u)),true) -> if i = ciid && cmpname = c
+    then WildcardVar(cnv uid,[])
+    else SymbolVar(cnv uid)
+  | (MathId(v),_) -> SymbolVar(cnv uid)
+
+  let max4unodeid s id =
+    let ginst x = HwCstrLib.getinsts s.hw.cstr x in
+    match id with
+    | UNoComp(x) -> ginst x
+    | UNoConcComp(x) -> 1
+    | UNoCopy(x) -> ginst (HwLib.copy_cid x)
+    | UNoInput(x) -> ginst (HwLib.input_cid x)
+    | UNoOutput(x) -> ginst (HwLib.output_cid x)
+
+end
+
 module UnivLib =
 struct
 
   let unodeid2name unodeid = match unodeid with
-  | SprInput(x) -> "input."^x
-  | SprOutput(x) -> "output."^x
-  | SprCopy(x) -> "copy."^x
-  | SprComp(x) -> "comp."^x
-  | SprConcComp(x) -> "rel-of-comp."^x
+  | UNoInput(x) -> "input."^x
+  | UNoOutput(x) -> "output."^x
+  | UNoCopy(x) -> "copy."^x
+  | UNoComp(x) -> "comp."^x
+  | UNoConcComp(x) -> "rel-of-comp."^x
 
-  let hwid2var hwid = match hwid with
-  | HNPort(knd,cid,name,prop,_) -> name^":"^prop
-  | HNParam(name,vl,_) -> name
+  let hwid2var hwid =
+  let proccmp (x:compid) = match x with
+    | HCMLocal(v) -> "l:"^v
+    | HCMGlobal(v,i) -> "g:"^v^":"^(string_of_int i)
+  in
+  match hwid with
+  | HNPort(knd,cmp,name,prop,_) -> (proccmp cmp)^":"^name^":"^prop
+  | HNPort(knd,cmp,name,prop,_) -> (proccmp cmp)^":"^name^":"^prop
+  | HNParam(cmp,name,vl,_) -> (proccmp cmp)^":"^name
   | HNTime(_) -> "t'"
 
   let mid2var mid = match mid with
@@ -105,26 +171,46 @@ struct
   | [v] -> let vv = MathLib.getvar s.prob v in vv.typ
   | _ -> error "apply_comp" "iconvmid encountered unexpected string"
 
-  let _var2hwid ((s,c):slenv*hwcomp) rst = match rst with
-   | [v;p] -> let vv = HwLib.getvar s.hw c.name v in
-     HwLib.cv2hwid c vv (Some p)
-   | ["t"] -> HNTime(c.time)
-   | [v] -> let vv = HwLib.getvar s.hw c.name v in
-     HwLib.cv2hwid c vv None
+  let _var2hwid ((s):slvr) rst = match rst with
+   | ["l";cn;v;p] ->
+     let comp = Shim.comp s cn in
+     let vv = HwLib.getvar s.hw cn v in
+     HwLib.cv2hwid comp vv (Some p) (None)
+   | ["g";cn;istr;v;p] ->
+     let comp = Shim.comp s cn in
+     let i = int_of_string istr in
+     let vv = HwLib.getvar s.hw cn v in
+     HwLib.cv2hwid comp vv (Some p) (Some i)
+   | ["l";cn;"t"] ->
+     let comp = Shim.comp s cn in
+     HNTime(HCMLocal(cn),comp.time)
+   | ["g";cn;istr;"t"] ->
+     let comp = Shim.comp s cn in
+     let i = int_of_string istr in
+     HNTime(HCMGlobal(cn,i),comp.time)
+   | ["l";cn;v] ->
+     let comp = Shim.comp s cn in
+     let vv = HwLib.getvar s.hw cn v in
+     HwLib.cv2hwid comp vv None None
+   | ["g";cn;istr;v] ->
+     let comp = Shim.comp s cn in
+     let i = int_of_string istr in
+     let vv = HwLib.getvar s.hw cn v in
+     HwLib.cv2hwid comp vv None (Some i)
    | _ -> error "apply_comp" "iconvhwid encountered unexpected hwid"
 
   let var2mid s mid = _var2mid (s) (STRING.split mid ":")
 
-  let var2hwid (s,c) hwid = _var2hwid (s,c) (STRING.split hwid ":")
+  let var2hwid (s) hwid = _var2hwid (s) (STRING.split hwid ":")
 
   let unid2hwid uid = match uid with
   | HwId(h) -> h
   | _ -> error "unid2hwid" "cannot cast unid to hwid."
 
-  let var2unid (s,c) uid =
+  let var2unid (s) uid =
    match STRING.split uid ":" with
     | "m"::r -> MathId(_var2mid (s) r)
-    | "h"::r -> HwId(_var2hwid (s,c) r)
+    | "h"::r -> HwId(_var2hwid (s) r)
     | h::r -> error "iconvunid" ("unexpected prefix "^h)
     | _ -> error "" ""
 
@@ -164,7 +250,7 @@ end
 
 
 type step =
-  | SUseNode of unodeid
+  | SUseNode of unodeid*int
   | SRemoveGoal of goal
   | SAddGoal of goal
   | SAddNode of unodeid*unode
@@ -178,10 +264,14 @@ type stepid =
   | SIAddNode
   | SIRemoveNode
 
+(*
+A solution is a set of connections  and components. A solution
+may additionally contain any pertinent error and magnitude mappings
+*)
 type sln = {
   (*how many of each component is used *)
-  cmps: (unodeid,int) map;
-  conns: (unodeid*int,(unodeid*int) set) map;
+  mutable comps: (unodeid,(int list)*int) map;
+  mutable conns: (unodeid*string*int,(unodeid*string*int) set) map;
 }
 type steps = {
   mutable s :step list;
@@ -202,6 +292,7 @@ type gltbl = {
   mutable goals : urel set;
   mutable nodes : (unodeid, unode) map;
   mutable search: buffer;
+  mutable sln: sln;
 }
 
 
@@ -212,7 +303,7 @@ struct
   | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
   | SAddNode(id,v) -> "add "^(UnivLib.unodeid2name id)
   | SRemoveNode(id,v) -> "rm"^(UnivLib.unodeid2name id)
-  | SUseNode(id) -> "use "^(UnivLib.unodeid2name id)
+  | SUseNode(id,i) -> "use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | _ -> "?"
 
   let steps2str (b:buffer) (n:steps) =
@@ -271,7 +362,7 @@ struct
     | None -> error "cursor" "expected cursor."
 
 
-  let apply_step (slnenv:slenv) (tbl:gltbl) (s:step) =
+  let apply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
     (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)
     match s with
     | SAddGoal(g) -> let _ = SET.add tbl.goals g in ()
@@ -280,10 +371,10 @@ struct
     | SRemoveNode(id,u) -> let _ = MAP.rm tbl.nodes id in ()
     | _ -> ()
 
-  let apply_steps (slnenv:slenv) (tbl:gltbl) (s:steps) =
-    List.iter (fun x -> apply_step slnenv tbl x) s.s
+  let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
+    List.iter (fun x -> apply_step slvenv tbl x) s.s
 
-  let unapply_step (slnenv:slenv) (tbl:gltbl) (s:step) =
+  let unapply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
   (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
   match s with
   | SAddGoal(g) -> let _ = SET.rm tbl.goals g in ()
@@ -292,10 +383,10 @@ struct
   | SRemoveNode(id,u) -> let _ = MAP.put tbl.nodes id u in ()
   | _ -> ()
 
-  let unapply_steps (slnenv) (tbl:gltbl) (s:steps) =
-    List.iter (fun x -> unapply_step slnenv tbl x) s.s
+  let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
+    List.iter (fun x -> unapply_step slvenv tbl x) s.s
 
-  let move_cursor (s:slenv) (tbl:gltbl) (next:steps) =
+  let move_cursor (s:slvr) (tbl:gltbl) (next:steps) =
     let b = tbl.search in
     match b.curr with
     | Some(old) ->
@@ -332,26 +423,41 @@ struct
     |None -> error "mkbuf" "impossible to not have initial step"
 end
 
-module Shim =
-struct
-  let unt s uid : unt =
-    match uid with
-    | HwId(HNPort(_,_,_,_,u)) -> UExpr (Term u)
-    | MathId(MNVar(_,_,u)) -> u
 
-  let mag s uid : range option =
-    match uid with
-    | HwId(HNPort(k,HCMLocal(cname),name,prop,un)) ->
-      HwCstrLib.mag s.hw.cstr cname name prop
-    | HwId(HNPort(k,HCMGlobal(cname,_),name,prop,un)) ->
-      HwCstrLib.mag s.hw.cstr cname name prop
-    | MathId(MNVar(k,v,u)) ->
-      MathCstrLib.mag s.prob.cstr v
-    |_ -> None
+
+module SlnLib =
+struct
+  let mksln () : sln =
+    {comps=MAP.make();conns=MAP.make()}
+
+  let mkcomp (sln:sln) (id:unodeid) =
+    MAP.put sln.comps id ([],0)
+
+  let usecomp (sln:sln) id =
+    let l,n = MAP.get sln.comps id in
+    let _ = MAP.put sln.comps id (n::l,n+1) in
+    n
+
+  let compiid (sln:sln) id =
+    let l,n = MAP.get sln.comps id in
+    if List.length l  > 0 then List.nth l 0 else
+    error "compiid" "no components in use"
+
+  let usecomp_conserve (s:slvr) (sln:sln) id : bool =
+    let lst,_ = (MAP.get sln.comps id)  in
+    let nuses = List.length lst in
+    let maxuses = Shim.max4unodeid s id in
+    if maxuses >= nuses then true else false
+
+  let usecomp_valid (s:slvr) (sln:sln) id : bool =
+    let lst,_ = (MAP.get sln.comps id)  in
+    let nuses = List.length lst in
+    let maxuses = Shim.max4unodeid s id in
+    let _ = flush_all() in
+    if maxuses > nuses then true else false
 
 
 end
-
 module SolveLib =
 struct
 
@@ -379,53 +485,50 @@ struct
       let n = {rels=SET.from_list nrels; name=c.name} in
       n
     in
-    let name2sprt (c:string) = match HwLib.get_special c with
-    | Some("copy",prop) -> SprCopy(prop)
-    | Some("input",prop) -> SprInput(prop)
-    | Some("output",prop) -> SprOutput(prop)
-    | Some(_) -> error "name2sprt" "illegal name"
-    | None -> SprComp c
-    in
-    let nodes : (unodeid,unode) map = MAP.make () in
+    let nodetbl : (unodeid,unode) map = MAP.make () in
+    let sln = SlnLib.mksln () in
     let rels : urel list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
-    let nodelst : unode list = List.map comp2node (MAP.to_values s.hw.comps) in
-    let _ = List.iter (fun x -> let _ = MAP.put nodes (name2sprt x.name) x in ()) nodelst in
-    let v,search= SearchLib.mkbuf (rels) in
-    let tbl = {goals=SET.make (fun x y -> x = y); nodes=nodes; search=search} in
-    let tbl = SearchLib.move_cursor s tbl v in
+    let nodes : unode list = List.map comp2node (MAP.to_values s.hw.comps) in
+    let handle_node (x) =
+       let nid = Shim.name2unodeid x.name in
+       let _ = MAP.put nodetbl nid x in
+       let _ = SlnLib.mkcomp sln nid in
+       ()
+    in
+    let _ = List.iter (fun x -> handle_node x) nodes in
+    let init_cursor,search= SearchLib.mkbuf (rels) in
+    let tbl = {goals=SET.make (fun x y -> x = y); nodes=nodetbl; sln=sln; search=search} in
+    let tbl = SearchLib.move_cursor s tbl init_cursor in
     tbl
 
 
   let goal2str g = UnivLib.urel2str g
 
-  let mag_analysis (s:slenv) (port:unid) (qty:unid) =
+  let mag_analysis (s:slvr) (port:unid) (qty:unid) =
     let uq = Shim.unt s qty in
     let urng = Shim.mag s qty in
     let up = Shim.unt s port in
     let urng = Shim.mag s port in
     ()
 
-  let apply_node (s:slenv) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : unit =
-    let c = HwLib.getcomp s.hw node.name in
+  let apply_node (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : unit =
+    (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
+    if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then () else
+    (*let comp = HwLib.getcomp s.hw node.name in*)
+    let inst_id = SlnLib.usecomp gtbl.sln node_id in
+    (*update search algorithm to include the usage*)
     let _ = SearchLib.start gtbl.search in
-    let _ = SearchLib.add_step gtbl.search (SUseNode node_id) in
-    let old = SearchLib.cursor gtbl.search in
-    let cmp = SearchLib.commit gtbl.search in
-    let _ = SearchLib.move_cursor s gtbl cmp in
+    let _ = SearchLib.add_step gtbl.search (SUseNode(node_id,inst_id)) in
+    let goal_cursor = SearchLib.cursor gtbl.search in
+    let comp_cursor = SearchLib.commit gtbl.search in
+    (*use node*)
+    let _ = SearchLib.move_cursor s gtbl comp_cursor in
+    let declunid = Shim.unid2sym node.name inst_id in
     (*
       this tries to find a set of solutions for the particular node. Each of these solutions is a branch.
     *)
-    let sln2str m r =
-      let mk k = UnivLib.unid2str k and mv v = ASTLib.ast2str v UnivLib.unid2str  in
-      r^"\n"^(MAP.str m mk mv)
-    in
     let unify_node_with_goal (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list =
-      let declunid uid is_templ cnv = match uid,is_templ with
-      | (MathId(v),_) -> SymbolVar(cnv (MathId v))
-      | (HwId(v),true)-> WildcardVar(cnv (HwId v),[])
-      | (HwId(v),false) -> SymbolVar(cnv (HwId v))
-      in
-      let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s,c)) declunid 5 in
+      let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declunid 5 in
       match res with
       | Some(res) -> res
       | None ->  []
@@ -433,6 +536,8 @@ struct
     let unify_rels (v:urel) slns  =
       match g,v with
       | (UFunction(gl,gr), UFunction(nl,nr))->
+        let nl = Shim.lclid2glblid s inst_id nl in
+        let nr = Shim.lcl2glbl s inst_id nr in
         let res = unify_node_with_goal gl gr nl nr in
         let _ = mag_analysis s nl gl in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
@@ -451,16 +556,16 @@ struct
       let _ = MAP.iter assigns (fun k v -> SearchLib.add_step gtbl.search (SAddGoal (UFunction(k,v)))) in
       (*add special component.*)
       let nnodes = UnivLib.conc_node node assigns in
-      (*let _ = SearchLib.add_step gtbl.search (SAddNode (SprConcComp "?", nnodes))  in*)
+      (*let _ = SearchLib.add_step gtbl.search (SAddNode (UNoConcComp "?", nnodes))  in*)
       let _ = SearchLib.commit gtbl.search in
       ()
     in
     let res = SET.fold node.rels unify_rels [] in
     let _ = List.iter (add_sln_to_search g) res in
-    let _ = SearchLib.move_cursor s gtbl old in
+    let _ = SearchLib.move_cursor s gtbl goal_cursor in
     if List.length res = 0
       then
-        let _ = SearchLib.rm gtbl.search cmp in
+        let _ = SearchLib.rm gtbl.search comp_cursor in
         ()
       else ()
 
@@ -469,14 +574,13 @@ struct
     | (UFunction(id,Decimal(_))) -> true
     | (UFunction(id,Integer(_))) -> true
     | _ -> false
-    
-  let apply_nodes (slnenv:slenv) (tbl:gltbl) (g:goal) : unit =
-    if resolve_trivial slnenv tbl g then () else
-    let comps = MAP.filter tbl.nodes (fun k v -> match k with SprComp(_) -> true | _ -> false)  in
-    let rels = MAP.filter tbl.nodes (fun k v -> match k with SprConcComp(_) -> true | _ -> false)  in
-    let n = SearchLib.cursor tbl.search in
+
+  let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
+    if resolve_trivial slvenv tbl g then () else
+    let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
+    let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
     let handle_node (id,x) =
-      let _ = apply_node slnenv tbl g id x in
+      let _ = apply_node slvenv tbl g id x in
       ()
     in
     let _ = List.iter handle_node rels  in
@@ -489,7 +593,7 @@ struct
     in
     SET.fold g goal2str ""
 
-  let rec solve (_s:slenv ref) (v:gltbl) =
+  let rec solve (_s:slvr ref) (v:gltbl) =
     let s = REF.dr _s in
     (*apply the current step in the search algorithm*)
     (*let _ = apply_steps s v (SearchLib.cursor v.search) in*)
@@ -501,7 +605,7 @@ struct
       let g = SET.rand v.goals in
       let _ = Printf.printf "SOLVE GOAL: %s\n\n" (UnivLib.goal2str g) in
       let _ = apply_nodes s v g in
-      let _ = Printf.printf "%s\n" (SearchLib.buf2str v.search) in
+      let _ = Printf.printf "TREE:\n%s\n" (SearchLib.buf2str v.search) in
       let _ = wait s in
       let p = SearchLib.random_path v.search in
       let _ = SearchLib.move_cursor s v p in

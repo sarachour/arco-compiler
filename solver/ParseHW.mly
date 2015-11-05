@@ -244,7 +244,7 @@ expr:
     let cname = get_cmpname() in
     let tname,ttypes = HwLib.gettime dat in
     let str2hwid x =
-      if x = tname then HNTime(UNone) else
+      if x = tname then HNTime(HCMLocal(cname),UNone) else
       let x = if HwLib.hasvar dat cname x
         then HwLib.getvar dat cname x
         else error "expr" ("variable "^x^" not found in "^cname)
@@ -252,7 +252,7 @@ expr:
       let xn = x.name in
       match x.typ with
       | HPortType(k, _) -> HNPort(k,HCMLocal(cname),xn,"?","?")
-      | HParamType(vl, un) -> HNParam(xn,vl,un)
+      | HParamType(vl, un) -> HNParam(HCMLocal(cname),xn,vl,un)
     in
     let getcmpid c =
       match c with

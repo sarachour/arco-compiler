@@ -8,8 +8,8 @@ type propid = string
 
 type hwvid =
   | HNPort of hwvkind*compid*string*propid*untid
-  | HNParam of string*float*unt
-  | HNTime of unt
+  | HNParam of compid*string*float*unt
+  | HNTime of compid*unt
 
 type hwrel =
   | HRFunction of hwvid*(hwvid ast)
@@ -85,9 +85,13 @@ struct
   | HCMLocal(n) -> n
 
   let hwvid2str e =
+    let c2str c = match c with
+    | HCMLocal(n) -> n^"."
+    | HCMGlobal(n,i) -> n^"["^(string_of_int i)^"]."
+    in
     match e with
-    | HNPort(_,c,v,prop,unt) -> prop^"{"^v^"}:"^unt
-    | HNParam(v,vl,u) -> v
+    | HNPort(_,c,v,prop,unt) ->(c2str c)^prop^"{"^v^"}:"^unt
+    | HNParam(c,v,vl,u) -> (c2str c)^v
     | HNTime(_) -> "t"
 
   let rel2str v =
@@ -96,11 +100,16 @@ struct
     | HRFunction(l,r) -> "fun "^ASTLib.ast2str r (fun x -> hwvid2str x)
     | HRState(l,r,ic) -> "state "^ASTLib.ast2str r (fun x -> hwvid2str x)^" initial:"^(hwvid2str ic)
 
-  let cv2hwid c v prop =
-    match v.typ,prop with
-    | (HPortType(k,m),Some(p)) ->
+  let cv2hwid c v prop inst =
+    match v.typ,prop,inst with
+    | (HPortType(k,m),Some(p),None) ->
       HNPort(k,HCMLocal(c.name),v.name,p,MAP.get m p)
-    | (HParamType(f,u),_) -> HNParam(v.name,f,u)
+    | (HPortType(k,m),Some(p),Some(i)) ->
+      HNPort(k,HCMGlobal(c.name,i),v.name,p,MAP.get m p)
+    | (HParamType(f,u),_,None) ->
+      HNParam(HCMLocal(c.name),v.name,f,u)
+    | (HParamType(f,u),_,Some(i)) ->
+      HNParam(HCMGlobal(c.name,i),v.name,f,u)
 
   let print e =
     let pkind2str v =
