@@ -1,5 +1,7 @@
 
 open HWCstr
+open Util
+open SolverData
 
 
 module HwConnRslvr =
@@ -14,7 +16,9 @@ end
 module HwErrRslvr =
 struct
 
-  let is_valid cfg conns lbls =
+  let is_valid cfg sln =
+    let cmps : (unodeid,(int set)*int) map = sln.comps in
+    let conns : (wireid, wireid set) map = sln.conns in
     true
 
 end
