@@ -118,6 +118,8 @@ schematic
   inst input V : 2
   inst output V : 2
   inst copy V : 16
+  inst vint : 5
+  inst vintadd : 2 
 
 
   conn vadd2 -> vmul2

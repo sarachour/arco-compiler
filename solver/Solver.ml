@@ -1,5 +1,4 @@
 open Common
-open Z3Test
 
 open HW
 open HWCstr
@@ -78,7 +77,7 @@ type unid =
 
 type urel =
   | UFunction of unid*(unid ast)
-  | UState of unid*(unid ast)*(unid)
+  | UState of unid*(unid ast)*(unid)*unid
 
 
 type unodeid =
@@ -101,8 +100,12 @@ module Shim =
 struct
   let unt s uid : unt =
     match uid with
-    | HwId(HNPort(_,_,_,_,u)) -> UExpr (Term u)
     | MathId(MNVar(_,_,u)) -> u
+    | MathId(MNTime(u)) -> u
+    | MathId(MNParam(_,_,u)) -> u
+    | HwId(HNParam(_,_,_,u)) -> u
+    | HwId(HNPort(_,_,_,_,u)) -> UExpr (Term u)
+    | HwId(HNTime(_,u)) -> u
 
   let mag s uid : range option =
     match uid with
@@ -114,6 +117,17 @@ struct
       MathCstrLib.mag s.prob.cstr v
     |_ -> None
 
+  let tc s uid : range option =
+    match uid with
+    | HwId(HNPort(k,HCMLocal(cname),name,prop,un)) ->
+      HwCstrLib.mag s.hw.cstr cname name prop
+    | HwId(HNPort(k,HCMGlobal(cname,_),name,prop,un)) ->
+      HwCstrLib.mag s.hw.cstr cname name prop
+    | MathId(MNVar(k,v,u)) ->
+      MathCstrLib.mag s.prob.cstr v
+    |_ -> None
+
+
   let comp s name =
     let c = HwLib.getcomp s.hw name in
     c
@@ -122,6 +136,10 @@ struct
     match x with
     | HwId(HNPort(k,HCMLocal(c),p,prop,un)) ->
       HwId(HNPort(k,HCMGlobal(c,iid),p,prop,un))
+    | HwId(HNParam(HCMLocal(c), name, vl, u)) ->
+      HwId(HNParam(HCMGlobal(c,iid),name,vl,u))
+    | HwId(HNTime(HCMLocal(c),u)) ->
+      HwId(HNTime(HCMGlobal(c,iid),u))
     | _ -> x
 
 
@@ -138,7 +156,7 @@ struct
 
   let unid2sym cmpname ciid uid is_templ cnv= match uid, is_templ with
   | (HwId(HNPort(k,HCMLocal(c),port,prop,u)), true) ->
-    error "unid2sym" "no non-concretized ports allowed."
+    error "unid2sym" ("no non-concretized port of name "^c^"."^port^" allowed.")
   | (HwId(HNPort(k,HCMGlobal(c,i),port,prop,u)),true) -> if i = ciid && cmpname = c
     then WildcardVar(cnv uid,[])
     else SymbolVar(cnv uid)
@@ -243,7 +261,7 @@ struct
 
   let urel2str uid = match uid with
   | UFunction(l,r) -> (unid2str l)^"="^(ASTLib.ast2str r unid2str)
-  | UState(l,r,i) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)
+  | UState(l,r,i,t) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)
 
   let conc_node node assigns =
   let sid id : unid=
@@ -257,7 +275,7 @@ struct
   let conc_rel x =
     match x with
     | UFunction(l,r) -> UFunction(sid l,ASTLib.sub r assigns)
-    | UState(l,r,i) -> UState(sid l,ASTLib.sub r assigns,sid i)
+    | UState(l,r,i,t) -> UState(sid l,ASTLib.sub r assigns,sid i,sid t)
   in
   let nr = SET.map node.rels (fun x -> conc_rel x) in
   node
@@ -326,7 +344,7 @@ module SlnLib =
 struct
   let hwport2wire cm port =
     match cm with
-    | HCMLocal(c) -> error "hwport2wire" "underspecified identifier."
+    | HCMLocal(c) -> error "hwport2wire" ("underspecified identifier "^c^".")
     | HCMGlobal(q,i) ->
       let nid = Shim.name2unodeid q in
       let inst = i in
@@ -363,10 +381,12 @@ struct
   *)
 
   let mkconn_cons (v:slvr) (s:sln) =
-    let res = HwConnRslvr.is_valid v.cstr.conns s.conns in
+    let res = HwConnRslvr.is_valid v s.conns in
     res
 
-
+  let mklbl_cons (v:slvr) (s:sln) =
+    let res = HwErrRslvr.is_valid v s.conns s.labels in
+    res
 
   let mkconn (sln:sln) (src:wireid) (snk:wireid) =
     let sinks = if MAP.has sln.conns src = false then
@@ -422,7 +442,6 @@ struct
     let _ = sln.comps <- MAP.put sln.comps id (SET.add l n,n+1) in
     n
 
-
   let usecomp_conserve (s:slvr) (sln:sln) id : bool =
     let lst,_ = (MAP.get sln.comps id)  in
     let nuses = SET.size lst in
@@ -445,16 +464,9 @@ struct
     let _ = SET.rm lst i in
     s.comps <- MAP.put s.comps id (lst,n)
 
-  (*determine if the connection schema is possible*)
-  let conn_conserve (v:slvr) (s:sln) =
-    true
-
-  (*determine if the assignment,conneciton schema violates error constraints on output*)
-  let err_conserve (v:slvr) (s:sln) =
-    true
 
   let conserve (v:slvr) (s:sln) =
-    if conn_conserve v s && err_conserve v s
+    if mkconn_cons v s && mklbl_cons v s
     then true
     else false
 
@@ -663,19 +675,23 @@ struct
       let tf x = ASTLib.trans (ASTLib.map x m2u) rm_pars in
       match x.rel with
       | MRFunction(l,r) -> UFunction(m2u l, tf r)
-      | MRState(l,r,x) -> UState(m2u l, tf r, m2u x)
+      | MRState(l,r,x) ->
+        let time = (MathLib.getvar s.prob (force_conc s.prob.time)).typ in
+        UState(m2u l, tf r, m2u x, m2u time)
       | MRNone -> error "math2goal" "impossible."
     in
     let fltmath x = x.rel <> MRNone in
     let comp2node (c:hwcomp) =
       let nvars = List.filter (fun (x:hwvar) -> x.rel <> HRNone) (MAP.to_values (c.vars)) in
       let var2urel (x:hwvar) =
-      let h2u = UnivLib.hwid2unid in
-      let tf x = ASTLib.trans (ASTLib.map x h2u) rm_pars in
-      match x.rel with
-      | HRFunction(l,r) -> UFunction(h2u l, tf r)
-      | HRState(l,r,i) -> UState(h2u l, tf r, h2u i)
-      | _ -> error "comp2node" "impossible"
+        let h2u = UnivLib.hwid2unid in
+        let tf x = ASTLib.trans (ASTLib.map x h2u) rm_pars in
+        match x.rel with
+        | HRFunction(l,r) -> UFunction(h2u l, tf r)
+        | HRState(l,r,i) ->
+          let time = HNTime(HCMLocal(c.name),c.time) in
+          UState(h2u l, tf r, h2u i, h2u time)
+        | _ -> error "comp2node" "impossible"
       in
       let nrels = List.map var2urel nvars in
       let n = {rels=SET.from_list nrels; name=c.name} in
@@ -710,10 +726,11 @@ struct
     | UFunction(l,r) ->
       if MAP.has assigns l then error "conc_node" "cannot sub lhs" else
       UFunction(l,sub_ast r)
-    | UState(l,r,ic) ->
+    | UState(l,r,ic,t) ->
       if MAP.has assigns l then error "conc_node" "cannot sub lhs" else
       if MAP.has assigns ic then error "conc_node" "cannot sub ic" else
-      UState(l,sub_ast r, ic)
+      if MAP.has assigns t then error "conc_node" "cannot sub ic" else
+      UState(l,sub_ast r, ic, t)
     in
     let nid_name = match nid with UNoComp(n) -> n | _ -> error "conc_node" "unexpected" in
     let new_nid = UNoConcComp(nid_name,iid) in
@@ -754,9 +771,14 @@ struct
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
         let res = List.map (fun x -> (v,x)) res in
         slns @ res
-      | (UState(gl,gr,gic), UState(nl,nr,ic))->
+      | (UState(gl,gr,gic,gt), UState(nl,nr,ic,nt))->
+        let nl = Shim.lclid2glblid s inst_id nl in
+        let ic = Shim.lclid2glblid s inst_id ic in
+        let nt = Shim.lclid2glblid s inst_id nt in
+        let nr = Shim.lcl2glbl s inst_id nr in
         let res = unify_node_with_goal gl gr nl nr in
         let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
+        let _ = List.iter (fun mp -> let _ = MAP.put mp gic (Term ic) in () ) res in
         let _ = List.iter (fun mp -> let _ = MAP.put mp gic (Term ic) in () ) res in
         let res = List.map (fun x -> (v,x)) res in
         slns @ res
@@ -828,11 +850,15 @@ struct
           let lbl = LBindVar q in
           let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in
           [SSolAddLabel(wire,prop,lbl);SSolAddLabel(wire,prop,mg)]
-      | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
-          let wire = SlnLib.hwport2wire c v in
-          let lbl = LBindVar q in
-          let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in
-          [SSolAddLabel(wire,prop,lbl);SSolAddLabel(wire,prop,mg)]
+      | UFunction(MathId(MNVar(k,n,u)), Term(HwId(HNPort(k2,c2,v2,prop2,u2))) ) ->
+          let wire = SlnLib.hwport2wire c2 v2 in
+          let lbl = LBindVar (MNVar(k,n,u)) in
+          let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in
+          [SSolAddLabel(wire,prop2,lbl);SSolAddLabel(wire,prop2,mg)]
+      | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
+          []
+      | UFunction(HwId(HNTime(cmp,uh)), Term (MathId(MNTime(um))) ) ->
+          []
       | _ -> []
     in
     let handle_goal g =
@@ -930,9 +956,7 @@ struct
       let _ = exit 0 in
       ()
     else
-      let g = SET.rand v.goals in
       (*menu handling methods*)
-      let mint,musr = mkmenu s v g in
 
       (*apply the current step in the search algorithm*)
       (*let _ = apply_steps s v (SearchLib.cursor v.search) in*)
@@ -941,18 +965,21 @@ struct
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
         let _ = resolve_trivial s v v.goals in
+        let g = SET.rand v.goals in
+        let mint,musr = mkmenu s v g in
         if SlnLib.conserve s v.sln = false then
           let _ = SearchLib.rm v.search goal_cursor in
-          ()
+          (mint,musr)
         else
           (*show goals and current solution*)
           let _ = mint "g" in
           let _ = mint "s" in
+          let _ = mint "c" in
           let _ = apply_nodes s v g in
           let _ = musr () in
-          ()
+          (mint,musr)
       in
-      let _  = solve_goal () in
+      let min,musr  = solve_goal () in
       match get_next_path s v with
         | Some(p) ->
           let _ = SearchLib.move_cursor s v p in

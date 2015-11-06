@@ -111,6 +111,11 @@ struct
     | HCMagRange(min,max) -> Some (min,max)
     | HCNoMag -> None
 
+  let tc e cmp  =
+    match MAP.get e.mags cmp with
+    | HCMagRange(min,max) -> Some (min,max)
+    | HCNoMag -> None
+
   let mktc e iname rng =
     let key = (iname) in
     if MAP.has e.tcs key then

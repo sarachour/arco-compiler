@@ -25,6 +25,10 @@ let str_of_float f =
   let s : string = Printf.sprintf "%8.8f" f in
   s
 
+let force_conc (type a) (f:a option): a = match f with
+  |Some(q) -> q
+  |_ -> error "force_conc" "none is disallowed."
+
 module STRING =
 struct
   let split (s:string) (d:string) : string list =
@@ -413,7 +417,7 @@ struct
     | [(snk,edj)] -> edj
     | _ -> error "edge" "does not exist"
 
-  
+
   let parent  (type a) (type b) (g:(a,b) tree) (n:a) : a option =
     let _,p = MAP.get g.adj n in
     p

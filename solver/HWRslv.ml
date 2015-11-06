@@ -9,3 +9,12 @@ struct
     true
 
 end
+
+
+module HwErrRslvr =
+struct
+
+  let is_valid cfg conns lbls =
+    true
+
+end
