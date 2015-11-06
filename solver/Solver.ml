@@ -3,6 +3,7 @@ open Z3Test
 
 open HW
 open HWCstr
+open HWRslv
 
 open Math
 open MathCstr
@@ -355,11 +356,15 @@ struct
   let mkcomp (sln:sln) (id:unodeid) =
     MAP.put sln.comps id (SET.make (fun x y -> x = y),0)
 
-  let mkconn_valid (s:slvr) (s:sln) (src:wireid) (snk:wireid) =
-    true
+  (*
+  let mkconn_valid (v:slvr) (s:sln) (src:wireid) (snk:wireid) =
+    let res = ConnResolver.is_valid v.cstr.conns s.conns in
+    res
+  *)
 
   let mkconn_cons (s:slvr) (s:sln) =
-    true
+    let res = HwConnRslvr.is_valid v.cstr.conns s.conns in
+    res
 
 
 
