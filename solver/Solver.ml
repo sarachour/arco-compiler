@@ -428,7 +428,6 @@ struct
     let lst,_ = (MAP.get sln.comps id)  in
     let nuses = SET.size lst in
     let maxuses = Shim.max4unodeid s id in
-    let _ = flush_all() in
     if maxuses > nuses then true else false
 
   let usecomp_mark (s:sln) id (i:int) =
@@ -440,6 +439,19 @@ struct
     let lst,n = MAP.get s.comps id in
     let _ = SET.rm lst i in
     s.comps <- MAP.put s.comps id (lst,n)
+
+  (*determine if the connection schema is possible*)
+  let conn_conserve (v:slvr) (s:sln) =
+    true
+
+  (*determine if the assignment,conneciton schema violates error constraints on output*)
+  let err_conserve (v:slvr) (s:sln) =
+    true
+
+  let conserve (v:slvr) (s:sln) =
+    if conn_conserve v s && err_conserve v s
+    then true
+    else false
 
   let tostr (s:sln) : string=
     let comp2str cname clist id =
@@ -802,6 +814,10 @@ struct
           let wire = SlnLib.hwport2wire c v in
           let lbl = LBindValue q in
           [SSolAddLabel(wire,prop,lbl)]
+      | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
+          let wire = SlnLib.hwport2wire c v in
+          let lbl = LBindValue (float_of_int q) in
+          [SSolAddLabel(wire,prop,lbl)]
       | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
           let wire = SlnLib.hwport2wire c v in
           let lbl = LBindVar q in
@@ -836,7 +852,6 @@ struct
   let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
-
     let handle_node (id,x) =
       let _ = apply_node slvenv tbl g id x in
       ()
@@ -866,19 +881,18 @@ struct
           Some (p)
     | None -> None
 
-  let rec solve (_s:slvr ref) (v:gltbl) =
-    let s = REF.dr _s in
+  let mkmenu (s:slvr) (v:gltbl) (g:goal) =
     let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
-    let rec menu_handle inp =
+    let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
         let _ = Printf.printf "\n%s\n\n" (SearchLib.buf2str v.search) in
-        let _ = menu s menu_handle menu_desc in
+        let _ = on_finished() in
         ()
       else if STRING.startswith inp "s" then
         let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
-        let _ = menu s menu_handle menu_desc in
+        let _ = on_finished() in
         ()
-      else if STRING.startswith inp "g" then
+      else if STRING.startswith inp "goto" then
         let _ = match STRING.split inp " " with
         | [_;id] ->
           let nid = int_of_string id in
@@ -886,39 +900,63 @@ struct
           ()
         | _ -> ()
         in
-        let _ = menu s menu_handle menu_desc in
+        let _ = on_finished() in
+        ()
+      else if STRING.startswith inp "g" then
+        let _ = Printf.printf "==== Goals ===" in
+        let _ = Printf.printf "%s\n" (goals2str v.goals) in
+        let _ = Printf.printf "============\n\n" in
+        ()
+      else if STRING.startswith inp "c" then
+        let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g) in
         ()
       else
         ()
     in
-    let print_goals () =
-      let _ = Printf.printf "==== Goals ===" in
-      let _ = Printf.printf "%s\n" (goals2str v.goals) in
-      let _ = Printf.printf "============\n\n" in
+    let internal_menu_handle x = menu_handle x (fun () -> ()) in
+    let rec user_menu_handle () = menu s (fun x -> menu_handle x user_menu_handle) menu_desc in
+    internal_menu_handle,user_menu_handle
+
+  let rec solve (_s:slvr ref) (v:gltbl) =
+    let s = REF.dr _s in
+    (*find a goal to focus on*)
+    if SET.size v.goals = 0 then
+      let _ = Printf.printf "SOLVER: Attained all goals. Finished\n" in
+      let _ = exit 0 in
       ()
-    in
-    (*apply the current step in the search algorithm*)
-    (*let _ = apply_steps s v (SearchLib.cursor v.search) in*)
-    (*choose a goal in the table*)
-    if SET.size v.goals > 0 then
-      let _ = resolve_trivial s v v.goals in
-      let _ = print_goals() in
+    else
       let g = SET.rand v.goals in
-      let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g) in
-      let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
-      let _ = apply_nodes s v g in
-      let _ = menu s menu_handle menu_desc in
+      (*menu handling methods*)
+      let mint,musr = mkmenu s v g in
+
+      (*apply the current step in the search algorithm*)
+      (*let _ = apply_steps s v (SearchLib.cursor v.search) in*)
+      (*choose a goal in the table*)
+
+      let solve_goal () =
+        let goal_cursor = SearchLib.cursor v.search in
+        let _ = resolve_trivial s v v.goals in
+        if SlnLib.conserve s v.sln = false then
+          let _ = SearchLib.rm v.search goal_cursor in
+          ()
+        else
+          (*show goals and current solution*)
+          let _ = mint "g" in
+          let _ = mint "s" in
+          let _ = apply_nodes s v g in
+          let _ = musr () in
+          ()
+      in
+      let _  = solve_goal () in
       match get_next_path s v with
-      | Some(p) ->
+        | Some(p) ->
           let _ = SearchLib.move_cursor s v p in
           let _ = solve _s v in
           ()
-      | None ->
-        let _ = Printf.printf "SOLVER: exhausted search.\n" in
-        exit 0
-    else
-      let _ = Printf.printf "no goals left.. done\n" in
-      ()
+        | None ->
+          let _ = Printf.printf "SOLVER: exhausted search.\n" in
+          exit 0
+
 
 end
 
