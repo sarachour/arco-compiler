@@ -6,8 +6,7 @@ COMP_DEPS=*.mly *.mll
 ARGS=C_INCLUDE_PATH=/opt/local/include LIBRARY_PATH=/opt/local/lib CC=gcc-mp-4.8
 FLAGS=-use-ocamlfind -use-menhir -menhir "menhir --infer --explain"
 DEBUG_FLAGS=-cflag -g
-#LIBS=-package extlib  -package yojson -package z3 -package z3overlay
-LIBS=-package extlib
+
 
 all: solver solver.debug
 

@@ -1,3 +1,0 @@
-true: package(extlib,threads,core,pycaml,str)
-true: thread,debug
-<symcaml>: include

@@ -1,6 +1,0 @@
-namespace smpl;
-in X;
-in Y;
-out Z;
-param Q=0.5; 
-Z = Q*X + Y;

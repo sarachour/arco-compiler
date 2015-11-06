@@ -2,18 +2,19 @@
 
 all: build/z3 test install
 
+
 build/z3: build
-	cd build; make -j 8
+	cd z3/build; make -j 8
 
 install:
-	cd build; sudo make install 
-	cd build; sudo make ocamlfind_install
+	cd z3/build; sudo make install
+	cd z3/build; make ocamlfind_install
 
 build:
-	python scripts/mk_make.py --ml
+	cd z3; python scripts/mk_make.py --ml
 
 test:
-	cd build; make test
+	cd z3/build; make test
 
 clean:
-	rm -rf build
+	rm -rf z3/build

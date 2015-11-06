@@ -1,5 +1,0 @@
-# Util target for installing
-
-PURPOSE		= install
-
-MAKE_SUBDIRS	= $(INSTALL_SUBDIRS)

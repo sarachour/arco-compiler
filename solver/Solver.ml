@@ -1,4 +1,5 @@
 open Common
+open Z3Test
 
 open HW
 open HWCstr
@@ -306,6 +307,7 @@ type buffer = {
   paths: (steps, score) tree;
   mutable step_buf: steps option;
   (*the total number of step bundles*)
+  mutable visited: int set;
   mutable cnt: int;
   mutable curr: (steps,score) cursor option;
 }
@@ -486,8 +488,15 @@ struct
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | _ -> "?"
 
+  let visited b n =
+    SET.has b.visited n.id
+
+  let visit b n =
+    let _ = b.visited <- SET.add b.visited n.id in
+    ()
+
   let steps2str (b:buffer) (n:steps) =
-    let id = (string_of_int n.id) in
+    let id = (if visited b n then "." else "?")^(string_of_int n.id) in
     let prefix = match b.curr with
     | Some(c) -> if c = n then "["^id^"]" else id
     | None -> id
@@ -541,6 +550,7 @@ struct
   let buf2str b =
     TREE.tostr b.paths (fun x -> (steps2str b x))
 
+
   let cursor b =
     match b.curr with
     | Some(c) -> c
@@ -590,15 +600,20 @@ struct
       tbl
 
   let get_paths (b:buffer) =
-    TREE.leaves b.paths
+    let p = TREE.leaves b.paths in
+    let p = List.filter (fun x -> visited b x = false) p in
+    p
 
   let random_path (b:buffer) =
     let choices = get_paths b in
-    LIST.rand choices
+    if List.length choices > 0 then
+      Some (LIST.rand choices)
+    else
+      None
 
   let mkbuf goals =
-    let g = TREE.make (fun x y -> x=y) (fun x y -> x = y) in
-    let buf = {paths=g; step_buf=None; cnt=0; curr=None} in
+    let g = TREE.make (fun x y -> x.id=y.id) (fun x y -> x = y) in
+    let buf = {paths=g; step_buf=None; cnt=0; curr=None; visited=SET.make (fun x y -> x = y)} in
     let _ = start buf in
     let _ = List.iter (fun x -> add_step buf (SAddGoal x)) goals in
     match buf.step_buf with
@@ -616,7 +631,7 @@ end
 module SolveLib =
 struct
 
-  let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=5; cnt=0;}
+  let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=10; cnt=0;}
 
   let mktbl s : gltbl =
     (* add all relations to the tableau of goals. *)
@@ -751,7 +766,9 @@ struct
         let _ = SearchLib.rm gtbl.search comp_cursor in
         let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
         ()
-      else ()
+      else
+        let _ = SearchLib.visit gtbl.search comp_cursor in
+        ()
 
   let mkmag (s:slvr) (port:unid) (qty:unid) =
     let mq = Shim.unt s qty in
@@ -804,10 +821,12 @@ struct
         let _ = List.iter (fun x -> let _ = SearchLib.add_step t.search x in ()) steps in
         ()
     in
+    let goal_cursor = SearchLib.cursor t.search in
     if (SET.fold goals (fun x r -> if is_trivial x then r+1 else r) 0) > 0 then
       let _ = SearchLib.start t.search in
       let _ = SET.iter goals handle_goal in
       let trivial_cursor = SearchLib.commit t.search in
+      let _ = SearchLib.visit t.search goal_cursor in
       let _ = SearchLib.move_cursor s t trivial_cursor in
       ()
     else
@@ -817,12 +836,16 @@ struct
   let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
+
     let handle_node (id,x) =
       let _ = apply_node slvenv tbl g id x in
       ()
     in
     let _ = List.iter handle_node rels  in
     let _ = List.iter handle_node comps  in
+    (*mark goal as explored.*)
+    let goal_cursor = SearchLib.cursor tbl.search in
+    let _ = SearchLib.visit tbl.search goal_cursor in
     ()
 
   let goals2str (g:goal set) =
@@ -830,6 +853,18 @@ struct
       v^"\n"^(UnivLib.goal2str g)
     in
     SET.fold g goal2str ""
+
+  let rec get_next_path s v =
+    match SearchLib.random_path v.search with
+    | Some(p) ->
+      let depth =  List.length (TREE.get_path v.search.paths p) in
+      if depth >= s.max_depth
+        then
+          let _ = SearchLib.visit v.search p in
+          get_next_path s v
+        else
+          Some (p)
+    | None -> None
 
   let rec solve (_s:slvr ref) (v:gltbl) =
     let s = REF.dr _s in
@@ -873,10 +908,14 @@ struct
       let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
       let _ = apply_nodes s v g in
       let _ = menu s menu_handle menu_desc in
-      let p = SearchLib.random_path v.search in
-      let _ = SearchLib.move_cursor s v p in
-      let _ = solve _s v in
-      ()
+      match get_next_path s v with
+      | Some(p) ->
+          let _ = SearchLib.move_cursor s v p in
+          let _ = solve _s v in
+          ()
+      | None ->
+        let _ = Printf.printf "SOLVER: exhausted search.\n" in
+        exit 0
     else
       let _ = Printf.printf "no goals left.. done\n" in
       ()
