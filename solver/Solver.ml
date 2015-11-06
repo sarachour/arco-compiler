@@ -362,7 +362,7 @@ struct
     res
   *)
 
-  let mkconn_cons (s:slvr) (s:sln) =
+  let mkconn_cons (v:slvr) (s:sln) =
     let res = HwConnRslvr.is_valid v.cstr.conns s.conns in
     res
 
