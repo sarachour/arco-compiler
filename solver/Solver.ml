@@ -912,7 +912,7 @@ struct
           Some (p)
     | None -> None
 
-  let mkmenu (s:slvr) (v:gltbl) (g:goal) =
+  let mkmenu (s:slvr) (v:gltbl) (g:goal option) =
     let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
@@ -939,7 +939,10 @@ struct
         let _ = Printf.printf "============\n\n" in
         ()
       else if STRING.startswith inp "c" then
-        let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g) in
+        let _ = match g with
+          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g)  in ()
+          | None -> Printf.printf "<no goal>"
+        in
         ()
       else
         ()
@@ -965,19 +968,26 @@ struct
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
         let _ = resolve_trivial s v v.goals in
-        let g = SET.rand v.goals in
-        let mint,musr = mkmenu s v g in
-        if SlnLib.conserve s v.sln = false then
-          let _ = SearchLib.rm v.search goal_cursor in
-          (mint,musr)
-        else
-          (*show goals and current solution*)
-          let _ = mint "g" in
+        if SET.size v.goals = 0 then
+          let mint,musr = mkmenu s v None in
+          let _ = Printf.printf "SOLVER: Attained all goals. Finished.\n" in
           let _ = mint "s" in
-          let _ = mint "c" in
-          let _ = apply_nodes s v g in
-          let _ = musr () in
-          (mint,musr)
+          let _ = exit 0 in
+          error "solve_goal" "done"
+        else
+          let g = SET.rand v.goals in
+          let mint,musr = mkmenu s v (Some g) in
+          if SlnLib.conserve s v.sln = false then
+            let _ = SearchLib.rm v.search goal_cursor in
+            (mint,musr)
+          else
+            (*show goals and current solution*)
+            let _ = mint "g" in
+            let _ = mint "s" in
+            let _ = mint "c" in
+            let _ = apply_nodes s v g in
+            let _ = musr () in
+            (mint,musr)
       in
       let min,musr  = solve_goal () in
       match get_next_path s v with
