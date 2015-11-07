@@ -154,7 +154,7 @@ struct
         true
       else
         let txt = Z3Lib.z3stmts2str decls in
-        let _ = Printf.printf "SMT PROBLEM:\n%s\n" txt in
+        let _ = Z3Lib.exec decls in
         true
 end
 
