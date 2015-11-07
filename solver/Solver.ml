@@ -330,7 +330,16 @@ struct
       (*apply the current step in the search algorithm*)
       (*let _ = apply_steps s v (SearchLib.cursor v.search) in*)
       (*choose a goal in the table*)
-
+      let move_to_next () =
+        match get_next_path s v with
+          | Some(p) ->
+            let _ = SearchLib.move_cursor s v p in
+            let _ = solve _s v in
+            ()
+          | None ->
+            let _ = Printf.printf "SOLVER: exhausted search.\n" in
+            exit 0
+      in
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
         let _ = resolve_trivial s v v.goals in
@@ -343,7 +352,9 @@ struct
         else
           let g = SET.rand v.goals in
           let mint,musr = mkmenu s v (Some g) in
+          (*is the connectivity consistent*)
           if SlnLib.mkconn_cons s v.sln = false then
+            let _ = move_to_next () in 
             let _ = SearchLib.rm v.search goal_cursor in
             (mint,musr)
           else
@@ -356,15 +367,8 @@ struct
             (mint,musr)
       in
       let min,musr  = solve_goal () in
-      match get_next_path s v with
-        | Some(p) ->
-          let _ = SearchLib.move_cursor s v p in
-          let _ = solve _s v in
-          ()
-        | None ->
-          let _ = Printf.printf "SOLVER: exhausted search.\n" in
-          exit 0
-
+      let _ = move_to_next () in
+      ()
 
 end
 

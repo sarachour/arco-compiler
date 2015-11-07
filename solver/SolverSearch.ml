@@ -67,10 +67,11 @@ struct
 
   let rm b n =
     let _ = match b.curr with
-    | Some(v) -> if v = n then let _ = b.curr <- None in ()
+    | Some(v) -> if v = n then error "rm" "cannot remove current node." else ()
     | None -> ()
     in
     let _ = TREE.rmnode b.paths n in
+    let _ = SET.rm b.visited n.id in
     b
 
 

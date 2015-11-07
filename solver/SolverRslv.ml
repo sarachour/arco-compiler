@@ -151,13 +151,12 @@ struct
     let is_valid cfg sln =
       let is_succ,decls = to_smt_prob cfg sln in
       if is_succ = false then
-        let _ = Printf.printf "Invalid: No Connections exist\n" in
         false
       else
         let txt = Z3Lib.z3stmts2str decls in
         let z = Z3Lib.exec decls in
         let _ = Printf.printf "%s\n" (Z3Lib.sln2str z) in
-        true
+        z.sat
 end
 
 
