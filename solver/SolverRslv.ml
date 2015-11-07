@@ -21,6 +21,7 @@ struct
     |Int of int
     |Not of sateqn
     |Plus of sateqn*sateqn
+    |Bool of bool
     |IfThenElse of sateqn*sateqn*sateqn
     |Eq of sateqn*sateqn
 
@@ -34,6 +35,8 @@ struct
     | IfThenElse(a,b,c) -> "(ite "^(_s a)^" "^(_s b)^" "^(_s c)^")"
     | Var(v) -> "v"^v
     | Int(i) -> string_of_int i
+    | Bool(true) -> "true"
+    | Bool(false) -> "false"
     | _ -> ""
     in
     _s x
@@ -110,8 +113,11 @@ struct
             let cv = toconnvar (sc,sp,toid cstr_si) (dc,dp,toid cstr_di) in
             let src = tovar sc (toid cstr_si) in
             let dest = tovar dc (toid cstr_di) in
-            let lim_eqn = IfThenElse(And(Var(cv), And( Eq(Var(src),Int(toid si)), Eq(Var(dest), Int(toid di)) ) ), Int(1),Int(0)) in
-            (cv::decl_list, lim_eqn::eqn_list)
+            let src_is_inst = Eq(Var(src),Int(toid si)) in
+            let dest_is_inst = Eq(Var(dest), Int(toid di)) in
+            let conn_is_inst = And(src_is_inst,dest_is_inst) in
+            let cnd = IfThenElse(conn_is_inst, Eq(Var(cv),Bool true), Eq(Var(cv),Bool false) ) in
+            (cv::decl_list, cnd::eqn_list)
           ) ([],[]) in
           res
       | HCConnNoLimit -> error "decl_conns" "cannot handle limitless component"
@@ -146,8 +152,10 @@ struct
            let decls,cstrs = decl_conns sln_src sln_dest in
            if List.length cstrs > 0 then
              let _ = List.iter (fun q -> let _ =  Printf.printf "(declare-const %s Bool)\n" (sateqn2str (Var q)) in ()) decls in
-             let ncstr = Eq(plus_all cstrs, Int 1) in 
-             let _ = Printf.printf "(assert %s)\n" (sateqn2str ncstr) in
+             let must_have_conn = or_all cstrs in
+             let exactly_one_conn = Eq(plus_all (List.map (fun d -> IfThenElse(Var(d),Int 1,Int 0) ) decls), Int(1)) in
+             let _ = Printf.printf "\n(assert %s)\n\n" (sateqn2str must_have_conn) in
+             let _ = Printf.printf "(assert %s)\n" (sateqn2str exactly_one_conn) in
              ()
            else
              let _ = Printf.printf "(assert false)\n" in
