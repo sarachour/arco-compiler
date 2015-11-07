@@ -133,11 +133,6 @@ struct
     s.comps <- MAP.put s.comps id (lst,n)
 
 
-  let conserve (v:slvr) (s:sln) =
-    if mkconn_cons v s && mklbl_cons v s
-    then true
-    else false
-
   let tostr (s:sln) : string=
     let comp2str cname clist id =
       let instlist2str lst =

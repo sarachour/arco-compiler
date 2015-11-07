@@ -343,7 +343,7 @@ struct
         else
           let g = SET.rand v.goals in
           let mint,musr = mkmenu s v (Some g) in
-          if SlnLib.conserve s v.sln = false then
+          if SlnLib.mkconn_cons s v.sln = false then
             let _ = SearchLib.rm v.search goal_cursor in
             (mint,musr)
           else
