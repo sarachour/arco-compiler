@@ -352,9 +352,11 @@ struct
         else
           let g = SET.rand v.goals in
           let mint,musr = mkmenu s v (Some g) in
+
           (*is the connectivity consistent*)
           if SlnLib.mkconn_cons s v.sln = false then
-            let _ = move_to_next () in 
+            let _ = SearchLib.visit v.search goal_cursor in
+            let _ = move_to_next () in
             let _ = SearchLib.rm v.search goal_cursor in
             (mint,musr)
           else
@@ -364,10 +366,10 @@ struct
             let _ = mint "c" in
             let _ = apply_nodes s v g in
             let _ = musr () in
+            let _ = move_to_next () in
             (mint,musr)
       in
       let min,musr  = solve_goal () in
-      let _ = move_to_next () in
       ()
 
 end
