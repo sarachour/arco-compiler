@@ -3,6 +3,7 @@ open HWCstr
 open Util
 open SolverData
 open SolverUtil
+open Z3Lib
 
 module HwConnRslvr =
 struct
@@ -14,88 +15,57 @@ struct
   }
 
 
-  type sateqn =
-    |And of sateqn*sateqn
-    |Or of sateqn*sateqn
-    |Var of string
-    |Int of int
-    |Not of sateqn
-    |Plus of sateqn*sateqn
-    |Bool of bool
-    |IfThenElse of sateqn*sateqn*sateqn
-    |Eq of sateqn*sateqn
-
-  let sateqn2str x =
-    let rec _s x = match x with
-    | And(a,b) -> "(and "^(_s a)^" "^(_s b)^")"
-    | Or(a,b) -> "(or "^(_s a)^" "^(_s b)^")"
-    | Eq(a,b) -> "(= "^(_s a)^" "^(_s b)^")"
-    | Not(a) -> "(not "^(_s a)^")"
-    | Plus(a,b) -> "(+ "^(_s a)^" "^(_s b)^")"
-    | IfThenElse(a,b,c) -> "(ite "^(_s a)^" "^(_s b)^" "^(_s c)^")"
-    | Var(v) -> "v"^v
-    | Int(i) -> string_of_int i
-    | Bool(true) -> "true"
-    | Bool(false) -> "false"
-    | _ -> ""
-    in
-    _s x
-
-  let fn_all (x:sateqn list) (fxn)=
-      match x with
-      | h::h2::t -> List.fold_right fxn (h2::t) h
-      | [h] -> h
-      | [] -> error "and_all" "failure"
-
-  let add_all (x) =
-    fn_all x (fun x r -> And(x,r))
-
-  let or_all (x:sateqn list) =
-    fn_all x (fun x r -> Or(x,r))
-
-  let plus_all (x:sateqn list) =
-    fn_all x (fun x r -> Plus(x,r))
-
 
   let mkinstinfo n =
     {id=n; cinsts = SET.make (fun x y -> x =y ); sinsts = SET.make (fun x y -> x = y)}
 
 
-  let is_valid cfg sol =
-    let kind_map : (string,instinfo) map= MAP.make() in
+  let to_id id = id + 1
+
+  let tovar (kind_map:(string,instinfo) map) (name:string) (id) =
+    let ifo = MAP.get kind_map name in
+    (string_of_int ifo.id)^"_"^(string_of_int (to_id id))
+
+  let towvar km ((u,p,i):string*string*int) =
+    (tovar km u i)^"_"^p
+
+  let toconnvar km (a) (b) =
+    (towvar km a)^"_"^(towvar km b)
+
+
+  let mkvar km name =
+    if MAP.has km name = false then
+      let v = List.length (MAP.to_values km) in
+      let iifo = mkinstinfo v in
+      let _ = MAP.put km name iifo in
+      ()
+    else
+      ()
+
+
+
+
+  let to_smt_prob cfg sol : bool*z3doc =
+    (*set up environment*)
+    let declvar km (name:string) id (cstr:bool)=
+      let _ = mkvar km (name) in
+      let ifo = MAP.get km name in
+      if cstr then
+        let _ = (ifo.cinsts <- SET.add ifo.cinsts id) in
+        ()
+      else
+        let _ = (ifo.sinsts <- SET.add ifo.sinsts id) in
+        ()
+    in
+    let km : (string,instinfo) map= MAP.make() in
     let sol_conns : (wireid, wireid set) map = sol.conns in
     let cstr_conns : (string*string,hcconn) map = cfg.hw.cstr.conns in
-    let mkvar name =
-      if MAP.has kind_map name = false then
-        let v = List.length (MAP.to_values kind_map) in
-        let iifo = mkinstinfo v in
-        let _ = MAP.put kind_map name iifo in
-        ()
-      else
-        ()
-    in
-    let toid id = id + 1 in
-    let declvar (name:string) id (cstr:bool)=
-      let _ = mkvar (name) in
-      let ifo = MAP.get kind_map name in
-      if cstr then
-        let _ = (ifo.cinsts <- SET.add ifo.cinsts (toid id)) in
-        ()
-      else
-        let _ = (ifo.sinsts <- SET.add ifo.sinsts (toid id)) in
-        ()
-    in
-    let tovar (name:string) (id) =
-      let ifo = MAP.get kind_map name in
-      (string_of_int ifo.id)^"_"^(string_of_int (id))
-    in
-    let towvar ((u,p,i):string*string*int) =
-      (tovar (u) i)^"_"^p
-    in
-    let toconnvar (a) (b) =
-      (towvar a)^"_"^(towvar b)
-    in
-    let decl_conns  (src:wireid) (dest:wireid) : (string list)*(sateqn list) =
+    let sol_cmps : (unodeid,(int set)*int) map = sol.comps in
+    let cstr_cmps : (string,hcinst) map= cfg.hw.cstr.insts in
+    let _ = MAP.iter sol_cmps (fun k (v,cnt) -> SET.iter v (fun x  -> declvar km (UnivLib.unodeid2name k) x false) ) in
+    let _ = MAP.iter cstr_cmps (fun k q -> List.iter (fun x -> declvar km k x true) (LIST.mkrange 0 (q)  ) ) in
+    (*decl conns helper routine*)
+    let decl_conns  (src:wireid) (dest:wireid) : (string list)*(z3expr list) =
       let sc,si,sp = src in
       let dc,di,dp = dest in
       let sc : string = UnivLib.unodeid2name sc in
@@ -104,19 +74,18 @@ struct
       | HCConnLimit(dests) ->
         if MAP.has dests (dc,dp) = false
         then
-          let _ = Printf.printf "impossible connection\n" in
           ([],[])
         else
           let ipairs = MAP.get dests (dc,dp) in
           if SET.size ipairs = 0 then ([],[]) else
           let res = SET.fold ipairs (fun (cstr_si,cstr_di) (decl_list,eqn_list)->
-            let cv = toconnvar (sc,sp,toid cstr_si) (dc,dp,toid cstr_di) in
-            let src = tovar sc (toid cstr_si) in
-            let dest = tovar dc (toid cstr_di) in
-            let src_is_inst = Eq(Var(src),Int(toid si)) in
-            let dest_is_inst = Eq(Var(dest), Int(toid di)) in
-            let conn_is_inst = And(src_is_inst,dest_is_inst) in
-            let cnd = IfThenElse(conn_is_inst, Eq(Var(cv),Bool true), Eq(Var(cv),Bool false) ) in
+            let cv = toconnvar km (sc,sp,cstr_si) (dc,dp,cstr_di) in
+            let src = tovar km sc (cstr_si) in
+            let dest = tovar km dc (cstr_di) in
+            let src_is_inst = Z3Eq(Z3Var(src),Z3Int(to_id si)) in
+            let dest_is_inst = Z3Eq(Z3Var(dest), Z3Int(to_id di)) in
+            let conn_is_inst = Z3And(src_is_inst,dest_is_inst) in
+            let cnd = Z3IfThenElse(conn_is_inst, Z3Eq(Z3Var(cv),Z3Bool true), Z3Eq(Z3Var(cv),Z3Bool false) ) in
             (cv::decl_list, cnd::eqn_list)
           ) ([],[]) in
           res
@@ -124,54 +93,69 @@ struct
       in
       res
     in
-
-    let tosmt () =
-      let mapc fn ic = MAP.fold kind_map (fun name iifo r -> SET.fold iifo.cinsts (fun inst r -> fn name inst iifo r ) r) ic in
-      let maps fn ic = MAP.fold kind_map (fun name iifo r -> SET.fold iifo.sinsts (fun inst r -> fn name inst iifo r ) r) ic in
-      let decls = mapc (fun n i ifo r -> r^"(declare-const "^(sateqn2str (Var (tovar n i)))^" Int)\n") "" in
+    let tosmt () : bool*z3doc =
+      let mapc fn ic = MAP.fold km (fun name iifo r -> SET.fold iifo.cinsts (fun inst r -> fn name inst iifo r ) r) ic in
+      let maps fn ic = MAP.fold km (fun name iifo r -> SET.fold iifo.sinsts (fun inst r -> fn name inst iifo r ) r) ic in
+      let decls : z3st list = mapc (fun n i ifo r ->  let vname = tovar km n i in (Z3ConstDecl(vname,Z3Int))::r) [] in
       (*make the clause that forces one assignment*)
-      let cstr_mustmaptosln : sateqn list = mapc (fun name inst ifo r ->
-          let cid = tovar name inst in
-          let eqs = SET.fold ifo.sinsts (fun j lst -> Eq(Var(cid),Int(j))::lst) [Eq(Var(cid),Int(0))] in
-            (or_all eqs)::r) []
+      let gdecls = decls in
+      let decls : z3st list =
+        mapc (fun name inst ifo r ->
+          let cid = tovar km name inst in
+          let eqs = SET.fold ifo.sinsts (fun j lst -> Z3Eq(Z3Var(cid),Z3Int(to_id j))::lst) [Z3Eq(Z3Var(cid),Z3Int(0))] in
+            (Z3Assert (Z3Lib.or_all eqs))::r
+        )
+        []
       in
-      let exactly_one_sln : sateqn list = maps (fun name inst ifo lst ->
-        let indep: sateqn list = SET.fold ifo.cinsts (fun j lst ->
-          let cid = tovar name j in
-          IfThenElse( Eq(Var(cid),Int(inst)),Int(1),Int(0))::lst
-        ) [] in
-        Eq(plus_all indep, Int(1))::lst
-      ) []
+      let gdecls = gdecls @ decls in
+      let decls : z3st list =
+          maps (fun name inst ifo lst ->
+            let indep: z3expr list =
+              SET.fold ifo.cinsts (fun j lst ->
+                let cid = tovar km name j in
+                let expr = Z3IfThenElse( Z3Eq(Z3Var(cid),Z3Int(to_id inst)),Z3Int(1),Z3Int(0)) in
+                expr::lst
+              ) []
+            in
+              let ens = Z3Eq(Z3Lib.plus_all indep, Z3Int(1)) in
+              (Z3Assert ens )::lst
+          ) []
       in
-      let _ = Printf.printf "%s\n" decls in
-      let _ = List.iter (fun q -> Printf.printf "(assert %s)\n" (sateqn2str q)) cstr_mustmaptosln in
-      let _ = List.iter (fun (q:sateqn) -> Printf.printf "(assert %s)\n" (sateqn2str q)) exactly_one_sln in
-      let _ = MAP.iter sol_conns (fun sln_src dests ->
-        let _ = SET.iter dests (
-           fun sln_dest ->
-           let decls,cstrs = decl_conns sln_src sln_dest in
+      let gdecls = gdecls @ decls in
+      let failed,decls = MAP.fold sol_conns (fun sln_src dests (failed,decls) ->
+        if failed then (failed,decls) else
+        SET.fold dests (fun sln_dest (failed,decls) ->
+           if failed then (failed,decls) else
+           let names,cstrs = decl_conns sln_src sln_dest in
            if List.length cstrs > 0 then
-             let _ = List.iter (fun q -> let _ =  Printf.printf "(declare-const %s Bool)\n" (sateqn2str (Var q)) in ()) decls in
-             let must_have_conn = or_all cstrs in
-             let exactly_one_conn = Eq(plus_all (List.map (fun d -> IfThenElse(Var(d),Int 1,Int 0) ) decls), Int(1)) in
-             let _ = Printf.printf "\n(assert %s)\n\n" (sateqn2str must_have_conn) in
-             let _ = Printf.printf "(assert %s)\n" (sateqn2str exactly_one_conn) in
-             ()
+             let defines = List.fold_right (fun x r -> (Z3ConstDecl(x,Z3Bool))::r) names [] in
+             let must_have_conn = Z3Lib.or_all cstrs in
+             let exprs = List.map (fun d -> Z3IfThenElse(Z3Var(d),Z3Int 1,Z3Int 0) ) names in
+             let exactly_one_conn = Z3Eq(Z3Lib.plus_all exprs, Z3Int(1)) in
+             let asserts = [Z3Assert must_have_conn;Z3Assert exactly_one_conn] in
+             let decls = decls @ defines @ asserts in
+             (failed,decls)
            else
-             let _ = Printf.printf "(assert false)\n" in
-             ()
-        ) in
-        ()
-      ) in
-      ()
+             (true,decls)
+        ) (failed,decls)
+      ) (false,[])
+      in
+      let gdecls = gdecls @ decls in
+      let gdecls = gdecls@[Z3SAT;Z3DispModel] in
+      (failed = false,gdecls)
     in
-    let sol_cmps : (unodeid,(int set)*int) map = sol.comps in
-    let cstr_cmps : (string,hcinst) map= cfg.hw.cstr.insts in
-    let _ = MAP.iter sol_cmps (fun k (v,cnt) -> SET.iter v (fun x  -> declvar (UnivLib.unodeid2name k) x false) ) in
-    let _ = MAP.iter cstr_cmps (fun k q -> List.iter (fun x -> declvar k x true) (LIST.mkrange 0 (q)) ) in
-    let _ = tosmt () in
-    true
+    let success,decls= tosmt () in
+    (success,decls)
 
+    let is_valid cfg sln =
+      let is_succ,decls = to_smt_prob cfg sln in
+      if is_succ = false then
+        let _ = Printf.printf "Invalid: No Connections exist\n" in
+        true
+      else
+        let txt = Z3Lib.z3stmts2str decls in
+        let _ = Printf.printf "SMT PROBLEM:\n%s\n" txt in
+        true
 end
 
 
