@@ -6,7 +6,7 @@ open ParseMath
 open LexMath
 open Math
 
-open ParseGenUtil
+open CompileUtil
 
 open HW
 (*
@@ -19,16 +19,7 @@ exception ParserGeneratorException of string*string
 let error s m = raise (ParserGeneratorException(s,m))
 
 
-module ParserGenerator :
-sig
-  val file_to_ast : string -> string ast
-  val string_to_ast : string -> string ast
-  val file_to_formula : string -> Math.menv
-  val string_to_formula : string -> Math.menv
-  val file_to_hwspec : string -> HW.hwenv
-  val string_to_hwspec : string -> HW.hwenv
-
-end =
+module ParserGenerator =
 struct
 
   let string_to_lexbuf f =
@@ -64,6 +55,15 @@ struct
       res
     | None -> error "file_to_formula" "could not parse the hw environment"
 
+  let file_to_z3sln fn =
+    let lb = file_to_lexbuf fn in
+    let res = parse_lexbuf "z3" (fun x -> ParseZ3.env LexZ3.env x) lb in
+    match res with
+    | Some (v) -> let res = v in
+      res
+    | None -> error "file_to_formula" "could not parse the z3 environment"
+
+
   let string_to_formula fn =
     let lb = string_to_lexbuf fn in
     let res = parse_lexbuf "math" (fun x -> ParseMath.env LexMath.env x) lb in
@@ -77,5 +77,14 @@ struct
     match res with
     | Some (v) -> v
     | None -> error "file_to_formula" "could not parse the hw environment"
+
+  let string_to_z3sln fn =
+    let lb = string_to_lexbuf fn in
+    let res = parse_lexbuf "z3" (fun x -> ParseZ3.env LexZ3.env x) lb in
+    match res with
+    | Some (v) -> let res = v in
+      res
+    | None -> error "file_to_formula" "could not parse the z3 environment"
+
 
 end

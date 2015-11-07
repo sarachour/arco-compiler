@@ -6,7 +6,7 @@
   open Common
 
   open AST
-  open ParseGenUtil
+  open CompileUtil
 
   let dat = MathLib.mkenv()
 

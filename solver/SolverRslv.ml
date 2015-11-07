@@ -4,6 +4,7 @@ open Util
 open SolverData
 open SolverUtil
 open Z3Lib
+open Z3Data
 
 module HwConnRslvr =
 struct
@@ -151,10 +152,11 @@ struct
       let is_succ,decls = to_smt_prob cfg sln in
       if is_succ = false then
         let _ = Printf.printf "Invalid: No Connections exist\n" in
-        true
+        false
       else
         let txt = Z3Lib.z3stmts2str decls in
-        let _ = Z3Lib.exec decls in
+        let z = Z3Lib.exec decls in
+        let _ = Printf.printf "%s\n" (Z3Lib.sln2str z) in
         true
 end
 

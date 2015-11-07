@@ -6,7 +6,7 @@
   open Common
 
   open AST
-  open ParseGenUtil
+  open CompileUtil
 
   type parser_meta = {
     mutable comp : string option;
