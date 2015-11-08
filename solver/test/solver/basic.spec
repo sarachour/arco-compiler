@@ -17,6 +17,7 @@ comp vint
   input IC where V:mV
 
   rel deriv(V(O),t) = V(X) initially V(IC)
+  spice vint X O IC
 
   ensure mag V(O) in (0,5): V
 
@@ -32,6 +33,8 @@ comp vintadd
   output O2 where V:mV
   output O1 where V:mV
   output O3 where V:mV
+
+  spice vintadd X Y Z IC O2 O1 O3
 
   rel V(O1) = V(X) + V(Y)
   rel deriv(V(O2),t) = V(X) + V(Y) + V(Z) initially V(IC)
@@ -53,6 +56,7 @@ comp vadd2
   output Z where V:mV
 
   rel V(Z) = V(X) + V(Y)
+  spice vadd2 X Y Z
 
   ensure mag V(X) in (0,2.5): V
   ensure mag V(Y) in (0,2.5): V
@@ -119,7 +123,7 @@ schematic
   inst output V : 2
   inst copy V : 16
   inst vint : 5
-  inst vintadd : 2 
+  inst vintadd : 2
 
 
   conn vadd2 -> vmul2

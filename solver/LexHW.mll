@@ -32,6 +32,7 @@ rule env = parse
   | ")"                     {CPARAN}
   | "["                     {OBRAC}
   | "]"                     {CBRAC}
+  | "spice"                 {SPICE}
   | "none"                  {NONE}
   | "let"                   {LET}
   | "type"                  {TYPE}

@@ -124,7 +124,7 @@
 %token TYPE LET NONE INITIALLY IN WHERE
 
 %token PROP TIME
-%token COMP INPUT OUTPUT PARAM REL END
+%token COMP INPUT OUTPUT PARAM REL END SPICE
 
 %token ENSURE ASSUME MAG ERR
 
@@ -167,6 +167,10 @@ strlist:
   | TOKEN                    {let e = $1 in [e]}
   | TOKEN COMMA strlist      {let lst = $3 and e = $1 in e::lst }
 
+tokenlist:
+  | TOKEN           {[$1]}
+  | TOKEN tokenlist {$1::$2}
+  
 sexpr:
   | OP          {let e = $1 in e}
   | TOKEN             {let e = $1 in e}
@@ -461,6 +465,9 @@ comp:
       let r = $5 and cname = get_cmpname() and c = HwLib.getcstr dat in
       let _ = HwCstrLib.mktc c cname r in
       ()
+  }
+  | comp SPICE TOKEN tokenlist EOL {
+
   }
   | comp EOL   {}
 
