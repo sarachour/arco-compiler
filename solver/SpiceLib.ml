@@ -12,20 +12,40 @@ exception SpiceLibException of string
 let error s e =
   raise (SpiceLibException (s^": "^e))
 
+type spcstype = SpcDC | SpcAC | SpcTrans
+
+type spcval =
+  | SpcFlatValue of float
+
 type spicest =
   | SpcComment of string
   | SpcVarComp of string*(int list)*string
+  | SpcVoltageSource of string*int*int*spcstype*spcval
+  | SpcCurrentSource of string*int*int*spcstype*spcval
 
 module SpiceLib =
 struct
 
   let st2str  s =
+  let typ2str t =
+    match t with
+    | SpcDC -> "DC"
+    | SpcAC -> "AC"
+    | SpcTrans -> "TRANS"
+  in
+  let val2str t = match t with
+    | SpcFlatValue(f) -> string_of_float f
+  in
   let nodes2str (ilst:int list) : string =
     List.fold_left (fun r x -> r^"\t"^(string_of_int x)) "" ilst
   in
   match s with
   | SpcComment(s) -> "*"^s
   | SpcVarComp(name,args,kind) -> "X"^name^"\t"^(nodes2str args)^"\t"^kind
+  | SpcVoltageSource(n,pos,neg,typ,v) ->
+    "V"^n^"\t"^(nodes2str [pos;neg])^"\t"^(typ2str typ)^"\t"^(val2str v)
+  | SpcCurrentSource(n,pos,neg,typ,v) ->
+    "I"^n^"\t"^(nodes2str [pos;neg])^"\t"^(typ2str typ)^"\t"^(val2str v)
 
   let sts2str s =
     List.fold_left (fun r x -> r^"\n"^(st2str x)) "" s
@@ -60,26 +80,52 @@ struct
       in
       let hn,hi = spinst (name,inst) in
       let hnuid : unodeid = UnivLib.name2unodeid hn in
+      (*handle odd copy names*)
+      let hn = match hn with UNoCopy(p) -> "copy"^p | _ -> hn in
       let kind,args = spspec in
       let args : int list = List.map (fun x -> handle_port hnuid hi x) args in
       SpcVarComp(to_ident hn hi, args, kind)
     in
-    let handle_io cid idents :spicest list=
-      []
+    let handle_io_inst cid inst :spicest list=
+      let cmpname = UnivLib.unodeid2name cid in
+      let cmpname,inst = spinst (cmpname,inst) in
+      let varname = to_ident "inp" inst in
+      match cid with
+      | UNoInput(p) ->
+        let port = HwLib.get_port_by_kind s.hw HNOutput cmpname in
+        let wire : wireid = (cid,inst,port.name) in
+        let connto = if MAP.has wmaps wire then MAP.get wmaps wire else 0 in
+        if p = "V" then
+          let vs = SpcVoltageSource(varname,connto,0,SpcDC,SpcFlatValue(4.)) in
+          [vs]
+        else if p = "I" then
+          let cs = SpcCurrentSource(varname,connto,0,SpcDC,SpcFlatValue(1.)) in
+          [cs]
+        else
+          error "handle_io" "unknown property"
+      | UNoOutput(p) ->
+        let cmt = SpcComment("this is where output processing would go.") in
+        [cmt]
+    in
+    let handle_io cid insts =
+      let stmts = SET.fold insts (fun q r -> (handle_io_inst cid q)@r) [] in
+      stmts
     in
     let handle_cmp cid (idents,cnt)=
       match cid with
-      | Input(c) -> handle_io cid (idents)
-      | Output(c) -> handle_io cid (idents)
+      | UNoInput(c) -> handle_io cid idents
+      | UNoOutput(c) -> handle_io cid idents
       | _ ->
         let name = UnivLib.unodeid2name cid in
         let c = HwLib.getcomp s.hw name in
         let sp = c.spice in
-        match sp with
-        |Some(spec) ->
-          let stmts = SET.fold idents (fun q r -> (handle_inst name q spec)::r) [] in
-          stmts
-        | None -> error "sln2sts" "expected spice specification"
+        let res = match sp with
+          |Some(spec) ->
+            let stmts = SET.fold idents (fun q r -> (handle_inst name q spec)::r) [] in
+            stmts
+          | None -> error "sln2sts" "expected spice specification"
+        in
+        res
     in
     let handle_conn wid1 wid2 =
       let repl wid n =
