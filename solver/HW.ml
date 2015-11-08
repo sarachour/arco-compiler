@@ -186,6 +186,8 @@ struct
       let _ = (c.spice <- Some(name,args)) in
       e
 
+
+
   let gettime e =
     match e.time with
     | Some(t) -> t
@@ -196,6 +198,10 @@ struct
       error "getcomp" ("comp with name "^cname^" does not exist")
     else
         MAP.get e.comps cname
+
+  let spice (e:hwenv) (cname:string) : (string*(string list)) option =
+    let c = getcomp e cname in
+    c.spice
 
   let hasvar e cname iname =
     let c = getcomp e cname in

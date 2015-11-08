@@ -136,7 +136,7 @@ struct
   let random_path (b:buffer) =
     let choices = get_paths b in
     if List.length choices > 0 then
-      Some (LIST.rand choices)
+      Some (List.nth choices 0 )
     else
       None
 

@@ -64,6 +64,9 @@ struct
   let has lst n =
       List.length (List.filter (fun x -> n = x) lst) > 0
 
+  let count lst n =
+      List.length (List.filter (fun x -> n = x) lst)
+
   (*joins list into tuples*)
   let zip a b =
       let rec zip_i x y  =
@@ -76,6 +79,8 @@ struct
       zip_i a b
 
 
+  let uniq a =
+    List.fold_right (fun x r -> if count r x = 0 then x::r else r) a []
 
   (*makes a list of tuples that is the product of the two lists*)
   let prod (a:'a list) (b:'b list) : ('a*'b) list =

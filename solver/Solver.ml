@@ -26,7 +26,7 @@ may additionally contain any pertinent error and magnitude mappings
 module SolveLib =
 struct
 
-  let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=10; cnt=0;}
+  let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=100; cnt=0;}
 
   let mktbl s : gltbl =
     (* add all relations to the tableau of goals. *)
@@ -334,10 +334,9 @@ struct
         match get_next_path s v with
           | Some(p) ->
             let _ = SearchLib.move_cursor s v p in
-            let _ = solve _s v in
             ()
           | None ->
-            let _ = Printf.printf "SOLVER: exhausted search.\n" in
+            let _ = Printf.printf "\n======\nSOLVER: exhausted search.\n========\n" in
             exit 0
       in
       let solve_goal () =
@@ -357,6 +356,7 @@ struct
           if SlnLib.mkconn_cons s v.sln = false then
             let _ = SearchLib.visit v.search goal_cursor in
             let _ = move_to_next () in
+            let _ = solve _s v in
             let _ = SearchLib.rm v.search goal_cursor in
             (mint,musr)
           else
@@ -367,6 +367,7 @@ struct
             let _ = apply_nodes s v g in
             let _ = musr () in
             let _ = move_to_next () in
+            let _ = solve _s v in
             (mint,musr)
       in
       let min,musr  = solve_goal () in
