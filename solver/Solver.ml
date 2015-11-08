@@ -190,6 +190,20 @@ struct
     | (_,_,None) -> error "mkmag" ("quantity "^(UnivLib.unid2str qty)^" must have range")
     | _ -> error "mkmag" "the hardware quantity has to be flat."
 
+  let mkio s t kind cmp port prop =
+    let dest = SlnLib.hwport2wire cmp port in
+    match kind with
+    | HNInput ->
+      let inpid = (UNoInput prop) in
+      let inpinst = SlnLib.usecomp t.sln inpid in
+      let use_input = SSolUseNode(inpid,inpinst) in
+      [use_input]
+    | HNOutput ->
+      let outid = (UNoOutput prop) in
+      let outinst = SlnLib.usecomp t.sln outid in
+      let use_output = SSolUseNode(outid,outinst) in
+      [use_output]
+
   let resolve_trivial s t goals =
     let is_trivial g =
       match g with
@@ -205,29 +219,41 @@ struct
       match g with
       | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
           if prop1 = prop2 then
-          [SSolAddConn (SlnLib.hwport2wire c1 v1,SlnLib.hwport2wire c2 v2)]
+            let src = SlnLib.hwport2wire c1 v1 in
+            let snk = SlnLib.hwport2wire c2 v2 in
+            [SSolAddConn (src,snk)]
           else []
       | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
-          let wire = SlnLib.hwport2wire c v in
-          let lbl = LBindValue q in
-          [SSolAddLabel(wire,prop,lbl)]
+          let inps = mkio s t k c v prop in
+          (*let lbl = LBindValue q in*)
+          let mkconn = () in
+          [] @ inps
       | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
-          let wire = SlnLib.hwport2wire c v in
-          let lbl = LBindValue (float_of_int q) in
-          [SSolAddLabel(wire,prop,lbl)]
+          let inps = mkio s t k c v prop in
+          let mkconn = () in
+          (*let lbl = LBindValue (float_of_int q) in*)
+          []
       | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
-          let wire = SlnLib.hwport2wire c v in
-          let lbl = LBindVar q in
-          let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in
-          [SSolAddLabel(wire,prop,lbl);SSolAddLabel(wire,prop,mg)]
+          let inps = mkio s t k c v prop in
+          let inp_conn = () in
+          (*let lbl = LBindVar q in*)
+          (*let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in*)
+          (*SSolAddLabel(wire,prop,mg)*)
+          [] @ inps
+
+
       | UFunction(MathId(MNVar(k,n,u)), Term(HwId(HNPort(k2,c2,v2,prop2,u2))) ) ->
-          let wire = SlnLib.hwport2wire c2 v2 in
-          let lbl = LBindVar (MNVar(k,n,u)) in
-          let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in
-          [SSolAddLabel(wire,prop2,lbl);SSolAddLabel(wire,prop2,mg)]
+          let inps = mkio s t k2 c2 v2 prop2 in
+          let inp_conn = () in
+          (*let lbl = LBindVar (MNVar(k,n,u)) in*)
+          (*let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in*)
+          (*SSolAddLabel(wire,prop2,mg)*)
+          []
       | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
+          let tc = () in
           []
       | UFunction(HwId(HNTime(cmp,uh)), Term (MathId(MNTime(um))) ) ->
+          let tc = () in
           []
       | _ -> []
     in
