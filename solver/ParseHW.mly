@@ -170,7 +170,7 @@ strlist:
 tokenlist:
   | TOKEN           {[$1]}
   | TOKEN tokenlist {$1::$2}
-  
+
 sexpr:
   | OP          {let e = $1 in e}
   | TOKEN             {let e = $1 in e}
@@ -467,7 +467,11 @@ comp:
       ()
   }
   | comp SPICE TOKEN tokenlist EOL {
-
+      let cname = get_cmpname() in
+      let spname = $3 in
+      let args = $4 in
+      let _ = HwLib.mkspice dat cname spname args in
+      ()
   }
   | comp EOL   {}
 

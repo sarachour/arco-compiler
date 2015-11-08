@@ -32,6 +32,7 @@ type hwcomp = {
   name : string;
   mutable vars: (string,hwvar) map;
   mutable time: unt;
+  mutable spice: (string*(string list)) option;
 }
 
 type hwenv = {
@@ -173,8 +174,16 @@ struct
     if hascomp e name then
       error "mkcomp" ("comp with name "^name^"already defined.")
     else
-      let c : hwcomp = {name=name;vars=MAP.make();time=UNone} in
+      let c : hwcomp = {name=name;vars=MAP.make();spice=None; time=UNone} in
       let _ = MAP.put e.comps name c in
+      e
+
+  let mkspice (e:hwenv) (cname:string) (name:string) (args:string list) =
+    if hascomp e cname = false then
+      error "mkcomp" ("comp with name "^cname^"not defined.")
+    else
+      let c : hwcomp = MAP.get e.comps cname in
+      let _ = (c.spice <- Some(name,args)) in
       e
 
   let gettime e =
@@ -298,33 +307,3 @@ struct
 
 
 end
-
-
-(*
-type hid =
-  | HInput of hprop*string
-  | HOutput of hprop*string
-  | HParam of string*float
-
-type hvc_cstr =
-  | HMagCstr of hid*float*float
-  | HErrCstr of hid*(hid ast)
-  | HTimeCstr of hid*float
-  | HSampleCstr of hid*int
-
-type hvar =
-  | HInputSpec of string
-  | HOutputSpec of string
-  | HParamSpec of string
-
-type hrel =
-  | StateRel of (hid ast_term)*(hid ast)*float
-  | FxnRel of (hid ast_term)*(hid ast)
-
-type hcomp = {
-  rels : hrel list;
-  vars : hvar list;
-  cstrs: hv_cstr list;
-
-}
-*)
