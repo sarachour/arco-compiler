@@ -23,6 +23,9 @@ type spicest =
   | SpcVoltageSource of string*int*int*spcstype*spcval
   | SpcCurrentSource of string*int*int*spcstype*spcval
 
+(* Investigate Digital Output Interface Eleement and Port element*)
+(* Voltage Controlled Voltage Source*)
+(* Current Controlled Voltage Source*)
 module SpiceLib =
 struct
 
