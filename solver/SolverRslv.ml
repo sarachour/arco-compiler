@@ -1,10 +1,16 @@
 
-open HWCstr
+open HWData
 open Util
 open SolverData
 open SolverUtil
 open Z3Lib
 open Z3Data
+
+
+exception HwConnRslvrException of string
+
+let error s e =
+  raise (HwConnRslvrException (s^": "^e))
 
 module HwConnRslvr =
 struct
@@ -23,15 +29,32 @@ struct
 
   let to_id id = id + 1
 
-  let tovar (kind_map:(string,instinfo) map) (name:string) (id) =
+  let from_id id = id - 1
+
+  let fromvar mk (name:string) =
+    match STRING.split name "[_v]" with
+    | [nid;idx] ->
+      let i = int_of_string nid in
+      let name = match MAP.filter mk (fun k q -> q.id = i) with
+        |[(k,v)] -> k
+        | _ -> error "fromvar" "could not find the kind in the kind map."
+      in
+      let inst = (from_id (int_of_string idx)) in
+      (name,inst)
+    | h::t -> error "fromvar" ("Unexpected: "^name^"<"^h^">")
+
+  let _tovar (kind_map:(string,instinfo) map) (name:string) (id) =
     let ifo = MAP.get kind_map name in
     (string_of_int ifo.id)^"_"^(string_of_int (to_id id))
 
+  let tovar km name id =
+    "v"^(_tovar km name id)
+
   let towvar km ((u,p,i):string*string*int) =
-    (tovar km u i)^"_"^p
+    (_tovar km u i)^"_"^p
 
   let toconnvar km (a) (b) =
-    (towvar km a)^"_"^(towvar km b)
+    "v"^(towvar km a)^"_"^(towvar km b)
 
 
   let mkvar km name =
@@ -46,7 +69,7 @@ struct
 
 
 
-  let to_smt_prob cfg sol : bool*z3doc =
+  let to_smt_prob cfg sol : bool*z3doc*((string,instinfo) map) =
     (*set up environment*)
     let declvar km (name:string) id (cstr:bool)=
       let _ = mkvar km (name) in
@@ -146,17 +169,48 @@ struct
       (failed = false,gdecls)
     in
     let success,decls= tosmt () in
-    (success,decls)
+    (success,decls,km)
 
     let is_valid cfg sln =
-      let is_succ,decls = to_smt_prob cfg sln in
+      let is_succ,decls,_ = to_smt_prob cfg sln in
       if is_succ = false then
         false
       else
         let txt = Z3Lib.z3stmts2str decls in
         let z = Z3Lib.exec decls in
-        let _ = Printf.printf "%s\n" (Z3Lib.sln2str z) in
         z.sat
+
+
+    let z32cstr km z3 =
+      let sln = MAP.make() in
+      let proc_const v = match v with
+      | Z3SetBool(cname,true) -> ()
+      | Z3SetInt(vid,inst) ->
+        let sln_iid = from_id inst in
+        let cstr_name,hw_iid = fromvar km vid in
+        let _ = MAP.put sln (cstr_name,sln_iid) (cstr_name,hw_iid) in
+        ()
+      | _ -> ()
+      in
+      let _ = List.iter (fun x -> let _ = proc_const x in ()) z3 in
+      sln
+
+    let get_sln cfg sln =
+      let is_succ,decls,km = to_smt_prob cfg sln in
+      if is_succ = false then
+        error "get_sln" "failed to  construct smt problem - inconsistency."
+      else
+        let txt = Z3Lib.z3stmts2str decls in
+        let z = Z3Lib.exec decls in
+        if z.sat = false then
+          error "get_sln" "no solution exists. ie UNSAT."
+        else
+          match z.model with
+          | Some(m) ->
+            let z3mdl = m in
+            let mapping = z32cstr km z3mdl in
+            mapping
+          | None -> error "get_sln" "no solution"
 end
 
 

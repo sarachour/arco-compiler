@@ -2,48 +2,8 @@ open Util
 open Unit
 open AST
 open Common
+open HWData
 
-exception HwCstrError of string
-
-
-type propid = string
-
-type hevid =
-  | HENPort of hwvkind*compid*string*propid*untid
-  | HENPortErr of hwvkind*compid*string*propid*untid
-  | HENParam of string*float*unt
-  | HENTime of untid
-
-type herel =
-  | HERFunction of hevid ast
-  | HERState of hevid ast
-  | HERNoError
-
-type hcinst = int
-
-
-type hcmag =
-  | HCMagRange of range
-  | HCNoMag
-
-type hcconn =
-  | HCConnLimit of (string*string, (int*int) set) map
-  | HCConnNoLimit
-
-type hcdigital =
-  | HCDigSample of string*string*float*untid
-
-type hwcstrs = {
-  conns: (string*string, hcconn) map;
-  mags: (string*string*string,hcmag) map;
-  tcs: (string,hcmag) map;
-  errs: (string*string*string, herel) map;
-  digs: (string, hcdigital list) map;
-  insts: (string,hcinst) map;
-}
-
-let error s n =
-  raise (HwCstrError (s^": "^n))
 
 exception HwCstrLibException of string
 

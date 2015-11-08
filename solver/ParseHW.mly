@@ -4,6 +4,7 @@
   open Util
   open Unit
   open Common
+  open HWData
 
   open AST
   open CompileUtil
@@ -157,7 +158,7 @@
 %type <unit> block
 %type <unit> st
 %type <unit> seq
-%type <HW.hwenv option> env
+%type <HWData.hwenv option> env
 
 %start env
 

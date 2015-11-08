@@ -3,47 +3,7 @@ open Unit
 open Util
 open HWCstr
 open Common
-
-type propid = string
-
-type hwvid =
-  | HNPort of hwvkind*compid*string*propid*untid
-  | HNParam of compid*string*float*unt
-  | HNTime of compid*unt
-
-type hwrel =
-  | HRFunction of hwvid*(hwvid ast)
-  | HRState of hwvid*(hwvid ast)*(hwvid)
-  | HRNone
-
-
-type hwtype =
-  | HPortType of hwvkind*((propid,untid) map)
-  | HParamType of float*unt
-
-type hwvar = {
-  name: string;
-  mutable rel : hwrel;
-  typ: hwtype;
-}
-
-
-type hwcomp = {
-  name : string;
-  mutable vars: (string,hwvar) map;
-  mutable time: unt;
-  mutable spice: (string*(string list)) option;
-}
-
-type hwenv = {
-  mutable units : unt_env;
-  mutable props : (string, untid set) map;
-  mutable comps : (string,hwcomp) map;
-  mutable time : (string*(untid set)) option;
-  mutable cstr : hwcstrs
-}
-
-
+open HWData
 
 
 

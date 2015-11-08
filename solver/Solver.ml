@@ -1,6 +1,7 @@
 open Common
 
 open HW
+open HWData
 open HWCstr
 
 open Math
@@ -71,7 +72,7 @@ struct
     let rels : urel list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
     let nodes : unode list = List.map comp2node (MAP.to_values s.hw.comps) in
     let handle_node (x) =
-       let nid = Shim.name2unodeid x.name in
+       let nid = UnivLib.name2unodeid x.name in
        let _ = MAP.put nodetbl nid x in
        let _ = SlnLib.mkcomp sln nid in
        ()
@@ -354,21 +355,20 @@ struct
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
         let _ = resolve_trivial s v v.goals in
-        if SET.size v.goals = 0 then
-          let _ = solved() in
-          error "force quit" "force quit"
+        (*is the connectivity consistent*)
+        if SlnLib.mkconn_cons s v.sln = false then
+          let _ = SearchLib.visit v.search goal_cursor in
+          let _ = move_to_next () in
+          let _ = solve _s v in
+          let _ = SearchLib.rm v.search goal_cursor in
+          ()
         else
-          let g = SET.rand v.goals in
-          let mint,musr = mkmenu s v (Some g) in
-
-          (*is the connectivity consistent*)
-          if SlnLib.mkconn_cons s v.sln = false then
-            let _ = SearchLib.visit v.search goal_cursor in
-            let _ = move_to_next () in
-            let _ = solve _s v in
-            let _ = SearchLib.rm v.search goal_cursor in
-            (mint,musr)
+          if SET.size v.goals = 0 then
+            let _ = solved() in
+            error "force quit" "force quit"
           else
+            let g = SET.rand v.goals in
+            let mint,musr = mkmenu s v (Some g) in
             (*show goals and current solution*)
             let _ = mint "g" in
             let _ = mint "s" in
@@ -377,9 +377,9 @@ struct
             let _ = musr () in
             let _ = move_to_next () in
             let _ = solve _s v in
-            (mint,musr)
+            ()
       in
-      let min,musr  = solve_goal () in
+      let _ = solve_goal () in
       ()
 
 end

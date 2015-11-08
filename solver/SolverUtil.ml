@@ -1,6 +1,7 @@
 open Common
 
 open HW
+open HWData
 open HWCstr
 
 open Math
@@ -62,12 +63,6 @@ struct
     let mp x = lclid2glblid sln iid x in
     ASTLib.map a mp
 
-  let name2unodeid (c:string) = match HwLib.get_special c with
-    | Some("copy",prop) -> UNoCopy(prop)
-    | Some("input",prop) -> UNoInput(prop)
-    | Some("output",prop) -> UNoOutput(prop)
-    | Some(_) -> error "name2UNot" "illegal name"
-    | None -> UNoComp c
 
   let unid2sym cmpname ciid uid is_templ cnv= match uid, is_templ with
   | (HwId(HNPort(k,HCMLocal(c),port,prop,u)), true) ->
@@ -98,6 +93,13 @@ struct
   | UNoCopy(x) -> HwLib.copy_cid x
   | UNoComp(x) -> x
   | UNoConcComp(x,inst) -> x
+
+  let name2unodeid (c:string) = match HwLib.get_special c with
+    | Some("copy",prop) -> UNoCopy(prop)
+    | Some("input",prop) -> UNoInput(prop)
+    | Some("output",prop) -> UNoOutput(prop)
+    | Some(_) -> error "name2UNot" "illegal name"
+    | None -> UNoComp c
 
   let hwid2var hwid =
   let proccmp (x:compid) = match x with

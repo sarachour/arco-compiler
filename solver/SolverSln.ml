@@ -2,6 +2,7 @@ open Util
 open SolverData
 
 open Common
+open HWData
 open HW
 open Math
 open SolverUtil
@@ -14,7 +15,7 @@ struct
     match cm with
     | HCMLocal(c) -> error "hwport2wire" ("underspecified identifier "^c^".")
     | HCMGlobal(q,i) ->
-      let nid = Shim.name2unodeid q in
+      let nid = UnivLib.name2unodeid q in
       let inst = i in
       (nid,inst,port)
 

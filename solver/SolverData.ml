@@ -3,6 +3,7 @@ open HW
 open Math
 open AST
 open Unit
+open HWData
 
 type slvr =  {
   interactive: bool;
