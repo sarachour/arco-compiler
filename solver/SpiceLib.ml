@@ -64,15 +64,22 @@ struct
       let args : int list = List.map (fun x -> handle_port hnuid hi x) args in
       SpcVarComp(to_ident hn hi, args, kind)
     in
+    let handle_io cid idents :spicest list=
+      []
+    in
     let handle_cmp cid (idents,cnt)=
-      let name = UnivLib.unodeid2name cid in
-      let c = HwLib.getcomp s.hw name in
-      let sp = c.spice in
-      match sp with
-      |Some(spec) ->
-        let stmts = SET.fold idents (fun q r -> (handle_inst name q spec)::r) [] in
-        stmts
-      | None -> error "sln2sts" "expected spice specification"
+      match cid with
+      | Input(c) -> handle_io cid (idents)
+      | Output(c) -> handle_io cid (idents)
+      | _ ->
+        let name = UnivLib.unodeid2name cid in
+        let c = HwLib.getcomp s.hw name in
+        let sp = c.spice in
+        match sp with
+        |Some(spec) ->
+          let stmts = SET.fold idents (fun q r -> (handle_inst name q spec)::r) [] in
+          stmts
+        | None -> error "sln2sts" "expected spice specification"
     in
     let handle_conn wid1 wid2 =
       let repl wid n =
@@ -84,7 +91,7 @@ struct
           ()
       in
       let wid1 = spwire wid1 in
-      let wid2 = spwire wid2 in 
+      let wid2 = spwire wid2 in
       let n = (List.length (MAP.to_values wmaps)) + 1 in
       (*if this is a multi-port connection, then merge the wires*)
       let _ = repl wid1 n in
