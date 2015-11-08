@@ -18,6 +18,9 @@ open SolverData
 open SolverUtil
 open SolverSln
 open SolverSearch
+
+open SpiceLib
+
 (*
 A solution is a set of connections  and components. A solution
 may additionally contain any pertinent error and magnitude mappings
@@ -339,15 +342,21 @@ struct
             let _ = Printf.printf "\n======\nSOLVER: exhausted search.\n========\n" in
             exit 0
       in
+      let solved () =
+        let mint,musr = mkmenu s v None in
+        let _ = Printf.printf "SOLVER: Attained all goals. Finished.\n" in
+        let _ = mint "s" in
+        let v  =SpiceLib.to_spice s v.sln in
+        let _ = Printf.printf "=========\nSPICE\n==========\n%s\n" v in
+        let _ = exit 0 in
+        ()
+      in
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
         let _ = resolve_trivial s v v.goals in
         if SET.size v.goals = 0 then
-          let mint,musr = mkmenu s v None in
-          let _ = Printf.printf "SOLVER: Attained all goals. Finished.\n" in
-          let _ = mint "s" in
-          let _ = exit 0 in
-          error "solve_goal" "done"
+          let _ = solved() in
+          error "force quit" "force quit"
         else
           let g = SET.rand v.goals in
           let mint,musr = mkmenu s v (Some g) in
