@@ -24,11 +24,13 @@ rule env = parse
   | "Bool"                  {BOOLTYPE}
   | "Int"                   {INTTYPE}
   | "model"                 {MODEL}
+  | "error"                 {ERROR}
   | "("                     {OPARAN}
   | ")"                     {CPARAN}
   | "false"                 {BOOL(false)}
   | "true"                  {BOOL(true)}
   | integer as i            {INTEGER(int_of_string i)}
+  | str as st               {STRING(st)}
   | token as tok            {TOKEN(tok)}
   | eof                     {EOF}
   | _ as q                  { report lexbuf q }

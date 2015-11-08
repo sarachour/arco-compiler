@@ -174,9 +174,22 @@ struct
     else
       MAP.get c.vars iname
 
+
   let getvars e cname =
     let c = getcomp e cname in
     MAP.to_values c.vars
+
+  let get_port_by_kind e k c =
+    let vrs = getvars e c in
+    let o = List.filter (fun q -> match q.typ with
+        | HPortType(z,_) -> z = k
+        | _ -> false
+    ) vrs in
+    match o with
+    | [h] -> h
+    | h::t -> error "get_port_by_kind"
+      ("more than one port of that kind exists: # ports "^(string_of_int (List.length o)))
+    | _ -> error "get_port_by_kind" "no port of that kind exists"
 
   let getcomps e  =
     MAP.to_values e.comps

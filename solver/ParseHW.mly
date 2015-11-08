@@ -322,10 +322,10 @@ proptyplst:
   | TOKEN COLON TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
 
 compname:
-  | TOKEN         {let name = $1 in name }
   | COPY TOKEN    {let prop = $2 in HwLib.copy_cid prop}
   | INPUT TOKEN   {let prop = $2 in HwLib.input_cid prop}
   | OUTPUT TOKEN  {let prop = $2 in HwLib.output_cid prop}
+  | TOKEN         {let name = $1 in name }
 
 digital:
   | DIGITAL INPUT TOKEN EOL {
@@ -359,7 +359,7 @@ digital:
   | digital INPUT TOKEN EOL {
     let iname = $3 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HNOutput iname [] in
+    let _ = HwLib.mkport dat cname HNInput iname [] in
     let _ = mkdfl cname iname in
     ()
   }

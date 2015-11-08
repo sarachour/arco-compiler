@@ -190,19 +190,34 @@ struct
     | (_,_,None) -> error "mkmag" ("quantity "^(UnivLib.unid2str qty)^" must have range")
     | _ -> error "mkmag" "the hardware quantity has to be flat."
 
+  let rev k = match k with
+  | HNInput -> HNOutput
+  | HNOutput -> HNInput
+
   let mkio s t kind cmp port prop =
     let dest = SlnLib.hwport2wire cmp port in
     match kind with
     | HNInput ->
       let inpid = (UNoInput prop) in
       let inpinst = SlnLib.usecomp t.sln inpid in
+      let _ = SlnLib.usecomp_unmark t.sln inpid inpinst in
       let use_input = SSolUseNode(inpid,inpinst) in
-      [use_input]
+      let port = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name inpid) in
+      let src = (inpid,inpinst,port.name) in
+      let mkconn = SSolAddConn(dest,src) in
+      [use_input; mkconn]
     | HNOutput ->
       let outid = (UNoOutput prop) in
       let outinst = SlnLib.usecomp t.sln outid in
+      let _ = SlnLib.usecomp_unmark t.sln outid outinst in
       let use_output = SSolUseNode(outid,outinst) in
-      [use_output]
+      let port = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name outid) in
+      let src = (outid,outinst,port.name) in
+      let mkconn = SSolAddConn(src,dest) in
+      [use_output;mkconn]
+
+  let mkcopy s t (k1,c1,p1,pr1) (k2,c2,p2,pr2) =
+    []
 
   let resolve_trivial s t goals =
     let is_trivial g =
@@ -224,17 +239,17 @@ struct
             [SSolAddConn (src,snk)]
           else []
       | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
-          let inps = mkio s t k c v prop in
+          let inps = mkio s t (k) c v prop in
           (*let lbl = LBindValue q in*)
           let mkconn = () in
           [] @ inps
       | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
-          let inps = mkio s t k c v prop in
+          let inps = mkio s t (k) c v prop in
           let mkconn = () in
           (*let lbl = LBindValue (float_of_int q) in*)
           []
       | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
-          let inps = mkio s t k c v prop in
+          let inps = mkio s t (k) c v prop in
           let inp_conn = () in
           (*let lbl = LBindVar q in*)
           (*let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in*)
@@ -243,7 +258,7 @@ struct
 
 
       | UFunction(MathId(MNVar(k,n,u)), Term(HwId(HNPort(k2,c2,v2,prop2,u2))) ) ->
-          let inps = mkio s t k2 c2 v2 prop2 in
+          let inps = mkio s t (k2) c2 v2 prop2 in
           let inp_conn = () in
           (*let lbl = LBindVar (MNVar(k,n,u)) in*)
           (*let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in*)
@@ -275,7 +290,7 @@ struct
     else
     ()
 
-
+    (*apply all possible components*)
   let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
@@ -302,11 +317,14 @@ struct
       let depth =  List.length (TREE.get_path v.search.paths p) in
       if depth >= s.max_depth
         then
+          let _ = Printf.printf "hit max depth for path\n" in
           let _ = SearchLib.visit v.search p in
           get_next_path s v
         else
           Some (p)
-    | None -> None
+    | None ->
+      let _ = Printf.printf "no valid paths left\n" in
+      None
 
   let mkmenu (s:slvr) (v:gltbl) (g:goal option) =
     let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
@@ -358,7 +376,6 @@ struct
       (*menu handling methods*)
 
       (*apply the current step in the search algorithm*)
-      (*let _ = apply_steps s v (SearchLib.cursor v.search) in*)
       (*choose a goal in the table*)
       let move_to_next () =
         match get_next_path s v with
@@ -366,7 +383,7 @@ struct
             let _ = SearchLib.move_cursor s v p in
             ()
           | None ->
-            let _ = Printf.printf "\n======\nSOLVER: exhausted search.\n========\n" in
+            let _ = Printf.printf "\n======\nSOLVER: exhausted search. No branches left.\n========\n" in
             exit 0
       in
       let solved () =
@@ -382,7 +399,7 @@ struct
         let goal_cursor = SearchLib.cursor v.search in
         let _ = resolve_trivial s v v.goals in
         (*is the connectivity consistent*)
-        if SlnLib.mkconn_cons s v.sln = false then
+        if SlnLib.mkconn_cons s v.sln = false || SlnLib.usecomp_cons s v.sln = false then
           let _ = SearchLib.visit v.search goal_cursor in
           let _ = move_to_next () in
           let _ = solve _s v in

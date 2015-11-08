@@ -14,9 +14,9 @@
 
 
 %token EOF EOL OPARAN CPARAN
-%token SAT UNSAT BOOLTYPE INTTYPE MODEL DEFINEFUN
+%token SAT UNSAT BOOLTYPE INTTYPE MODEL DEFINEFUN ERROR
 
-%token <string> TOKEN
+%token <string> TOKEN STRING
 %token <int> INTEGER
 %token <bool> BOOL
 
@@ -43,6 +43,10 @@ assignm:
     Z3SetInt(n,v)
   }
 
+
+errorst:
+  | error OPARAN ERROR STRING CPARAN {()}
+
 assignms:
   | assignm          {
     let h = $1 in [h]
@@ -62,6 +66,9 @@ stmts:
     let mdl = $2 in
     let _ = x.model <- Some mdl in
     x
+  }
+  | stmts errorst {
+    $1
   }
 
 sat:

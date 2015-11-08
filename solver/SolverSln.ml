@@ -107,15 +107,19 @@ struct
       ()
 
   let usecomp (sln:sln) id =
+    if MAP.has sln.comps id = false then error "usecomp" ("the following doesn't exist:"^UnivLib.unodeid2name id) else
     let l,n = MAP.get sln.comps id in
     let _ = sln.comps <- MAP.put sln.comps id (SET.add l n,n+1) in
     n
 
-  let usecomp_conserve (s:slvr) (sln:sln) id : bool =
-    let lst,_ = (MAP.get sln.comps id)  in
-    let nuses = SET.size lst in
-    let maxuses = Shim.max4unodeid s id in
-    if maxuses >= nuses then true else false
+  let usecomp_cons (s:slvr) (sln:sln) : bool =
+    let prop id (lst,n) (r:bool) : bool =
+      let nuses = SET.size lst in
+      let maxuses = Shim.max4unodeid s id in
+      if maxuses >= nuses then r else false
+    in
+    let res = MAP.fold (sln.comps) prop true in
+    res
 
   let usecomp_valid (s:slvr) (sln:sln) id : bool =
     let lst,_ = (MAP.get sln.comps id)  in

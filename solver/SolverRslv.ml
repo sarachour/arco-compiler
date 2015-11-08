@@ -113,7 +113,7 @@ struct
             (cv::decl_list, cnd::eqn_list)
           ) ([],[]) in
           res
-      | HCConnNoLimit -> error "decl_conns" "cannot handle limitless component"
+      | HCConnNoLimit -> error "decl_conns" ("cannot handle component with underconstrained connections "^sc^" -> "^dc)
       in
       res
     in
