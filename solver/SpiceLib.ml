@@ -140,6 +140,7 @@ struct
       let w =  spwire w in
       let nm,inst,port = w in
       let id = if MAP.has wmaps w then MAP.get wmaps w else 0 in
+      let indx = string_of_int (get_const_id ())  in
       let cmtsp = SpcComment("") in
       let mksrc varname vl =
           (*make a new connection between the input component and the source*)
@@ -173,15 +174,15 @@ struct
       match lbl with
       | LBindValue(vl) ->
         let cmt = SpcComment("constant value "^(string_of_float vl)) in
-        let vs = mksrc ("cst"^(string_of_int (get_const_id ()) )) (SpcFlatValue(vl)) in
+        let vs = mksrc ("cst"^indx) (SpcFlatValue(vl)) in
         [cmt;vs;cmtsp]
       | LBindVar(HNInput,q) ->
           let cmt = SpcComment("@input "^(MathLib.mid2str q)) in
-          let vs = mksrc ("in"^(MathLib.mid2str q)) (SpcFlatValue(1.)) in
+          let vs = mksrc ("in_"^(MathLib.mid2str q)^"_"^indx) (SpcFlatValue(1.)) in
           [cmt;vs;cmtsp]
       | LBindVar(HNOutput,q) ->
           let cmt = SpcComment("@output "^(MathLib.mid2str q)) in
-          let vs = mksnk ("out"^MathLib.mid2str q)  in
+          let vs = mksnk ("out_"^(MathLib.mid2str q)^"_"^indx)  in
           [cmt;vs;cmtsp]
       | _ -> []
     in
