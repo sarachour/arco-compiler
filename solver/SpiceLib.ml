@@ -23,6 +23,7 @@ type spicest =
   | SpcVoltageSource of string*int*int*spcstype*spcval
   | SpcCurrentSource of string*int*int*spcstype*spcval
 
+type spicedoc = spicest list
 (* Investigate Digital Output Interface Eleement and Port element*)
 (* Voltage Controlled Voltage Source*)
 (* Current Controlled Voltage Source*)
@@ -53,7 +54,7 @@ struct
   let sts2str s =
     List.fold_left (fun r x -> r^"\n"^(st2str x)) "" s
 
-  let sln2sts s sln =
+  let to_spice s sln =
     (*mappings for hardware model*)
     let imaps : (string*int,string*int) map= HwConnRslvr.get_sln s sln in
     let wmaps : (wireid, int) map= MAP.make () in
@@ -84,7 +85,7 @@ struct
       let hn,hi = spinst (name,inst) in
       let hnuid : unodeid = UnivLib.name2unodeid hn in
       (*handle odd copy names*)
-      let hn = match hn with UNoCopy(p) -> "copy"^p | _ -> hn in
+      let hn = match hnuid with UNoCopy(p) -> "copy"^p | _ -> hn in
       let kind,args = spspec in
       let args : int list = List.map (fun x -> handle_port hnuid hi x) args in
       SpcVarComp(to_ident hn hi, args, kind)
@@ -156,8 +157,7 @@ struct
     let sts = [header] @ cdecls in
     sts
 
-  let to_spice s sln =
-    let sp = sln2sts s sln in
+  let to_str sp =
     let str = sts2str sp in
     str
 

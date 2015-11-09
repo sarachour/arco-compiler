@@ -16,6 +16,7 @@ type ('a,'b) map = ('a, 'b) Hashtbl.t
 
 type ('a,'b) either = Left of 'a | Right of 'b
 
+
 let init_utils () =
   let _ = Random.self_init () in
   ()
@@ -28,6 +29,16 @@ let str_of_float f =
 let force_conc (type a) (f:a option): a = match f with
   |Some(q) -> q
   |_ -> error "force_conc" "none is disallowed."
+
+module IO =
+struct
+  let save fname str =
+    let oc = open_out fname in
+    let _ = Printf.fprintf oc "%s\n" str in
+    let _ = close_out oc in
+    ()
+
+end
 
 module STRING =
 struct

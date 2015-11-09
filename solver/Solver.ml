@@ -365,14 +365,9 @@ struct
     let rec user_menu_handle () = menu s (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
-  let rec solve (_s:slvr ref) (v:gltbl) =
+  let rec solve (_s:slvr ref) (v:gltbl) : spicedoc option=
     let s = REF.dr _s in
     (*find a goal to focus on*)
-    if SET.size v.goals = 0 then
-      let _ = Printf.printf "SOLVER: Attained all goals. Finished\n" in
-      let _ = exit 0 in
-      ()
-    else
       (*menu handling methods*)
 
       (*apply the current step in the search algorithm*)
@@ -381,19 +376,16 @@ struct
         match get_next_path s v with
           | Some(p) ->
             let _ = SearchLib.move_cursor s v p in
-            ()
+            true
           | None ->
-            let _ = Printf.printf "\n======\nSOLVER: exhausted search. No branches left.\n========\n" in
-            exit 0
+            false
       in
       let solved () =
         let mint,musr = mkmenu s v None in
         let _ = Printf.printf "SOLVER: Attained all goals. Finished.\n" in
         let _ = mint "s" in
-        let v  =SpiceLib.to_spice s v.sln in
-        let _ = Printf.printf "=========\nSPICE\n==========\n%s\n" v in
-        let _ = exit 0 in
-        ()
+        let v  = SpiceLib.to_spice s v.sln in
+        Some v
       in
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
@@ -401,14 +393,15 @@ struct
         (*is the connectivity consistent*)
         if SlnLib.mkconn_cons s v.sln = false || SlnLib.usecomp_cons s v.sln = false then
           let _ = SearchLib.visit v.search goal_cursor in
-          let _ = move_to_next () in
-          let _ = solve _s v in
-          let _ = SearchLib.rm v.search goal_cursor in
-          ()
+          let succ = move_to_next () in
+          if succ = false then None else
+            let res = solve _s v in
+            let _ = SearchLib.rm v.search goal_cursor in
+            res
         else
           if SET.size v.goals = 0 then
-            let _ = solved() in
-            error "force quit" "force quit"
+            let res = solved() in
+            res
           else
             let g = SET.rand v.goals in
             let mint,musr = mkmenu s v (Some g) in
@@ -418,21 +411,30 @@ struct
             let _ = mint "c" in
             let _ = apply_nodes s v g in
             let _ = musr () in
-            let _ = move_to_next () in
-            let _ = solve _s v in
-            ()
+            let succ = move_to_next () in
+            (*if could not move to next, exit*)
+            if succ = false then None else
+              let res = solve _s v in
+              res
       in
-      let _ = solve_goal () in
-      ()
+      let r = solve_goal () in
+      r
 
 end
 
 
 
-let solve (hw:hwenv) (prob:menv) (interactive:bool) =
+let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
   let _ = init_utils() in
   let sl = SolveLib.mkslv  hw prob interactive in
   let tbl = SolveLib.mktbl sl in
   let _ = pr sl "===== Beginning Interactive Solver ======" in
-  let _ = SolveLib.solve (REF.mk sl) (tbl) in
+  let spdoc = SolveLib.solve (REF.mk sl) (tbl) in
+  match spdoc with
+    | Some(sp) ->
+      let _ = IO.save out (SpiceLib.to_str sp) in
+      let _ = Printf.printf "===== Solution Found ======\n" in
+      ()
+    | None ->
+      error "solve" "No Solution Found."
   ()

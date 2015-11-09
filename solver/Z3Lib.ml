@@ -87,9 +87,7 @@ struct
     let prob = z3stmts2str x in
     let fname =  "__tmp__.z3" in
     let res = "__res__.out" in
-    let oc = open_out fname in
-    let _ = Printf.fprintf oc "%s\n" prob in
-    let _ = close_out oc in
+    let _ = IO.save fname prob in 
     let _ = Printf.printf "---> Executing SMT Solver\n" in
     let _ = flush_all () in
     let _ = Sys.command ("z3 -smt2 "^fname^" > "^res) in
