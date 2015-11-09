@@ -1,0 +1,22 @@
+
+
+.SUBCKT vadd2 A B C
+  ESUM	C 0 VALUE = { (V(A)+V(B)) }
+  * RX A C 0
+
+.ENDS vadd2
+
+.SUBCKT vmul2 A B C
+  ESUM	C 0 VALUE = { (V(A)*V(B)) }
+
+.ENDS vmul2
+
+.SUBCKT vout A B
+  RX A B 0
+
+.ENDS vout
+
+
+.SUBCKT vin A B
+  RX A B 0
+.ENDS vin
