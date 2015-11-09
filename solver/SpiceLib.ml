@@ -182,7 +182,7 @@ struct
     in
     let cdecls = MAP.fold sln.comps (fun k v r -> r @ (handle_cmp k v)) [] in
     let cmtsp = SpcComment("") in
-    let sts = lbldecls @ [cmtsp;cmtsp] @ cdecls in
+    let sts = lbldecls @ [cmtsp;cmtsp;SpcComment(" === Connectivity Schem ==== ")] @ cdecls in
     sts
 
   let to_str sp =
