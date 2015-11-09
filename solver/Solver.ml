@@ -194,7 +194,7 @@ struct
   | HNInput -> HNOutput
   | HNOutput -> HNInput
 
-  let mkio s t kind cmp port prop =
+  let mkio s t kind cmp port prop : (step list)*wireid=
     let dest = SlnLib.hwport2wire cmp port in
     match kind with
     | HNInput ->
@@ -203,18 +203,20 @@ struct
       let _ = SlnLib.usecomp_unmark t.sln inpid inpinst in
       let use_input = SSolUseNode(inpid,inpinst) in
       let port = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name inpid) in
-      let src = (inpid,inpinst,port.name) in
-      let mkconn = SSolAddConn(dest,src) in
-      [use_input; mkconn]
+      let port_dangle = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name inpid) in
+      let pwire = (inpid,inpinst,port.name) in
+      let mkconn = SSolAddConn(pwire,dest) in
+      ([use_input; mkconn],(inpid,inpinst,port_dangle.name))
     | HNOutput ->
       let outid = (UNoOutput prop) in
       let outinst = SlnLib.usecomp t.sln outid in
       let _ = SlnLib.usecomp_unmark t.sln outid outinst in
       let use_output = SSolUseNode(outid,outinst) in
       let port = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name outid) in
-      let src = (outid,outinst,port.name) in
-      let mkconn = SSolAddConn(src,dest) in
-      [use_output;mkconn]
+      let port_dangle = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name outid) in
+      let pwire = (outid,outinst,port.name) in
+      let mkconn = SSolAddConn(dest,pwire) in
+      ([use_output;mkconn],(outid,outinst,port_dangle.name))
 
   let mkcopy s t (k1,c1,p1,pr1) (k2,c2,p2,pr2) =
     []
@@ -239,31 +241,28 @@ struct
             [SSolAddConn (src,snk)]
           else []
       | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
-          let inps = mkio s t (k) c v prop in
-          (*let lbl = LBindValue q in*)
-          let mkconn = () in
-          [] @ inps
+          let inps,port = mkio s t (k) c v prop in
+          let lbl = LBindValue(q) in
+          [SSolAddLabel(port,prop,lbl)] @ inps
+
       | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
-          let inps = mkio s t (k) c v prop in
-          let mkconn = () in
-          (*let lbl = LBindValue (float_of_int q) in*)
-          []
+          let inps,port = mkio s t (k) c v prop in
+          let lbl = LBindValue(float_of_int q) in
+          [SSolAddLabel(port,prop,lbl)] @ inps
+
       | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
-          let inps = mkio s t (k) c v prop in
-          let inp_conn = () in
-          (*let lbl = LBindVar q in*)
+          let inps,port = mkio s t (k) c v prop in
+          let lbl = LBindVar(k,q) in
           (*let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in*)
           (*SSolAddLabel(wire,prop,mg)*)
-          [] @ inps
+          [SSolAddLabel(port,prop,lbl)] @ inps
 
 
-      | UFunction(MathId(MNVar(k,n,u)), Term(HwId(HNPort(k2,c2,v2,prop2,u2))) ) ->
-          let inps = mkio s t (k2) c2 v2 prop2 in
-          let inp_conn = () in
-          (*let lbl = LBindVar (MNVar(k,n,u)) in*)
+      | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
+          let inps,port = mkio s t (k) c v prop in
+          let lbl = LBindVar(k,q) in
           (*let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in*)
-          (*SSolAddLabel(wire,prop2,mg)*)
-          []
+          [SSolAddLabel(port,prop,lbl)] @ inps
       | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
           let tc = () in
           []

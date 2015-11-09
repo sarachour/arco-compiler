@@ -391,6 +391,15 @@ digital:
       HwCstrLib.mkmag c cmpname portname prop r
   }
 
+  | digital SPICE TOKEN tokenlist EOL {
+      let cname = get_cmpname() in
+      let spname = $3 in
+      let args = $4 in
+      let _ = HwLib.mkspice dat cname spname args in
+      ()
+  }
+
+
 comp:
   | COMP TOKEN EOL {
     let name = $2 in

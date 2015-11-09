@@ -35,7 +35,7 @@ struct
       "time "^hwr^" => "^mr
     | LError -> "error prop"
     | LBindValue(v) -> "bind "^(string_of_float v)
-    | LBindVar(v) -> "bind "^(MathLib.mid2str v)
+    | LBindVar(k,v) -> "bind "^(MathLib.mid2str v)
 
   let mksln () : sln =
     {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}

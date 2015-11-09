@@ -3,6 +3,7 @@ open Util
 open HW
 open Common
 open HWData
+open Math
 open SolverData
 open SolverUtil
 
@@ -57,7 +58,7 @@ struct
   let to_spice s sln =
     (*mappings for hardware model*)
     let imaps : (string*int,string*int) map= HwConnRslvr.get_sln s sln in
-    let wmaps : (wireid, int) map= MAP.make () in
+    let wmaps : (wireid, int) map = MAP.make () in
     let spinst (n,i) =
       if MAP.has imaps (n,i) = false then
         error "spinst" ("instance "^n^" "^(string_of_int i)^" dne")
@@ -74,7 +75,9 @@ struct
     let to_ident n i =
       n^"_"^(string_of_int i)
     in
+    (*handle instance*)
     let handle_inst (name:string) (inst:int) (spspec:string*(string list))=
+      (* get the id of the particular port *)
       let handle_port (hn:unodeid) (hi:int) (x:string) : int =
         let w : wireid = (hn,hi,x) in
         if MAP.has wmaps w then
@@ -85,51 +88,27 @@ struct
       let hn,hi = spinst (name,inst) in
       let hnuid : unodeid = UnivLib.name2unodeid hn in
       (*handle odd copy names*)
-      let hn = match hnuid with UNoCopy(p) -> "copy"^p | _ -> hn in
+      let hn = match hnuid with
+        |UNoCopy(p) -> "copy"^p
+        |UNoInput(p) -> "input"^p
+        |UNoOutput(p) -> "output"^p
+        | _ -> hn
+      in
       let kind,args = spspec in
       let args : int list = List.map (fun x -> handle_port hnuid hi x) args in
       SpcVarComp(to_ident hn hi, args, kind)
     in
-    let handle_io_inst cid inst :spicest list=
-      let cmpname = UnivLib.unodeid2name cid in
-      let cmpname,inst = spinst (cmpname,inst) in
-      let varname = to_ident "inp" inst in
-      match cid with
-      | UNoInput(p) ->
-        let port = HwLib.get_port_by_kind s.hw HNOutput cmpname in
-        let wire : wireid = (cid,inst,port.name) in
-        let connto = if MAP.has wmaps wire then MAP.get wmaps wire else 0 in
-        if p = "V" then
-          let vs = SpcVoltageSource(varname,connto,0,SpcDC,SpcFlatValue(4.)) in
-          [vs]
-        else if p = "I" then
-          let cs = SpcCurrentSource(varname,connto,0,SpcDC,SpcFlatValue(1.)) in
-          [cs]
-        else
-          error "handle_io" "unknown property"
-      | UNoOutput(p) ->
-        let cmt = SpcComment("this is where output processing would go.") in
-        [cmt]
-    in
-    let handle_io cid insts =
-      let stmts = SET.fold insts (fun q r -> (handle_io_inst cid q)@r) [] in
-      stmts
-    in
     let handle_cmp cid (idents,cnt)=
-      match cid with
-      | UNoInput(c) -> handle_io cid idents
-      | UNoOutput(c) -> handle_io cid idents
-      | _ ->
-        let name = UnivLib.unodeid2name cid in
-        let c = HwLib.getcomp s.hw name in
-        let sp = c.spice in
-        let res = match sp with
-          |Some(spec) ->
-            let stmts = SET.fold idents (fun q r -> (handle_inst name q spec)::r) [] in
-            stmts
-          | None -> error "sln2sts" "expected spice specification"
-        in
-        res
+      let name = UnivLib.unodeid2name cid in
+      let c = HwLib.getcomp s.hw name in
+      let sp = c.spice in
+      let res = match sp with
+        |Some(spec) ->
+          let stmts = SET.fold idents (fun q r -> (handle_inst name q spec)::r) [] in
+          stmts
+        | None -> error "sln2sts" ("expected spice specification for "^name)
+      in
+      res
     in
     let handle_conn wid1 wid2 =
       let repl wid n =
@@ -151,10 +130,59 @@ struct
       let _ = MAP.put wmaps (wid2) n in
       ()
     in
-    let header = SpcComment("Spice Implementation") in
+    let const_count = REF.mk 0 in
+    let get_const_id () =
+      let q = REF.dr const_count in
+      let _ = (const_count := q + 1) in
+      q
+    in
+    let handle_lbl (w:wireid) (pr:string) lbl =
+      let w =  spwire w in
+      let nm,inst,port = w in
+      let id = if MAP.has wmaps w then MAP.get wmaps w else 0 in
+      let cmtsp = SpcComment("") in
+      let mksrc varname vl =
+          (*make a new connection between the input component and the source*)
+          let vout = (List.length (MAP.to_values wmaps)) + 1 in
+          (*get the port that feeds into this component and connect to voltage source*)
+          let nport = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name nm) in
+          let inpcompwire = (nm, inst, nport.name) in
+          let _ = MAP.put wmaps inpcompwire vout in
+          let res =
+            if pr = "V" || pr = "v" then
+              SpcVoltageSource(varname,vout,0,SpcDC,vl)
+            else if pr = "I" || pr = "i" then
+              SpcCurrentSource(varname,vout,0,SpcDC,vl)
+            else
+              error "handle_lbl" "unknown property"
+          in
+          res
+      in
+      match lbl with
+      | LBindValue(vl) ->
+        let cmt = SpcComment("constant value "^(string_of_float vl)) in
+        let vs = mksrc ("cst"^(string_of_int (get_const_id ()) )) (SpcFlatValue(vl)) in
+        [cmt;vs;cmtsp]
+      | LBindVar(HNInput,q) ->
+          let cmt = SpcComment("input port "^(MathLib.mid2str q)) in
+          let vs = mksrc ("in"^(MathLib.mid2str q)) (SpcFlatValue(1.)) in
+          [cmt;vs;cmtsp]
+      | LBindVar(HNOutput,q) ->
+          let cmt = SpcComment("output port "^(MathLib.mid2str q)) in
+          [cmt]
+      | _ -> []
+    in
     let _ = MAP.iter sln.conns (fun w1 ws -> SET.iter ws (fun w2 -> handle_conn w1 w2)) in
+    let lbldecls =
+      MAP.fold sln.labels (fun w prs r ->
+        MAP.fold prs (fun p lbls r ->
+          SET.fold lbls (fun lb r -> (handle_lbl w p lb) @ r) r
+        ) r
+      ) []
+    in
     let cdecls = MAP.fold sln.comps (fun k v r -> r @ (handle_cmp k v)) [] in
-    let sts = [header] @ cdecls in
+    let cmtsp = SpcComment("") in
+    let sts = lbldecls @ [cmtsp;cmtsp] @ cdecls in
     sts
 
   let to_str sp =

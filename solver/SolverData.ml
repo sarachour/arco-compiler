@@ -3,6 +3,7 @@ open HW
 open Math
 open AST
 open Unit
+open Common
 open HWData
 
 type slvr =  {
@@ -46,7 +47,7 @@ type label =
   | LTime of range*untid*range*untid
   | LError
   | LBindValue of float
-  | LBindVar of mid
+  | LBindVar of hwvkind*mid
 
 type sln = {
   (*how many of each component is used *)

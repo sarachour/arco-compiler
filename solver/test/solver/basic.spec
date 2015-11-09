@@ -94,6 +94,8 @@ digital input V
   output O where V:mV
 
   ensure mag V(O) in (0,5): V
+  spice vin X O
+
 end
 
 digital output V
@@ -101,7 +103,7 @@ digital output V
   output O
 
   ensure mag V(X) in (0,5): V
-
+  spice vout X O
 
 end
 
