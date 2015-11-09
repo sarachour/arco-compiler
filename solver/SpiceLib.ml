@@ -158,18 +158,31 @@ struct
           in
           res
       in
+      let mksnk varname  =
+        let vout = List.length (MAP.to_values wmaps) + 1 in
+        let nport = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name nm) in
+        let outcompwire  = (nm,inst,nport.name) in
+        let _ = MAP.put wmaps outcompwire vout in
+        if pr = "V" || pr = "v" then
+          SpcComment("@args "^(string_of_int vout)^" "^"V")
+        else if pr = "I" || pr = "i" then
+          SpcComment("@args "^(string_of_int vout)^","^"I")
+        else
+          error "handle_lbl" "unknown property"
+      in
       match lbl with
       | LBindValue(vl) ->
         let cmt = SpcComment("constant value "^(string_of_float vl)) in
         let vs = mksrc ("cst"^(string_of_int (get_const_id ()) )) (SpcFlatValue(vl)) in
         [cmt;vs;cmtsp]
       | LBindVar(HNInput,q) ->
-          let cmt = SpcComment("input port "^(MathLib.mid2str q)) in
+          let cmt = SpcComment("@input "^(MathLib.mid2str q)) in
           let vs = mksrc ("in"^(MathLib.mid2str q)) (SpcFlatValue(1.)) in
           [cmt;vs;cmtsp]
       | LBindVar(HNOutput,q) ->
-          let cmt = SpcComment("output port "^(MathLib.mid2str q)) in
-          [cmt]
+          let cmt = SpcComment("@output "^(MathLib.mid2str q)) in
+          let vs = mksnk ("out"^MathLib.mid2str q)  in
+          [cmt;vs;cmtsp]
       | _ -> []
     in
     let _ = MAP.iter sln.conns (fun w1 ws -> SET.iter ws (fun w2 -> handle_conn w1 w2)) in
