@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import argparse
-
+import subprocess
 
 def parse_args ():
     parser = argparse.ArgumentParser(description='Simulate the topology')
@@ -28,7 +28,17 @@ def gen_spice(args):
     for line in fcirc:
         outs = append(line)
 
-    print(outs)
+    return outs
+
+def run_spice(text):
+    tmpfile = "___tmp___.ckt"
+
+    tmphandle = open(tmpfile,'w')
+    tmphandle.write(text)
+    tmphandle.close()
+
+    subprocess.call(["ngspice","-b",tmpfile])
 
 args = parse_args()
 spc = gen_spice(args)
+run_spice(spc)
