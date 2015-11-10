@@ -26,9 +26,11 @@ def proc(d,t):
             for i in range(0,len(args)):
                 data[hdrs[i]].append(float(args[i]))
 
+    dh.close()
     text = str(data)
-    print(text)
+
     th = open(t,'w')
+    th.write(text)
 
 if len(sys.argv) < 2:
     print("USAGE: dat2tab.py datafile tabfile")
