@@ -142,17 +142,6 @@ class Sim:
         return (self.text + "\n\n"+acode)
 
 
-def parse_args ():
-    parser = argparse.ArgumentParser(description='Simulate the topology')
-
-
-    parser.add_argument("circuit", help="circuit specification")
-    parser.add_argument("--lib", help="library to link with circuit specification")
-    parser.add_argument("--inputs", help="input values")
-
-    args = parser.parse_args()
-    return args
-
 
 
 def gen_spice(args):
@@ -212,6 +201,19 @@ def mkdir(f):
     d = os.path.dirname(f)
     if not os.path.exists(d):
         os.makedirs(d)
+
+def parse_args ():
+    parser = argparse.ArgumentParser(description='Simulate the topology')
+
+
+    parser.add_argument("circuit", help="circuit specification")
+    parser.add_argument("--lib", help="library to link with circuit specification")
+    parser.add_argument("--inputs", help="input values")
+
+    args = parser.parse_args()
+    return args
+
+
 
 mkdir(data(""))
 mkdir(tmp(""))
