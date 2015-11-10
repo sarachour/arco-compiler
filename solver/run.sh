@@ -2,8 +2,7 @@
 
 #default is min and simple
 NAME=$1
-ANALOGY=$2
-
+HWSPEC=$2
 
 if [ "$NAME" = "test-math" ]; then
   NAME=$2
@@ -23,4 +22,11 @@ if [ "$NAME" = "test-solver" ]; then
   exit 0
 fi
 
-make && ./solver -hwspec test/$NAME.spec -formula test/$NAME.math -analogy $ANALOGY
+if [ "$NAME" = "bmark" ]; then
+  SPEC=$2
+  NAME=$3
+  make && ./solver -hwspec benchmarks/hwspecs/$SPEC.spec -formula benchmarks/math/$NAME.math -interactive
+  exit 0
+fi
+
+make && ./solver -hwspec $HWSPEC -formula $NAME
