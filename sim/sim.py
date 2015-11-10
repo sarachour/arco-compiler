@@ -8,7 +8,11 @@ import random
 class Analysis:
 
     def get_initial_analysis(self):
-        return ".OP\n"
+        text = ""
+        append = lambda x:  text+x+"\n"
+        text = append(".TRANS")
+        text = append(".OP")
+        return text
 
     def get_dc_analysis(self,name,prop):
         return ".print DC "+prop+"("+name+")\n"

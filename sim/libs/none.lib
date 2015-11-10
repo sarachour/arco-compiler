@@ -1,0 +1,8 @@
+
+.SUBCKT vnoise I O rel=0.1 fix=0.001
+  RX I O 0
+.ENDS vnoise
+
+.SUBCKT vclamp I O mn=0 mx=5
+  RX I O 0 
+.ends vclmp
