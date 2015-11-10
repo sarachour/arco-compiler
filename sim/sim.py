@@ -4,18 +4,53 @@ import argparse
 import subprocess
 import sys
 import random
+import os
+
+
+# .control
+# dc Vx -250 250 0.5;
+# print dc.V(Ix) dc.V(Oz) > io_x_z.dat
+# op
+# run
+def data(fname):
+    return ".data/"+fname
+
+def tmp(fname):
+    return ".tmp/"+fname
 
 class Analysis:
 
-    def get_initial_analysis(self):
-        text = ""
-        append = lambda x:  text+x+"\n"
-        text = append(".TRANS")
-        text = append(".OP")
-        return text
+    def __init__(self):
+        self.inputs = []
+        self.outputs = []
+        self.text = ".control\n"
 
-    def get_dc_analysis(self,name,prop):
-        return ".print DC "+prop+"("+name+")\n"
+    def append(self,t):
+        self.text = self.text+"  "+t+"\n"
+
+
+    def dc_sweep(self,vname,prop,start,stop,step):
+        cmd="dc "+prop+"("+vname+") start="+str(start)+" stop="+str(stop)+" step="+str(step)
+        self.append(cmd)
+
+    def trans(self,start,stop):
+        cmd="tran "+str(start)+" "+str(stop)
+        self.append(cmd)
+
+
+    def save(self,oper,vr,prop,fl):
+        cmd = "print "+str(oper)+"."+prop+"("+str(vr)+") > "+data(fl)
+        self.append(cmd)
+
+    def op(self):
+        self.append("op")
+
+
+    def get_analysis(self):
+        t = self.text+"  run\n.endc\n"
+        return t
+
+
 
 def rand(min,max):
     return (random.random()*(max-min) + min)
@@ -41,19 +76,16 @@ def conc_inputs(text,inps):
     return text
 
 def conc_outputs(aly,text,outs):
-
-    append = lambda x:  text+x
-
-    aline = aly.get_initial_analysis()
-    text = append(aline)
-
+    aly.trans(0,200)
+    aly.op()
     for oname in outs:
         port = outs[oname]["port"]
         prop = outs[oname]["prop"]
 
-        aline = aly.get_dc_analysis(str(port),prop)
-        text = append(aline)
+        aly.dc_sweep(str(port),prop,0,5,0.001)
+        aly.save("dc",port,prop,oname+".dc")
 
+    text = text + "\n\n" + aly.get_analysis()
     return text
 
 def gen_spice(args):
@@ -126,13 +158,21 @@ def get_input_params(args, ips):
     return iar
 
 def run_spice(text):
-    tmpfile = "___tmp___.ckt"
+    tmpfile = tmp("generated.ckt")
 
     tmphandle = open(tmpfile,'w')
     tmphandle.write(text)
     tmphandle.close()
 
     subprocess.call(["ngspice","-b",tmpfile])
+
+def mkdir(f):
+    d = os.path.dirname(f)
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+mkdir(data(""))
+mkdir(tmp(""))
 
 aly = Analysis()
 args = parse_args()
