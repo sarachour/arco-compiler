@@ -26,8 +26,8 @@ def proc(d,t):
             for i in range(0,len(args)):
                 data[hdrs[i]].append(float(args[i]))
 
-    print(hdrs)
-    print(data)
+    text = str(data)
+    print(text)
     th = open(t,'w')
 
 if len(sys.argv) < 2:
