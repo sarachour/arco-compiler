@@ -18,11 +18,12 @@ def data(fname):
 def tmp(fname):
     return ".tmp/"+fname
 
+def rand(min,max):
+    return (random.random()*(max-min) + min)
+
 class Analysis:
 
     def __init__(self):
-        self.inputs = []
-        self.outputs = []
         self.text = ".control\n"
 
     def append(self,t):
@@ -46,14 +47,100 @@ class Analysis:
         self.append("op")
 
 
-    def get_analysis(self):
+    def code(self):
         t = self.text+"  run\n.endc\n"
         return t
 
 
 
-def rand(min,max):
-    return (random.random()*(max-min) + min)
+class Sim:
+    def __init__(self, text):
+        self.an = Analysis()
+        self.text = text
+        self.inputs = {}
+        self.outputs = {}
+        self.proc_inputs();
+        self.proc_outputs();
+
+    def define_input(self,name,mvar_var,mvar_port,mvar_val):
+        self.inputs[name] = {
+        "mvar_val":mvar_val,
+        "mvar_var":mvar_var,
+        "mvar_port":mvar_port,
+        "val":None
+        }
+
+    def define_output(self,name,mvar_port,mvar_prop):
+        self.outputs[name] = {
+            "mvar_port": mvar_port,
+            "mvar_prop": mvar_prop
+        }
+
+    def assign_input(self,inname,vl):
+        self.inputs[inname]["value"] = vl;
+        vr = self.inputs[inname]["var"];
+        self.text = self.text.replace(v,vl);
+
+    def set_value(self,name,vl):
+        self.inputs[name]["val"] = vl;
+        mvar = self.inputs[name]["mvar_val"]
+        self.text = self.text.replace(mvar,vl)
+
+    def proc_inputs(self):
+        inp = None
+        ntext = ""
+        for l in self.text.split('\n'):
+            if l.startswith("*@input"):
+                cmd = l.strip("\n").split("@")[1]
+                cmdargs = cmd.split(" ")
+                inp = cmdargs[1]
+
+            elif inp != None:
+                cmd = l.strip("\n").split("@")[0]
+                args = cmd.split("\t")
+                term = args[0]
+                port = args[2]
+                mvar_val = "@"+inp+"@"
+
+                self.define_input(inp,term,port,mvar_val)
+                l = l.replace("#",mvar_val)
+                inp = None
+
+            ntext += l+"\n"
+
+        self.text = ntext
+
+    def proc_outputs(self):
+        out=None
+        for l in self.text.split("\n"):
+
+            if l.startswith("*@output"):
+                cmd = l.strip("\n").split("@")[1]
+                cmdargs = cmd.split(" ")
+                out = cmdargs[1]
+
+            if l.startswith("*@args"):
+                cmd = l.strip("\n").split("@")[1]
+                cmdargs = cmd.split(" ")
+                port = cmdargs[1]
+                prop = cmdargs[2]
+                self.define_output(out,port,prop)
+                out = None
+
+
+    def get_analysis(self):
+        return self.an
+
+    def get_inputs(self):
+        return self.inputs
+
+    def get_outputs(self):
+        return self.outputs
+
+    def code(self):
+        acode = self.an.code()
+        return (self.text + "\n\n"+acode)
+
 
 def parse_args ():
     parser = argparse.ArgumentParser(description='Simulate the topology')
@@ -66,82 +153,28 @@ def parse_args ():
     args = parser.parse_args()
     return args
 
-def conc_inputs(text,inps):
-    sub = lambda q,m : q.replace(m["var"],str(m["val"]))
 
-    for input in inps:
-        ky = inps[input]
-        text=sub(text,ky)
-
-    return text
-
-def conc_outputs(aly,text,outs):
-    aly.trans(0,200)
-    aly.op()
-    for oname in outs:
-        port = outs[oname]["port"]
-        prop = outs[oname]["prop"]
-
-        aly.dc_sweep(str(port),prop,0,5,0.001)
-        aly.save("dc",port,prop,oname+".dc")
-
-    text = text + "\n\n" + aly.get_analysis()
-    return text
 
 def gen_spice(args):
     circ = (args.circuit)
     lib = (args.lib)
 
-    outs = ""
-    append = lambda x:  outs+x
+    spc = ""
+    append = lambda x:  spc+x
 
     fcirc = open(circ,'r')
 
     include_st=".include "+lib+"\n"
-    outs = append(include_st)
-
-    outputs = {}
-    inputs = {}
-    outname = None
-    inname = None
-    icnt = 1
+    spc = append(include_st)
 
     for line in fcirc:
-
-        if line.startswith("*@"):
-            # parse command in pragma
-            cmd = line.strip("\n").split("@")[1]
-            cmdargs = cmd.split(" ")
-            cmd = cmdargs[0];
-            # determine the kind of command
-            if cmd == "input":
-                inname = cmdargs[1]
-                if not (inname in inputs):
-                    mvar = "@"+str(icnt)+"@"
-                    inputs[inname] = {"var":mvar,"val":rand(-5,5)}
-                    icnt += 1
-
-            elif cmd == "output":
-                outname = cmdargs[1]
-                outputs[outname] = {"prop":None,"port":None}
-
-            elif cmd == "args":
-                if outname != None:
-                    outputs[outname]["port"] = int(cmdargs[1])
-                    outputs[outname]["prop"] = cmdargs[2]
-                    outname = None
-        else:
-            if inname != None:
-                line = line.replace("#",inputs[inname]["var"])
-                inname = None
-
-            outs = append(line)
+        spc = append(line)
 
     fcirc.close()
 
-    return outputs,inputs,outs
+    return Sim(spc)
 
-def get_input_params(args, ips):
+def get_input_params(args, spc):
     if args.inputs == None:
         return iar
 
@@ -153,15 +186,24 @@ def get_input_params(args, ips):
         args = line.strip("\n").split(" ")
         inp = args[0]
         val = args[1]
-        ips[inp]["val"] = val
+        spc.set_value(inp,val)
 
-    return iar
+def build_analysis(args,spc):
+    an = spc.get_analysis()
+    an.trans(0.01,2)
+    for oname in spc.get_outputs():
+        odata = spc.get_outputs()[oname]
+        prop = odata['mvar_prop']
+        port = odata["mvar_port"]
 
-def run_spice(text):
+        an.save("tran",port,prop,oname+".tran")
+
+
+def run_spice(spc):
     tmpfile = tmp("generated.ckt")
 
     tmphandle = open(tmpfile,'w')
-    tmphandle.write(text)
+    tmphandle.write(spc.code())
     tmphandle.close()
 
     subprocess.call(["ngspice","-b",tmpfile])
@@ -174,11 +216,8 @@ def mkdir(f):
 mkdir(data(""))
 mkdir(tmp(""))
 
-aly = Analysis()
 args = parse_args()
-oar,iar,spc = gen_spice(args)
-iar = get_input_params(args,iar)
-
-spc = conc_inputs(spc,iar)
-spc = conc_outputs(aly,spc,oar)
+spc = gen_spice(args)
+get_input_params(args,spc)
+build_analysis(args,spc)
 run_spice(spc)
