@@ -48,7 +48,7 @@ struct
     let c = HwLib.getcomp s.hw name in
     c
 
-  let lclid2glblid sln iid x =
+  let lclid2glblid iid x =
     match x with
     | HwId(HNPort(k,HCMLocal(c),p,prop,un)) ->
       HwId(HNPort(k,HCMGlobal(c,iid),p,prop,un))
@@ -58,10 +58,29 @@ struct
       HwId(HNTime(HCMGlobal(c,iid),u))
     | _ -> x
 
+    let glblid2lclid x =
+      match x with
+      | HwId(HNPort(k,HCMGlobal(c,i),p,prop,un)) ->
+        HwId(HNPort(k,HCMLocal(c),p,prop,un))
+      | HwId(HNParam(HCMGlobal(c,i), name, vl, u)) ->
+        HwId(HNParam(HCMLocal(c),name,vl,u))
+      | HwId(HNTime(HCMGlobal(c,i),u)) ->
+        HwId(HNTime(HCMLocal(c),u))
+      | _ -> x
 
-  let  lcl2glbl sln iid a =
-    let mp x = lclid2glblid sln iid x in
+
+  let  lcl2glbl iid (a:unid ast) : unid ast =
+    let mp x = lclid2glblid iid x in
     ASTLib.map a mp
+
+  let  glbl2lcl (a:unid ast) : unid ast =
+    let mp x = glblid2lclid x in
+    ASTLib.map a mp
+
+  let goalglbl2lcl (g:urel) : urel = match g with
+  |  UFunction(l,r) -> UFunction(glblid2lclid l, glbl2lcl r)
+  |  UState(l,r,ic,t) -> UState(glblid2lclid l, glbl2lcl r, glblid2lclid ic, glblid2lclid t)
+
 
 
   let unid2wcsym cmpname ciid uid is_templ cnv= match uid, is_templ with

@@ -71,15 +71,35 @@ type steps = {
   mutable s :step list;
   id : int;
 }
-type score = float
+type score = unit
+
+
+(*
+the status of the node.
+If the node is a dead end, there is no solution
+If the node
+
+*)
+type status =
+  (*A node that's a dead end. *)
+  | DeadEnd
+  (*A node that's blocking on some other node*)
+  (*| Active of int*)
+
+type status_table = {
+  (*stalled, waiting for another subtree to finish*)
+  mutable tbl: (int,status) map;
+  (*current number of nodes*)
+}
 
 type buffer = {
+  (*search tree*)
   paths: (steps, score) tree;
   mutable step_buf: steps option;
   (*the total number of step bundles*)
-  mutable dead: int set;
+  mutable curs: (steps,score) cursor option;
+  mutable st: status_table;
   mutable cnt: int;
-  mutable curr: (steps,score) cursor option;
 }
 
 

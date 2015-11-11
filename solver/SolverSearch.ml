@@ -5,6 +5,30 @@ open SolverSln
 open SolverData
 
 
+module StatusTableLib =
+struct
+let mk () =
+  {tbl=MAP.make()}
+
+let is_deadend b n =
+  if MAP.has b.tbl n.id = false then
+    false
+  else
+    match MAP.get b.tbl n.id with
+    | DeadEnd -> true
+    | _ -> false
+
+let deadend b n =
+  let _ = MAP.put b.tbl n.id DeadEnd in
+  ()
+
+let rm b n =
+  let _ = MAP.rm b.tbl n.id in
+  ()
+
+
+end
+
 module SearchLib =
 struct
   let step2str n = match n with
@@ -16,29 +40,36 @@ struct
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | _ -> "?"
 
+
   let is_deadend b n =
-    SET.has b.dead n.id
+    StatusTableLib.is_deadend b.st n
 
   let deadend b n =
-    let _ = b.dead <- SET.add b.dead n.id in
-    ()
+    StatusTableLib.deadend b.st n
 
   let steps2str (b:buffer) (n:steps) =
     let id = (if is_deadend b n then "." else "?")^(string_of_int n.id) in
-    let prefix = match b.curr with
+    let prefix = match b.curs with
     | Some(c) -> if c = n then "["^id^"]" else id
     | None -> id
     in
     prefix^": "^(List.fold_right (fun x r -> r^" "^(step2str x)^";") n.s "")
 
-  let score2str e = "score"
+  let score2str e = "()"
 
   let mksteps b =
     let _ = (b.cnt <- b.cnt + 1) in
     Some {s=[]; id=b.cnt}
 
-  let mkscore () =
-    1.
+  let mkscore () = ()
+
+  let fold_path (type a) (b:buffer) (n:steps) (fxn: step -> a -> a) (ic:a): a =
+    let apply_fxn n r =
+      List.fold_right (fun x r -> fxn x r) n.s r
+    in
+     let els : a = List.fold_right apply_fxn (TREE.get_path b.paths n) ic in
+     els
+
 
   let start b =
     b.step_buf <- mksteps b
@@ -53,8 +84,8 @@ struct
     | Some(b) -> b.s <- s::b.s
     | None -> ()
 
-  let commit b =
-    match b.step_buf, b.curr with
+  let commit b : steps=
+    match b.step_buf, b.curs with
     | Some(q), Some(c) ->
       let _ = TREE.mknode b.paths q in
       let _ = TREE.mkedge b.paths c q (mkscore()) in
@@ -66,12 +97,12 @@ struct
 
 
   let rm b n =
-    let _ = match b.curr with
+    let _ = match b.curs with
     | Some(v) -> if v = n then error "rm" "cannot remove current node." else ()
     | None -> ()
     in
     let _ = TREE.rmnode b.paths n in
-    let _ = SET.rm b.dead n.id in
+    let _ = StatusTableLib.rm b.st n in
     b
 
 
@@ -81,7 +112,7 @@ struct
 
 
   let cursor b =
-    match b.curr with
+    match b.curs with
     | Some(c) -> c
     | None -> error "cursor" "expected cursor."
 
@@ -114,19 +145,54 @@ struct
 
   let move_cursor (s:slvr) (tbl:gltbl) (next:steps) =
     let b = tbl.search in
-    match b.curr with
+    match b.curs with
     | Some(old) ->
       let anc = TREE.ancestor b.paths next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path b.paths old)) old anc in
       let from_anc = LIST.sublist (TREE.get_path b.paths next) anc next in
       let _ = List.iter (fun x -> let _ = unapply_steps s tbl x in ()) to_anc in
       let _ = List.iter (fun x -> let _ = apply_steps s tbl x in ()) from_anc in
-      let _ = (b.curr <- Some next) in
+      let _ = (b.curs <- Some next) in
       tbl
     | None -> let to_node = TREE.get_path b.paths next in
       let _ = List.iter (fun x -> let _ = apply_steps s tbl x in ()) to_node in
-      let _ = (b.curr <- Some next) in
+      let _ = (b.curs <- Some next) in
       tbl
+
+
+
+  let mkbuf goals =
+    let g = TREE.make (fun x y -> x.id=y.id) (fun x y -> x = y) in
+    let buf = {
+        paths=g;
+        step_buf=None;
+        cnt=0;
+        curs=None;
+        st=StatusTableLib.mk();
+    } in
+    let _ = start buf in
+    let _ = List.iter (fun x -> add_step buf (SAddGoal x)) goals in
+    match buf.step_buf with
+    |Some(sb) ->
+      let _ = TREE.mknode buf.paths (sb) in
+      let _ = TREE.setroot buf.paths (sb) in
+      let _ = (buf.step_buf <- None) in
+      sb,buf
+    |None -> error "mkbuf" "impossible to not have initial step"
+
+
+
+
+
+
+  (*determine if any of the paths of interest has a duplicate
+  let is_dup (b:buffer) (a:steps): bool =
+    let ids = RefTableLib.ids b.refs "" in
+    if SET.has ids a.id then
+      true
+    else
+      false
+  *)
 
   let get_paths (b:buffer) =
     let p = TREE.leaves b.paths in
@@ -139,17 +205,4 @@ struct
       Some (List.nth choices 0 )
     else
       None
-
-  let mkbuf goals =
-    let g = TREE.make (fun x y -> x.id=y.id) (fun x y -> x = y) in
-    let buf = {paths=g; step_buf=None; cnt=0; curr=None; dead=SET.make (fun x y -> x = y)} in
-    let _ = start buf in
-    let _ = List.iter (fun x -> add_step buf (SAddGoal x)) goals in
-    match buf.step_buf with
-    |Some(sb) ->
-      let _ = TREE.mknode buf.paths (sb) in
-      let _ = TREE.setroot buf.paths (sb) in
-      let _ = (buf.step_buf <- None) in
-      sb,buf
-    |None -> error "mkbuf" "impossible to not have initial step"
 end
