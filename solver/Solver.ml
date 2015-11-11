@@ -236,7 +236,7 @@ struct
         let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
         ()
       else
-        let _ = SearchLib.visit gtbl.search comp_cursor in
+        let _ = SearchLib.deadend gtbl.search comp_cursor in
         ()
         (*)
   let mkmag (s:slvr) (port:unid) (qty:unid) =
@@ -341,7 +341,7 @@ struct
       let _ = SearchLib.start t.search in
       let _ = SET.iter goals handle_goal in
       let trivial_cursor = SearchLib.commit t.search in
-      let _ = SearchLib.visit t.search goal_cursor in
+      (*let _ = SearchLib.deadend t.search goal_cursor in*)
       let _ = SearchLib.move_cursor s t trivial_cursor in
       ()
     else
@@ -359,7 +359,7 @@ struct
     let _ = List.iter handle_node comps  in
     (*mark goal as explored.*)
     let goal_cursor = SearchLib.cursor tbl.search in
-    let _ = SearchLib.visit tbl.search goal_cursor in
+    (*let _ = SearchLib.deadend tbl.search goal_cursor in*)
     ()
 
 
@@ -370,7 +370,7 @@ struct
       if depth >= s.max_depth
         then
           let _ = Printf.printf "hit max depth for path\n" in
-          let _ = SearchLib.visit v.search p in
+          let _ = SearchLib.deadend v.search p in
           get_next_path s v
         else
           Some (p)
@@ -394,42 +394,51 @@ struct
           | None ->
             false
       in
-      let solved () =
-        let mint,musr = mkmenu s v None in
-        let _ = Printf.printf "SOLVER: Attained all goals. Finished.\n" in
-        let _ = mint "s" in
-        let v  = SpiceLib.to_spice s v.sln in
-        Some v
+      let failed () =
+        (*mark this path as visited*)
+        let goal_cursor = SearchLib.cursor v.search in
+        let _ = SearchLib.deadend v.search goal_cursor in
+        let succ = move_to_next () in
+        if succ = false
+          then
+            None
+          else
+            let res = solve _s v in
+            let _ = SearchLib.rm v.search goal_cursor in
+            res
+      in
+      let no_goals_left () =
+        (*this solution is valid*)
+        if SlnLib.mkconn_cons s v.sln &&  SlnLib.usecomp_cons s v.sln then
+          let mint,musr = mkmenu s v None in
+          let _ = Printf.printf "SOLVER: Attained all goals. Finished.\n" in
+          let _ = mint "s" in
+          let v  = SpiceLib.to_spice s v.sln in
+          Some v
+        else
+          failed ()
       in
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
         let _ = resolve_trivial s v v.goals in
         (*is the connectivity consistent*)
-        if SlnLib.mkconn_cons s v.sln = false || SlnLib.usecomp_cons s v.sln = false then
-          let _ = SearchLib.visit v.search goal_cursor in
+        if SET.size v.goals = 0 then
+          let res = no_goals_left() in
+          res
+        else
+          let g = SET.rand v.goals in
+          let mint,musr = mkmenu s v (Some g) in
+          (*show goals and current solution*)
+          let _ = mint "g" in
+          let _ = mint "s" in
+          let _ = mint "c" in
+          let _ = apply_nodes s v g in
+          let _ = musr () in
           let succ = move_to_next () in
+          (*if could not move to next, exit*)
           if succ = false then None else
             let res = solve _s v in
-            let _ = SearchLib.rm v.search goal_cursor in
             res
-        else
-          if SET.size v.goals = 0 then
-            let res = solved() in
-            res
-          else
-            let g = SET.rand v.goals in
-            let mint,musr = mkmenu s v (Some g) in
-            (*show goals and current solution*)
-            let _ = mint "g" in
-            let _ = mint "s" in
-            let _ = mint "c" in
-            let _ = apply_nodes s v g in
-            let _ = musr () in
-            let succ = move_to_next () in
-            (*if could not move to next, exit*)
-            if succ = false then None else
-              let res = solve _s v in
-              res
       in
       let r = solve_goal () in
       r

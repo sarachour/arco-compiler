@@ -77,7 +77,7 @@ type buffer = {
   paths: (steps, score) tree;
   mutable step_buf: steps option;
   (*the total number of step bundles*)
-  mutable visited: int set;
+  mutable dead: int set;
   mutable cnt: int;
   mutable curr: (steps,score) cursor option;
 }

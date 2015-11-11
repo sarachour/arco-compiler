@@ -16,15 +16,15 @@ struct
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | _ -> "?"
 
-  let visited b n =
-    SET.has b.visited n.id
+  let is_deadend b n =
+    SET.has b.dead n.id
 
-  let visit b n =
-    let _ = b.visited <- SET.add b.visited n.id in
+  let deadend b n =
+    let _ = b.dead <- SET.add b.dead n.id in
     ()
 
   let steps2str (b:buffer) (n:steps) =
-    let id = (if visited b n then "." else "?")^(string_of_int n.id) in
+    let id = (if is_deadend b n then "." else "?")^(string_of_int n.id) in
     let prefix = match b.curr with
     | Some(c) -> if c = n then "["^id^"]" else id
     | None -> id
@@ -71,7 +71,7 @@ struct
     | None -> ()
     in
     let _ = TREE.rmnode b.paths n in
-    let _ = SET.rm b.visited n.id in
+    let _ = SET.rm b.dead n.id in
     b
 
 
@@ -130,7 +130,7 @@ struct
 
   let get_paths (b:buffer) =
     let p = TREE.leaves b.paths in
-    let p = List.filter (fun x -> visited b x = false) p in
+    let p = List.filter (fun x -> is_deadend b x = false) p in
     p
 
   let random_path (b:buffer) =
@@ -142,7 +142,7 @@ struct
 
   let mkbuf goals =
     let g = TREE.make (fun x y -> x.id=y.id) (fun x y -> x = y) in
-    let buf = {paths=g; step_buf=None; cnt=0; curr=None; visited=SET.make (fun x y -> x = y)} in
+    let buf = {paths=g; step_buf=None; cnt=0; curr=None; dead=SET.make (fun x y -> x = y)} in
     let _ = start buf in
     let _ = List.iter (fun x -> add_step buf (SAddGoal x)) goals in
     match buf.step_buf with
