@@ -26,6 +26,7 @@ let float_of_number n = match n with
   | Integer(q) -> float_of_int (q)
   | Decimal(q) -> q
 
+
 let init_utils () =
   let _ = Random.self_init () in
   ()
@@ -39,6 +40,24 @@ let force_conc (type a) (f:a option): a = match f with
   |Some(q) -> q
   |_ -> error "force_conc" "none is disallowed."
 
+module MATH =
+struct
+
+  let round x : float =
+    let v = snd (modf (x +. copysign 0.5 x)) in
+    v
+
+  let float_is_int (x:float) =
+    let xt : float = round x in
+    let diff : float = abs_float(x-.xt) in
+    if diff < 1e-10 then
+      true
+    else
+      false
+
+  let int_of_float x =  int_of_float (round x)
+
+end
 module IO =
 struct
   let save fname str =
@@ -47,6 +66,20 @@ struct
     let _ = close_out oc in
     ()
 
+
+end
+
+module RAND =
+struct
+
+
+  let rand_int n =
+    let i = Random.int(n) in
+    i
+
+  let rand_norm () =
+    let i = Random.float(1.) in
+    i
 
 end
 
@@ -144,12 +177,14 @@ struct
     else
       List.sort (fun x y -> (fn y) - (fn x)) lst
 
-  let max (type a) (fxn: a -> int) (lst : a list) =
+  let max (type a) (fxn: a -> float) (lst : a list) : float*a=
     match lst with
     | h::t ->
-      List.fold_right (fun q (sc,p) ->
+      let sc,v =  List.fold_right (fun q (sc,p) ->
         let nsc = fxn q in
         if sc < nsc then (nsc,q) else (sc,p) ) t (fxn h, h)
+      in
+      (sc,v)
     | [] -> error "max" "cannot take max of empty list."
 
   let fold_i (type a) (type b) (fxn : a -> int -> b -> b) (lst: a list) (init:b) =

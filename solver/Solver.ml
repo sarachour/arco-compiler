@@ -145,6 +145,101 @@ struct
 
 
 
+  let mkio s t kind cmp port prop : (step list)*wireid=
+    let dest = SlnLib.hwport2wire cmp port in
+    match kind with
+    | HNInput ->
+      let inpid = (UNoInput prop) in
+      let inpinst = SlnLib.usecomp t.sln inpid in
+      let _ = SlnLib.usecomp_unmark t.sln inpid inpinst in
+      let use_input = SSolUseNode(inpid,inpinst) in
+      let port = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name inpid) in
+      let port_dangle = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name inpid) in
+      let pwire = (inpid,inpinst,port.name) in
+      let mkconn = SSolAddConn(pwire,dest) in
+      ([use_input; mkconn],(inpid,inpinst,port_dangle.name))
+    | HNOutput ->
+      let outid = (UNoOutput prop) in
+      let outinst = SlnLib.usecomp t.sln outid in
+      let _ = SlnLib.usecomp_unmark t.sln outid outinst in
+      let use_output = SSolUseNode(outid,outinst) in
+      let port = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name outid) in
+      let port_dangle = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name outid) in
+      let pwire = (outid,outinst,port.name) in
+      let mkconn = SSolAddConn(dest,pwire) in
+      ([use_output;mkconn],(outid,outinst,port_dangle.name))
+
+  let mkcopy s t (k1,c1,p1,pr1) (k2,c2,p2,pr2) =
+    []
+
+  let is_trivial g =
+    match g with
+    | UFunction(id,Decimal(_)) -> true
+    | UFunction(id,Integer(_)) -> true
+    | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
+        if prop1 = prop2 then true else false
+    | UFunction(MathId(v),Term(HwId(_))) -> true
+    | UFunction(HwId(v),Term(MathId(_))) -> true
+    | _ -> false
+
+  let get_trivial_step s t g : step list =
+    match g with
+    | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
+        if prop1 = prop2 then
+          let src = SlnLib.hwport2wire c1 v1 in
+          let snk = SlnLib.hwport2wire c2 v2 in
+          [SSolAddConn (src,snk)]
+        else []
+    | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
+        let inps,port = mkio s t (k) c v prop in
+        let lbl = LBindValue(q) in
+        [SSolAddLabel(port,prop,lbl)] @ inps
+
+    | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
+        let inps,port = mkio s t (k) c v prop in
+        let lbl = LBindValue(float_of_int q) in
+        [SSolAddLabel(port,prop,lbl)] @ inps
+
+    | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
+        let inps,port = mkio s t (k) c v prop in
+        let lbl = LBindVar(k,q) in
+        (*let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in*)
+        (*SSolAddLabel(wire,prop,mg)*)
+        [SSolAddLabel(port,prop,lbl)] @ inps
+
+
+    | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
+        let inps,port = mkio s t (k) c v prop in
+        let lbl = LBindVar(k,q) in
+        (*let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in*)
+        [SSolAddLabel(port,prop,lbl)] @ inps
+    | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
+        let tc = () in
+        []
+    | UFunction(HwId(HNTime(cmp,uh)), Term (MathId(MNTime(um))) ) ->
+        let tc = () in
+        []
+    | _ -> []
+
+  let resolve_trivial s t goals =
+    let handle_goal g =
+      if is_trivial g then
+        let _ = SearchLib.add_step t.search (SRemoveGoal g) in
+        let steps = get_trivial_step s t g  in
+        let _ = List.iter (fun x -> let _ = SearchLib.add_step t.search x in ()) steps in
+        ()
+    in
+    let goal_cursor = SearchLib.cursor t.search in
+    if (SET.fold goals (fun x r -> if is_trivial x then r+1 else r) 0) > 0 then
+      let _ = SearchLib.start t.search in
+      let _ = SET.iter goals handle_goal in
+      let trivial_cursor = SearchLib.commit t.search in
+      (*let _ = SearchLib.deadend t.search goal_cursor in*)
+      let _ = SearchLib.move_cursor s t trivial_cursor in
+      trivial_cursor
+    else
+    goal_cursor
+
   let conc_node nid nd rl (assigns:(unid,unid ast) map) iid =
     let sub_el x = match x with
       | Term(id) -> if MAP.has assigns id then Some (MAP.get assigns id) else None
@@ -224,7 +319,11 @@ struct
         | None -> ()
       in
       (*let _ = SearchLib.add_step gtbl.search (SAddNode (UNoConcComp "?", nnodes))  in*)
-      let _ = SearchLib.commit gtbl.search in
+      let cmp_cursor = SearchLib.commit gtbl.search in
+      let _ = SearchLib.move_cursor s gtbl cmp_cursor in
+      let _ = resolve_trivial s gtbl gtbl.goals in
+      (*move cursor back*)
+      let _ = SearchLib.move_cursor s gtbl goal_cursor in
       ()
     in
     let res = SET.fold node.rels unify_rels [] in
@@ -234,10 +333,10 @@ struct
       then
         let _ = SearchLib.rm gtbl.search comp_cursor in
         let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
-        Some(List.length res)
+        None
       else
         let _ = SearchLib.deadend gtbl.search comp_cursor in
-        None
+        Some(List.length res)
         (*)
   let mkmag (s:slvr) (port:unid) (qty:unid) =
     let mq = Shim.unt s qty in
@@ -251,130 +350,7 @@ struct
     | _ -> error "mkmag" "the hardware quantity has to be flat."
   *)
 
-
-  let mkio s t kind cmp port prop : (step list)*wireid=
-    let dest = SlnLib.hwport2wire cmp port in
-    match kind with
-    | HNInput ->
-      let inpid = (UNoInput prop) in
-      let inpinst = SlnLib.usecomp t.sln inpid in
-      let _ = SlnLib.usecomp_unmark t.sln inpid inpinst in
-      let use_input = SSolUseNode(inpid,inpinst) in
-      let port = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name inpid) in
-      let port_dangle = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name inpid) in
-      let pwire = (inpid,inpinst,port.name) in
-      let mkconn = SSolAddConn(pwire,dest) in
-      ([use_input; mkconn],(inpid,inpinst,port_dangle.name))
-    | HNOutput ->
-      let outid = (UNoOutput prop) in
-      let outinst = SlnLib.usecomp t.sln outid in
-      let _ = SlnLib.usecomp_unmark t.sln outid outinst in
-      let use_output = SSolUseNode(outid,outinst) in
-      let port = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name outid) in
-      let port_dangle = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name outid) in
-      let pwire = (outid,outinst,port.name) in
-      let mkconn = SSolAddConn(dest,pwire) in
-      ([use_output;mkconn],(outid,outinst,port_dangle.name))
-
-  let mkcopy s t (k1,c1,p1,pr1) (k2,c2,p2,pr2) =
-    []
-
-  let is_trivial g =
-    match g with
-    | UFunction(id,Decimal(_)) -> true
-    | UFunction(id,Integer(_)) -> true
-    | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
-        if prop1 = prop2 then true else false
-    | UFunction(MathId(v),Term(HwId(_))) -> true
-    | UFunction(HwId(v),Term(MathId(_))) -> true
-    | _ -> false
-
-  let get_trivial_step s t g : step list =
-    match g with
-    | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
-        if prop1 = prop2 then
-          let src = SlnLib.hwport2wire c1 v1 in
-          let snk = SlnLib.hwport2wire c2 v2 in
-          [SSolAddConn (src,snk)]
-        else []
-    | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
-        let inps,port = mkio s t (k) c v prop in
-        let lbl = LBindValue(q) in
-        [SSolAddLabel(port,prop,lbl)] @ inps
-
-    | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
-        let inps,port = mkio s t (k) c v prop in
-        let lbl = LBindValue(float_of_int q) in
-        [SSolAddLabel(port,prop,lbl)] @ inps
-
-    | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
-        let inps,port = mkio s t (k) c v prop in
-        let lbl = LBindVar(k,q) in
-        (*let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in*)
-        (*SSolAddLabel(wire,prop,mg)*)
-        [SSolAddLabel(port,prop,lbl)] @ inps
-
-
-    | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
-        let inps,port = mkio s t (k) c v prop in
-        let lbl = LBindVar(k,q) in
-        (*let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in*)
-        [SSolAddLabel(port,prop,lbl)] @ inps
-    | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
-        let tc = () in
-        []
-    | UFunction(HwId(HNTime(cmp,uh)), Term (MathId(MNTime(um))) ) ->
-        let tc = () in
-        []
-    | _ -> []
-
-  let path_is_useless v n =
-    let build_gl (x:step) (adds,reds) = match x with
-      | SAddGoal(g) -> let gl = Shim.goalglbl2lcl g in
-        if is_trivial g = false then (gl::adds, reds) else (adds,reds)
-      | SRemoveGoal(g) -> let gl = Shim.goalglbl2lcl g in
-        if is_trivial g = false then (adds, gl::reds) else (adds,reds)
-      | _ -> (adds,reds)
-    in
-    let judge adds reds =
-      let cycle_set = List.filter (fun q -> LIST.count adds q > 1) adds  in
-      let red_set = List.filter (fun q -> LIST.count adds q > 1 ) reds  in
-      match cycle_set,red_set with
-      | [],[] -> false
-      | _,[] ->
-        let _ = Printf.printf "cycle detected\n" in
-        true
-      | [],_ ->
-        let _ = Printf.printf "redundent pattern detected\n" in
-        true
-      | _,_ ->
-        let _ = Printf.printf "both cycle and redundent pattern detected\n" in
-        true
-    in
-    let icgl = ([],[]) in
-    let adds,reds  = SearchLib.fold_path v.search n build_gl icgl in
-    judge adds reds
-
-  let resolve_trivial s t goals =
-    let handle_goal g =
-      if is_trivial g then
-        let _ = SearchLib.add_step t.search (SRemoveGoal g) in
-        let steps = get_trivial_step s t g  in
-        let _ = List.iter (fun x -> let _ = SearchLib.add_step t.search x in ()) steps in
-        ()
-    in
-    let goal_cursor = SearchLib.cursor t.search in
-    if (SET.fold goals (fun x r -> if is_trivial x then r+1 else r) 0) > 0 then
-      let _ = SearchLib.start t.search in
-      let _ = SET.iter goals handle_goal in
-      let trivial_cursor = SearchLib.commit t.search in
-      (*let _ = SearchLib.deadend t.search goal_cursor in*)
-      let _ = SearchLib.move_cursor s t trivial_cursor in
-      trivial_cursor
-    else
-    goal_cursor
-
-    (*apply all possible components*)
+  (*apply all possible components*)
   let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
@@ -396,15 +372,86 @@ struct
     else ()
 
 
-  let rec get_next_path s v =
-    match SearchLib.random_path v.search with
+  let path_is_useless v n =
+    let build_gl (x:step) (adds,reds) = match x with
+      | SAddGoal(g) -> let gl = Shim.goalglbl2lcl g in
+        if is_trivial g = false then (gl::adds, reds) else (adds,reds)
+      | SRemoveGoal(g) -> let gl = Shim.goalglbl2lcl g in
+        if is_trivial g = false then (adds, gl::reds) else (adds,reds)
+      | _ -> (adds,reds)
+    in
+    let judge adds reds =
+      let cycle_set = List.filter (fun q -> LIST.count adds q > 1) reds  in
+      let red_set = List.filter (fun q -> LIST.count adds q > 1 ) reds  in
+      let print set =
+        let str = List.fold_right (fun x r -> r^(goal2str x)^"\n") set "" in
+        Printf.printf "%s\n" str
+      in
+      match cycle_set,red_set with
+      | [],[] -> false
+      | _,[] ->
+        let _ = print cycle_set in
+        let _ = Printf.printf "cycle detected\n" in
+        true
+      | [],_ ->
+        let _ = print red_set in
+        let _ = Printf.printf "redundent pattern detected\n" in
+        true
+      | _,_ ->
+        let _ = print cycle_set in
+        let _ = Printf.printf "cycle detected\n" in
+        let _ = print red_set in
+        let _ = Printf.printf "redundent pattern detected\n" in
+        true
+    in
+    let icgl = ([],[]) in
+    let adds,reds  = SearchLib.fold_path v.search n build_gl icgl in
+    judge adds reds
+
+  let select_best_path (v:gltbl) (cnode:steps option) : steps option =
+    let ngoals (s:steps) =
+      SearchLib.fold_path v.search s (fun x r ->
+        match x with
+        | SAddGoal(_) -> r+.1.
+        | SRemoveGoal(_) -> r-.1.
+        | _ -> r+.0.1
+        ) 0.
+    in
+    let score_path (s:steps) : float =
+      let score = ngoals s in
+      match cnode with
+      | Some(n) ->
+        if s = n && RAND.rand_norm() < 0.99 then
+          100000.
+        else score
+      | None -> score
+    in
+    let paths = SearchLib.get_paths v.search in
+    let _ = Printf.printf "# Paths Left: %d\n" (List.length paths) in
+    match paths with
+    | [] -> None
+    | h::t ->
+      let _,best = LIST.max (fun x -> score_path x) paths in
+      Some(best)
+
+
+
+
+
+  let rec get_next_path s v c =
+    match select_best_path v c with
     | Some(p) ->
       let depth =  List.length (TREE.get_path v.search.paths p) in
       if depth >= s.max_depth
         then
           let _ = Printf.printf "hit max depth for path\n" in
           let _ = SearchLib.deadend v.search p in
-          get_next_path s v
+          match c with
+          |Some(q) ->
+            if p = q then get_next_path s v None
+            else get_next_path s v (Some q)
+          | None ->
+            get_next_path s v None
         else
           Some (p)
     | None ->
@@ -419,8 +466,8 @@ struct
 
       (*apply the current step in the search algorithm*)
       (*choose a goal in the table*)
-      let move_to_next () =
-        match get_next_path s v with
+      let move_to_next c =
+        match get_next_path s v c with
           | Some(p) ->
             let _ = SearchLib.move_cursor s v p in
             true
@@ -431,7 +478,7 @@ struct
         (*mark this path as visited*)
         let goal_cursor = SearchLib.cursor v.search in
         let _ = SearchLib.deadend v.search goal_cursor in
-        let succ = move_to_next () in
+        let succ = move_to_next None in
         if succ = false
           then
             None
@@ -453,17 +500,15 @@ struct
       in
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
-        let upd_cursor = resolve_trivial s v v.goals in
         (*is the connectivity consistent*)
         if SET.size v.goals = 0 then
           let res = no_goals_left() in
           res
         else
           (*check for repeated patterns*)
-          if path_is_useless v upd_cursor then
-            let _ = Printf.printf "CYCLE DETECTED\n" in
-            let _ = SearchLib.deadend v.search upd_cursor in
-            let succ = move_to_next () in
+          if path_is_useless v goal_cursor then
+            let _ = SearchLib.deadend v.search goal_cursor in
+            let succ = move_to_next (None) in
             if succ = false then None else
               let res = solve _s v in
               res
@@ -476,7 +521,7 @@ struct
             let _ = mint "c" in
             let _ = apply_nodes s v g in
             let _ = musr () in
-            let succ = move_to_next () in
+            let succ = move_to_next (Some goal_cursor) in
             (*if could not move to next, exit*)
             if succ = false then None else
               let res = solve _s v in

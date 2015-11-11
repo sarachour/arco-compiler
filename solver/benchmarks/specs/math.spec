@@ -48,8 +48,15 @@ comp vpow
 
   rel V(Z) = V(X)^(V(Q))
   spice vpow X X0 Z
+end
 
+comp vinv
+  input X where V:mV
+  input R where V:mV
+  output Z where V:mV
 
+  rel V(Z) = 1/(1+ (V(X)^V(R)) )
+  spice vinv X Z
 end
 
 digital input V
@@ -72,7 +79,9 @@ schematic
   inst vadd2 : 4
   inst vmul2 : 4
   inst vint : 4
-  inst vpow : 2
+  inst vpow : 5
+  inst vinv : 3
+
   inst input V : 10
   inst output V : 3
 
@@ -80,11 +89,13 @@ schematic
   conn vmul2 -> *
   conn vint -> *
   conn vpow -> *
+  conn vinv -> *
 
   conn input(V).O -> vadd2
   conn input(V).O -> vmul2
   conn input(V).O -> vint
   conn input(V).O -> vpow
+  conn input(V).O -> vinv
 
   conn * -> output(V).X
 

@@ -89,8 +89,8 @@ struct
       match a with
       | Term(x) -> fn x
       | OpN(Func(name),lst) ->name^"("^(list2str lst (opn2str (Func(name))  ))^")"
-      | OpN(v,lst) -> list2str lst (opn2str v)
-      | Op2(v,a,b) -> (ast2str a fn)^(op22str v)^(ast2str b fn)
+      | OpN(v,lst) -> "("^(list2str lst (opn2str v))^")"
+      | Op2(v,a,b) -> "("^(ast2str a fn)^(op22str v)^(ast2str b fn)^")"
       | Op1(v,a) -> (op12str v)^"("^(ast2str a fn)^")"
       | Deriv(a,v) -> "deriv("^(ast2str a fn)^","^(ast2str v fn)^")"
       | Decimal(d) -> string_of_float d
@@ -193,7 +193,7 @@ struct
         | Op2(op,e1,e2) -> Op2(op2_ast2sym op, _tosym e1, _tosym e2)
         | OpN(op,elst) -> let nlst = List.map (fun x -> _tosym x) elst in
           OpN(opn_ast2sym op, nlst)
-        | Decimal(v) -> Decimal(v)
+        | Decimal(v) -> if MATH.float_is_int v then Integer(MATH.int_of_float v) else Decimal(v)
         | Integer(v) -> Integer(v)
       in
         _tosym x
@@ -218,7 +218,7 @@ struct
         in
         match e with
         | Symbol(v) -> Term(fn v)
-        | Decimal(v) -> Decimal(v)
+        | Decimal(v) -> if MATH.float_is_int v then Integer(MATH.int_of_float v) else Decimal(v)
         | Integer(v) -> Integer(v)
         | Op1(op,e1) -> Op1((op1_sym2ast op), _fromsym e1)
         | Op2(op,e1,e2) -> Op2(op2_sym2ast op, _fromsym e1, _fromsym e2)
@@ -296,6 +296,9 @@ struct
       let sols : (symvar,symexpr) map set = SET.make (fun x y -> x = y) in
       let rec solve wcs depth =
         if (SET.size sols) = n || depth == max_depth then () else
+        (*let _ = SymCaml.set_debug env true in
+        let templ = SymCaml.simpl env templ in
+        let cand = SymCaml.simpl env cand in*)
         let res = SymCaml.pattern env templ cand in
         match res with
         | Some(r) ->

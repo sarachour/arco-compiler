@@ -27,6 +27,6 @@ assume mag U in (0,1) : mol
 assume mag V in (0,1) : mol
 assume mag IPTG in (0,1) : mol
 
-%rel umodif = U/((1+IPTG/K)^nu)
-rel deriv(U,t) =  (Cu*a1)/(1+V^beta) - Cu*kdeg*U with U(0) = 0.35
-%rel deriv(V,t) = (Cv*a2)/(1 + umodif^gamma)-Cv*kdeg*V with V(0) = 0.5
+rel umodif = U/((1+IPTG/K)^nu)
+rel deriv(U,t) =  (Cu*a1)/(1+(V^beta)) - Cu*kdeg*U with U(0) = 0.35
+rel deriv(V,t) = (Cv*a2)/(1 + (umodif^gamma))-Cv*kdeg*V with V(0) = 0.5
