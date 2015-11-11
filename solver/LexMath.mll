@@ -14,7 +14,7 @@ let comment = '%'[^'\n']*
 let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
 let str = '"' [^ '"']* '"'
 let decimal = '-'? ['0'-'9']*'.'['0'-'9']+
-let integer = '-'? ['0'-'9']+
+let integer = '-'? ['0'-'9']+'.'?
 let op = ['[' ']' '+' '-' '*' '^' '.' '/']+
 
 rule env = parse

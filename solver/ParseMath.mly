@@ -17,6 +17,8 @@
     let _ = flush_all () in
     raise (ParseMathError(s,n))
 
+  let mkrng (m,x) =
+    (float_of_number m,float_of_number x)
 %}
 
 %token EOF EOL COLON QMARK EQ OPARAN CPARAN COMMA
@@ -34,7 +36,7 @@
 %type <mid ast> expr
 %type <meid ast> errexpr
 %type <unt> typ
-%type <float> number
+%type <number> number
 %type <unit> seq
 %type <unit> st
 %type <Math.menv option> env
@@ -84,8 +86,8 @@ errexpr:
     res
   }
 number:
-  | DECIMAL   {let e = $1 in e}
-  | INTEGER   {let e = $1 in float(e)}
+  | DECIMAL   {let e = $1 in Decimal(e)}
+  | INTEGER   {let e = $1 in Integer(e)}
 
 typ:
   | sexpr {UExpr(string_to_ast $1)}
@@ -160,8 +162,8 @@ st:
     dat.units <- UnitLib.define dat.units t
   }
   | LET number TOKEN EQ number TOKEN EOL  {
-    let u1 = $3 and n1 = $2 in
-    let u2 = $6 and n2 = $5 in
+    let u1 = $3 and n1 = float_of_number $2 in
+    let u2 = $6 and n2 = float_of_number $5 in
     dat.units <- UnitLib.mkrule (dat.units) u1 n1 u2 n2
   }
   | INPUT TOKEN COLON typ EOL {
@@ -188,7 +190,7 @@ st:
   | PARAM TOKEN COLON typ EQ number EOL {
     let name : string = $2 in
     let typ : unt = $4 in
-    let vl : float = $6 in
+    let vl : number = $6 in
     MathLib.mkparam dat name vl typ;
     ()
   }
@@ -199,12 +201,12 @@ st:
     ()
   }
   | ASSUME MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let r = ($6,$8) and name = $3 and c = MathLib.cstrs dat in
+    let r = mkrng($6,$8) and name = $3 and c = MathLib.cstrs dat in
     let _ = MathCstrLib.mkrng c name MCAssume r in
     ()
   }
   | ENSURE MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let r = ($6,$8) and name = $3 and c = MathLib.cstrs dat in
+    let r = mkrng($6,$8) and name = $3 and c = MathLib.cstrs dat in
     let _ = MathCstrLib.mkrng c name MCEnsure r in
     ()
   }

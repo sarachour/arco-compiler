@@ -12,7 +12,7 @@ let error n s = raise (MathException (n^": "^s))
 
 type mid =
   | MNVar of mkind*string*unt
-  | MNParam of string*float*unt
+  | MNParam of string*number*unt
   | MNTime of unt
 
 type mrel = MRState of mid*(mid ast)*mid | MRFunction of mid*(mid ast) | MRNone
@@ -44,8 +44,8 @@ sig
   val mkvar : menv -> string -> mkind -> unt -> menv
   val mktime : menv -> string -> unt -> menv
   val getvar : menv -> string -> mvar
-  val mkparam : menv -> string -> float -> unt -> menv
-  val mkstrel : menv -> string -> mid ast -> float -> menv
+  val mkparam : menv -> string -> number -> unt -> menv
+  val mkstrel : menv -> string -> mid ast -> number -> menv
   val mkrel : menv -> string -> mid ast -> menv
 
 
@@ -72,7 +72,7 @@ struct
     | MLocal -> "local"
 
   let rel2str (v:mrel) : string = match v with
-    | MRState(l,r,MNParam(_,ic,_)) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_float ic)
+    | MRState(l,r,MNParam(_,ic,_)) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_number ic)
     | MRFunction(l,r) -> (ASTLib.ast2str r (fun x -> mid2str x))
     | MRNone -> "(none)"
 

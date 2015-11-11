@@ -10,7 +10,7 @@ type propid = string
 type hevid =
   | HENPort of hwvkind*compid*string*propid*untid
   | HENPortErr of hwvkind*compid*string*propid*untid
-  | HENParam of string*float*unt
+  | HENParam of string*number*unt
   | HENTime of untid
 
 type herel =
@@ -44,7 +44,7 @@ type hwcstrs = {
 (*General Data*)
 type hwvid =
   | HNPort of hwvkind*compid*string*propid*untid
-  | HNParam of compid*string*float*unt
+  | HNParam of compid*string*number*unt
   | HNTime of compid*unt
 
 type hwrel =
@@ -55,7 +55,7 @@ type hwrel =
 
 type hwtype =
   | HPortType of hwvkind*((propid,untid) map)
-  | HParamType of float*unt
+  | HParamType of number*unt
 
 type hwvar = {
   name: string;

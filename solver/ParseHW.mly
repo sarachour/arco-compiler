@@ -146,7 +146,7 @@
 %type <hevid ast> errexpr
 %type <unt> typ
 %type <(propid*untid) list> proptyplst
-%type <float> number
+%type <Util.number> number
 
 %type <index> ind
 %type <index list> inds
@@ -191,11 +191,11 @@ sexpr:
   | sexpr CPARAN       {let rest = $1 in rest^")"}
 
 number:
-  | DECIMAL   {let e = $1 in e}
-  | INTEGER   {let e = $1 in float(e)}
+  | DECIMAL   {let e = $1 in Decimal(e)}
+  | INTEGER   {let e = $1 in Integer(e)}
 
 rng:
-  | OPARAN number COMMA number CPARAN {($2,$4)}
+  | OPARAN number COMMA number CPARAN {(float_of_number $2,float_of_number $4)}
 
 errexpr:
   | sexpr {
@@ -373,7 +373,7 @@ digital:
   | digital EOL {()}
   | digital ASSUME SAMPLE expr EVERY number TOKEN EOL {
     let e = $4 in
-    let n = $6 in
+    let n = float_of_number $6 in
     let u = $7 in
     match e with
     |Term(HNPort(_,c,v,p,_)) -> let cn = HwLib.compid2str c in
@@ -443,8 +443,8 @@ comp:
     ()
   }
   | comp ASSUME TIME number TOKEN EQ number TOKEN EOL {
-      let lv :float = $4 and ln :string = $5 in
-      let rv : float = $7 and rn : string = $8 and cname = get_cmpname() in
+      let lv :float = float_of_number $4 and ln :string = $5 in
+      let rv :float = float_of_number $7 and rn : string = $8 and cname = get_cmpname() in
       let ratio = rv /. lv in
       let tname,_ =  HwLib.gettime dat in
       if ln = tname then
@@ -554,8 +554,8 @@ st:
     dat.units <- UnitLib.define dat.units t
   }
   | LET number TOKEN EQ number TOKEN EOL  {
-    let u1 = $3 and n1 = $2 in
-    let u2 = $6 and n2 = $5 in
+    let u1 = $3 and n1 = float_of_number $2 in
+    let u2 = $6 and n2 = float_of_number $5 in
     dat.units <- UnitLib.mkrule (dat.units) u1 n1 u2 n2
   }
   | PROP TOKEN COLON strlist EOL {

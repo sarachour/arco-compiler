@@ -81,7 +81,7 @@ struct
     let type2str v =
       match v with
       | HPortType(knd,tps) -> "port "^(pkind2str knd)
-      | HParamType(v,t) -> "param : "^(UnitLib.unit2str t)^" = "^(string_of_float v)
+      | HParamType(v,t) -> "param : "^(UnitLib.unit2str t)^" = "^(string_of_number v)
     in
     let print_var (x:hwvar) =
       let _ = Printf.printf "   %s of %s" x.name (type2str x.typ) in

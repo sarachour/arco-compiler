@@ -64,7 +64,7 @@ struct
     ASTLib.map a mp
 
 
-  let unid2sym cmpname ciid uid is_templ cnv= match uid, is_templ with
+  let unid2wcsym cmpname ciid uid is_templ cnv= match uid, is_templ with
   | (HwId(HNPort(k,HCMLocal(c),port,prop,u)), true) ->
     error "unid2sym" ("no non-concretized port of name "^c^"."^port^" allowed.")
   | (HwId(HNPort(k,HCMGlobal(c,i),port,prop,u)),true) -> if i = ciid && cmpname = c
@@ -72,6 +72,12 @@ struct
     else SymbolVar(cnv uid)
   | (HwId(v),_) -> SymbolVar(cnv uid)
   | (MathId(v),_) -> SymbolVar(cnv uid)
+
+  let unid2sym cmpname ciid uid cnv= match uid with
+  | HwId(HNPort(k,HCMLocal(c),port,prop,u)) ->
+    error "unid2sym" ("no non-concretized port of name "^c^"."^port^" allowed.")
+  | HwId(v) -> SymbolVar(cnv uid)
+  | MathId(v) -> SymbolVar(cnv uid)
 
   let max4unodeid s id =
     let ginst x = HwCstrLib.getinsts s.hw.cstr x in
@@ -179,6 +185,10 @@ struct
   let urel2str uid = match uid with
   | UFunction(l,r) -> (unid2str l)^"="^(ASTLib.ast2str r unid2str)
   | UState(l,r,i,t) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)
+
+  let uast2str uast : string=
+    let conv (x:unid) : string = unid2str x in
+    ASTLib.ast2str uast conv
 
   let conc_node node assigns =
   let sid id : unid=

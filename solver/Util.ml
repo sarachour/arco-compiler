@@ -16,6 +16,15 @@ type ('a,'b) map = ('a, 'b) Hashtbl.t
 
 type ('a,'b) either = Left of 'a | Right of 'b
 
+type number = Integer of int | Decimal of float
+
+let string_of_number n = match n with
+  | Integer(q) -> string_of_int(q)
+  | Decimal(q) -> string_of_float(q)
+
+let float_of_number n = match n with
+  | Integer(q) -> float_of_int (q)
+  | Decimal(q) -> q
 
 let init_utils () =
   let _ = Random.self_init () in
@@ -37,6 +46,7 @@ struct
     let _ = Printf.fprintf oc "%s\n" str in
     let _ = close_out oc in
     ()
+
 
 end
 

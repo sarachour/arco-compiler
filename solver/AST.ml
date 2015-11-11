@@ -39,6 +39,10 @@ type symdecl =
   | WildcardVar of symvar*((symexpr) list)
   | SymbolVar of symvar
 
+let ast_of_number (n:number) : 'a ast =
+    match n with
+    | Decimal(q) -> Decimal(q)
+    | Integer(q) -> Integer(q)
 
 
 exception ASTException of (string)
@@ -56,6 +60,7 @@ module ASTLib : sig
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
     val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> ('a->symvar)-> symdecl) -> bool
     val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> bool-> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
+    val simpl : ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a-> ('a -> symvar)-> symdecl) -> 'a ast
     val sub : ('a ast) -> (('a,'a ast) map) -> 'a ast
 end =
 struct
@@ -268,6 +273,12 @@ struct
       let rhe = to_symcaml e2 cnv in
       SymCaml.eq env lhe rhe
 
+    let simpl (type a) (e1:a ast) (cnv:a->symvar) (icnv:symvar -> a)  (decl:a->(a->symvar)->symdecl) : a ast =
+      let env,_,_ = mkenv [e1] cnv (fun i x c -> decl x c) in
+      let lhe = to_symcaml e1 cnv in
+      let r = SymCaml.simpl env lhe in
+      let res = from_symcaml r icnv in
+      res
 
     let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl) (n:int) =
       let max_depth = 4 in

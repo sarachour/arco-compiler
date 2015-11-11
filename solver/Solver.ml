@@ -76,19 +76,33 @@ struct
     internal_menu_handle,user_menu_handle
 
 
+  let goal2str g = UnivLib.urel2str g
+
   let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=100; cnt=0;}
 
   let mktbl s : gltbl =
     (* add all relations to the tableau of goals. *)
     let rm_pars x : unid ast option =
       match x with
-      | Term(HwId(HNParam(c,n,v,p))) -> Some (Decimal (v))
-      | Term(MathId(MNParam(n,v,u))) ->Some (Decimal(v))
+      | Term(HwId(HNParam(c,n,v,p))) -> Some (ast_of_number (v))
+      | Term(MathId(MNParam(n,v,u))) ->Some (ast_of_number (v))
       | _ -> None
+    in
+
+    let simpl v : unid ast =
+      let declunid = Shim.unid2sym "N/A" (-1) in
+      let _ = Printf.printf "simplify: %s -> " (UnivLib.uast2str v) in
+      let vq = ASTLib.simpl v UnivLib.unid2var (UnivLib.var2unid s) declunid in
+      let _ = Printf.printf "%s\n" (UnivLib.uast2str vq) in
+      vq
     in
     let math2goal (x:mvar) =
       let m2u = UnivLib.mid2unid in
-      let tf x = ASTLib.trans (ASTLib.map x m2u) rm_pars in
+      let tf x =
+        let t = ASTLib.trans (ASTLib.map x m2u) rm_pars in
+        let tsimpl = simpl t in
+        tsimpl
+      in
       match x.rel with
       | MRFunction(l,r) -> UFunction(m2u l, tf r)
       | MRState(l,r,x) ->
@@ -130,7 +144,6 @@ struct
     tbl
 
 
-  let goal2str g = UnivLib.urel2str g
 
   let conc_node nid nd rl (assigns:(unid,unid ast) map) iid =
     let sub_el x = match x with
@@ -168,12 +181,13 @@ struct
     let comp_cursor = SearchLib.commit gtbl.search in
     (*use node*)
     let _ = SearchLib.move_cursor s gtbl comp_cursor in
-    let declunid = Shim.unid2sym node.name inst_id in
+    (*declare event*)
+    let declwcunid = Shim.unid2wcsym node.name inst_id in
     (*
       this tries to find a set of solutions for the particular node. Each of these solutions is a branch.
     *)
     let unify_node_with_goal (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list =
-      let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declunid 5 in
+      let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid 5 in
       match res with
       | Some(res) -> res
       | None ->  []
@@ -203,7 +217,7 @@ struct
     let add_sln_to_search (gl:goal) ((rl,assigns):(urel*(unid,unid ast) map)) =
       let _ = SearchLib.start gtbl.search in
       let _ = SearchLib.add_step gtbl.search (SRemoveGoal gl) in
-      let _ = MAP.iter assigns (fun k v -> SearchLib.add_step gtbl.search (SAddGoal (UFunction(k,v)))) in
+      let _ = MAP.iter assigns (fun k v -> SearchLib.add_step gtbl.search (SAddGoal (UFunction(k, v)))) in
       (*concretize other goals in this particular node.*)
       let _ = match conc_node node_id node rl assigns inst_id with
         | Some(cnid,crels) -> let _ = SearchLib.add_step gtbl.search (SAddNode (cnid,crels)) in ()
@@ -224,7 +238,7 @@ struct
       else
         let _ = SearchLib.visit gtbl.search comp_cursor in
         ()
-
+        (*)
   let mkmag (s:slvr) (port:unid) (qty:unid) =
     let mq = Shim.unt s qty in
     let mrng = Shim.mag s qty in
@@ -235,10 +249,8 @@ struct
     | (_,None,_) -> error "mkmag" ("quantity "^(UnivLib.unid2str port)^" must have range")
     | (_,_,None) -> error "mkmag" ("quantity "^(UnivLib.unid2str qty)^" must have range")
     | _ -> error "mkmag" "the hardware quantity has to be flat."
+  *)
 
-  let rev k = match k with
-  | HNInput -> HNOutput
-  | HNOutput -> HNInput
 
   let mkio s t kind cmp port prop : (step list)*wireid=
     let dest = SlnLib.hwport2wire cmp port in

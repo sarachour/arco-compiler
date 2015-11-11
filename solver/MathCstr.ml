@@ -7,7 +7,7 @@ open Common
 type meid =
   | MEVar of mkind*string*unt
   | MEError of mkind*string*unt
-  | MEParam of string*float*unt
+  | MEParam of string*number*unt
   | METime of unt
 
 type merel =
@@ -53,7 +53,7 @@ struct
     let id2str e = match e with
       |MEVar(k,s,i)->s
       |MEError(k,s,i)->"E("^s^")"
-      |MEParam(s,f,i) -> string_of_float f
+      |MEParam(s,f,i) -> string_of_number f
       |METime(i) -> "t"
     in
     let ckind2str k = match k with
