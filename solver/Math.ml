@@ -170,6 +170,14 @@ struct
           let lu = (getvar e name).typ in
           let lk = getkind ((getvar e name).typ) in
           let lhs : mid ast= (Deriv(Term(lu),Term(tu))) in
+          if true then
+            let icname = (name^"_0") in
+            let ictype = mid2unit lu in
+            let _ = mkparam e icname ic ictype in
+            let _ = dat.rel <- MRState(lu,rhs,MNParam(icname,ic,ictype)) in
+            e
+          else e
+          (*
           let tr : untid ast = UnitTypeChecker.typeof rhs mid2unit in
           let tl : untid ast= UnitTypeChecker.typeof lhs mid2unit in
           if UnitTypeChecker.typecheck tl tr then
@@ -180,7 +188,8 @@ struct
             e
           else
             error "mkstrel" ("variable "^name^" doesn't type check with expression: "^
-              (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
+              (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr))
+          *)
         | None ->
           error "mkstrel"  "time variable not defined anywhere."
 
@@ -193,6 +202,12 @@ struct
       if dat.rel <> MRNone then
         error "mkrel" ("variable "^name^" already has relation defined.")
       else
+        if true then
+          let mid = (getvar e name).typ in
+          let _ = dat.rel <- MRFunction(mid,rhs) in
+          e
+        else e
+        (*
         let get_type x = getunit e x in
         let mid = (getvar e name).typ in
         let tl = UnitTypeChecker.typeof (Term(mid)) mid2unit in
@@ -203,4 +218,5 @@ struct
         else
           error "mkrel"  ("variable "^name^" doesn't type check with expression: "^
             (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
+        *)
 end

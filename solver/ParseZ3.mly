@@ -20,6 +20,7 @@
 %token <int> INTEGER
 %token <bool> BOOL
 
+%type <unit> errorst
 %type <Z3Data.z3assign> assignm
 %type <Z3Data.z3assign list> assignms
 %type <Z3Data.z3model> model
@@ -30,6 +31,9 @@
 
 %%
 
+
+errorst:
+  | OPARAN ERROR STRING CPARAN {()}
 
 assignm:
   | OPARAN DEFINEFUN TOKEN OPARAN CPARAN BOOLTYPE BOOL CPARAN {
@@ -44,9 +48,6 @@ assignm:
   }
 
 
-errorst:
-  | error OPARAN ERROR STRING CPARAN {()}
-
 assignms:
   | assignm          {
     let h = $1 in [h]
@@ -59,8 +60,23 @@ assignms:
 model:
   | OPARAN MODEL assignms CPARAN {$3}
 
+sat:
+  | SAT           {true}
+  | UNSAT         {false}
+
 stmts:
-  | sat           {{sat=$1;model=None}}
+  | errorst {
+    {sat=false;model=None}
+  }
+  | sat           {
+    {sat=$1;model=None}
+  }
+
+  | stmts sat     {
+    let q = $1 in
+    let s = $2 in
+    {sat=s; model=q.model}
+  }
   | stmts model   {
     let x = $1 in
     let mdl = $2 in
@@ -68,12 +84,11 @@ stmts:
     x
   }
   | stmts errorst {
-    $1
+    let q = $1 in
+    q
   }
 
-sat:
-  | SAT           {true}
-  | UNSAT         {false}
+
 
 
 env :

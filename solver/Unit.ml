@@ -54,8 +54,8 @@ struct
   let unit2str u =
     match u with
     | UExpr(u) -> ASTLib.ast2str u (fun x -> x)
-    | UNone -> "_"
-    | UVariant  -> "*"
+    | UNone -> "%"
+    | UVariant  -> "?"
 
   let mkrule (e:unt_env) (u1:untid) (n1:float) (u2:untid) (n2:float) =
     let _ = GRAPH.mkedge (e.graph) u1 u2 (n2/.n1) in
@@ -117,8 +117,8 @@ struct
       | OpN(Add, lst) -> Some(tclist lst)
       | OpN(Sub,lst) -> Some(tclist lst)
       | Deriv(u1,u2) -> Some(Op2(Div,u1,u2))
-      | Integer(_) -> Some(Term(tvar))
-      | Decimal(_) -> Some(Term(tvar))
+      | Integer(_) -> (*Some(Term(tvar))*) Some(Integer(1))
+      | Decimal(_) -> (*Some(Term(tvar))*) Some(Integer(1))
       | _ -> None
     in
     let expr : untid ast= ASTLib.expand expr get_expr in

@@ -29,6 +29,52 @@ may additionally contain any pertinent error and magnitude mappings
 
 module SolveLib =
 struct
+  let goals2str (g:goal set) =
+    let goal2str g v =
+      v^"\n"^(UnivLib.goal2str g)
+    in
+    SET.fold g goal2str ""
+
+
+  let mkmenu (s:slvr) (v:gltbl) (g:goal option) =
+    let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
+    let rec menu_handle inp on_finished=
+      if STRING.startswith inp "t" then
+        let _ = Printf.printf "\n%s\n\n" (SearchLib.buf2str v.search) in
+        let _ = on_finished() in
+        ()
+      else if STRING.startswith inp "s" then
+        let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
+        let _ = on_finished() in
+        ()
+      else if STRING.startswith inp "goto" then
+        let _ = match STRING.split inp " " with
+        | [_;id] ->
+          let nid = int_of_string id in
+          let _ = SearchLib.move_cursor s v (SearchLib.id2node v.search nid) in
+          ()
+        | _ -> ()
+        in
+        let _ = on_finished() in
+        ()
+      else if STRING.startswith inp "g" then
+        let _ = Printf.printf "==== Goals ===" in
+        let _ = Printf.printf "%s\n" (goals2str v.goals) in
+        let _ = Printf.printf "============\n\n" in
+        ()
+      else if STRING.startswith inp "c" then
+        let _ = match g with
+          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g)  in ()
+          | None -> Printf.printf "<no goal>"
+        in
+        ()
+      else
+        ()
+    in
+    let internal_menu_handle x = menu_handle x (fun () -> ()) in
+    let rec user_menu_handle () = menu s (fun x -> menu_handle x user_menu_handle) menu_desc in
+    internal_menu_handle,user_menu_handle
+
 
   let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=100; cnt=0;}
 
@@ -304,11 +350,6 @@ struct
     let _ = SearchLib.visit tbl.search goal_cursor in
     ()
 
-  let goals2str (g:goal set) =
-    let goal2str g v =
-      v^"\n"^(UnivLib.goal2str g)
-    in
-    SET.fold g goal2str ""
 
   let rec get_next_path s v =
     match SearchLib.random_path v.search with
@@ -325,44 +366,6 @@ struct
       let _ = Printf.printf "no valid paths left\n" in
       None
 
-  let mkmenu (s:slvr) (v:gltbl) (g:goal option) =
-    let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
-    let rec menu_handle inp on_finished=
-      if STRING.startswith inp "t" then
-        let _ = Printf.printf "\n%s\n\n" (SearchLib.buf2str v.search) in
-        let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "s" then
-        let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
-        let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "goto" then
-        let _ = match STRING.split inp " " with
-        | [_;id] ->
-          let nid = int_of_string id in
-          let _ = SearchLib.move_cursor s v (SearchLib.id2node v.search nid) in
-          ()
-        | _ -> ()
-        in
-        let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "g" then
-        let _ = Printf.printf "==== Goals ===" in
-        let _ = Printf.printf "%s\n" (goals2str v.goals) in
-        let _ = Printf.printf "============\n\n" in
-        ()
-      else if STRING.startswith inp "c" then
-        let _ = match g with
-          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n" (UnivLib.goal2str g)  in ()
-          | None -> Printf.printf "<no goal>"
-        in
-        ()
-      else
-        ()
-    in
-    let internal_menu_handle x = menu_handle x (fun () -> ()) in
-    let rec user_menu_handle () = menu s (fun x -> menu_handle x user_menu_handle) menu_desc in
-    internal_menu_handle,user_menu_handle
 
   let rec solve (_s:slvr ref) (v:gltbl) : spicedoc option=
     let s = REF.dr _s in
