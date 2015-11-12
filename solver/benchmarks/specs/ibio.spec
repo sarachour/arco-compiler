@@ -31,19 +31,19 @@ end
 
 comp mm
 
-  input Etot where I:mA
-  input Stot where I:mA
+  input Xtot where I:mA
+  input Ytot where I:mA
   input kf where I:mA
   input kr where I:mA
-  input ES0 where I:mA
+  input XY0 where I:mA
 
-  output ES where I:mA
-  output E where I:mA
-  output S where I:mA
+  output XY where I:mA
+  output X where I:mA
+  output Y where I:mA
 
-  rel I(E) = I(Etot) - I(ES)
-  rel I(S) = I(Stot) - I(ES)
-  rel deriv(I(ES),t) = I(kf)*I(E)*I(S) - I(kr)*I(ES) initially I(ES0)
+  rel I(X) = I(Xtot) - I(XY)
+  rel I(Y) = I(Ytot) - I(XY)
+  rel deriv(I(XY),t) = I(kf)*I(X)*I(Y) - I(kr)*I(XY) initially I(XY0)
 
   spice mm Etot Stot kf kr ES E S
 
@@ -53,13 +53,14 @@ end
 schematic
   inst mm : 1
 
-  inst input V : 10
-  inst output V : 3
+  inst input I : 10
+  inst output I : 3
 
   conn mm -> *
-
-  conn input(V).O -> *
-  conn * -> output(V).X
+  conn * -> mm
+  
+  conn input(I).O -> *
+  conn * -> output(I).X
 
   ensure mag I in (0,1000) : mA
 

@@ -229,6 +229,9 @@ struct
   let make (type a) (type b) () : (a,b) map =
     Hashtbl.create max
 
+  let copy (type a) (type b) a : (a,b) map =
+    Hashtbl.copy a
+    
   let put (type a) (type b) (x:(a,b) map) (k:a) (v:b) : (a,b) map =
     Hashtbl.replace x k v;
     x

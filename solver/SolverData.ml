@@ -64,8 +64,6 @@ type step =
   | SRemoveGoal of goal
   | SAddGoal of goal
   | SAddNode of unodeid*(urel list)
-  | SRemoveNode of unodeid
-
 
 type steps = {
   mutable s :step list;

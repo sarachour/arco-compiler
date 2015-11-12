@@ -144,7 +144,7 @@ struct
       let res : y ast = _MAP a cnv_el cnv_term in
       res
 
-    let fold (type x) (type y) (a:x ast) (fld:x ast -> y ->y)  (b0:y) : y =
+    let fold (type x) (type y) (a:x ast) (fld:x ast -> y -> y)  (b0:y) : y =
       let rec _fold (el: x ast) (b: y) : y =
         let _foldlst (lst:(x ast) list) b0 : y =
           List.fold_right (fun a b -> let nb = _fold a b in fld a nb) lst b0
@@ -159,6 +159,39 @@ struct
           | _ -> fld el b
       in
         _fold a b0
+
+    let compute (type x) (a:x ast) : float option =
+      let conv (lst: x ast list) fn =
+        let fnlst = List.fold_right (fun x r ->
+          match x,r with
+          |(Decimal(v),Some(rv)) -> Some(fn v rv)
+          | _ -> None
+        ) in
+        let comp = match lst with
+        | Decimal(h)::t -> fnlst t (Some h)
+        | [Decimal(h)] -> Some (h)
+        | _ -> None
+        in
+        match comp with
+        |Some(v) -> Decimal(v)
+        |None ->   Integer(-1)
+      in
+      let tf v = match v with
+      | Integer(x) -> Some (Decimal (float_of_int x))
+      | Decimal(x) -> None
+      | Term(x) -> Some (Integer(-1))
+      | Op1(Exp,Decimal(x)) -> Some (Decimal (exp x))
+      | Op1(Neg,Decimal(x)) -> Some (Decimal (0.-.x))
+      | Op2(Power,Decimal(x),Decimal(y)) -> Some (Decimal (x**y))
+      | Op2(Div, Decimal(x),Decimal(y)) -> Some (Decimal (x/.y))
+      | OpN(Add, dlst) -> Some (conv dlst (fun x r -> x +. r))
+      | OpN(Sub, dlst) -> Some (conv dlst (fun x r -> x -. r))
+      | OpN(Mult, dlst) -> Some (conv dlst (fun x r -> x *. r))
+      | _ ->  Some (Integer(-1))
+      in
+      match trans a tf with
+      | Decimal(x) -> Some(x)
+      | _ -> None
 
     let size (type x) (a:x ast) : int =
       fold a (fun pt n -> n + 1) 0
@@ -281,6 +314,14 @@ struct
       res
 
     let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl) (n:int) =
+      let match_trivial e1 e2 =
+        match (compute e1,compute e2) with
+        | (Some(x),Some(y)) ->if x = y then Some(Some([])) else Some(None)
+        | (_,Some(x)) -> Some(None)
+        | _ -> None
+      in
+      let triv_sln = match_trivial e1 e2  in
+      if triv_sln <> None then force_conc triv_sln else
       let max_depth = 4 in
       let decl_tmpl_or_pat i x cnv =  if i = 0 then decl x false cnv else decl x true cnv in
       let env,iwcs,syms = mkenv [e1;e2] cnv decl_tmpl_or_pat in

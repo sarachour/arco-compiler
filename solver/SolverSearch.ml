@@ -34,8 +34,7 @@ struct
   let step2str n = match n with
   | SAddGoal(v) -> "add "^(UnivLib.urel2str v)
   | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
-  | SAddNode(id,rels) -> "add "^(UnivLib.unodeid2name id)
-  | SRemoveNode(id) -> "rm"^(UnivLib.unodeid2name id)
+  | SAddNode(id,rels) -> "anode "^(UnivLib.unodeid2name id)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")
   | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | _ -> "?"

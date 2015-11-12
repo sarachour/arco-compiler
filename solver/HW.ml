@@ -45,6 +45,11 @@ struct
   | HCMGlobal(n,i) -> n
   | HCMLocal(n) -> n
 
+  let tolcl x = match x with
+  | HNPort(k,HCMGlobal(c,i),x,p,u) ->
+    HNPort(k,HCMLocal(c),x,p,u)
+  | _ -> x
+  
   let hwvid2str e =
     let c2str c = match c with
     | HCMLocal(n) -> n^"."

@@ -141,8 +141,10 @@ struct
                 expr::lst
               ) []
             in
-              let ens = Z3Eq(Z3Lib.plus_all indep, Z3Int(1)) in
-              (Z3Assert ens )::lst
+              if List.length indep > 0 then
+                let ens = Z3Eq(Z3Lib.plus_all indep, Z3Int(1)) in
+                (Z3Assert ens )::lst
+              else lst
           ) []
       in
       let gdecls = gdecls @ decls in

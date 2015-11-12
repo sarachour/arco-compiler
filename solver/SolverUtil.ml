@@ -77,10 +77,13 @@ struct
     let mp x = glblid2lclid x in
     ASTLib.map a mp
 
-  let goalglbl2lcl (g:urel) : urel = match g with
+  let rel_glbl2lcl (g:urel) : urel = match g with
   |  UFunction(l,r) -> UFunction(glblid2lclid l, glbl2lcl r)
   |  UState(l,r,ic,t) -> UState(glblid2lclid l, glbl2lcl r, glblid2lclid ic, glblid2lclid t)
 
+  let rel_lcl2glbl  (i:int)  (g:urel): urel = match g with
+  |  UFunction(l,r) -> UFunction(lclid2glblid i l, lcl2glbl i r)
+  |  UState(l,r,ic,t) -> UState(lclid2glblid i l, lcl2glbl i r, lclid2glblid i ic, lclid2glblid i t)
 
 
   let unid2wcsym cmpname ciid uid is_templ cnv= match uid, is_templ with
