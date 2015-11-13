@@ -45,7 +45,7 @@ comp mm
   rel I(Y) = I(Ytot) - I(XY)
   rel deriv(I(XY),t) = I(kf)*I(X)*I(Y) - I(kr)*I(XY) initially I(XY0)
 
-  spice mm Etot Stot kf kr ES E S
+  spice mm Xtot Ytot kf kr XY X Y XY0
 
 end
 

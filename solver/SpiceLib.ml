@@ -6,6 +6,7 @@ open HWData
 open Math
 open SolverData
 open SolverUtil
+open SolverSln
 
 
 exception SpiceLibException of string
@@ -58,10 +59,12 @@ struct
   let to_spice s sln =
     (*mappings for hardware model*)
     let imaps : (string*int,string*int) map= HwConnRslvr.get_sln s sln in
+    let _ = Printf.printf "===== SMT SOLUTION ====" in
+    let _ = MAP.iter imaps (fun (s,i) (d,di) -> Printf.printf "%s.%d => %s.%d\n" s i d di)  in
     let wmaps : (wireid, int) map = MAP.make () in
     let spinst (n,i) =
       if MAP.has imaps (n,i) = false then
-        error "spinst" ("instance "^n^" "^(string_of_int i)^" dne")
+        error "spinst" ("instance "^n^" "^(string_of_int i)^" does not have a spice spec.")
       else
         let nn,ni = MAP.get imaps (n,i) in
         (nn,ni)

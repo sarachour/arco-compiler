@@ -1,9 +1,31 @@
 .INCLUDE magnz.hl
 
-.SUBCKT mm ET ST kf kr ES E S
+* F = current controlled current, E voltage controlled current
+* http://web.stanford.edu/class/ee133/handouts/general/spice_ref.pdf
 
-  BED  E 0 I = I(ET)-I(ES)
-  BES	 S 0 I = I(ST)-I(ES)
+
+.SUBCKT mm ET ST Kf Kr ES E S ES0
+
+  Bgen ES 0 V=0.25
+  Bgen S 0  V=0.25
+  Bgen E 0  V=0.25
+
+  *VKf KfV Kf 0
+  *VKr KrV Kr 0
+  *VET ETV ET 0
+  *VST STV ST 0
+
+
+  *VE EV E 0
+  *VS SV S 0
+  *VES ESV ES 0
+
+  *BE E 0 I=I(VET)-I(VES)
+  *BS S 0 I=I(VST)-I(VES)
+
+  *BES ES 0 I=I(VKf)*I(VS)*I(VE)
+  *CRET ES 0 100F
+  *BDEG 0 ES  I=I(VKr)*I(VES)
 
   *XNOISE CNN CR inoise
   *XCLMP CR C iclamp
@@ -14,9 +36,9 @@
 
 .SUBCKT iout A B
   RX A B 0
-.ENDS vout
+.ENDS iout
 
 
 .SUBCKT iin A B
   RX A B 0
-.ENDS vin
+.ENDS iin

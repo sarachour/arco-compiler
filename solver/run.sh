@@ -8,15 +8,15 @@ HWSPEC=$3
 SOLVER=./solver.debug
 
 if [ "$CMD" = "tmath" ]; then
-  make && ${SOLVER} -hwspec test/math/empty.spec -formula test/math-parser/$NAME.math -interactive
+  make && ${SOLVER} -hwspec test/math/empty.spec -formula test/math-parser/$NAME.math -interactive "tm-$NAME.ckt"
 fi
 
 if [ "$CMD" = "thw" ]; then
-  make && ${SOLVER} -hwspec test/hw/$NAME.spec -formula test/hw-parser/empty.math -interactive
+  make && ${SOLVER} -hwspec test/hw/$NAME.spec -formula test/hw-parser/empty.math -interactive "th-$NAME.ckt"
 fi
 
 if [ "$CMD" = "tslv" ]; then
-  make && ${SOLVER} -hwspec test/solver/$NAME.spec -formula test/solver/$NAME.math -interactive
+  make && ${SOLVER} -hwspec test/solver/$NAME.spec -formula test/solver/$NAME.math -interactive -output "ts-$NAME.ckt"
 fi
 
 if [ "$CMD" = "bmark" ]; then

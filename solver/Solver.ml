@@ -245,30 +245,7 @@ struct
     else
     goal_cursor
 
-    (*
-    let conc_node nid nd rl (assigns:(unid,unid ast) map) iid =
-      let sub_el x = match x with
-        | Term(id) -> if MAP.has assigns id then Some (MAP.get assigns id) else None
-        | _ -> None
-      in
-      let sub_ast x = ASTLib.trans x sub_el in
-      let sub_rel x = match x with
-      | UFunction(l,r) ->
-        if MAP.has assigns l then error "conc_node" "cannot sub lhs" else
-        UFunction(l,sub_ast r)
-      | UState(l,r,ic,t) ->
-        if MAP.has assigns l then error "conc_node" "cannot sub lhs" else
-        if MAP.has assigns ic then error "conc_node" "cannot sub ic" else
-        if MAP.has assigns t then error "conc_node" "cannot sub ic" else
-        UState(l,sub_ast r, ic, t)
-      in
-      let nid_name = match nid with UNoComp(n) -> n | _ -> error "conc_node" "unexpected" in
-      let new_nid = UNoConcComp(nid_name,iid) in
-      let nrels : urel list= SET.filter nd.rels (fun x -> x <> rl) in
-      if List.length nrels = 0 then None else
-      let nrels : urel list = List.map (fun x -> sub_rel x) nrels in
-      Some (nid,nrels)
-  *)
+
   let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
     (*declare event*)
     let declwcunid = Shim.unid2wcsym name inst_id in
@@ -460,9 +437,11 @@ struct
     | Some(q) ->
       let l = leftovers q in
       let q = l @ q in
+      (*
       let _ = Printf.printf "HAS SOLUTION\n" in
       let _ = List.iter (fun x -> Printf.printf "%s\n" (SearchLib.step2str x)) q in
       let _ = Printf.printf "\n" in
+      *)
       (*this means that all mappings that are outputs have been resolved. We should compute the rest*)
       Some(q)
     | None ->  None
@@ -480,7 +459,9 @@ struct
     (*update search algorithm to include the usage*)
     let _ = SearchLib.start gtbl.search in
     let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
+    (*the cursor associated with the goal*)
     let goal_cursor = SearchLib.cursor gtbl.search in
+    (*the cursor associated with the component*)
     let comp_cursor : steps = SearchLib.commit gtbl.search in
     (*use node*)
     let _ = SearchLib.move_cursor s gtbl comp_cursor in
@@ -493,12 +474,13 @@ struct
       let ngoals = resolve_assigns s (node.name) inst_id r gl rls gtbl.goals assigns in
       match ngoals with
       | Some(sts) ->
+        let _ = SearchLib.move_cursor s gtbl comp_cursor in
         let _ = SearchLib.add_step gtbl.search (SRemoveGoal gl) in
         let _ = List.iter (fun x -> SearchLib.add_step gtbl.search x) sts in
-        let cmp_cursor = SearchLib.commit gtbl.search in
-        let _ = SearchLib.move_cursor s gtbl cmp_cursor in
+        let sol_cursor = SearchLib.commit gtbl.search in
+        let _ = SearchLib.move_cursor s gtbl sol_cursor in
         let _ = resolve_trivial s gtbl gtbl.goals in
-        let _ = SearchLib.move_cursor s gtbl goal_cursor in
+        let _ = SearchLib.move_cursor s gtbl comp_cursor in
         true
 
       | None ->

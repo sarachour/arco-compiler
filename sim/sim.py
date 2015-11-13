@@ -112,7 +112,11 @@ class Sim:
 
     def proc_outputs(self):
         out=None
+        ntext = ""
+
         for l in self.text.split("\n"):
+
+            ntext += l + "\n"
 
             if l.startswith("*@output"):
                 cmd = l.strip("\n").split("@")[1]
@@ -125,9 +129,17 @@ class Sim:
                 ccmdargs = cmdargs[1].split(",")
                 port = ccmdargs[0]
                 prop = ccmdargs[1]
-                self.define_output(out,port,prop)
+
+                if(prop == "I"):
+                    ntext += "V"+str(port)+" _O"+str(port)+" "+str(port)+" 0\n"
+                    self.define_output(out,"V"+port+"#branch",prop)
+                else:
+                    self.define_output(out,port,prop)
+
                 out = None
 
+
+        self.text = ntext
 
     def get_analysis(self):
         return self.an
@@ -182,7 +194,7 @@ def get_input_params(args, spc):
 
 def build_analysis(args,spc):
     an = spc.get_analysis()
-    an.trans(0.01,2)
+    an.trans(0.0001,0.1)
     for oname in spc.get_outputs():
         odata = spc.get_outputs()[oname]
         prop = odata['mvar_prop']

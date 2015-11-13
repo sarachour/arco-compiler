@@ -189,9 +189,10 @@ struct
       | Z3SetBool(cname,true) -> ()
       | Z3SetInt(vid,inst) ->
         let sln_iid = from_id inst in
-        let cstr_name,hw_iid = fromvar km vid in
-        let _ = MAP.put sln (cstr_name,sln_iid) (cstr_name,hw_iid) in
-        ()
+        if sln_iid < 0 then () else
+          let cstr_name,hw_iid = fromvar km vid in
+          let _ = MAP.put sln (cstr_name,sln_iid) (cstr_name,hw_iid) in
+          ()
       | _ -> ()
       in
       let _ = List.iter (fun x -> let _ = proc_const x in ()) z3 in
