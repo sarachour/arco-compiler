@@ -50,6 +50,7 @@ comp mm
 end
 
 
+
 schematic
   inst mm : 1
 
@@ -58,7 +59,7 @@ schematic
 
   conn mm -> *
   conn * -> mm
-  
+
   conn input(I).O -> *
   conn * -> output(I).X
 

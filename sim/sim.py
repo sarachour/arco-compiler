@@ -13,7 +13,7 @@ import os
 # op
 # run
 def data(fname):
-    return ".data/"+fname
+    return "data/"+fname
 
 def tmp(fname):
     return ".tmp/"+fname
@@ -122,8 +122,9 @@ class Sim:
             if l.startswith("*@args"):
                 cmd = l.strip("\n").split("@")[1]
                 cmdargs = cmd.split(" ")
-                port = cmdargs[1]
-                prop = cmdargs[2]
+                ccmdargs = cmdargs[1].split(",")
+                port = ccmdargs[0]
+                prop = ccmdargs[1]
                 self.define_output(out,port,prop)
                 out = None
 
@@ -152,7 +153,9 @@ def gen_spice(args):
     append = lambda x:  spc+x
 
     fcirc = open(circ,'r')
-
+    if not fcirc:
+        print("ERROR: circuit file does not exist: "+circ)
+        sys.exit(1)
     include_st=".include "+lib+"\n"
     spc = append(include_st)
 
@@ -165,7 +168,7 @@ def gen_spice(args):
 
 def get_input_params(args, spc):
     if args.inputs == None:
-        return iar
+        return
 
     ipfile = (args.inputs)
 

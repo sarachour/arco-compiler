@@ -1,4 +1,4 @@
-.INCLUDE magnz.lib
+.INCLUDE magnz.hl
 
 .SUBCKT vadd2 A B C
   ESUM	CNN 0 VALUE = { (V(A)+V(B)) }

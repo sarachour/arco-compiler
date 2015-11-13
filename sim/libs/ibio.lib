@@ -1,0 +1,22 @@
+.INCLUDE magnz.hl
+
+.SUBCKT mm ET ST kf kr ES E S
+
+  BED  E 0 I = I(ET)-I(ES)
+  BES	 S 0 I = I(ST)-I(ES)
+
+  *XNOISE CNN CR inoise
+  *XCLMP CR C iclamp
+
+.ENDS mm
+
+
+
+.SUBCKT iout A B
+  RX A B 0
+.ENDS vout
+
+
+.SUBCKT iin A B
+  RX A B 0
+.ENDS vin

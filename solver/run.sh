@@ -28,7 +28,7 @@ if [ "$NAME" = "exec" ]; then
 fi
 
 mkdir -p output
-mkdir -p tmp
+mkdir -p .tmp
 
 mv *.ckt output/
-mv *.z3 tmp/
+mv *.z3 .tmp/
