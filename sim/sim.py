@@ -31,12 +31,14 @@ def print_line(data,i):
 
 def to_tab(dat):
     text = ""
+    n = 0
     for h in dat["header"]:
         text += str(h)+"\t"
+        n= len(dat["data"][h])
 
     text = text.strip()+"\n"
 
-    for i in range(0,dat["n"]):
+    for i in range(0,n):
         l = print_line(dat,i)+"\n"
         text += l
 
@@ -81,39 +83,39 @@ class Analysis:
         return t
 
     def proc(self,dat):
-        nlines = -1;
+        IDLE = 0
+        PENDING = 1
+        READING = 2
+
+        status = IDLE
+
         data = None;
-        status = "idle"
         datas = [];
         hdrs = [];
         noempty = lambda x : filter(lambda x: x <> "", x)
 
+
         for line in dat.split("\n"):
-            if line.startswith("No. of Data Rows"):
+            heading = line.strip()
+            print(heading)
+            if(heading.startswith("Transient Analysis")):
+                status = PENDING
+
+            elif (status == PENDING) and heading.startswith("Index"):
                 if data <> None:
                     datas.append(data)
-                cnt = int(re.search("\d+",line).group(0))
-                nlines = cnt
-                data = {'header':[],'n':nlines,'data':{}};
-                status = "pending"
 
-            elif line.startswith("--------------") and status=="pending":
-                status = "header"
-
-            elif status == "header":
-                hdrs = noempty (re.split('[\s\n]+',line))
-                data['header'] = hdrs
+                hdrs = noempty (re.split('[\s\n]+',heading))
+                data = {"header":hdrs,"data":{}}
                 for h in hdrs:
                     data['data'][h] = []
 
-                status = "data"
+                status = READING
 
-            elif status == "data" and re.search("^\s*[0-9]",line):
+            elif status == READING and re.search("^\s*[0-9]",line):
                 dat = noempty (re.split('[\s\n]+',line))
 
                 idx = int(dat[0])
-                if idx > nlines:
-                    status == "idle"
 
                 for i in range(0,len(dat)):
                     h = hdrs[i]
@@ -123,6 +125,7 @@ class Analysis:
         if data <> None:
             datas.append(data)
 
+        print(len(datas))
         for (d,f) in zip(datas,self.files):
             dt = to_tab(d)
             fn = open(f,"w")

@@ -6,25 +6,24 @@
 
 .SUBCKT mm ET ST Kf Kr ES E S ES0
 
-  Bgen ES 0 V=0.25
-  Bgen S 0  V=0.25
-  Bgen E 0  V=0.25
 
-  *VKf KfV Kf 0
-  *VKr KrV Kr 0
-  *VET ETV ET 0
-  *VST STV ST 0
+  VKf Kf 0 DC 3.3
+  VKr Kr 0 DC 3.3
+  VET ET 0 DC 3.3
+  VST ST 0 DC 3.3
+  VES0 ES0 0 DC 3.3
 
+  *VE E 0 DC 3.3
+  *VS S 0 DC 3.3
 
-  *VE EV E 0
-  *VS SV S 0
-  *VES ESV ES 0
+  VES ES 0 DC 3.3
 
-  *BE E 0 I=I(VET)-I(VES)
-  *BS S 0 I=I(VST)-I(VES)
+  BES ES 0 I=0.5+I(VES0)
+  BE E 0 I=I(VET)-I(VES)
+  BS S 0 I=I(VST)-I(VES)
 
   *BES ES 0 I=I(VKf)*I(VS)*I(VE)
-  *CRET ES 0 100F
+  *CRET ES 0 1
   *BDEG 0 ES  I=I(VKr)*I(VES)
 
   *XNOISE CNN CR inoise
