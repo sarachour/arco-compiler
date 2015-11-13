@@ -510,12 +510,11 @@ struct
       | Some(assigns) ->
         let cnt = List.fold_right (fun asn cnt -> if add_sln node.rels g rel asn then cnt + 1 else cnt) assigns 0 in
         cnt+amt
-      | None -> 0
+      | None -> amt
     in
     let cnt = SET.fold node.rels apply_rel 0 in
     let _ = SearchLib.move_cursor s gtbl goal_cursor in
-    if cnt = 0
-      then
+    if cnt = 0 then
         let _ = SearchLib.rm gtbl.search comp_cursor in
         let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
         None
@@ -686,6 +685,9 @@ struct
       in
       let solve_goal () =
         let goal_cursor = SearchLib.cursor v.search in
+        (*print goals*)
+        let mint,musr= mkmenu s v None in
+        let _ = mint "g" in
         (*is the connectivity consistent*)
         if SET.size v.goals = 0 then
           let res = no_goals_left() in
@@ -694,8 +696,6 @@ struct
           (*check for repeated patterns*)
           if path_is_useless v goal_cursor then
             let mint,musr= mkmenu s v None in
-            let _ = mint "g" in
-
             let _ = SearchLib.deadend v.search goal_cursor in
             let succ = move_to_next (None) in
             if succ = false then None else
@@ -705,7 +705,6 @@ struct
             let g = SET.rand v.goals in
             let mint,musr = mkmenu s v (Some g) in
             (*show goals and current solution*)
-            let _ = mint "g" in
             (*let _ = mint "s" in*)
             let _ = mint "c" in
             let _ = apply_nodes s v g in

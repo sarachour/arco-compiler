@@ -1,34 +1,34 @@
 #!/bin/bash
 
 #default is min and simple
-NAME=$1
-HWSPEC=$2
+CMD=$1
+NAME=$2
+HWSPEC=$3
 
 SOLVER=./solver.debug
 
-if [ "$NAME" = "test-math" ]; then
-  NAME=$2
+if [ "$CMD" = "tmath" ]; then
   make && ${SOLVER} -hwspec test/math/empty.spec -formula test/math-parser/$NAME.math -interactive
-  exit 0
 fi
 
-if [ "$NAME" = "test-hw" ]; then
-  NAME=$2
+if [ "$CMD" = "thw" ]; then
   make && ${SOLVER} -hwspec test/hw/$NAME.spec -formula test/hw-parser/empty.math -interactive
-  exit 0
 fi
 
-if [ "$NAME" = "test-solver" ]; then
-  NAME=$2
+if [ "$CMD" = "tslv" ]; then
   make && ${SOLVER} -hwspec test/solver/$NAME.spec -formula test/solver/$NAME.math -interactive
-  exit 0
 fi
 
-if [ "$NAME" = "bmark" ]; then
-  SPEC=$2
-  NAME=$3
-  make && ${SOLVER} -hwspec benchmarks/specs/$SPEC.spec -formula benchmarks/math/$NAME.math -interactive
-  exit 0
+if [ "$CMD" = "bmark" ]; then
+  make && ${SOLVER} -hwspec benchmarks/specs/$HWSPEC.spec -formula benchmarks/math/$NAME.math -output "$NAME-$HWSPEC".ckt -interactive
 fi
 
-make && ${SOLVER} -hwspec $HWSPEC -formula $NAME
+if [ "$NAME" = "exec" ]; then
+  make && ${SOLVER} -hwspec $HWSPEC -formula $NAME
+fi
+
+mkdir -p output
+mkdir -p tmp
+
+mv *.ckt output/
+mv *.z3 tmp/

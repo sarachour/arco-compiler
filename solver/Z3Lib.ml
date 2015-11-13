@@ -85,8 +85,8 @@ struct
     in
     let x = List.sort sortsts (LIST.uniq x) in
     let prob = z3stmts2str x in
-    let fname =  ".tmp/__tmp__.z3" in
-    let res = ".tmp/__res__.out" in
+    let fname =  "__tmp__.z3" in
+    let res = "__res__.z3" in
     let _ = IO.save fname prob in
     let _ = Printf.printf "---> Executing SMT Solver\n" in
     let _ = flush_all () in
