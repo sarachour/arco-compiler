@@ -5,7 +5,7 @@ import subprocess
 import sys
 import random
 import os
-
+import re
 
 # .control
 # dc Vx -250 250 0.5;
@@ -21,37 +21,113 @@ def tmp(fname):
 def rand(min,max):
     return (random.random()*(max-min) + min)
 
+def print_line(data,i):
+    txt = ""
+    for h in data['header']:
+        txt += str(data['data'][h][i])+"\t"
+
+    txt = txt.strip()
+    return txt
+
+def to_tab(dat):
+    text = ""
+    for h in dat["header"]:
+        text += str(h)+"\t"
+
+    text = text.strip()+"\n"
+
+    for i in range(0,dat["n"]):
+        l = print_line(dat,i)+"\n"
+        text += l
+
+    return text
+
 class Analysis:
 
     def __init__(self):
-        self.text = ".control\n"
+        #self.text = "* analysis begin\n.control\n"
+        self.text = "* analysis\n"
+        self.files = []
 
     def append(self,t):
-        self.text = self.text+"  "+t+"\n"
+        self.text = self.text+""+t+"\n"
 
 
     def dc_sweep(self,vname,prop,start,stop,step):
-        cmd="dc "+prop+"("+vname+") start="+str(start)+" stop="+str(stop)+" step="+str(step)
+        cmd=".dc "+prop+"("+vname+") start="+str(start)+" stop="+str(stop)+" step="+str(step)
         self.append(cmd)
 
     def trans(self,start,stop):
-        cmd="tran "+str(start)+" "+str(stop)
+        cmd=".tran "+str(start)+" "+str(stop)
         self.append(cmd)
 
 
     def save(self,oper,vr,prop,fl):
-        cmd = "print "+str(oper)+"."+prop+"("+str(vr)+") > "+data(fl)
+        name = data(fl)
+        cmd = "* "+name
+        self.append(cmd)
+        cmd = ".print "+str(oper)+" "+prop+"("+str(vr)+")"
         self.append(cmd)
 
+        self.files.append(name)
+
     def op(self):
-        self.append("op")
+        self.append(".op")
 
 
     def code(self):
-        t = self.text+"  run\n.endc\n"
+        #t = self.text+"\n.endc\n"
+        t = self.text
         return t
 
+    def proc(self,dat):
+        nlines = -1;
+        data = None;
+        status = "idle"
+        datas = [];
+        hdrs = [];
+        noempty = lambda x : filter(lambda x: x <> "", x)
 
+        for line in dat.split("\n"):
+            if line.startswith("No. of Data Rows"):
+                if data <> None:
+                    datas.append(data)
+                cnt = int(re.search("\d+",line).group(0))
+                nlines = cnt
+                data = {'header':[],'n':nlines,'data':{}};
+                status = "pending"
+
+            elif line.startswith("--------------") and status=="pending":
+                status = "header"
+
+            elif status == "header":
+                hdrs = noempty (re.split('[\s\n]+',line))
+                data['header'] = hdrs
+                for h in hdrs:
+                    data['data'][h] = []
+
+                status = "data"
+
+            elif status == "data" and re.search("^\s*[0-9]",line):
+                dat = noempty (re.split('[\s\n]+',line))
+
+                idx = int(dat[0])
+                if idx > nlines:
+                    status == "idle"
+
+                for i in range(0,len(dat)):
+                    h = hdrs[i]
+                    d = float(dat[i])
+                    data['data'][h].append(d)
+
+        if data <> None:
+            datas.append(data)
+
+        for (d,f) in zip(datas,self.files):
+            dt = to_tab(d)
+            fn = open(f,"w")
+            fn.write(dt)
+            fn.close()
 
 class Sim:
     def __init__(self, text):
@@ -131,8 +207,8 @@ class Sim:
                 prop = ccmdargs[1]
 
                 if(prop == "I"):
-                    ntext += "V"+str(port)+" _O"+str(port)+" "+str(port)+" 0\n"
-                    self.define_output(out,"V"+port+"#branch",prop)
+                    ntext += "V"+out+" "+str(port)+" 0 DC 3.3\n"
+                    self.define_output(out,"V"+out,prop)
                 else:
                     self.define_output(out,port,prop)
 
@@ -210,7 +286,20 @@ def run_spice(spc):
     tmphandle.write(spc.code())
     tmphandle.close()
 
-    subprocess.call(["ngspice","-b",tmpfile])
+    fn = tmp("data.out")
+    f = open(fn,"w")
+    subprocess.call(["ngspice","-b",tmpfile], stdout=f)
+    f.close()
+
+    f = open(fn,"r")
+    txt = ""
+    append = lambda x : txt+x
+
+    for line in f:
+        txt = append(line)
+
+    f.close()
+    spc.get_analysis().proc(txt)
 
 def mkdir(f):
     d = os.path.dirname(f)

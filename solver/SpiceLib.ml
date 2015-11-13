@@ -168,7 +168,7 @@ struct
         let outcompwire  = (nm,inst,nport.name) in
         let _ = MAP.put wmaps outcompwire vout in
         if pr = "V" || pr = "v" then
-          SpcComment("@args "^(string_of_int vout)^" "^"V")
+          SpcComment("@args "^(string_of_int vout)^","^"V")
         else if pr = "I" || pr = "i" then
           SpcComment("@args "^(string_of_int vout)^","^"I")
         else
