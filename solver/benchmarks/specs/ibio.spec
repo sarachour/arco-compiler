@@ -151,8 +151,8 @@ schematic
 
   conn mult -> inh_bind.COMP
   conn mult -> act_bind.COMP
-  conn mult -> stateful
   conn mult -> switch.SUB
+  conn mult -> stateful
   conn mult -> mult
 
   conn switch.PROD -> stateful
