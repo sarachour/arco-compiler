@@ -4,7 +4,7 @@ open ParseAST;;
 
 }
 
-let token = ['A'-'Z' 'a' - 'z' '@']['A'-'Z' 'a'-'z' '0' - '9']*
+let token = ['A'-'Z' 'a' - 'z' '@']['A'-'Z' 'a'-'z' '0' - '9' '_']*
 
 let integer = ['0' - '9']+
 let float = ['0'-'9']*"."['0' - '9']+

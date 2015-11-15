@@ -122,7 +122,7 @@ comp inh_bind
   output PROD where I:mA
 
 
-  rel I(PROD) = I(COMP)*(1/((I(INH)/(I(Kinh)))^(I(n)) + 1))
+  rel I(PROD) = I(COMP)*(1/(  ((I(INH)/(I(Kinh)))^(I(n))) + 1))
 
   spice inhbind INH COMP n Kinh PROD
 end
@@ -183,6 +183,9 @@ schematic
 
   conn inh_bind -> stateful
   conn act_bind -> stateful
+
+  conn inh_bind -> mult4
+  conn act_bind -> mult4
   conn stateful -> mult4
 
   conn inh_bind -> mm

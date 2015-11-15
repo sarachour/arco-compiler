@@ -867,7 +867,7 @@ struct
       in
       match goals with
       | g::t ->
-        let new_tbl = mknewtbl ctx (g::t) in
+        let new_tbl = mknewtbl ctx init_goals in
         let result = attempt new_tbl g t in
         result
       | [] -> None

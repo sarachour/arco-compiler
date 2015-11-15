@@ -1,0 +1,37 @@
+
+*@output E
+*@args 24,V
+*
+*constant value 1.
+Vcst6		23	0	DC	1.
+*
+*constant value 0.15
+Vcst5		22	0	DC	0.15
+*
+*@output ES
+*@args 21,V
+*
+*constant value 1.
+Vcst3		20	0	DC	1.
+*
+*constant value 0.11
+Vcst2		19	0	DC	0.11
+*
+*@input ES_0
+Vin_ES_0_1		18	0	DC	1.
+*
+*@output S
+*@args 17,V
+*
+*
+*
+* === Connectivity Schem ==== 
+XoutputV_1		15	21	iout
+XoutputV_2		5	17	iout
+XoutputV_0		1	24	iout
+Xmm_0		11	7	13	3	15	1	5	9	mm
+XinputV_3		18	9	iin
+XinputV_9		23	3	iin
+XinputV_2		19	7	iin
+XinputV_5		20	13	iin
+XinputV_0		22	11	iin

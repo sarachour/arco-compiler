@@ -1,0 +1,127 @@
+
+*@output E
+*@args 63,I
+*
+*@output ES
+*@args 63,I
+*
+*@output S
+*@args 62,I
+*
+*@input S
+Iin_S_28		61	0	DC	1.
+*
+*@input ES
+Iin_ES_27		60	0	DC	1.
+*
+*@input E_0
+Iin_E_0_26		60	0	DC	1.
+*
+*@input ES_0
+Iin_ES_0_25		59	0	DC	1.
+*
+*constant value 1.
+Icst24		58	0	DC	1.
+*
+*@input S
+Iin_S_23		58	0	DC	1.
+*
+*constant value 1.01
+Icst22		58	0	DC	1.01
+*
+*@input S_0
+Iin_S_0_21		57	0	DC	1.
+*
+*constant value 1.
+Icst20		56	0	DC	1.
+*
+*constant value 1.01
+Icst19		56	0	DC	1.01
+*
+*@input P_0
+Iin_P_0_18		55	0	DC	1.
+*
+*@input E
+Iin_E_17		54	0	DC	1.
+*
+*constant value 1.
+Icst16		53	0	DC	1.
+*
+*constant value 1.01
+Icst15		52	0	DC	1.01
+*
+*constant value 1.
+Icst14		51	0	DC	1.
+*
+*constant value 0.01
+Icst13		50	0	DC	0.01
+*
+*@input ES
+Iin_ES_12		49	0	DC	1.
+*
+*@output ES
+*@args 49,I
+*
+*@output P
+*@args 48,I
+*
+*constant value 1.
+Icst9		47	0	DC	1.
+*
+*@input E
+Iin_E_8		46	0	DC	1.
+*
+*@input E
+Iin_E_7		45	0	DC	1.
+*
+*constant value -2.
+Icst6		44	0	DC	-2.
+*
+*constant value 1.
+Icst5		43	0	DC	1.
+*
+*@input S
+Iin_S_4		42	0	DC	1.
+*
+*@input ES
+Iin_ES_3		41	0	DC	1.
+*
+*constant value 1.
+Icst2		41	0	DC	1.
+*
+*constant value 0.
+Icst1		40	0	DC	0.
+*
+*constant value 1.
+Icst0		39	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xmult4_14		22	20	28	39	39	mult4
+XinputI_0		49	13	iin
+XinputI_12		53	33	iin
+XinputI_14		52	29	iin
+XinputI_19		44	7	iin
+XinputI_7		42	39	iin
+XinputI_24		56	22	iin
+XinputI_42		58	20	iin
+XinputI_27		45	28	iin
+XinputI_10		47	39	iin
+XinputI_33		39	22	iin
+XinputI_48		46	20	iin
+XinputI_22		61	28	iin
+XinputI_13		60	39	iin
+XinputI_11		58	39	iin
+XinputI_29		54	39	iin
+XinputI_5		60	39	iin
+XinputI_6		56	39	iin
+XinputI_47		41	39	iin
+XinputI_23		50	28	iin
+XinputI_3		43	20	iin
+XinputI_16		51	22	iin
+XinputI_26		41	39	iin
+Xstateful_5		39	39	27	0	stateful
+Xinh_bind_7		13	29	7	33	39	inhbind
+XoutputI_0		27	63	iout
+XoutputI_7		27	49	iout

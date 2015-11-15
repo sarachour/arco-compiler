@@ -1,0 +1,37 @@
+
+*@output C
+*@args 29,I
+*
+*constant value 0.
+Icst5		28	0	DC	0.
+*
+*constant value 1.
+Icst4		27	0	DC	1.
+*
+*constant value 1.
+Icst3		26	0	DC	1.
+*
+*constant value 0.
+Icst2		25	0	DC	0.
+*
+*@input A
+Iin_A_1		24	0	DC	1.
+*
+*constant value 1.
+Icst0		23	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+XinputI_1		23	15	iin
+XinputI_6		24	11	iin
+XinputI_2		26	19	iin
+XinputI_0		28	1	iin
+XinputI_5		27	9	iin
+XinputI_4		25	13	iin
+Ximul2_0		19	17	7	imul2
+Ximul2_2		5	9	3	imul2
+Xiadd2_0		15	11	17	iadd2
+Xiadd2_2		1	7	5	iadd2
+Xiadd2_1		3	13	21	iadd2
+XoutputI_2		21	29	iout
