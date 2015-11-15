@@ -159,6 +159,7 @@ schematic
   inst inh_bind: 10
   inst switch: 10
   inst mult4: 20
+  inst add4 : 20
 
   inst input I : 50
   inst output I : 10
@@ -176,17 +177,23 @@ schematic
   conn mult4 -> switch.SUB
   conn mult4 -> stateful
   conn mult4 -> mult4
-  conn add4 -> *
+
+  conn mult4 -> add4
+  conn inh_bind -> add4
+  conn act_bind -> add4
 
   conn switch.PROD -> stateful
   conn switch.PROD -> mult4
 
   conn inh_bind -> stateful
   conn act_bind -> stateful
+  conn * -> inh_bind
+  conn * -> act_bind
 
   conn inh_bind -> mult4
   conn act_bind -> mult4
   conn stateful -> mult4
+  conn add4 -> mult4
 
   conn inh_bind -> mm
   conn act_bind -> mm

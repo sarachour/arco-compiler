@@ -23,6 +23,10 @@ if [ "$CMD" = "bmark" ]; then
   make && ${SOLVER} -hwspec benchmarks/specs/$HWSPEC.spec -formula benchmarks/math/$NAME.math -output "$NAME-$HWSPEC".ckt -interactive
 fi
 
+if [ "$CMD" = "auto" ]; then
+  make && ${SOLVER} -hwspec benchmarks/specs/$HWSPEC.spec -formula benchmarks/math/$NAME.math -output "$NAME-$HWSPEC".ckt 
+fi
+
 if [ "$NAME" = "exec" ]; then
   make && ${SOLVER} -hwspec $HWSPEC -formula $NAME
 fi

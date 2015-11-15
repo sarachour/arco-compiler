@@ -98,11 +98,13 @@ struct
     in
 
     let simpl v : unid ast =
-      let declunid = Shim.unid2sym "N/A" (-1) in
+      (*let declunid = Shim.unid2sym "N/A" (-1) in
       let _ = Printf.printf "simplify: %s -> " (UnivLib.uast2str v) in
       let vq = ASTLib.simpl v UnivLib.unid2var (UnivLib.var2unid s) declunid in
       let _ = Printf.printf "%s\n" (UnivLib.uast2str vq) in
       vq
+      *)
+      v
     in
     let math2goal (x:mvar) =
       let m2u = UnivLib.mid2unid in
