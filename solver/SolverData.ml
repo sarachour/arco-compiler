@@ -81,6 +81,7 @@ If the node
 type status =
   (*A node that's a dead end. *)
   | DeadEnd
+  | Visited
   (*A node that's blocking on some other node*)
   (*| Active of int*)
 

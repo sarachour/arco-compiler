@@ -32,6 +32,8 @@ exception SolverError of string
 let error n m = raise (SolverError (n^":"^m))
 
 
+let __max_depth = 20
+let __pattern_depth = 3
 
 module SolveLib =
 struct
@@ -84,7 +86,7 @@ struct
 
   let goal2str g = UnivLib.urel2str g
 
-  let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=100; cnt=0;}
+  let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=__max_depth; cnt=0;}
 
   let mktbl s : gltbl =
     (* add all relations to the tableau of goals. *)
@@ -250,7 +252,7 @@ struct
   let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
     (*declare event*)
     let declwcunid = Shim.unid2wcsym name inst_id in
-    let n_tries = 10 in
+    let n_tries = __pattern_depth in
     let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid n_tries in
     res
 
@@ -502,7 +504,7 @@ struct
         let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
         None
       else
-        let _ = SearchLib.deadend gtbl.search comp_cursor in
+        let _ = SearchLib.visited gtbl.search comp_cursor in
         Some(cnt)
         (*)
   let mkmag (s:slvr) (port:unid) (qty:unid) =
@@ -518,6 +520,40 @@ struct
   *)
 
   (*apply all possible components*)
+  (*
+  type goal_freq_table  = {
+    mutable freq: (goal,int) map;
+    mutable n: int;
+  }
+
+  let gftbl = {freq=MAP.make(); n=0}
+
+  let __ftbl_strip g = Shim.rel_glbl2lcl g
+
+  let ftbl_step () =
+    let _ = gftbl.n <- gftbl.n+1 in
+    ()
+
+  let ftbl_use g =
+    let goal = __ftbl_strip g in
+    if MAP.has gftbl.freq goal then
+      let tmp = MAP.get gftbl.freq goal in
+      let _ = MAP.put gftbl.freq goal (gftbl.n) in
+      ()
+    else
+      let _ = MAP.put gftbl.freq goal (gftbl.n)  in
+      ()
+
+  let ftbl_lru g =
+    let goal = __ftbl_strip g in
+    if MAP.has gftbl.freq goal then
+      let amt = MAP.get gftbl.freq goal in
+      amt
+    else
+      0
+  *)
+
+
   let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
@@ -583,10 +619,18 @@ struct
 
   let select_best_path (v:gltbl) (cnode:steps option) : steps option =
     let ngoals (s:steps) =
+      let score g =
+        let cplx = (UnivLib.goal2complexity g) in
+        (*let lru = ((float_of_int (ftbl_lru g))) in
+        let lru = if lru > 30. then 30. else lru in*)
+        let lru = float_of_int (RAND.rand_int(10)) in
+        let score = cplx+.lru in
+        score
+      in
       SearchLib.fold_path v.search s (fun x r ->
         match x with
-        | SAddGoal(g) -> r-.(UnivLib.goal2complexity g)
-        | SRemoveGoal(g) -> r+.(UnivLib.goal2complexity g)
+        | SAddGoal(g) -> r-.(score g)
+        | SRemoveGoal(g) -> r+.(score g)
         | _ -> r
         ) 0.
     in
@@ -677,6 +721,7 @@ struct
           failed ()
       in
       let solve_goal () =
+        let _ = SearchLib.cleanup v.search in
         let goal_cursor = SearchLib.cursor v.search in
         (*print goals*)
         let mint,musr= mkmenu s v None in
@@ -687,8 +732,8 @@ struct
           res
         else
           (*check for repeated patterns*)
-          if path_is_impossible s v
-             (*path_is_useless v goal_cursor *)
+          if path_is_impossible s v || false
+            (* path_is_useless v goal_cursor*)
         then
             let mint,musr= mkmenu s v None in
             let _ = SearchLib.deadend v.search goal_cursor in
@@ -698,6 +743,8 @@ struct
               res
           else
             let g = SET.rand v.goals in
+            (*mark this goal as used*)
+            (*let _ = ftbl_use g in*)
             let mint,musr = mkmenu s v (Some g) in
             (*show goals and current solution*)
             (*let _ = mint "s" in*)

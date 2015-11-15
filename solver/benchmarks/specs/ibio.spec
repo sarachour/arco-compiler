@@ -74,14 +74,28 @@ comp tfdna
 
 end
 
-comp mult
+comp mult4
   input X where I:mA
   input Y where I:mA
-  output Z where I:mA
+  input Z where I:mA
+  input W where I:mA
+  output P where I:mA
 
-  rel I(Z) = I(X)*I(Y)
+  rel I(P) = I(X)*I(Y)*I(Z)*I(W)
 
 end
+
+comp add4
+  input X where I:mA
+  input Y where I:mA
+  input Z where I:mA
+  input W where I:mA
+  output P where I:mA
+
+  rel I(P) = I(X)+I(Y)+I(Z)+I(W)
+
+end
+
 
 comp switch
   input SUB where I:mA
@@ -136,9 +150,9 @@ schematic
   inst act_bind: 10
   inst inh_bind: 10
   inst switch: 10
-  inst mult: 20
+  inst mult4: 20
 
-  inst input I : 15
+  inst input I : 50
   inst output I : 10
 
 
@@ -149,21 +163,23 @@ schematic
 
   conn act_bind -> inh_bind.COMP
 
-  conn mult -> inh_bind.COMP
-  conn mult -> act_bind.COMP
-  conn mult -> switch.SUB
-  conn mult -> stateful
-  conn mult -> mult
+  conn mult4 -> inh_bind.COMP
+  conn mult4 -> act_bind.COMP
+  conn mult4 -> switch.SUB
+  conn mult4 -> stateful
+  conn mult4 -> mult4
+  conn add4 -> *
 
   conn switch.PROD -> stateful
-  conn switch.PROD -> mult
+  conn switch.PROD -> mult4
 
   conn inh_bind -> stateful
   conn act_bind -> stateful
+  conn stateful -> mult4
 
   conn inh_bind -> mm
   conn act_bind -> mm
-  conn mult -> mm
+  conn mult4 -> mm
 
 
   ensure mag I in (0,1000) : mA

@@ -489,6 +489,7 @@ struct
   let hasnode (type a) (type b) (g) (n:a) : bool =
     MAP.has (g.adj) n
 
+
   let hasedge (type a) (type b) g s e v : bool =
     if hasnode g s == false || hasnode g e == false then
       false

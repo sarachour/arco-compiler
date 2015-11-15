@@ -31,11 +31,16 @@ assume mag U in (0,1) : mol
 assume mag V in (0,1) : mol
 assume mag IPTG in (0,1) : mol
 
+%this relation is solvable
 rel umodif = (U)/((1+IPTG/K)^nu)
 
 %rel UTF = ((Cu*a1)/(1+(V^beta)))
+
+%this relation is solvable
 rel deriv(U,t) =  (UTF) - Cu*kdeg*U with U(0) = 0.35
 
 
-rel VTF = ((Cv*a2)/(1 + (umodif^gamma)))
+%rel VTF = ((Cv*a2)/(1 + (umodif^gamma)))
+
+%this relation is solvable
 rel deriv(V,t) = VTF - Cv*kdeg*V with V(0) = 0.5

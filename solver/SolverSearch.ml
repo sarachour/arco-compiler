@@ -18,8 +18,29 @@ let is_deadend b n =
     | DeadEnd -> true
     | _ -> false
 
+let get_deadends b =
+  let flt = MAP.fold b.tbl (fun k v r -> if v = DeadEnd then k::r else r ) [] in
+  flt
+
+let clear_deadends b =
+  let _ = MAP.iter b.tbl (fun k v -> if v = DeadEnd then let _ = MAP.rm b.tbl k in () ) in
+  ()
+
+let is_visited b n =
+  if MAP.has b.tbl n.id = false then
+    false
+  else
+    match MAP.get b.tbl n.id with
+    | Visited -> true
+    | _ -> false
+
 let deadend b n =
   let _ = MAP.put b.tbl n.id DeadEnd in
+  ()
+
+
+let visited b n =
+  let _ = MAP.put b.tbl n.id Visited in
   ()
 
 let rm b n =
@@ -43,8 +64,9 @@ struct
   let is_deadend b n =
     StatusTableLib.is_deadend b.st n
 
-  let deadend b n =
-    StatusTableLib.deadend b.st n
+
+  let visited b n =
+    ()
 
   let _steps2str (indent: int) (b:buffer) (n:steps) =
     let spcs = STRING.repeat "  " indent  in
@@ -99,7 +121,7 @@ struct
     | _,_ -> error "commit" "cannot commit empty node."
 
 
-  let rm b n =
+  let rm b (n:steps) =
     let _ = match b.curs with
     | Some(v) -> if v = n then error "rm" "cannot remove current node." else ()
     | None -> ()
@@ -108,6 +130,16 @@ struct
     let _ = StatusTableLib.rm b.st n in
     b
 
+  let cleanup b =
+    let deadends : int list = StatusTableLib.get_deadends b.st in
+    let id2node (x:int) : steps = List.nth (TREE.filter_nodes b.paths (fun q -> q.id = x)) 0 in
+    let _ = List.iter (fun (xid:int) -> let _ = rm b (id2node xid) in ()) deadends in
+    let _ = StatusTableLib.clear_deadends b.st in
+    ()
+
+  let deadend b n =
+    let _ = StatusTableLib.deadend b.st n in
+    ()
 
 
   let buf2str b =

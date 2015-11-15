@@ -10,7 +10,7 @@ let report lexbuf q =
 }
 
 let whitespace = ['\t'' ']*
-let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
+let token = ['A'-'Z''a'-'z''_']['!''A'-'Z''a'-'z''0'-'9''_' '<' '>']*
 let str = '"' [^ '"']* '"'
 let integer = '-'? ['0'-'9']+
 let op = ['[' ']' '+' '-' '*' '^' '.' '/']+
