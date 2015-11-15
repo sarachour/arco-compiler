@@ -1,6 +1,8 @@
 % name "michaelis menten reaction"
 
 % en.wikipedia.org/wiki/Michaelis-Menten_kinetics
+% one diffeq, three equations
+
 type s
 type M
 

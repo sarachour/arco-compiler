@@ -29,20 +29,7 @@ def print_line(data,i):
     txt = txt.strip()
     return txt
 
-def to_tab(dat):
-    text = ""
-    n = 0
-    for h in dat["header"]:
-        text += str(h)+"\t"
-        n= len(dat["data"][h])
 
-    text = text.strip()+"\n"
-
-    for i in range(0,n):
-        l = print_line(dat,i)+"\n"
-        text += l
-
-    return text
 
 class Analysis:
 
@@ -97,7 +84,6 @@ class Analysis:
 
         for line in dat.split("\n"):
             heading = line.strip()
-            print(heading)
             if(heading.startswith("Transient Analysis")):
                 status = PENDING
 
@@ -127,7 +113,7 @@ class Analysis:
 
         print(len(datas))
         for (d,f) in zip(datas,self.files):
-            dt = to_tab(d)
+            dt = str(d["data"])
             fn = open(f,"w")
             fn.write(dt)
             fn.close()
@@ -210,7 +196,7 @@ class Sim:
                 prop = ccmdargs[1]
 
                 if(prop == "I"):
-                    ntext += "V"+out+" "+str(port)+" 0 DC 3.3\n"
+                    ntext += "V"+out+" "+str(port)+" 0 DC 0\n"
                     self.define_output(out,"V"+out,prop)
                 else:
                     self.define_output(out,port,prop)
@@ -273,7 +259,9 @@ def get_input_params(args, spc):
 
 def build_analysis(args,spc):
     an = spc.get_analysis()
-    an.trans(0.0001,0.1)
+    an.op()
+    base = 0.000001
+    an.trans(base/1000,base)
     for oname in spc.get_outputs():
         odata = spc.get_outputs()[oname]
         prop = odata['mvar_prop']
@@ -302,6 +290,7 @@ def run_spice(spc):
         txt = append(line)
 
     f.close()
+    print("===== Generating Output Files ====")
     spc.get_analysis().proc(txt)
 
 def mkdir(f):

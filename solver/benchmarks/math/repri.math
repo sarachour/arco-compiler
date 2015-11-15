@@ -1,3 +1,11 @@
 
-
+% tetr reaction
 % https://www.ebi.ac.uk/biomodels-main/BIOMD0000000012
+% six diffeqs
+
+local LacLP
+local TetRP
+local clP
+local LacLP
+local TetRm
+local clM

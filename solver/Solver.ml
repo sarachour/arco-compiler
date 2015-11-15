@@ -19,6 +19,7 @@ open SolverData
 open SolverUtil
 open SolverSln
 open SolverSearch
+open SolverRslv
 
 open SpiceLib
 
@@ -537,6 +538,12 @@ struct
       ()
     else ()
 
+  let path_is_impossible (s:slvr) (v:gltbl) =
+    let is_valid = if HwConnRslvr.is_valid_shallow s v.sln
+      then true else false
+    in
+     is_valid = false
+
 
   let path_is_useless v n =
     let build_gl (x:step) (adds,reds) = match x with
@@ -578,18 +585,21 @@ struct
     let ngoals (s:steps) =
       SearchLib.fold_path v.search s (fun x r ->
         match x with
-        | SAddGoal(_) -> r+.1.
-        | SRemoveGoal(_) -> r-.1.
-        | _ -> r+.0.1
+        | SAddGoal(g) -> r-.(UnivLib.goal2complexity g)
+        | SRemoveGoal(g) -> r+.(UnivLib.goal2complexity g)
+        | _ -> r
         ) 0.
     in
     let score_path (s:steps) : float =
       let score = ngoals s in
       match cnode with
       | Some(n) ->
+        (*)
         if s = n && RAND.rand_norm() < 0.99 then
           100000.
-        else score
+        else
+        *)
+        score
       | None -> score
     in
     let paths = SearchLib.get_paths v.search in
@@ -655,14 +665,15 @@ struct
       in
       let no_goals_left () =
         (*this solution is valid*)
-        let _ = Printf.printf "SOLVER: Concretizing.\n" in
+        let mint,musr = mkmenu s v None in
         if SlnLib.mkconn_cons s v.sln &&  SlnLib.usecomp_cons s v.sln then
-          let mint,musr = mkmenu s v None in
           let _ = Printf.printf "SOLVER: Found valid solution.\n" in
           let _ = mint "s" in
           let v  = SpiceLib.to_spice s v.sln in
           Some v
         else
+          let _ = Printf.printf "SOLVER: Invalid.\n" in
+          let _ = mint "s" in
           failed ()
       in
       let solve_goal () =
@@ -670,13 +681,15 @@ struct
         (*print goals*)
         let mint,musr= mkmenu s v None in
         let _ = mint "g" in
-        (*is the connectivity consistent*)
+        (*do we have any goals. *)
         if SET.size v.goals = 0 then
           let res = no_goals_left() in
           res
         else
           (*check for repeated patterns*)
-          if path_is_useless v goal_cursor then
+          if path_is_impossible s v
+             (*path_is_useless v goal_cursor *)
+        then
             let mint,musr= mkmenu s v None in
             let _ = SearchLib.deadend v.search goal_cursor in
             let succ = move_to_next (None) in

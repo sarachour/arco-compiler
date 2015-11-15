@@ -32,10 +32,8 @@ end
 module SearchLib =
 struct
   let step2str n = match n with
-  (*
   | SAddGoal(v) -> "add "^(UnivLib.urel2str v)
   | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
-  *)
   | SAddNode(id,rels) -> "anode "^(UnivLib.unodeid2name id)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")
   | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
@@ -48,13 +46,17 @@ struct
   let deadend b n =
     StatusTableLib.deadend b.st n
 
-  let steps2str (b:buffer) (n:steps) =
-    let id = (if is_deadend b n then "." else "?")^(string_of_int n.id) in
+  let _steps2str (indent: int) (b:buffer) (n:steps) =
+    let spcs = STRING.repeat "  " indent  in
+    let id = (if is_deadend b n then "[x]" else "[?]")^(string_of_int n.id) in
     let prefix = match b.curs with
-    | Some(c) -> if c = n then "["^id^"]" else id
+    | Some(c) -> if c = n then "||[C]"^id else id
     | None -> id
     in
-    prefix^": "^(List.fold_right (fun x r -> r^" "^(step2str x)^";") n.s "")
+    spcs^prefix^":\n"^(List.fold_right (fun x r -> r^spcs^" "^(step2str x)^"\n") n.s "")
+
+  let steps2str (b:buffer) (n:steps) =
+    _steps2str 0 b n
 
   let score2str e = "()"
 
@@ -109,7 +111,7 @@ struct
 
 
   let buf2str b =
-    TREE.tostr b.paths (fun x -> (steps2str b x))
+    TREE.tostr b.paths (fun i x -> (_steps2str i b x))
 
 
   let cursor b =

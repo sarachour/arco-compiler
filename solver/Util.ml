@@ -231,7 +231,7 @@ struct
 
   let copy (type a) (type b) a : (a,b) map =
     Hashtbl.copy a
-    
+
   let put (type a) (type b) (x:(a,b) map) (k:a) (v:b) : (a,b) map =
     Hashtbl.replace x k v;
     x
@@ -593,9 +593,9 @@ struct
       |None -> ic
 
 
-  let tostr (type a) (type b) (g:(a,b) tree) (a2str:a->string) =
+  let tostr (type a) (type b) (g:(a,b) tree) (a2str:int->a->string) =
     let fold_node n str =
-      str^(STRING.repeat "  " (depth g n))^(a2str n)^"\n"
+      str^(a2str (depth g n) n)^"\n"
     in
     let fold_edge src snk v str =
       str

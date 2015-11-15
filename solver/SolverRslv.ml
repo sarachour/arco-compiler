@@ -173,6 +173,13 @@ struct
     let success,decls= tosmt () in
     (success,decls,km)
 
+    let is_valid_shallow cfg sln =
+      let is_succ,decls,_ = to_smt_prob cfg sln in
+      if is_succ = false then
+        false
+      else
+        true
+
     let is_valid cfg sln =
       let is_succ,decls,_ = to_smt_prob cfg sln in
       if is_succ = false then

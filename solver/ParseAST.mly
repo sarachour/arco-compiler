@@ -95,9 +95,6 @@ md:
     let args = $1 in
     OpN(Mult, args)
   }
-  | SUB md {
-      let e = $2 in Op1(Neg,e)
-  }
 
 sa:
   | md     {
@@ -109,7 +106,11 @@ sa:
   }
   | explst(md,SUB) {
     let args = $1 in
-    OpN(Sub,args)
+    let res = OpN(Sub,args) in
+    res
+  }
+  | SUB md {
+      let e = $2 in Op1(Neg,e)
   }
 
 expr:

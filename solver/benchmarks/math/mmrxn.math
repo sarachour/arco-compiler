@@ -1,4 +1,5 @@
 % name "michaelis menten reaction"
+% 4 diffeqs
 
 % en.wikipedia.org/wiki/Michaelis-Menten_kinetics
 type s

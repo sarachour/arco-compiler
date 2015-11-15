@@ -204,6 +204,29 @@ struct
   | HwId(v) -> HwLib.hwvid2str v
   | MathId(v) -> MathLib.mid2str v
 
+  let ast2complexity r =
+    let rec calc node : float =
+      let red (l:unid ast list) (fn: float -> float -> float) : float =
+        List.fold_right (fun x r -> fn (calc x) r) l 0.
+      in
+      let cost (a:float) (rest:float) : float =
+        rest +. a*.1.5
+      in
+      match node with
+      | Op1(_,a) -> let res : float = red [a] cost in res
+      | Op2(_,a,b) -> red [a;b] cost
+      | OpN(_,alst) -> red alst cost
+      | _ -> 1.
+    in
+    let xp = calc r in
+    xp
+
+  let urel2complexity u = match u with
+  | UFunction(l,r) -> ast2complexity r
+  | UState(l,r,i,t) -> ast2complexity r
+
+  let goal2complexity = urel2complexity
+  
   let urel2str uid = match uid with
   | UFunction(l,r) -> (unid2str l)^"="^(ASTLib.ast2str r unid2str)
   | UState(l,r,i,t) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)

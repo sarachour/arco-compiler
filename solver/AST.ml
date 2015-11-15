@@ -68,7 +68,7 @@ struct
     let rec ast2str a fn : string =
       let list2str lst delim =
         match lst with
-        | h::h2::t -> List.fold_right (fun x r -> r^delim^(ast2str x fn)) (h2::t) (ast2str h fn)
+        | h::h2::t -> List.fold_left (fun r x -> r^delim^(ast2str x fn)) (ast2str h fn) (h2::t)
         | [h] -> ast2str h fn
         | [] -> ""
       in
@@ -100,7 +100,7 @@ struct
       let _MAP (type a) (type b) (a:a ast) (conv_elem:b ast -> b ast option) (conv_term: a -> b ast) : b ast  =
         let rec _map (el:a ast) : b ast =
           let maplst (lst:(a ast) list) : (b ast) list =
-            List.fold_left (fun r x -> (_map x)::r) [] lst
+            List.fold_right (fun x r -> (_map x)::r) lst []
           in
           let choose ne : b ast=
             match conv_elem ne with Some(re) -> re | None -> ne
@@ -147,7 +147,7 @@ struct
     let fold (type x) (type y) (a:x ast) (fld:x ast -> y -> y)  (b0:y) : y =
       let rec _fold (el: x ast) (b: y) : y =
         let _foldlst (lst:(x ast) list) b0 : y =
-          List.fold_right (fun a b -> let nb = _fold a b in fld a nb) lst b0
+          List.fold_left (fun b a -> let nb = _fold a b in fld a nb) b0 lst
         in
         match el with
           | OpN(op,elst) -> let nb : y = _foldlst elst b in
