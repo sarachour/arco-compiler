@@ -10,10 +10,11 @@ let report lexbuf q =
 }
 
 let whitespace = ['\t'' ']*
-let token = ['A'-'Z''a'-'z''_']['!''A'-'Z''a'-'z''0'-'9''_' '<' '>']*
+let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
 let str = '"' [^ '"']* '"'
 let integer = '-'? ['0'-'9']+
 let op = ['[' ']' '+' '-' '*' '^' '.' '/']+
+let z3var = "z3name!"['!''A'-'Z''a'-'z''0'-'9''_' '<' '>']*
 
 rule env = parse
   | whitespace              {env lexbuf}
@@ -31,6 +32,7 @@ rule env = parse
   | "true"                  {BOOL(true)}
   | integer as i            {INTEGER(int_of_string i)}
   | str as st               {STRING(st)}
+  | z3var as tok            {Z3VAR(tok)}
   | token as tok            {TOKEN(tok)}
   | eof                     {EOF}
   | _ as q                  { report lexbuf q }

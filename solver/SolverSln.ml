@@ -122,10 +122,13 @@ struct
     res
 
   let usecomp_valid (s:slvr) (sln:sln) id : bool =
-    let lst,_ = (MAP.get sln.comps id)  in
-    let nuses = SET.size lst in
-    let maxuses = Shim.max4unodeid s id in
-    if maxuses > nuses then true else false
+    if MAP.has sln.comps id = false
+      then error "usecomp_valid" ("does not exist in solution: "^(UnivLib.unodeid2name id))
+      else
+        let lst,_ = (MAP.get sln.comps id)  in
+        let nuses = SET.size lst in
+        let maxuses = Shim.max4unodeid s id in
+        if maxuses > nuses then true else false
 
   let usecomp_mark (s:sln) id (i:int) =
     let lst,n = MAP.get s.comps id in

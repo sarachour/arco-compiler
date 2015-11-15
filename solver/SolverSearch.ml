@@ -58,6 +58,7 @@ struct
   | SAddNode(id,rels) -> "anode "^(UnivLib.unodeid2name id)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")
   | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
+  | SSolAddLabel(w,p,l) -> "SLN mklbl"^(SlnLib.wire2str w)^"."^p^(SlnLib.label2str l)
   | _ -> "?"
 
 
@@ -88,13 +89,20 @@ struct
 
   let mkscore () = ()
 
+
+
   let fold_path (type a) (b:buffer) (n:steps) (fxn: step -> a -> a) (ic:a): a =
+    if TREE.hasnode b.paths n = false then
+      error "fold_path" ("node not in search tree.")
+    else
     let apply_fxn n r =
       List.fold_right (fun x r -> fxn x r) n.s r
     in
      let els : a = List.fold_right apply_fxn (TREE.get_path b.paths n) ic in
      els
 
+   let get_path (type a) (b:buffer) (n:steps) : step list =
+     fold_path b n (fun x r -> x::r) []
 
   let start b =
     b.step_buf <- mksteps b
@@ -123,7 +131,7 @@ struct
 
   let rm b (n:steps) =
     let _ = match b.curs with
-    | Some(v) -> if v = n then error "rm" "cannot remove current node." else ()
+    | Some(v) -> if v = n then () else ()
     | None -> ()
     in
     let _ = TREE.rmnode b.paths n in
@@ -163,7 +171,13 @@ struct
     | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
-    List.iter (fun x -> apply_step slvenv tbl x) s.s
+    let sort_steps x y = match (x,y) with
+    | (SAddGoal(_),SRemoveGoal(_)) -> -1
+    | (SRemoveGoal(_),SAddGoal(_)) -> 1
+    | _ -> 0
+    in
+    let steps = List.sort sort_steps s.s in
+    List.iter (fun x -> apply_step slvenv tbl x) steps
 
   let unapply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
   (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
@@ -176,7 +190,13 @@ struct
   | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
-    List.iter (fun x -> unapply_step slvenv tbl x) s.s
+      let sort_steps x y = match (x,y) with
+      | (SAddGoal(_),SRemoveGoal(_)) -> 1
+      | (SRemoveGoal(_),SAddGoal(_)) -> -1
+      | _ -> 0
+      in
+      let steps = List.sort sort_steps s.s in
+      List.iter (fun x -> unapply_step slvenv tbl x) steps
 
   let move_cursor (s:slvr) (tbl:gltbl) (next:steps) =
     let b = tbl.search in
@@ -193,7 +213,6 @@ struct
       let _ = List.iter (fun x -> let _ = apply_steps s tbl x in ()) to_node in
       let _ = (b.curs <- Some next) in
       tbl
-
 
 
   let mkbuf goals =

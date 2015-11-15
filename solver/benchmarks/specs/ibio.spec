@@ -64,6 +64,7 @@ comp itf
   rel I(ZFREE) = (1/( (I(S)/I(Ks))^(I(n)) + 1))*I(ETOT)
   rel I(Z) = (I(S)/I(Ks))^(I(n))*(I(ZFREE))
 
+  spice itf STOT ETOT n Ks S Z ZFREE
 end
 
 comp tfdna
@@ -72,6 +73,7 @@ comp tfdna
   output SFREE where I:mA
   output EFREE where I:mA
 
+  spice tfdna STOT ETOT SFREE EFREE
 end
 
 comp mult4
@@ -83,6 +85,7 @@ comp mult4
 
   rel I(P) = I(X)*I(Y)*I(Z)*I(W)
 
+  spice mult4 X Y Z W P
 end
 
 comp add4
@@ -94,6 +97,7 @@ comp add4
 
   rel I(P) = I(X)+I(Y)+I(Z)+I(W)
 
+  spice add4 X Y Z W PS
 end
 
 
@@ -106,6 +110,7 @@ comp switch
 
   rel I(PROD) = 1/(( ( I(SUB)/I(Kmod) )+ 1)^(I(n)))
 
+  spice switch SUB TF n Kmod PROD
 end
 
 
@@ -119,6 +124,7 @@ comp inh_bind
 
   rel I(PROD) = I(COMP)*(1/((I(INH)/(I(Kinh)))^(I(n)) + 1))
 
+  spice inhbind INH COMP n Kinh PROD
 end
 
 
@@ -131,6 +137,8 @@ comp act_bind
 
   rel I(PROD) = I(COMP)*( I(ACT)/I(Kact) )^(I(n))/( ( I(ACT)/I(Kact) )^(I(n)) + 1)
 
+  spice actbind ACT COMP n Kact PROD
+
 end
 
 
@@ -141,7 +149,7 @@ comp stateful
   output COMP where I: mA
 
   rel deriv(I(COMP),t) = I(PROD) - I(DEG)*I(COMP) initially I(COMP0)
-  %spice PROD DEG COMP COMP_0
+  spice stateful PROD DEG COMP COMP_0
 end
 
 schematic

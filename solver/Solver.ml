@@ -136,8 +136,8 @@ struct
       n
     in
     let nodetbl : (unodeid,unode) map = MAP.make () in
-    let sln = SlnLib.mksln () in
     let rels : urel list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
+    let sln = SlnLib.mksln () in
     let nodes : unode list = List.map comp2node (MAP.to_values s.hw.comps) in
     let handle_node (x) =
        let nid = UnivLib.name2unodeid x.name in
@@ -482,8 +482,8 @@ struct
         let _ = List.iter (fun x -> SearchLib.add_step gtbl.search x) sts in
         let sol_cursor = SearchLib.commit gtbl.search in
         let _ = SearchLib.move_cursor s gtbl sol_cursor in
-        let _ = resolve_trivial s gtbl gtbl.goals in
-        let _ = SearchLib.move_cursor s gtbl comp_cursor in
+        let triv = resolve_trivial s gtbl gtbl.goals in
+        let _ = SearchLib.move_cursor s gtbl triv in
         true
 
       | None ->
@@ -679,86 +679,212 @@ struct
       None
 
 
-  let rec solve (_s:slvr ref) (v:gltbl) : spicedoc option=
-    let s = REF.dr _s in
-    (*find a goal to focus on*)
-      (*menu handling methods*)
+  let is_goal_in_play gs (targ:mid) = match gs with
+  | UState(MathId(q),_,_,_) -> q = targ
+  | UFunction(MathId(q),_) -> q = targ
+  | _ -> true
 
-      (*apply the current step in the search algorithm*)
-      (*choose a goal in the table*)
-      let move_to_next c =
-        match get_next_path s v c with
-          | Some(p) ->
-            let _ = SearchLib.move_cursor s v p in
-            true
-          | None ->
-            false
-      in
-      let failed () =
-        (*mark this path as visited*)
-        let goal_cursor = SearchLib.cursor v.search in
-        let _ = SearchLib.deadend v.search goal_cursor in
-        let succ = move_to_next None in
-        if succ = false
-          then
-            None
-          else
-            let res = solve _s v in
-            let _ = SearchLib.rm v.search goal_cursor in
-            res
-      in
-      let no_goals_left () =
-        (*this solution is valid*)
-        let mint,musr = mkmenu s v None in
-        if SlnLib.mkconn_cons s v.sln &&  SlnLib.usecomp_cons s v.sln then
-          let _ = Printf.printf "SOLVER: Found valid solution.\n" in
-          let _ = mint "s" in
-          let v  = SpiceLib.to_spice s v.sln in
-          Some v
-        else
-          let _ = Printf.printf "SOLVER: Invalid.\n" in
-          let _ = mint "s" in
-          failed ()
-      in
-      let solve_goal () =
-        let _ = SearchLib.cleanup v.search in
-        let goal_cursor = SearchLib.cursor v.search in
-        (*print goals*)
-        let mint,musr= mkmenu s v None in
-        let _ = mint "g" in
-        (*do we have any goals. *)
-        if SET.size v.goals = 0 then
-          let res = no_goals_left() in
-          res
-        else
-          (*check for repeated patterns*)
-          if path_is_impossible s v || false
-            (* path_is_useless v goal_cursor*)
+  let choose_goal (gs:goal set) (target:mid) =
+    let gflt = SET.filter gs (fun g -> is_goal_in_play g target ) in
+    let g = LIST.rand gflt in
+    g
+
+  let is_no_goals_left (gs:goal set) target =
+    let gnum = SET.fold gs (fun g r ->
+        if is_goal_in_play g target then r+1 else r) 0
+    in
+    gnum = 0
+
+
+  let rec solve_goal (_s:slvr ref) (v:gltbl) (target:mid) : steps option=
+    let s = REF.dr _s in
+    (*apply the current step in the search algorithm*)
+    (*choose a goal in the table*)
+    let move_to_next c =
+      match get_next_path s v c with
+        | Some(p) ->
+          let _ = SearchLib.move_cursor s v p in
+          true
+        | None ->
+          false
+    in
+    let failed () =
+      (*mark this path as visited*)
+      let goal_cursor = SearchLib.cursor v.search in
+      let _ = SearchLib.deadend v.search goal_cursor in
+      let succ = move_to_next None in
+      if succ = false
         then
-            let mint,musr= mkmenu s v None in
-            let _ = SearchLib.deadend v.search goal_cursor in
-            let succ = move_to_next (None) in
-            if succ = false then None else
-              let res = solve _s v in
-              res
-          else
-            let g = SET.rand v.goals in
-            (*mark this goal as used*)
-            (*let _ = ftbl_use g in*)
-            let mint,musr = mkmenu s v (Some g) in
-            (*show goals and current solution*)
-            (*let _ = mint "s" in*)
-            let _ = mint "c" in
-            let _ = apply_nodes s v g in
-            let _ = musr () in
-            let succ = move_to_next (Some goal_cursor) in
-            (*if could not move to next, exit*)
-            if succ = false then None else
-              let res = solve _s v in
-              res
+          None
+        else
+          let res = solve_goal _s v target in
+          res
+    in
+    let no_goals_left () =
+      (*this solution is valid*)
+      let mint,musr = mkmenu s v None in
+      let _ = Printf.printf "SOLVER ==> Testing Solution\n" in
+      let _ = flush_all() in
+      if
+        SlnLib.mkconn_cons s v.sln &&
+        SlnLib.usecomp_cons s v.sln
+        then
+        let _ = Printf.printf "SOLVER: Found valid solution.\n" in
+        (*let _ = mint "s" in*)
+        let cnode = SearchLib.cursor v.search in
+        Some cnode
+      else
+        let _ = Printf.printf "SOLVER: Invalid.\n" in
+        (*let _ = mint "s" in*)
+        failed ()
+    in
+    let solve_goal () =
+      let triv = resolve_trivial s v v.goals in
+      let _ = SearchLib.move_cursor s v triv in
+      let goal_cursor = SearchLib.cursor v.search in
+      (*if this cursor is dead for some reason*)
+      if SearchLib.is_deadend v.search goal_cursor then
+        failed()
+      else
+      let _ = SearchLib.cleanup v.search in
+      (*print goals*)
+      let mint,musr= mkmenu s v None in
+      let _ = mint "g" in
+      (*do we have any goals. *)
+      if is_no_goals_left v.goals target then
+        let res = no_goals_left() in
+        res
+      else
+        (*check for repeated patterns*)
+        if path_is_impossible s v || false
+          (* path_is_useless v goal_cursor*)
+      then
+          let mint,musr= mkmenu s v None in
+          let _ = SearchLib.deadend v.search goal_cursor in
+          let succ = move_to_next (None) in
+          if succ = false then None else
+            let res = solve_goal _s v target in
+            res
+        else
+          let g = choose_goal v.goals target in
+          (*mark this goal as used*)
+          (*let _ = ftbl_use g in*)
+          let mint,musr = mkmenu s v (Some g) in
+          (*show goals and current solution*)
+          (*let _ = mint "s" in*)
+          let _ = mint "c" in
+          let _ = apply_nodes s v g in
+          let _ = musr () in
+          let succ = move_to_next (Some goal_cursor) in
+          (*if could not move to next, exit*)
+          if succ = false then None else
+            let res = solve_goal _s v target in
+            res
+    in
+    let r = solve_goal () in
+    r
+
+    let search2tbl s (rf) icurs (st) :gltbl =
+      let sln = SlnLib.mksln () in
+      let nodetbl : (unodeid,unode) map = MAP.make () in
+      let handle_node (x) =
+         let nid = UnivLib.name2unodeid x.name in
+         let _ = MAP.put nodetbl nid x in
+         let _ = SlnLib.mkcomp sln nid in
+         ()
       in
-      let r = solve_goal () in
-      r
+      let _ = List.iter (fun x -> handle_node x) (MAP.to_values rf.nodes) in
+      let v =  {
+         goals = SET.make (fun x y -> x = y);
+         nodes = nodetbl;
+         search= st;
+         sln= sln;
+      } in
+      let v = SearchLib.move_cursor s v icurs in
+      v
+
+    (*
+    Continue working on this.
+    *)
+    let solve (_s) v =
+      let s = REF.dr _s in
+      let init_goals = LIST.shuffle (SET.to_list v.goals) in
+      let _ = Printf.printf "====Solving===\n" in
+      (*makes a new table, where the node immediately following the goalnode is a sequence of steps.*)
+      let mknewtbl (steps: step list)  (gls:goal list)=
+        (*new buffer*)
+        let start,stree = SearchLib.mkbuf gls in
+        let tbl = search2tbl s v start stree in
+        let _ = SearchLib.start stree in
+        (*new initial node*)
+        let _ = List.iter (fun x -> SearchLib.add_step stree x) steps in
+        let p = SearchLib.commit stree in
+        let _ = SearchLib.move_cursor s tbl p in
+        tbl
+      in
+      (*get the steps from a particular node*)
+      let get_steps v n =
+        (*given a node and the table, get the delta between the solution node and the current node*)
+        let path = SearchLib.get_path v.search n in
+        path
+      in
+      let get_mid g = match g with
+      | UState(MathId(m),_,_,_) -> m
+      | UFunction(MathId(m),_) -> m
+      | _ -> error "get_mid" "expected goal with mid on the other end."
+      in
+      let rec try_solve (ctx:step list) goals =
+      let rec attempt (new_tbl:gltbl) (g:goal) (rest:goal list) : step list option =
+        let _ = Printf.printf "Attempt To Solve: %s\n" (UnivLib.goal2str g) in
+        let gid = get_mid g in
+        let result = solve_goal _s new_tbl gid in
+        let _ = Printf.printf "Returned To: %s\n" (UnivLib.goal2str g) in
+        match result with
+        | Some(node) ->
+          let _ = Printf.printf "[%d] Successfully Solved: %s. solve children\n" (node.id) (UnivLib.goal2str g) in
+          let steps = get_steps new_tbl node in
+          if List.length rest = 0 then
+            let _ = Printf.printf "no more goals \n" in
+            Some(steps)
+          else
+            let _ = Printf.printf "still has goals \n" in
+            let next_result = try_solve (steps) rest in
+            begin
+            match next_result with
+            | Some(steps) ->
+              let _ = Printf.printf "Successfully Solved children of: %s\n" (UnivLib.goal2str g) in
+              Some(steps)
+            | None ->
+              let _ = Printf.printf "Failed to Solve children of: %s\n" (UnivLib.goal2str g) in
+              (*mark the current solution a dead end and try again*)
+              let _ = SearchLib.deadend new_tbl.search node in
+              let res = attempt new_tbl g rest in
+              res
+            end
+        | None ->
+          let _ = Printf.printf "No solutions found: %s\n" (UnivLib.goal2str g) in
+          None
+      in
+      match goals with
+      | g::t ->
+        let new_tbl = mknewtbl ctx (g::t) in
+        let result = attempt new_tbl g t in
+        result
+      | [] -> None
+    in
+      let result = try_solve ([]) init_goals in
+      let _ = Printf.printf "Completed search.\n" in
+      match result with
+      | Some(steps) ->
+        let ntbl :gltbl = mknewtbl steps init_goals in
+        let _ = Printf.printf "Result has %d elements \n" (List.length steps) in
+        let v  = SpiceLib.to_spice s ntbl.sln in
+        Some(v)
+      | None ->
+      let _ = Printf.printf "No Result\n" in
+        None
+
+
 
 end
 
@@ -768,7 +894,7 @@ let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
   let _ = init_utils() in
   let sl = SolveLib.mkslv  hw prob interactive in
   let tbl = SolveLib.mktbl sl in
-  let _ = pr sl "===== Beginning Interactive Solver ======" in
+  let _ = pr sl "===== Beginning Interactive Solver ======\n" in
   let spdoc = SolveLib.solve (REF.mk sl) (tbl) in
   match spdoc with
     | Some(sp) ->

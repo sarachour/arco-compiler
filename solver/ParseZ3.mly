@@ -16,12 +16,12 @@
 %token EOF EOL OPARAN CPARAN
 %token SAT UNSAT BOOLTYPE INTTYPE MODEL DEFINEFUN ERROR
 
-%token <string> TOKEN STRING
+%token <string> TOKEN STRING Z3VAR
 %token <int> INTEGER
 %token <bool> BOOL
 
 %type <unit> errorst
-%type <Z3Data.z3assign> assignm
+%type <Z3Data.z3assign option> assignm
 %type <Z3Data.z3assign list> assignms
 %type <Z3Data.z3model> model
 %type <Z3Data.z3sln> stmts
@@ -39,22 +39,35 @@ assignm:
   | OPARAN DEFINEFUN TOKEN OPARAN CPARAN BOOLTYPE BOOL CPARAN {
     let n = $3 in
     let v = $7 in
-    Z3SetBool(n,v)
+    Some (Z3SetBool(n,v))
   }
   | OPARAN DEFINEFUN TOKEN OPARAN CPARAN INTTYPE INTEGER CPARAN {
     let n = $3 in
     let v = $7 in
-    Z3SetInt(n,v)
+    Some (Z3SetInt(n,v))
   }
-
+  | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN INTTYPE INTEGER CPARAN {
+    let n = $3 in
+    let v = $7 in
+    None
+  }
+  | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN BOOLTYPE INTEGER CPARAN {
+    let n = $3 in
+    let v = $7 in
+    None
+  }
 
 assignms:
   | assignm          {
-    let h = $1 in [h]
+    let h = $1 in match h with
+    | Some(h) -> [h]
+    | None -> []
   }
   | assignms assignm {
     let h = $2 in let t = $1 in
-    h::t
+    match h with
+    | Some(h) -> h::t
+    | None -> t
   }
 
 model:
