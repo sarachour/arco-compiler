@@ -59,7 +59,7 @@ struct
   let to_spice s sln =
     (*mappings for hardware model*)
     let imaps : (string*int,string*int) map= HwConnRslvr.get_sln s sln in
-    let _ = Printf.printf "===== SMT SOLUTION ====" in
+    let _ = Printf.printf "===== SMT SOLUTION ====\n" in
     let _ = MAP.iter imaps (fun (s,i) (d,di) -> Printf.printf "%s.%d => %s.%d\n" s i d di)  in
     let wmaps : (wireid, int) map = MAP.make () in
     let spinst (n,i) =

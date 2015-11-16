@@ -1,62 +1,55 @@
 
 *@output S
-*@args 46,I
-*
-*@output P
-*@args 46,I
-*
-*@output E
-*@args 45,I
-*
-*constant value 0.01
-Icst10		44	0	DC	0.01
-*
-*@input P_0
-Iin_P_0_9		43	0	DC	1.
-*
-*@input ES_0
-Iin_ES_0_8		42	0	DC	1.
-*
-*constant value 1.
-Icst7		41	0	DC	1.
-*
-*constant value 1.01
-Icst6		40	0	DC	1.01
-*
-*@input S
-Iin_S_5		39	0	DC	1.
+*@args 27,I
 *
 *@output ES
-*@args 38,I
+*@args 27,I
+*
+*@output P
+*@args 27,I
+*
+*@output E
+*@args 26,I
+*
+*constant value 1.01
+Icst9		26	0	DC	1.01
+*
+*@input P_0
+Iin_P_0_8		25	0	DC	1.
 *
 *@input E
-Iin_E_3		37	0	DC	1.
+Iin_E_7		25	0	DC	1.
 *
-*@input E_0
-Iin_E_0_2		36	0	DC	1.
-*
-*@input S_0
-Iin_S_0_1		36	0	DC	1.
+*constant value 1.
+Icst6		24	0	DC	1.
 *
 *@input ES
-Iin_ES_0		35	0	DC	1.
+Iin_ES_5		23	0	DC	1.
+*
+*@input S_0
+Iin_S_0_4		23	0	DC	1.
+*
+*@input ES_0
+Iin_ES_0_3		23	0	DC	1.
+*
+*@input E_0
+Iin_E_0_2		22	0	DC	1.
+*
+*@input S
+Iin_S_1		22	0	DC	1.
+*
+*constant value 0.01
+Icst0		21	0	DC	0.01
 *
 *
 *
 * === Connectivity Schem ==== 
-Xmult4_7		34	34	34	34	34	mult4
-Xmult4_1		34	34	34	34	34	mult4
-Xmult4_17		34	34	34	1	12	mult4
-XinputI_38		44	34	iin
-XinputI_27		43	34	iin
-XinputI_0		42	34	iin
-XinputI_41		36	34	iin
-XinputI_1		39	34	iin
-XinputI_49		37	34	iin
-XinputI_8		41	34	iin
-XinputI_17		36	28	iin
-XinputI_34		40	1	iin
-Xstateful_14		34	34	23	0	stateful
-Xstateful_4		12	34	23	0	stateful
-XoutputI_2		23	38	iout
-XoutputI_0		23	46	iout
+Xmult4_1		20	20	20	20	20	mult4
+Xmult4_17		20	20	20	20	20	mult4
+XinputI_49		26	20	iin
+XinputI_5		23	20	iin
+XinputI_25		22	20	iin
+XinputI_48		25	20	iin
+XinputI_1		23	20	iin
+Xstateful_4		20	20	9	0	stateful
+XoutputI_1		9	27	iout

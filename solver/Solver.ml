@@ -900,6 +900,8 @@ struct
       | Some(steps) ->
         let ntbl :gltbl = mknewtbl steps init_goals in
         let _ = Printf.printf "Result has %d elements \n" (List.length steps) in
+        let mint,musr= mkmenu s ntbl None in
+        let _ = mint "s" in
         let v  = SpiceLib.to_spice s ntbl.sln in
         Some(v)
       | None ->
