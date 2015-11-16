@@ -156,7 +156,7 @@ struct
   let ifover_mkcopier s t (dest:wireid) prop =
     match SlnLib.conns_with_dest t.sln dest with
     | [] -> None
-    | [h] ->
+    | lst ->
       let _ = Printf.printf "MKCOPY: copy necessity detected\n" in
       let copyid = UNoCopy prop in
       let copyinst = SlnLib.usecomp t.sln copyid in
@@ -168,15 +168,18 @@ struct
       let outwire = (copyid,copyinst,port_out.name) in
       let inconn = SSolAddConn(dest,inwire) in
       Some([use_copier;inconn], outwire)
-    | [_] -> error "ifover_copier" "destination should not be overdrawn"
+    | _ -> error "ifover_copier" "destination should not be overdrawn"
 
 
   let mkconn s t sw dw pr =
+    [SSolAddConn(sw,dw)]
+  (*)
     match ifover_mkcopier s t sw pr with
     | Some(steps,nsw) ->
       SSolAddConn(nsw,dw)::steps
     | None ->
       [SSolAddConn(sw,dw)]
+      *)
 
   let mkio s t kind cmp port prop : (step list)*wireid=
     let dest = SlnLib.hwport2wire cmp port in

@@ -3,7 +3,7 @@
 % en.wikipedia.org/wiki/Michaelis-Menten_kinetics
 % one diffeq, three equations
 % Depth 20, pattern 3
- 
+
 type s
 type M
 
