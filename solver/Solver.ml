@@ -155,7 +155,7 @@ struct
 
   let ifover_mkcopier s t (dest:wireid) prop =
     match SlnLib.conns_with_dest t.sln dest with
-    | [] -> Some([],dest)
+    | [] -> None
     | [h] ->
       let copyid = UNoCopy prop in
       let copyinst = SlnLib.usecomp t.sln copyid in
@@ -172,8 +172,10 @@ struct
 
   let mkconn s t sw dw pr =
     match ifover_mkcopier s t sw pr with
-    | Some(steps,nsw) -> SSolAddConn(nsw,dw)::steps
-    | None -> [SSolAddConn(sw,dw)]
+    | Some(steps,nsw) ->
+      SSolAddConn(nsw,dw)::steps
+    | None ->
+      [SSolAddConn(sw,dw)]
 
   let mkio s t kind cmp port prop : (step list)*wireid=
     let dest = SlnLib.hwport2wire cmp port in
@@ -231,14 +233,22 @@ struct
   let get_trivial_step s t g : step list =
     let bind_var k c v prop lbl =
       let res = match reuse_io s t k c v prop lbl with
-        | Some(steps) -> steps
+        | Some(steps) ->
+          let _ = SearchLib.apply_steps s t {s=steps;id=0} in
+          steps
         | None ->
           let inps,port = mkio s t (k) c v prop in
           let stps = [SSolAddLabel(port,prop,lbl)] @ inps in
           let _ = SearchLib.apply_steps s t {s=stps;id=0} in
           stps
       in
-        res
+      res
+      (*
+      let inps,port = mkio s t (k) c v prop in
+      let stps = [SSolAddLabel(port,prop,lbl)] @ inps in
+      let _ = SearchLib.apply_steps s t {s=stps;id=0} in
+      stps
+      *)
     in
     match g with
       (*check for duplicates*)
@@ -248,7 +258,7 @@ struct
           let snk = SlnLib.hwport2wire c2 v2 in
           let conn = mkconn s t src snk prop1 in
           conn
-        else []
+        else error "get_trivial_step" "is nontrivial."
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
         let lbl = LBindValue(q) in
         bind_var k c v prop lbl
@@ -484,11 +494,6 @@ struct
     | Some(q) ->
       let l = leftovers q in
       let q = l @ q in
-      (*
-      let _ = Printf.printf "HAS SOLUTION\n" in
-      let _ = List.iter (fun x -> Printf.printf "%s\n" (SearchLib.step2str x)) q in
-      let _ = Printf.printf "\n" in
-      *)
       (*this means that all mappings that are outputs have been resolved. We should compute the rest*)
       Some(q)
     | None ->  None
@@ -550,52 +555,7 @@ struct
       else
         let _ = SearchLib.visited gtbl.search comp_cursor in
         Some(cnt)
-        (*)
-  let mkmag (s:slvr) (port:unid) (qty:unid) =
-    let mq = Shim.unt s qty in
-    let mrng = Shim.mag s qty in
-    let hwq = Shim.unt s port in
-    let hwrng = Shim.mag s port in
-    match hwq,hwrng,mrng with
-    | (UExpr(Term(id)),Some(hr),Some(mr)) ->   (LMagnitude (hr, id, mr, mq))
-    | (_,None,_) -> error "mkmag" ("quantity "^(UnivLib.unid2str port)^" must have range")
-    | (_,_,None) -> error "mkmag" ("quantity "^(UnivLib.unid2str qty)^" must have range")
-    | _ -> error "mkmag" "the hardware quantity has to be flat."
-  *)
 
-  (*apply all possible components*)
-  (*
-  type goal_freq_table  = {
-    mutable freq: (goal,int) map;
-    mutable n: int;
-  }
-
-  let gftbl = {freq=MAP.make(); n=0}
-
-  let __ftbl_strip g = Shim.rel_glbl2lcl g
-
-  let ftbl_step () =
-    let _ = gftbl.n <- gftbl.n+1 in
-    ()
-
-  let ftbl_use g =
-    let goal = __ftbl_strip g in
-    if MAP.has gftbl.freq goal then
-      let tmp = MAP.get gftbl.freq goal in
-      let _ = MAP.put gftbl.freq goal (gftbl.n) in
-      ()
-    else
-      let _ = MAP.put gftbl.freq goal (gftbl.n)  in
-      ()
-
-  let ftbl_lru g =
-    let goal = __ftbl_strip g in
-    if MAP.has gftbl.freq goal then
-      let amt = MAP.get gftbl.freq goal in
-      amt
-    else
-      0
-  *)
 
 
   let apply_nodes (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
@@ -766,9 +726,22 @@ struct
           res
     in
     let no_goals_left () =
-      (*this solution is valid*)
-      let mint,musr = mkmenu s v None in
       let _ = Printf.printf "SOLVER ==> Testing Solution\n" in
+      let mint,musr = mkmenu s v None in
+      let _ = flush_all() in
+      (*SlnLib.mkconn_cons s v.sln && *)
+      if SlnLib.usecomp_cons s v.sln  then
+        let _ = Printf.printf "SOLVER ==> Found valid solution.\n" in
+        let _ = flush_all() in
+        let cnode = SearchLib.cursor v.search in
+        Some cnode
+      else
+        let _ = Printf.printf "SOLVER ==> Solution does not satisfy constraints.\n" in
+        let _ = flush_all() in
+        let _ = failed () in
+        None
+      (*this solution is valid*)
+      (*
       let _ = flush_all() in
       if
         SlnLib.mkconn_cons s v.sln &&
@@ -781,17 +754,20 @@ struct
       else
         let _ = Printf.printf "SOLVER: Invalid.\n" in
         (*let _ = mint "s" in*)
-        failed ()
+      *)
     in
     let solve_goal () =
+      let _  = flush_all() in
       let triv = resolve_trivial s v v.goals in
       let _ = SearchLib.move_cursor s v triv in
       let goal_cursor = SearchLib.cursor v.search in
       (*if this cursor is dead for some reason*)
       if SearchLib.is_deadend v.search goal_cursor then
+        let _ = Printf.printf "SOLVER => Path is deadend.\n" in
         failed()
       else
-      let _ = SearchLib.cleanup v.search in
+      (*please don't enable me, i have issues with deleting te current cursor*)
+      (*let _ = SearchLib.cleanup v.search in*)
       (*print goals*)
       let mint,musr= mkmenu s v None in
       let _ = mint "g" in
@@ -803,7 +779,8 @@ struct
         (*check for repeated patterns*)
         if path_is_impossible s v || false
           (* path_is_useless v goal_cursor*)
-      then
+        then
+          let _ = Printf.printf "SOLVER => Path is impossible.\n" in
           let mint,musr= mkmenu s v None in
           let _ = SearchLib.deadend v.search goal_cursor in
           let succ = move_to_next (None) in
@@ -948,5 +925,6 @@ let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
       let _ = Printf.printf "===== Solution Found ======\n" in
       ()
     | None ->
+      let _ = flush_all () in
       error "solve" " no solution Found."
   ()

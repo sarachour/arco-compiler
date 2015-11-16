@@ -83,6 +83,7 @@ comp mult4
   input W where I:mA
   output P where I:mA
 
+
   rel I(P) = I(X)*I(Y)*I(Z)*I(W)
 
   spice mult4 X Y Z W P
@@ -103,14 +104,13 @@ end
 
 comp switch
   input SUB where I:mA
-  input TF where I:mA
   input n where I:mA
   input Kmod where I:mA
   output PROD where I:mA
 
   rel I(PROD) = 1/(( ( I(SUB)/I(Kmod) )+ 1)^(I(n)))
 
-  spice switch SUB TF n Kmod PROD
+  spice switch SUB n Kmod PROD
 end
 
 
@@ -163,10 +163,13 @@ schematic
 
   inst input I : 50
   inst output I : 10
+  inst copy I : 10
 
 
   conn input(I).O -> *
   conn * -> output(I).X
+  conn input(I) -> copy(I)
+  conn copy(I) -> *
 
 
 

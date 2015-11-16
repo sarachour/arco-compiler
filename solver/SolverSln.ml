@@ -99,7 +99,9 @@ struct
   let wires_of_label (sln:sln) (prop:propid) (v:label) : wireid list option=
     let matches = MAP.fold sln.labels (fun k props r ->
       let lset = MAP.get props prop in
-      if SET.has lset v then k::r else r ) []
+      if SET.has lset v then
+      let _ = Printf.printf "analogous: %s <-> %s.%s\n" (wire2str k) (prop) (label2str v) in
+      k::r else r ) []
     in
     match matches with
     | h::t -> Some(matches)
