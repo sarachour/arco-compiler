@@ -105,6 +105,13 @@ struct
     | h::t -> Some(matches)
     | [] -> None
 
+  let conns_with_dest (sln:sln) (targ:wireid) : wireid list =
+    let connected = MAP.fold sln.conns (fun src children r ->
+      SET.fold children (fun dest r -> if targ = dest then src::r else r) r
+    ) []
+    in
+    connected
+
   let mklabel_undo (sln:sln) (id:wireid) (prop:propid) (v:label) =
     if MAP.has sln.labels id then
       let props = MAP.get sln.labels id in

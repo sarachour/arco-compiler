@@ -153,7 +153,27 @@ struct
     let tbl = SearchLib.move_cursor s tbl init_cursor in
     tbl
 
+  let ifover_mkcopier s t (dest:wireid) prop =
+    match SlnLib.conns_with_dest t.sln dest with
+    | [] -> Some([],dest)
+    | [h] ->
+      let copyid = UNoCopy prop in
+      let copyinst = SlnLib.usecomp t.sln copyid in
+      let _ = SlnLib.usecomp_unmark t.sln copyid copyinst in
+      let use_copier = SSolUseNode(copyid,copyinst) in
+      let port_in = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name copyid) in
+      let port_out = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name copyid) in
+      let inwire = (copyid,copyinst,port_in.name) in
+      let outwire = (copyid,copyinst,port_out.name) in
+      let inconn = SSolAddConn(dest,inwire) in
+      Some([use_copier;inconn], outwire)
+    | [_] -> error "ifover_copier" "destination should not be overdrawn"
 
+
+  let mkconn s t sw dw pr =
+    match ifover_mkcopier s t sw pr with
+    | Some(steps,nsw) -> SSolAddConn(nsw,dw)::steps
+    | None -> [SSolAddConn(sw,dw)]
 
   let mkio s t kind cmp port prop : (step list)*wireid=
     let dest = SlnLib.hwport2wire cmp port in
@@ -176,11 +196,26 @@ struct
       let port = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name outid) in
       let port_dangle = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name outid) in
       let pwire = (outid,outinst,port.name) in
-      let mkconn = SSolAddConn(dest,pwire) in
-      ([use_output;mkconn],(outid,outinst,port_dangle.name))
+      (*determine if we need to copy dest*)
+      let oconn = mkconn s t dest pwire prop in
+      (*return output port and list of steps, including copier steps.*)
+      ([use_output] @ oconn,(outid,outinst,port_dangle.name))
 
-  let mkcopy s t (k1,c1,p1,pr1) (k2,c2,p2,pr2) =
-    []
+
+  let reuse_io s t kind c v prop lbl : (step list) option =
+    let src = SlnLib.hwport2wire c v in
+    match SlnLib.wires_of_label t.sln prop lbl with
+    |Some([w]) ->
+      if kind = HNInput then
+        let iconn = mkconn s t w src prop in
+        Some (iconn)
+      else
+        Some ([SSolAddConn(src,w)])
+    |Some(lst) ->
+      let _ = List.iter (fun x -> Printf.printf "%s\n" (SlnLib.wire2str x)) lst in
+      error "reuse_io" "unexpected: multiple wires."
+    | None -> None
+
 
   let is_trivial g =
     match g with
@@ -191,19 +226,6 @@ struct
     | UFunction(MathId(v),Term(HwId(_))) -> true
     | UFunction(HwId(v),Term(MathId(_))) -> true
     | _ -> false
-
-  let reuse_io s t kind c v prop lbl : (step list) option =
-    let src = SlnLib.hwport2wire c v in
-    match SlnLib.wires_of_label t.sln prop lbl with
-    |Some([w]) ->
-      if kind = HNInput then
-        Some ([SSolAddConn(w,src)])
-      else
-        Some ([SSolAddConn(src,w)])
-    |Some(lst) ->
-      let _ = List.iter (fun x -> Printf.printf "%s\n" (SlnLib.wire2str x)) lst in
-      error "reuse_io" "unexpected: multiple wires."
-    | None -> None
 
 
   let get_trivial_step s t g : step list =
@@ -224,7 +246,8 @@ struct
         if prop1 = prop2 then
           let src = SlnLib.hwport2wire c1 v1 in
           let snk = SlnLib.hwport2wire c2 v2 in
-          [SSolAddConn (src,snk)]
+          let conn = mkconn s t src snk prop1 in
+          conn
         else []
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
         let lbl = LBindValue(q) in
