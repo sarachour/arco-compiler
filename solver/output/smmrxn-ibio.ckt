@@ -1,38 +1,33 @@
 
 *@input ES_0
-Iin_ES_0_6		32	0	DC	1.
-*
-*@output E
-*@args 31,I
+Iin_ES_0_6		22	0	DC	1.
 *
 *@output S
-*@args 30,I
+*@args 21,I
+*
+*@output E
+*@args 20,I
 *
 *constant value 1.
-Icst3		29	0	DC	1.
+Icst3		19	0	DC	1.
 *
 *@output ES
-*@args 28,I
-*
-*constant value 0.11
-Icst1		27	0	DC	0.11
+*@args 18,I
 *
 *constant value 0.15
-Icst0		26	0	DC	0.15
+Icst1		17	0	DC	0.15
+*
+*constant value 0.11
+Icst0		16	0	DC	0.11
 *
 *
 *
 * === Connectivity Schem ==== 
-XinputI_0		27	23	iin
-XinputI_23		29	17	iin
-XinputI_1		32	23	iin
-XinputI_3		26	14	iin
-Xmm_0		14	23	16	17	24	8	10	23	mm
-XoutputI_1		24	28	iout
-XoutputI_9		8	31	iout
-XoutputI_4		10	30	iout
-XcopyI_7		17	17	icopy
-XcopyI_9		23	23	icopy
-XcopyI_4		23	23	icopy
-XcopyI_8		17	16	icopy
-XcopyI_2		17	16	icopy
+XinputI_2		17	10	iin
+XinputI_46		19	3	iin
+XinputI_4		22	12	iin
+XinputI_47		16	8	iin
+Xmm_0		8	10	3	3	14	4	6	12	mm
+XoutputI_7		14	18	iout
+XoutputI_0		4	21	iout
+XoutputI_9		6	20	iout

@@ -1,208 +1,92 @@
 
-*@output V
-*@args 125,I
-*
-*constant value 2.5
-Icst49		124	0	DC	2.5
-*
-*constant value 1.
-Icst48		123	0	DC	1.
-*
-*constant value 1.
-Icst47		122	0	DC	1.
-*
-*@output umodif
-*@args 122,I
-*
 *@output U
-*@args 122,I
+*@args 58,I
 *
-*@output VTF
-*@args 121,I
-*
-*@output UTF
-*@args 120,I
-*
-*@input U
-Iin_U_42		119	0	DC	1.
-*
-*@input U
-Iin_U_41		118	0	DC	1.
-*
-*@input umodif
-Iin_umodif_40		117	0	DC	1.
-*
-*constant value 1.
-Icst39		116	0	DC	1.
-*
-*constant value 1.
-Icst38		115	0	DC	1.
-*
-*constant value 1.
-Icst37		114	0	DC	1.
-*
-*@input umodif
-Iin_umodif_36		114	0	DC	1.
-*
-*constant value 2.5
-Icst35		113	0	DC	2.5
-*
-*constant value 1.
-Icst34		112	0	DC	1.
-*
-*constant value 15.6
-Icst33		112	0	DC	15.6
-*
-*constant value 1.
-Icst32		111	0	DC	1.
-*
-*constant value 1.
-Icst31		110	0	DC	1.
-*
-*@input U
-Iin_U_30		110	0	DC	1.
-*
-*@input umodif
-Iin_umodif_29		110	0	DC	1.
+*@output V
+*@args 57,I
 *
 *constant value 156.25
-Icst28		109	0	DC	156.25
-*
-*constant value 1.
-Icst27		108	0	DC	1.
-*
-*constant value 2.9618e-05
-Icst26		107	0	DC	2.9618e-05
+Icst19		56	0	DC	156.25
 *
 *@input VTF
-Iin_VTF_25		106	0	DC	1.
-*
-*@input V
-Iin_V_24		105	0	DC	1.
-*
-*constant value 1.
-Icst23		104	0	DC	1.
-*
-*constant value 0.001
-Icst22		103	0	DC	0.001
-*
-*constant value 1.
-Icst21		102	0	DC	1.
-*
-*constant value 2.0015
-Icst20		101	0	DC	2.0015
-*
-*@input UTF
-Iin_UTF_19		100	0	DC	1.
-*
-*@output U
-*@args 99,I
-*
-*constant value 1.
-Icst17		98	0	DC	1.
-*
-*constant value 1.
-Icst16		97	0	DC	1.
-*
-*constant value 1.
-Icst15		96	0	DC	1.
-*
-*@input IPTG
-Iin_IPTG_14		95	0	DC	1.
-*
-*constant value 1.
-Icst13		94	0	DC	1.
-*
-*@input umodif
-Iin_umodif_12		93	0	DC	1.
+Iin_VTF_18		55	0	DC	1.
 *
 *@input U_0
-Iin_U_0_11		92	0	DC	1.
-*
-*constant value 1.
-Icst10		91	0	DC	1.
-*
-*constant value 1.
-Icst9		90	0	DC	1.
-*
-*constant value 1.
-Icst8		89	0	DC	1.
+Iin_U_0_17		55	0	DC	1.
 *
 *@input V_0
-Iin_V_0_7		88	0	DC	1.
+Iin_V_0_16		54	0	DC	1.
 *
-*constant value 1.
-Icst6		88	0	DC	1.
+*@input UTF
+Iin_UTF_15		54	0	DC	1.
 *
-*constant value 156.25
-Icst5		87	0	DC	156.25
+*constant value 0.001
+Icst14		53	0	DC	0.001
 *
-*constant value 2.5
-Icst4		86	0	DC	2.5
+*@input U
+Iin_U_13		52	0	DC	1.
 *
-*@input V
-Iin_V_3		85	0	DC	1.
+*constant value 0.
+Icst12		51	0	DC	0.
 *
-*@input U_0
-Iin_U_0_2		85	0	DC	1.
+*@output UTF
+*@args 51,I
 *
-*constant value 1.
-Icst1		85	0	DC	1.
+*@output VTF
+*@args 50,I
+*
+*@input umodif
+Iin_umodif_9		49	0	DC	1.
 *
 *constant value 15.6
-Icst0		84	0	DC	15.6
+Icst8		48	0	DC	15.6
+*
+*@input IPTG
+Iin_IPTG_7		47	0	DC	1.
+*
+*constant value 2.0015
+Icst6		46	0	DC	2.0015
+*
+*@output umodif
+*@args 45,I
+*
+*constant value -1.
+Icst4		44	0	DC	-1.
+*
+*@input V
+Iin_V_3		43	0	DC	1.
+*
+*constant value 1.
+Icst2		42	0	DC	1.
+*
+*constant value -2.5
+Icst1		42	0	DC	-2.5
+*
+*constant value 2.9618e-05
+Icst0		41	0	DC	2.9618e-05
 *
 *
 *
 * === Connectivity Schem ==== 
-Xswitch_7		4	0	34	83	10	switch
-Xswitch_5		83	0	83	27	83	switch
-Xmult4_4		65	27	10	52	79	mult4
-Xmult4_15		27	83	83	83	79	mult4
-XinputI_46		95	4	iin
-XinputI_29		101	34	iin
-XinputI_18		107	83	iin
-XinputI_48		97	52	iin
-XinputI_15		89	65	iin
-XinputI_20		118	27	iin
-XinputI_0		93	83	iin
-XinputI_31		122	64	iin
-XinputI_21		98	33	iin
-XinputI_8		90	83	iin
-XinputI_41		92	83	iin
-XinputI_25		119	83	iin
-XinputI_37		100	36	iin
-XinputI_13		117	83	iin
-XinputI_42		110	83	iin
-XinputI_24		94	83	iin
-XinputI_2		96	6	iin
-XinputI_22		116	83	iin
-XinputI_17		108	27	iin
-XinputI_28		85	83	iin
-XinputI_38		114	27	iin
-XinputI_14		110	83	iin
-XinputI_40		85	80	iin
-XinputI_23		102	83	iin
-XinputI_27		86	83	iin
-XinputI_49		91	83	iin
-XinputI_11		112	83	iin
-XinputI_44		88	83	iin
-XinputI_5		115	83	iin
-XinputI_30		114	83	iin
-XinputI_47		112	83	iin
-XinputI_6		123	83	iin
-XinputI_26		124	33	iin
-XinputI_35		104	64	iin
-XinputI_32		105	83	iin
-XinputI_7		106	8	iin
-XinputI_3		103	16	iin
-XinputI_19		88	18	iin
-Xstateful_12		36	83	79	0	stateful
-Xstateful_5		8	16	57	0	stateful
-Xinh_bind_8		83	83	6	83	83	inhbind
-Xinh_bind_5		80	83	83	83	83	inhbind
-Xinh_bind_9		83	83	33	64	83	inhbind
-XoutputI_5		79	99	iout
-XoutputI_1		79	122	iout
-XoutputI_0		79	120	iout
-XoutputI_8		57	125	iout
+Xswitch_9		40	23	23	26	switch
+Xadd4_19		33	33	24	3	0	add4
+Xmult4_1		12	23	26	23	38	mult4
+XinputI_10		43	24	iin
+XinputI_36		44	3	iin
+XinputI_8		51	33	iin
+XinputI_4		56	7	iin
+XinputI_14		55	18	iin
+XinputI_0		54	18	iin
+XinputI_15		55	36	iin
+XinputI_1		48	7	iin
+XinputI_34		42	23	iin
+XinputI_24		49	26	iin
+XinputI_25		52	12	iin
+XinputI_12		46	23	iin
+XinputI_5		42	23	iin
+XinputI_2		47	40	iin
+Xstateful_14		18	18	27	0	stateful
+Xinh_bind_4		26	7	23	23	29	inhbind
+XoutputI_5		27	58	iout
+XoutputI_4		29	51	iout
+XoutputI_3		38	45	iout

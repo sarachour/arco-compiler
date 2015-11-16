@@ -103,14 +103,14 @@ struct
           let ipairs = MAP.get dests (dc,dp) in
           if SET.size ipairs = 0 then ([],[]) else
           let res = SET.fold ipairs (fun (cstr_si,cstr_di) (decl_list,eqn_list)->
-            let cv = toconnvar km (sc,sp,cstr_si) (dc,dp,cstr_di) in
             let src = tovar km sc (cstr_si) in
             let dest = tovar km dc (cstr_di) in
+            (*instances are this hardware connection*)
             let src_is_inst = Z3Eq(Z3Var(src),Z3Int(to_id si)) in
             let dest_is_inst = Z3Eq(Z3Var(dest), Z3Int(to_id di)) in
             let conn_is_inst = Z3And(src_is_inst,dest_is_inst) in
-            let cnd = Z3IfThenElse(conn_is_inst, Z3Eq(Z3Var(cv),Z3Bool true), Z3Eq(Z3Var(cv),Z3Bool false) ) in
-            (cv::decl_list, cnd::eqn_list)
+            let cnd = conn_is_inst in
+            (decl_list, cnd::eqn_list)
           ) ([],[]) in
           res
       | HCConnNoLimit -> error "decl_conns" ("cannot handle component with underconstrained connections "^sc^" -> "^dc)
@@ -132,6 +132,7 @@ struct
         []
       in
       let gdecls = gdecls @ decls in
+      (*each assign is exactly one*)
       let decls : z3st list =
           maps (fun name inst ifo lst ->
             let indep: z3expr list =
@@ -148,9 +149,11 @@ struct
           ) []
       in
       let gdecls = gdecls @ decls in
+      (*make sure each sol connection fits a match*)
+      (*)
       let failed,decls = MAP.fold sol_conns (fun sln_src dests (failed,decls) ->
         if failed then (failed,decls) else
-        SET.fold dests (fun sln_dest (failed,decls) ->
+          SET.fold dests (fun sln_dest (failed,decls) ->
            if failed then (failed,decls) else
            let names,cstrs = decl_conns sln_src sln_dest in
            if List.length cstrs > 0 then
@@ -167,6 +170,8 @@ struct
       ) (false,[])
       in
       let gdecls = gdecls @ decls in
+      *)
+      let failed = false in
       let gdecls = gdecls@[Z3SAT;Z3DispModel] in
       (failed = false,gdecls)
     in

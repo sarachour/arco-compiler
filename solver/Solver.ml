@@ -868,10 +868,8 @@ struct
           let _ = Printf.printf "[%d] Successfully Solved: %s. solve children\n" (node.id) (UnivLib.goal2str g) in
           let steps = get_steps new_tbl node in
           if List.length rest = 0 then
-            let _ = Printf.printf "no more goals \n" in
             Some(steps)
           else
-            let _ = Printf.printf "still has goals \n" in
             let next_result = try_solve (steps) rest in
             begin
             match next_result with
