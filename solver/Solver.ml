@@ -201,7 +201,7 @@ struct
       else
         Some ([SSolAddConn(src,w)])
     |Some(lst) ->
-      let _ = List.iter (fun x -> Printf.printf "%s\n" (SlnLib.wire2str x)) lst in 
+      let _ = List.iter (fun x -> Printf.printf "%s\n" (SlnLib.wire2str x)) lst in
       error "reuse_io" "unexpected: multiple wires."
     | None -> None
 
@@ -212,7 +212,9 @@ struct
         | Some(steps) -> steps
         | None ->
           let inps,port = mkio s t (k) c v prop in
-          [SSolAddLabel(port,prop,lbl)] @ inps
+          let stps = [SSolAddLabel(port,prop,lbl)] @ inps in
+          let _ = SearchLib.apply_steps s t {s=stps;id=0} in
+          stps
       in
         res
     in
