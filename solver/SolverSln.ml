@@ -96,6 +96,15 @@ struct
     let _ = SET.add pset v in
     ()
 
+  let wires_of_label (sln:sln) (prop:propid) (v:label) : wireid list option=
+    let matches = MAP.fold sln.labels (fun k props r ->
+      let lset = MAP.get props prop in
+      if SET.has lset v then k::r else r ) []
+    in
+    match matches with
+    | h::t -> Some(matches)
+    | [] -> None
+
   let mklabel_undo (sln:sln) (id:wireid) (prop:propid) (v:label) =
     if MAP.has sln.labels id then
       let props = MAP.get sln.labels id in

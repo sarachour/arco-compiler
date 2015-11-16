@@ -279,30 +279,30 @@ rel rxn_a15=kds3*BH3BCL2
 rel rxn_a16=kd3*BH3BCL2
 
 
-rel deriv(UFPT,t) = ( 1.0 * rxn_2) + (-1.0 * rxn_3) + (-1.0 * rxn_4) with UFPT(0) = 0
-rel deriv(BiUFP,t) = ( 1.0 * rxn_u1) + (-1.0 * rxn_u2) with BiUFP(0) = 0
-rel deriv(BiRE1,t) = ( 1.0 * rxn_u3) + (-1.0 * rxn_u4) with BiRE1(0) = 0
-rel deriv(BiATF,t) = ( 1.0 * rxn_u5) + (-1.0 * rxn_u6) with BiATF(0) = 0
-rel deriv(BiPER,t) = ( 1.0 * rxn_u7) + (-1.0 * rxn_u8) with BiPER(0) = 0
-rel deriv(IRE1A,t) = ( 1.0 * rxn_u9) + (-1.0 * rxn_u10) with IRE1A(0) = 0
-rel deriv(PERKA,t) = ( 1.0 * rxn_u11) + (-1.0 * rxn_u12) with PERKA(0) = 0
-rel deriv(mXbp1u,t) = ( 1.0 * rxn_12) + (-1.0 * rxn_13) + (-1.0 * rxn_14) with mXbp1u(0) = 0
-rel deriv(mXbp1s,t) = ( 1.0 * rxn_14) + (-1.0 * rxn_15) with mXbp1s(0) = 0
-rel deriv(Xbp1s,t) = ( 1.0 * rxn_16) + (-1.0 * rxn_17) with Xbp1s(0) = 0
-rel deriv(mBiPT,t) = ( 1.0 * rxn_18) + (-1.0 * rxn_19) with mBiPT(0) = 0
-rel deriv(BiPT,t) = ( 1.0 * rxn_20) + (-1.0 * rxn_21) with BiPT(0) = 0
-rel deriv(ATF6T,t) = ( 1.0 * rxn_5) + (-1.0 * rxn_6) + (-1.0 * rxn_8) + (-1.0 * rxn_w1) with ATF6T(0) = 0
-rel deriv(ATF6GB,t) = ( 1.0 * rxn_8) + (-1.0 * rxn_9) + (-1.0 * rxn_10) with ATF6GB(0) = 0
-rel deriv(ATF6p50,t) = ( 1.0 * rxn_10) + (-1.0 * rxn_11) with ATF6p50(0) = 0
-rel deriv(mWFS1,t) = ( 1.0 * rxn_w2) + (-1.0 * rxn_w3) with mWFS1(0) = 0
-rel deriv(WFS1,t) = ( 1.0 * rxn_w4) + (-1.0 * rxn_w5) with WFS1(0) = 0
-rel deriv(ATF4,t) = ( 1.0 * rxn_23) + (-1.0 * rxn_24) with ATF4(0) = 0
-rel deriv(mCHOP,t) = ( 1.0 * rxn_25) + (-1.0 * rxn_26) with mCHOP(0) = 0
-rel deriv(CHOP,t) = ( 1.0 * rxn_27) + (-1.0 * rxn_28) with CHOP(0) = 0
-rel deriv(mGADD34,t) = ( 1.0 * rxn_29) + (-1.0 * rxn_30) with mGADD34(0) = 0
-rel deriv(GADD34,t) = ( 1.0 * rxn_31) + (-1.0 * rxn_32) with GADD34(0) = 0
-rel deriv(BCL2T,t) = ( 1.0 * rxn_a1) + (-1.0 * rxn_a2) with BCL2T(0) = 0
-rel deriv(BAXmT,t) = ( 1.0 * rxn_a3) + ( 1.0 * rxn_a4) + (-1.0 * rxn_a5) + (-1.0 * rxn_a6) + (-1.0 * rxn_a7) with BAXmT(0) = 0
-rel deriv(BH3T,t) = ( 1.0 * rxn_a8) + ( 1.0 * rxn_a9) + (-1.0 * rxn_a10) with BH3T(0) = 0
-rel deriv(BAXmBCL2,t) = ( 1.0 * rxn_a11) + (-1.0 * rxn_a12) + (-1.0 * rxn_a13) with BAXmBCL2(0) = 0
-rel deriv(BH3BCL2,t) = ( 1.0 * rxn_a14) + (-1.0 * rxn_a15) + (-1.0 * rxn_a16) with BH3BCL2(0) = 0
+rel deriv(UFPT,t) = ( rxn_2) + (-rxn_3) + (-rxn_4) with UFPT(0) = 0
+rel deriv(BiUFP,t) = ( rxn_u1) + (-rxn_u2) with BiUFP(0) = 0
+rel deriv(BiRE1,t) = ( rxn_u3) + (-rxn_u4) with BiRE1(0) = 0
+rel deriv(BiATF,t) = ( rxn_u5) + (-rxn_u6) with BiATF(0) = 0
+rel deriv(BiPER,t) = ( rxn_u7) + (-rxn_u8) with BiPER(0) = 0
+rel deriv(IRE1A,t) = ( rxn_u9) + (-rxn_u10) with IRE1A(0) = 0
+rel deriv(PERKA,t) = ( rxn_u11) + (-rxn_u12) with PERKA(0) = 0
+rel deriv(mXbp1u,t) = ( rxn_12) + (-rxn_13) + (-rxn_14) with mXbp1u(0) = 0
+rel deriv(mXbp1s,t) = ( rxn_14) + (-rxn_15) with mXbp1s(0) = 0
+rel deriv(Xbp1s,t) = ( rxn_16) + (-rxn_17) with Xbp1s(0) = 0
+rel deriv(mBiPT,t) = ( rxn_18) + (-rxn_19) with mBiPT(0) = 0
+rel deriv(BiPT,t) = ( rxn_20) + (-rxn_21) with BiPT(0) = 0
+rel deriv(ATF6T,t) = ( rxn_5) + (-rxn_6) + (-rxn_8) + (-rxn_w1) with ATF6T(0) = 0
+rel deriv(ATF6GB,t) = ( rxn_8) + (-rxn_9) + (-rxn_10) with ATF6GB(0) = 0
+rel deriv(ATF6p50,t) = ( rxn_10) + (-rxn_11) with ATF6p50(0) = 0
+rel deriv(mWFS1,t) = ( rxn_w2) + (-rxn_w3) with mWFS1(0) = 0
+rel deriv(WFS1,t) = ( rxn_w4) + (-rxn_w5) with WFS1(0) = 0
+rel deriv(ATF4,t) = ( rxn_23) + (-rxn_24) with ATF4(0) = 0
+rel deriv(mCHOP,t) = ( rxn_25) + (-rxn_26) with mCHOP(0) = 0
+rel deriv(CHOP,t) = ( rxn_27) + (-rxn_28) with CHOP(0) = 0
+rel deriv(mGADD34,t) = ( rxn_29) + (-rxn_30) with mGADD34(0) = 0
+rel deriv(GADD34,t) = ( rxn_31) + (-rxn_32) with GADD34(0) = 0
+rel deriv(BCL2T,t) = ( rxn_a1) + (-rxn_a2) with BCL2T(0) = 0
+rel deriv(BAXmT,t) = ( rxn_a3) + ( rxn_a4) + (-rxn_a5) + (-rxn_a6) + (-rxn_a7) with BAXmT(0) = 0
+rel deriv(BH3T,t) = ( rxn_a8) + ( rxn_a9) + (-rxn_a10) with BH3T(0) = 0
+rel deriv(BAXmBCL2,t) = ( rxn_a11) + (-rxn_a12) + (-rxn_a13) with BAXmBCL2(0) = 0
+rel deriv(BH3BCL2,t) = ( rxn_a14) + (-rxn_a15) + (-rxn_a16) with BH3BCL2(0) = 0

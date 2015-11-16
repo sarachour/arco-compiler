@@ -192,8 +192,32 @@ struct
     | UFunction(HwId(v),Term(MathId(_))) -> true
     | _ -> false
 
+  let reuse_io s t kind c v prop lbl : (step list) option =
+    let src = SlnLib.hwport2wire c v in
+    match SlnLib.wires_of_label t.sln prop lbl with
+    |Some([w]) ->
+      if kind = HNInput then
+        Some ([SSolAddConn(w,src)])
+      else
+        Some ([SSolAddConn(src,w)])
+    |Some(lst) ->
+      let _ = List.iter (fun x -> Printf.printf "%s\n" (SlnLib.wire2str x)) lst in 
+      error "reuse_io" "unexpected: multiple wires."
+    | None -> None
+
+
   let get_trivial_step s t g : step list =
+    let bind_var k c v prop lbl =
+      let res = match reuse_io s t k c v prop lbl with
+        | Some(steps) -> steps
+        | None ->
+          let inps,port = mkio s t (k) c v prop in
+          [SSolAddLabel(port,prop,lbl)] @ inps
+      in
+        res
+    in
     match g with
+      (*check for duplicates*)
     | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
         if prop1 = prop2 then
           let src = SlnLib.hwport2wire c1 v1 in
@@ -201,28 +225,21 @@ struct
           [SSolAddConn (src,snk)]
         else []
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
-        let inps,port = mkio s t (k) c v prop in
         let lbl = LBindValue(q) in
-        [SSolAddLabel(port,prop,lbl)] @ inps
+        bind_var k c v prop lbl
 
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
-        let inps,port = mkio s t (k) c v prop in
         let lbl = LBindValue(float_of_int q) in
-        [SSolAddLabel(port,prop,lbl)] @ inps
+        bind_var k c v prop lbl
 
     | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
-        let inps,port = mkio s t (k) c v prop in
         let lbl = LBindVar(k,q) in
-        (*let mg = mkmag s (HwId(HNPort(k,c,v,prop,u))) (MathId q) in*)
-        (*SSolAddLabel(wire,prop,mg)*)
-        [SSolAddLabel(port,prop,lbl)] @ inps
-
+        bind_var k c v prop lbl
 
     | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
-        let inps,port = mkio s t (k) c v prop in
         let lbl = LBindVar(k,q) in
-        (*let mg = mkmag s (HwId(HNPort(k2,c2,v2,prop2,u2))) (MathId (MNVar (k,n,u))) in*)
-        [SSolAddLabel(port,prop,lbl)] @ inps
+        bind_var k c v prop lbl
+
     | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
         let tc = () in
         []
