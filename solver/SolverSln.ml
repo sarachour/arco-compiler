@@ -100,7 +100,6 @@ struct
     let matches = MAP.fold sln.labels (fun k props r ->
       let lset = MAP.get props prop in
       if SET.has lset v then
-      let _ = Printf.printf "analogous: %s <-> %s.%s\n" (wire2str k) (prop) (label2str v) in
       k::r else r ) []
     in
     match matches with
@@ -109,7 +108,7 @@ struct
 
   let conns_with_dest (sln:sln) (targ:wireid) : wireid list =
     let connected = MAP.fold sln.conns (fun src children r ->
-      SET.fold children (fun dest r -> if targ = dest then src::r else r) r
+      if src = targ then SET.to_list children else r
     ) []
     in
     connected

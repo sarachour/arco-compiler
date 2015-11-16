@@ -157,6 +157,7 @@ struct
     match SlnLib.conns_with_dest t.sln dest with
     | [] -> None
     | [h] ->
+      let _ = Printf.printf "MKCOPY: copy necessity detected\n" in
       let copyid = UNoCopy prop in
       let copyinst = SlnLib.usecomp t.sln copyid in
       let _ = SlnLib.usecomp_unmark t.sln copyid copyinst in
@@ -208,10 +209,15 @@ struct
     let src = SlnLib.hwport2wire c v in
     match SlnLib.wires_of_label t.sln prop lbl with
     |Some([w]) ->
+      let (cmp,inst,port) = w in
       if kind = HNInput then
+        let nport = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name cmp) in
+        let w : wireid = (cmp,inst,nport.name) in
         let iconn = mkconn s t w src prop in
         Some (iconn)
       else
+        let nport = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name cmp) in
+        let w : wireid = (cmp,inst,nport.name) in
         Some ([SSolAddConn(src,w)])
     |Some(lst) ->
       let _ = List.iter (fun x -> Printf.printf "%s\n" (SlnLib.wire2str x)) lst in
@@ -243,12 +249,6 @@ struct
           stps
       in
       res
-      (*
-      let inps,port = mkio s t (k) c v prop in
-      let stps = [SSolAddLabel(port,prop,lbl)] @ inps in
-      let _ = SearchLib.apply_steps s t {s=stps;id=0} in
-      stps
-      *)
     in
     match g with
       (*check for duplicates*)
@@ -729,8 +729,7 @@ struct
       let _ = Printf.printf "SOLVER ==> Testing Solution\n" in
       let mint,musr = mkmenu s v None in
       let _ = flush_all() in
-      (*SlnLib.mkconn_cons s v.sln && *)
-      if SlnLib.usecomp_cons s v.sln  then
+      if SlnLib.mkconn_cons s v.sln && SlnLib.usecomp_cons s v.sln  then
         let _ = Printf.printf "SOLVER ==> Found valid solution.\n" in
         let _ = flush_all() in
         let cnode = SearchLib.cursor v.search in

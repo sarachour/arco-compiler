@@ -1,32 +1,17 @@
 
-*constant value 0.
-Vcst5		24	0	DC	0.
-*
-*constant value 1.
-Vcst4		23	0	DC	1.
-*
 *@input A
-Vin_A_3		22	0	DC	1.
-*
-*constant value 1.
-Vcst2		21	0	DC	1.
-*
-*constant value 1.
-Vcst1		20	0	DC	1.
+Vin_A_2		9	0	DC	1.
 *
 *@output C
-*@args 19,V
+*@args 8,V
+*
+*constant value 1.
+Vcst0		7	0	DC	1.
 *
 *
 *
 * === Connectivity Schem ==== 
-XoutputV_2		7	19	vout
-Xvadd2_3		1	11	15	vadd2
-Xvadd2_2		5	13	17	vadd2
-XinputV_2		20	11	vin
-XinputV_5		22	1	vin
-XinputV_3		23	3	vin
-XinputV_4		24	5	vin
-XinputV_6		21	9	vin
-Xvmul2_1		15	3	13	vmul2
-Xvmul2_2		9	17	7	vmul2
+XoutputV_0		5	8	vout
+Xvadd2_2		1	3	5	vadd2
+XinputV_8		7	1	vin
+XinputV_4		9	3	vin
