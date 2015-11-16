@@ -122,7 +122,7 @@ comp inh_bind
   output PROD where I:mA
 
 
-  rel I(PROD) = I(COMP)*(1/(  ((I(INH)/(I(Kinh)))^(I(n))) + 1))
+  rel I(PROD) = I(COMP)*( ((I(Kinh))^(I(n)))/(  ((I(INH))^(I(n))) +  ((I(Kinh))^(I(n))) ))
 
   spice inhbind INH COMP n Kinh PROD
 end

@@ -624,8 +624,9 @@ struct
       let score g =
         let cplx = (UnivLib.goal2complexity g) in
         (*let lru = ((float_of_int (ftbl_lru g))) in
-        let lru = if lru > 30. then 30. else lru in*)
-        let lru = float_of_int (RAND.rand_int(10)) in
+        let lru = if lru > 30. then 30. else lru in
+        let lru = float_of_int (RAND.rand_int(10)) in*)
+        let lru = 0. in
         let score = cplx+.lru in
         score
       in
