@@ -24,7 +24,7 @@ if [ "$CMD" = "bmark" ]; then
 fi
 
 if [ "$CMD" = "auto" ]; then
-  make && ${SOLVER} -hwspec benchmarks/specs/$HWSPEC.spec -formula benchmarks/math/$NAME.math -output "$NAME-$HWSPEC".ckt 
+  make && time ${SOLVER} -hwspec benchmarks/specs/$HWSPEC.spec -formula benchmarks/math/$NAME.math -output "$NAME-$HWSPEC".ckt > .tmp/log.txt
 fi
 
 if [ "$NAME" = "exec" ]; then
