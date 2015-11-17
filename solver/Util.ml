@@ -229,6 +229,18 @@ struct
     let f,_ = List.fold_left gen ([],false) t in
     f
 
+  let sublist_i (type a) (t:a list) (st:int) (en:int) =
+    let gen (lst,idx,add) v  =
+      if add = true && idx = st then
+        (v::lst,idx+1,false)
+      else if add = true || idx <= en then
+        (v::lst,idx+1,true)
+      else
+        (lst,idx+1,false)
+    in
+    let f,_,_ = List.fold_left gen ([],0,false) t in
+    f
+
   let rand (type a) (s: a list) :a  =
     let n = List.length s in
     let i = Random.int(n) in

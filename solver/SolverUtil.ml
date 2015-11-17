@@ -89,7 +89,8 @@ struct
   let unid2wcsym cmpname ciid uid is_templ cnv= match uid, is_templ with
   | (HwId(HNPort(k,HCMLocal(c),port,prop,u)), true) ->
     error "unid2sym" ("no non-concretized port of name "^c^"."^port^" allowed.")
-  | (HwId(HNPort(k,HCMGlobal(c,i),port,prop,u)),true) -> if i = ciid && cmpname = c
+  | (HwId(HNPort(k,HCMGlobal(c,i),port,prop,u)),true) ->
+    if i = ciid && cmpname = c
     then WildcardVar(cnv uid,[])
     else SymbolVar(cnv uid)
   | (HwId(v),_) -> SymbolVar(cnv uid)

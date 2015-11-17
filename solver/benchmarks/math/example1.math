@@ -2,14 +2,16 @@
 type s
 type M
 
+input Q : M
 local E : M
 local S : M
 output ES : M
 
 param ETOT : M = 0.15
 param STOT : M = 0.11
-param kf : 1/s = 1
-param kr : 1/s = 1
+param kf : 1/s = 0.3
+param kf0 : 1/s = 20
+param kr : 1/s = 0.2
 param kcat : 1/s = 0.01
 
 time t : s
@@ -23,4 +25,4 @@ ensure err E(ES) = 0.01 : M
 
 rel S = STOT - ES
 rel E = ETOT - ES
-rel deriv(ES,t) = (kf*E*S) - kr*ES with ES(0) = 0
+rel deriv(ES,t) = ((kf + Q)*E*S) - kr*ES with ES(0) = 0.423

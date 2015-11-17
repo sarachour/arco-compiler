@@ -332,6 +332,12 @@ struct
     let declwcunid = Shim.unid2wcsym name inst_id in
     let n_tries = __pattern_depth in
     let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid n_tries in
+    let _ = match res with
+      Some(res) -> Printf.printf "%s | %s <-> %s // count %d\n"
+      name (UnivLib.uast2str gr) (UnivLib.uast2str nr) (List.length res)
+      | _ -> Printf.printf "%s | %s <-> %s // count %d\n"
+      name (UnivLib.uast2str gr) (UnivLib.uast2str nr) (0)
+      in
     res
 
   let unify_rels (s:slvr) (name:string) (inst_id:int) (g:urel) (v:urel) : (unid,unid ast) map list option=
@@ -452,7 +458,6 @@ struct
         let ngoal = resolve_goal goal other_goals in
         (*force unification between the expression and goal *)
         let un = unify_rels s name iid ngoal orelsub in
-
         (*id this works, we have resolved the goal of interest successfully by applying another node.*)
         let psteps = [SRemoveGoal(ngoal)] in
         let res = match un with
@@ -474,17 +479,18 @@ struct
               in
               result
             in
-            (*find one valid solution*)
+            (*find one valid solution out of all possible solutions*)
             let result = List.fold_right ( fun sln curr ->
                 let psln = try_sln sln in
                 match psln with
-                | Some(s) ->  psln
+                | (Some(s)) ->  psln
                 | None -> curr
               ) sols None
             in
             result
           (*no solution: this entire solution doesn't apply*)
-          | None -> None
+          | None ->
+            None
         in
           res
       | None ->
@@ -494,8 +500,10 @@ struct
     let proc k v rest =
       let res = solve_assign k v assigns other_rels other_goals in
       match res,rest with
-      | (None,_) -> None
-      | (Some(lst),Some(rest)) -> Some(lst @ rest)
+      | (None,_) ->
+        None
+      | (Some(lst),Some(rest)) ->
+        Some(lst @ rest)
       | _ -> None
     in
     (*

@@ -322,7 +322,8 @@ struct
       in
       let triv_sln = match_trivial e1 e2  in
       if triv_sln <> None then force_conc triv_sln else
-      let max_depth = 4 in
+      let max_depth = 3 in
+      let max_breadth = 8 in
       let decl_tmpl_or_pat i x cnv =  if i = 0 then decl x false cnv else decl x true cnv in
       let env,iwcs,syms = mkenv [e1;e2] cnv decl_tmpl_or_pat in
       let cand = to_symcaml e1 cnv in
@@ -335,49 +336,32 @@ struct
         nm
       in
       let sols : (symvar,symexpr) map set = SET.make (fun x y -> x = y) in
-      let rec solve wcs depth ban_all =
+      let rec solve wcs depth fracbans =
         if (SET.size sols) = n || depth == max_depth then () else
         let res = SymCaml.pattern env templ cand in
         match res with
         | Some(r) ->
             let symap = MAP.from_list r in
             let _ = SET.add sols symap in
-            let solve_with_one_ban (x:symdecl) =
-              match x with
-              | WildcardVar(n,bans) ->
-                if MAP.has symap n = false then () else
-                  let nx = WildcardVar(n, (MAP.get symap n)::(bans)) in
-                  let nwcs = LIST.sub  x nx wcs in
-                  let _,nwcs = defsyms env nwcs cnv in
-                  solve nwcs (depth+1) ban_all
-              | _ -> ()
-            in
-            let solve_with_all_bans (x:symdecl list) =
+            let solve_with_some_bans (x:symdecl list) =
               let map_one x = match x with
                 | WildcardVar(n,bans) ->
-                  if MAP.has symap n = false then x else
-                    let nx = WildcardVar(n, (MAP.get symap n)::bans) in
+                  if MAP.has symap n = false || RAND.rand_norm() > fracbans then x else
+                    let new_ban = (MAP.get symap n) in
+                    let nx = WildcardVar(n, new_ban::bans) in
                     nx
                 | _ -> x
               in
-              let nwcs = List.map map_one wcs in
+              let nwcs = List.map (map_one) wcs in
               let _,nwcs = defsyms env nwcs cnv in
-              solve nwcs (depth+1) ban_all
+              solve nwcs (depth+1) fracbans
             in
-            (**)
-            if ban_all then
-              let _ = solve_with_all_bans wcs in ()
-            else
-              let _ = List.iter solve_with_one_ban wcs  in
+              let _ = List.iter (fun x -> solve_with_some_bans wcs) (LIST.mkrange 0 max_breadth) in
               ()
+
         | None -> ()
       in
-      let _ = solve iwcs 0 true in
-      let _ = if SET.size sols < n then
-        (*let _,nwcs = defsyms env iwcs cnv in
-        solve nwcs 0 false*)
-        ()
-      in
+      let _ = solve iwcs 0 0.65 in
       let nlst : (a,a ast) map list = SET.map sols mmap in
       match nlst with
       | [] -> None
