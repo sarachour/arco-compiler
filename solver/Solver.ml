@@ -332,12 +332,13 @@ struct
     let declwcunid = Shim.unid2wcsym name inst_id in
     let n_tries = __pattern_depth in
     let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid n_tries in
-    let _ = match res with
-      Some(res) -> Printf.printf "%s | %s <-> %s // count %d\n"
+    (*let _ = match res with
+      Some(res) ->
+      (Printf.printf "%s | %s <-> %s // count %d\n"
       name (UnivLib.uast2str gr) (UnivLib.uast2str nr) (List.length res)
       | _ -> Printf.printf "%s | %s <-> %s // count %d\n"
       name (UnivLib.uast2str gr) (UnivLib.uast2str nr) (0)
-      in
+    in*)
     res
 
   let unify_rels (s:slvr) (name:string) (inst_id:int) (g:urel) (v:urel) : (unid,unid ast) map list option=

@@ -163,8 +163,10 @@ struct
   let apply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
     (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)
     match s with
-    | SAddGoal(g) -> let _ = SET.add tbl.goals g in ()
-    | SRemoveGoal(g) -> let _ = SET.rm tbl.goals g in ()
+    | SAddGoal(g) ->
+      let _ = SET.add tbl.goals g in ()
+    | SRemoveGoal(g) ->
+      let _ = SET.rm tbl.goals g in ()
     | SAddNode(id,i,u) -> let _ = MAP.put tbl.dngl (id,i) {name=(UnivLib.unodeid2name id);rels=SET.to_set u (fun x y -> x = y)} in ()
     | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
     | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
@@ -174,6 +176,8 @@ struct
     let sort_steps x y = match (x,y) with
     | (SAddGoal(_),SRemoveGoal(_)) -> -1
     | (SRemoveGoal(_),SAddGoal(_)) -> 1
+    | (_,SRemoveGoal(_)) -> 1
+    | (_,SAddGoal(_)) -> 1
     | _ -> 0
     in
     let steps = List.sort sort_steps s.s in
@@ -182,8 +186,10 @@ struct
   let unapply_step (slvenv:slvr) (tbl:gltbl) (s:step) =
   (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
   match s with
-  | SAddGoal(g) -> let _ = SET.rm tbl.goals g in ()
-  | SRemoveGoal(g) -> let _ = SET.add tbl.goals g in ()
+  | SAddGoal(g) ->
+    let _ = SET.rm tbl.goals g in ()
+  | SRemoveGoal(g) ->
+    let _ = SET.add tbl.goals g in ()
   | SAddNode(id,i,rels) -> let _ = MAP.rm tbl.dngl (id,i) in ()
   | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
@@ -193,6 +199,8 @@ struct
       let sort_steps x y = match (x,y) with
       | (SAddGoal(_),SRemoveGoal(_)) -> 1
       | (SRemoveGoal(_),SAddGoal(_)) -> -1
+      | (_,SRemoveGoal(_)) -> -1
+      | (_,SAddGoal(_)) -> -1
       | _ -> 0
       in
       let steps = List.sort sort_steps s.s in

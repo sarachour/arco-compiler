@@ -41,6 +41,15 @@ comp iadd
   spice iadd X Y Z
 end
 
+comp igain
+  input X where I:mA
+  input Y where I:mA
+  output Z where I:mA
+
+  rel I(Z) = I(X)*I(Y)
+  spice iadd X Y Z
+end
+
 comp mm
   input Xtot where V:mA
   input Ytot where V:mA
@@ -63,6 +72,7 @@ end
 schematic
   inst mm : 2
   inst iadd : 4
+  inst igain : 3
   inst input I : 5
   inst output I : 3
   inst input V : 5
@@ -73,6 +83,7 @@ schematic
 
   conn * -> output(I)
   conn * -> output(V)
+  conn igain -> iadd
   conn iadd -> mm
 
   ensure mag I in (0,1000) : mA
