@@ -1,68 +1,70 @@
 
 *@output UTF
-*@args 60,I
-*
-*@input V
-Vin_V_12		59	0	DC	1.
-*
-*constant value 15.6
-Icst11		58	0	DC	15.6
-*
-*@input IPTG
-Vin_IPTG_10		57	0	DC	1.
-*
-*@input U
-Vin_U_9		56	0	DC	1.
-*
-*constant value 156.25
-Icst8		55	0	DC	156.25
-*
-*@input umodif
-Iin_umodif_7		54	0	DC	1.
-*
-*@output umodif
-*@args 53,V
-*
-*constant value 1.
-Icst5		52	0	DC	1.
-*
-*constant value 1.
-Vcst4		51	0	DC	1.
+*@args 64,I
 *
 *@output VTF
-*@args 50,I
+*@args 63,I
 *
-*constant value -2.0015
-Vcst2		50	0	DC	-2.0015
+*constant value 156.25
+Icst11		63	0	DC	156.25
 *
-*constant value 2.5
-Vcst1		49	0	DC	2.5
+*@input umodif
+Iin_umodif_10		62	0	DC	1.
+*
+*@input V
+Iin_V_9		61	0	DC	1.
+*
+*constant value 1.
+Vcst8		61	0	DC	1.
+*
+*@output umodif
+*@args 60,V
 *
 *constant value 33763.2520764
-Icst0		48	0	DC	33763.2520764
+Icst6		59	0	DC	33763.2520764
+*
+*constant value 2.5
+Vcst5		58	0	DC	2.5
+*
+*constant value -2.0015
+Vcst4		57	0	DC	-2.0015
+*
+*@input U
+Vin_U_3		56	0	DC	1.
+*
+*@input IPTG
+Vin_IPTG_2		55	0	DC	1.
+*
+*@input Km
+Iin_Km_1		55	0	DC	1.
+*
+*constant value 15.6
+Icst0		54	0	DC	15.6
 *
 *
 *
 * === Connectivity Schem ==== 
-Xvgain_19		43	11	43	1	vgain
-Xvgain_38		43	29	23	27	vgain
-Xvgain_20		43	9	43	3	vgain
-Xswitch_2		31	20	25	5	switch
-XinputI_2		48	31	iin
-XinputI_47		52	15	iin
-XinputI_29		58	7	iin
-XinputI_34		54	21	iin
-XinputI_30		55	33	iin
-XoutputV_2		27	53	vout
-Xihill_0		33	15	20	46	0	44	ihill
-Xvtoi_4		43	1	25	vtoi
-Xvtoi_3		3	43	46	vtoi
-Xigenebind_2		21	15	7	16	igenebind
-XinputV_25		57	11	vin
-XinputV_8		56	23	vin
-XinputV_1		50	20	vin
-XinputV_13		51	43	vin
-XinputV_14		59	9	vin
-Xitov_4		5	43	29	itov
-XoutputI_0		16	50	iout
-XoutputI_7		44	60	iout
+Xvgain_12		42	48	42	23	vgain
+Xvgain_10		42	48	42	12	vgain
+Xvgain_34		42	48	42	43	vgain
+Xswitch_0		27	42	21	23	switch
+Xswitch_2		27	42	42	23	switch
+XinputI_41		59	27	iin
+XinputI_14		61	51	iin
+XinputI_23		55	51	iin
+XinputI_15		63	51	iin
+XoutputV_0		43	60	vout
+Xihill_6		51	51	42	51	0	52	ihill
+Xvtoi_9		23	42	21	vtoi
+Xvtoi_2		12	42	42	vtoi
+Xvtoi_1		43	42	42	vtoi
+Xvtoi_13		12	42	42	vtoi
+XinputV_43		55	48	vin
+XinputV_25		61	42	vin
+XinputV_19		56	42	vin
+XinputV_25		61	42	vin
+XinputV_0		58	42	vin
+Xitov_3		23	42	48	itov
+Xitov_3		23	42	48	itov
+Xitov_2		23	42	48	itov
+XoutputI_0		52	64	iout

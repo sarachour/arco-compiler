@@ -75,7 +75,7 @@ comp iadd
 
   rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
 
-
+   spice iadd A B C D OUT
 end
 
 comp vadd
@@ -91,7 +91,7 @@ comp vadd
   rel V(OUT) =  ((V(A) + V(B)) - V(C) - V(D))
   rel deriv(V(OUT2),t) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))  initially V(OUT2_0)
 
-  spice vaddgain A B C D OUT OUT2 OUT2_0
+  spice vadd A B C D OUT OUT2 OUT2_0
 
 end
 
@@ -128,7 +128,7 @@ comp ihill
 
   % s^n/(s^n + k^n)
   rel I(STIM) = I(Vmax)*(((I(S)/I(Km))^V(n))/( ((I(S)/I(Km))^V(n)) + 1 ) )
-  rel I(REP) = I(Vmax)*(1/( ((I(S)/I(Km))^V(n)) + 1 ) )
+  rel I(REP) = I(Vmax)*((I(Km)^V(n))/( ((I(S))^V(n)) + (I(Km)^V(n)) ) )
 
   spice ihill Vmax S n Km STM REP
 end
@@ -203,10 +203,11 @@ schematic
 
 
   % Transcription rate functions
+  conn input(I) -> itov
   conn input(I) -> ihill
   conn input(I) -> igenebind
   conn input(I) -> switch
-  conn input(I) -> itov
+  conn input(I) -> iadd
 
   conn input(V) -> ihill
   conn input(V) -> vtoi
@@ -220,6 +221,7 @@ schematic
 
   conn ihill -> output(I)
   conn ihill -> itov
+  conn ihill -> iadd
   conn ihill -> igenebind
 
   conn igenebind -> output(I)
@@ -230,6 +232,7 @@ schematic
   conn itov -> vadd
   conn itov -> vgain
 
+  conn iadd -> output(I)
   conn iadd -> ihill
   conn iadd -> switch
   conn iadd -> igenebind

@@ -72,6 +72,7 @@ assignms:
 
 model:
   | OPARAN MODEL assignms CPARAN {$3}
+    | OPARAN MODEL CPARAN {[]}
 
 sat:
   | SAT           {true}
