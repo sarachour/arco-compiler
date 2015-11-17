@@ -209,6 +209,7 @@ schematic
   conn input(I) -> igenebind
   conn input(I) -> switch
   conn input(I) -> iadd
+  conn input(I) -> mm
 
   conn input(V) -> ihill
   conn input(V) -> vtoi
@@ -218,6 +219,7 @@ schematic
   conn input(V) -> switch
 
   conn switch -> itov
+  conn switch -> iadd
   conn switch -> output(I)
 
   conn ihill -> output(I)
@@ -228,6 +230,7 @@ schematic
   conn igenebind -> output(I)
   conn igenebind -> itov
   conn igenebind -> ihill
+  conn igenebind -> iadd
 
   conn itov -> output(V)
   conn itov -> vadd
