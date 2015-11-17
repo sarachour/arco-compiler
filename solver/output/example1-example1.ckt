@@ -1,0 +1,47 @@
+
+*@input Q
+Iin_Q_9		31	0	DC	1.
+*
+*@input ES_0
+Vin_ES_0_8		30	0	DC	1.
+*
+*@output S
+*@args 29,V
+*
+*@output ES
+*@args 29,V
+*
+*@input ES
+Iin_ES_5		28	0	DC	1.
+*
+*constant value 0.3
+Icst4		27	0	DC	0.3
+*
+*@output E
+*@args 26,V
+*
+*constant value 0.15
+Vcst2		25	0	DC	0.15
+*
+*constant value 0.11
+Vcst1		24	0	DC	0.11
+*
+*constant value 20.
+Icst0		23	0	DC	20.
+*
+*
+*
+* === Connectivity Schem ==== 
+XinputI_0		31	19	iin
+XinputI_3		27	1	iin
+XinputI_0		31	19	iin
+XinputI_1		28	20	iin
+XoutputV_0		11	29	iout
+XoutputV_1		22	29	iout
+XoutputV_1		22	29	iout
+Xmm_0		13	15	9	20	22	22	11	17	mm
+XinputV_3		24	15	iin
+XinputV_0		25	13	iin
+XinputV_1		30	17	iin
+Xiadd_0		19	3	9	iadd
+Xigain_0		1	19	3	iadd

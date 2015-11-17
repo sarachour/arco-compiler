@@ -1,0 +1,252 @@
+
+*@output rxn10
+*@args 108,I
+*
+*@output rxn2
+*@args 108,I
+*
+*@output rxn11
+*@args 108,I
+*
+*@output rxn13
+*@args 107,I
+*
+*@input R_0
+Vin_R_0_65		107	0	DC	1.
+*
+*@input rxn6
+Vin_rxn6_64		107	0	DC	1.
+*
+*@input DR
+Vin_DR_63		106	0	DC	1.
+*
+*@input rxn11
+Iin_rxn11_62		106	0	DC	1.
+*
+*@input rxn1
+Iin_rxn1_61		105	0	DC	1.
+*
+*@output rxn12
+*@args 105,V
+*
+*@output rxn16
+*@args 105,V
+*
+*@output MA
+*@args 105,V
+*
+*@output rxn7
+*@args 105,V
+*
+*@output rxn6
+*@args 105,V
+*
+*@output MR
+*@args 105,V
+*
+*@input DAp_0
+Vin_DAp_0_54		105	0	DC	1.
+*
+*@input rxn2
+Vin_rxn2_53		105	0	DC	1.
+*
+*@input DR_0
+Vin_DR_0_52		105	0	DC	1.
+*
+*@input rxn3
+Vin_rxn3_51		105	0	DC	1.
+*
+*constant value 0.
+Vcst50		105	0	DC	0.
+*
+*@input DA_0
+Vin_DA_0_49		105	0	DC	1.
+*
+*@input C_0
+Vin_C_0_48		104	0	DC	1.
+*
+*@output DAp
+*@args 104,V
+*
+*@output A
+*@args 104,V
+*
+*@output DR
+*@args 104,V
+*
+*@output R
+*@args 104,V
+*
+*@output DRp
+*@args 104,V
+*
+*@output DA
+*@args 104,V
+*
+*@output C
+*@args 103,V
+*
+*@input rxn8
+Vin_rxn8_40		103	0	DC	1.
+*
+*@input rxn14
+Vin_rxn14_39		102	0	DC	1.
+*
+*@output rxn14
+*@args 101,I
+*
+*@output rxn3
+*@args 100,V
+*
+*@input rxn9
+Vin_rxn9_36		100	0	DC	1.
+*
+*@input rxn11
+Vin_rxn11_35		100	0	DC	1.
+*
+*@input rxn15
+Vin_rxn15_34		99	0	DC	1.
+*
+*@input MA_0
+Vin_MA_0_33		99	0	DC	1.
+*
+*constant value -1.
+Vcst32		99	0	DC	-1.
+*
+*@input MR_0
+Vin_MR_0_31		98	0	DC	1.
+*
+*@input rxn12
+Iin_rxn12_30		97	0	DC	1.
+*
+*@output rxn1
+*@args 97,V
+*
+*@output rxn9
+*@args 97,V
+*
+*@output rxn5
+*@args 97,V
+*
+*@output rxn8
+*@args 97,V
+*
+*@output rxn15
+*@args 97,V
+*
+*@output rxn4
+*@args 96,V
+*
+*@input rxn10
+Vin_rxn10_23		96	0	DC	1.
+*
+*@input rxn12
+Vin_rxn12_22		96	0	DC	1.
+*
+*@input rxn5
+Vin_rxn5_21		96	0	DC	1.
+*
+*@input DRp
+Vin_DRp_20		95	0	DC	1.
+*
+*@input A_0
+Vin_A_0_19		95	0	DC	1.
+*
+*@input R
+Vin_R_18		95	0	DC	1.
+*
+*constant value 10.
+Vcst17		95	0	DC	10.
+*
+*@input rxn16
+Vin_rxn16_16		95	0	DC	1.
+*
+*@input A
+Vin_A_15		95	0	DC	1.
+*
+*@input DRp_0
+Vin_DRp_0_14		95	0	DC	1.
+*
+*constant value 500.
+Vcst13		95	0	DC	500.
+*
+*constant value 0.5
+Vcst12		94	0	DC	0.5
+*
+*constant value 0.01
+Vcst11		94	0	DC	0.01
+*
+*constant value 50.
+Vcst10		94	0	DC	50.
+*
+*constant value 0.2
+Vcst9		94	0	DC	0.2
+*
+*constant value 0.02
+Vcst8		94	0	DC	0.02
+*
+*@input MA
+Vin_MA_7		94	0	DC	1.
+*
+*@input rxn1
+Vin_rxn1_6		94	0	DC	1.
+*
+*@input DA
+Vin_DA_5		94	0	DC	1.
+*
+*constant value 1.
+Vcst4		94	0	DC	1.
+*
+*@input DAp
+Vin_DAp_3		94	0	DC	1.
+*
+*@input MR
+Vin_MR_2		93	0	DC	1.
+*
+*@input C
+Iin_C_1		93	0	DC	1.
+*
+*@input rxn6
+Iin_rxn6_0		92	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xvgain_21		92	92	92	92	vgain
+Xvgain_27		92	92	92	92	vgain
+Xvgain_6		92	92	92	92	vgain
+Xvgain_21		92	92	92	92	vgain
+Xvgain_32		92	92	92	92	vgain
+Xvgain_10		92	92	92	92	vgain
+XinputI_35		97	92	iin
+XinputI_48		93	92	iin
+XinputI_2		106	92	iin
+XoutputV_0		92	105	vout
+XoutputV_3		92	104	vout
+XoutputV_0		92	105	vout
+XoutputV_7		92	97	vout
+Xvadd_0		92	92	92	92	92	0	0	vadd
+Xvadd_22		92	92	92	92	92	0	0	vadd
+Xvadd_13		92	92	92	92	92	0	0	vadd
+Xvadd_32		92	92	92	92	92	92	92	vadd
+Xvadd_21		92	92	92	92	92	92	92	vadd
+Xvadd_33		92	92	92	92	92	0	0	vadd
+Xvadd_32		92	92	92	92	92	92	92	vadd
+Xvtoi_3		92	92	86	vtoi
+Xvtoi_27		92	92	86	vtoi
+XinputV_48		96	92	vin
+XinputV_36		107	92	vin
+XinputV_46		95	92	vin
+XinputV_27		94	92	vin
+XinputV_45		105	92	vin
+XinputV_22		103	92	vin
+XinputV_6		99	92	vin
+XinputV_0		100	92	vin
+XinputV_48		96	92	vin
+Xitov_24		92	92	92	itov
+Xitov_27		92	92	92	itov
+Xitov_26		92	92	92	itov
+Xitov_15		92	92	92	itov
+Xitov_1		92	92	92	itov
+XoutputI_1		86	101	iout
+XoutputI_0		86	108	iout

@@ -1,4 +1,5 @@
 open Common
+open Globals
 
 open HW
 open HWData
@@ -32,8 +33,7 @@ exception SolverError of string
 let error n m = raise (SolverError (n^":"^m))
 
 
-let __max_depth = 35
-let __pattern_depth = 5
+
 
 module SolveLib =
 struct

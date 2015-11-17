@@ -166,11 +166,12 @@ end
 
 comp switch
   input SUB where I:mA
+  input Vmax where I:mA
   input n where V:mV
   input Kmod where I:mA
   output PROD where I:mA
 
-  rel I(PROD) = 1/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)))
+  rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)))
 
   spice switch SUB n Kmod PROD
 end
