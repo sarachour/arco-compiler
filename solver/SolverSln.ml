@@ -155,6 +155,7 @@ struct
 
   let usecomp_unmark (s:sln) id (i:int) =
     let lst,n = MAP.get s.comps id in
+    let n = if i >= n then i+1 else n in
     let _ = SET.rm lst i in
     s.comps <- MAP.put s.comps id (lst,n)
 

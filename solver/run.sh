@@ -35,4 +35,5 @@ mkdir -p output
 mkdir -p .tmp
 
 mv *.ckt output/
+mv *.summary output/
 mv *.z3 .tmp/

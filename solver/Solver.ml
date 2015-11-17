@@ -923,7 +923,7 @@ struct
         let mint,musr= mkmenu s ntbl None in
         let _ = mint "s" in
         let v  = SpiceLib.to_spice s ntbl.sln in
-        Some(v)
+        Some(ntbl,v)
       | None ->
       let _ = Printf.printf "No Result\n" in
         None
@@ -941,9 +941,11 @@ let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
   let _ = pr sl "===== Beginning Interactive Solver ======\n" in
   let spdoc = SolveLib.solve (REF.mk sl) (tbl) in
   match spdoc with
-    | Some(sp) ->
+    | Some(tbl,sp) ->
     let _ = Printf.printf "===== Concretizing to Spice File ======\n" in
       let _ = IO.save out (SpiceLib.to_str sp) in
+      let _ = Printf.printf "===== Concretizing to summary file =====\n" in
+      let _ = IO.save (out^".summary") (SlnLib.tostr tbl.sln) in
       let _ = Printf.printf "===== Solution Found ======\n" in
       ()
     | None ->

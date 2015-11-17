@@ -60,7 +60,7 @@ comp vgain
   input Z where V:mV
   output P where V:mV
 
-  rel V(P) = (V(X)/V(Y))*V(Z)
+  rel V(P) = (V(X)/V(Y))*V(Z)*0.04
 
   spice vgain X Y Z P
 
@@ -88,8 +88,8 @@ comp vadd
   output OUT where V:mV
   output OUT2 where V:mV
 
-  rel V(OUT) =  ((V(A) + V(B)) - V(C) - V(D))
-  rel deriv(V(OUT2),t) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))  initially V(OUT2_0)
+  rel V(OUT) =  ((V(A) + V(B)) - V(C) - V(D))*0.1
+  rel deriv(V(OUT2),t) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))*0.1  initially V(OUT2_0)
 
   spice vadd A B C D OUT OUT2 OUT2_0
 
@@ -190,15 +190,15 @@ schematic
   inst output V : 10
   inst copy V : 10
 
-  inst vadd : 20
+  inst vadd : 35
   inst vgain : 40
 
   inst iadd : 30
   inst igenebind : 8
   inst ihill : 8
 
-  inst itov : 15
-  inst vtoi : 15
+  inst itov : 30
+  inst vtoi : 30
 
 
 
@@ -239,6 +239,7 @@ schematic
 
   conn vtoi -> ihill
   conn vtoi -> switch
+  conn vtoi -> output(I)
 
   conn vgain -> output(V)
   conn vgain -> vadd
