@@ -1,0 +1,294 @@
+% aptosis
+% % https://www.ebi.ac.uk/biomodels-main/BIOMD0000000446
+% six diffeqs
+
+type s
+time t : s
+
+param tmr: none = 10.0
+param IRE1T: none = 1.0
+param PERKT: none = 1.0
+param eIF2aT: none = 1.0
+param CReP: none = 0.1
+param kf: none = 10.0
+param kr: none = 1.0
+param n: none = 4.0
+param nh: none = 2.0
+param extATT: none = 0.0
+param extPERK: none = 0.0
+param basalBiP: none = 1.0
+param basalXBP: none = 1.0
+param krcXU: none = 5.0
+param krcBiP: none = 5.0
+param krcWFS: none = 1.0
+param krcCHOP: none = 1.0
+param krcGADD34: none = 1.0
+param kmXbp: none = 10.0
+param kmAtfsXBP: none = 10.0
+param kmAtfsBiP: none = 1.0
+param kmAtff: none = 0.05
+param kmChop: none = 0.05
+param kmAtfs: none = 0.1
+param ksplice: none = 10.0
+param krcSplice: none = 1.0
+param trcXU: none = 1.0
+param trcBiP: none = 1.0
+param trcWFS: none = 1.0
+param trcCHOP: none = 1.0
+param trcGADD34: none = 1.0
+param ktrUFP: none = 1.0
+param ktrXS: none = 1.0
+param ktrBiP: none = 1.0
+param ktrATF6: none = 1.0
+param ktrWFS: none = 1.0
+param ktrATF4: none = 1.0
+param ktrCHOP: none = 1.0
+param ktrGADD34: none = 1.0
+param kdmXU: none = 1.0
+param kdmXS: none = 1.0
+param kdmBiP: none = 1.0
+param kdmWFS: none = 1.0
+param kdmCHOP: none = 1.0
+param kdmGADD34: none = 1.0
+param kdUFP: none = 0.1
+param kdXS: none = 0.1
+param kdBiP: none = 0.01
+param kdATF6: none = 0.1
+param kdATF6GB: none = 0.1
+param kdATF6p50: none = 0.1
+param kdWFS: none = 0.1
+param kdATF4: none = 0.1
+param kdCHOP: none = 0.1
+param kdGADD34: none = 0.1
+param mATF6T: none = 5.0
+param mATF4: none = 1.0
+param ktrans: none = 1.0
+param kcleave: none = 10.0
+param kphos: none = 5.0
+param kdephos: none = 0.5
+param kdeAW: none = 1.0
+param kbu: none = 0.0
+param switch: none = 0.0
+param kATF4: none = 0.1
+param J: none = 0.0010
+param K: none = 0.0010
+param kfbc: none = 10.0
+param kdbc: none = 0.1
+param kmbc: none = 0.03
+param kstr: none = 0.2
+param BAXT: none = 100.0
+param kfx: none = 1.0
+param kfxp: none = 3.0
+param kbx: none = 2.0
+param kasx: none = 90.0
+param kdsx: none = 0.05
+param ks3: none = 0.1
+param ks3p: none = 0.6
+param kd3: none = 0.01
+param kas3: none = 10.0
+param kds3: none = 0.01
+param kff: none = 10.0
+
+
+param cmp_ERlumen : none=1.0
+param cmp_cytoplasm : none =1.0
+param cmp_Golgi : none =1.0
+param cmp_mitochondria : none=1.0
+
+local rxn_2 : none
+local rxn_3 : none
+local rxn_4 : none
+local rxn_u1 : none
+local rxn_u2 : none
+local rxn_u3 : none
+local rxn_u4 : none
+local rxn_u5 : none
+local rxn_u6 : none
+local rxn_u7 : none
+local rxn_u8 : none
+local rxn_u9 : none
+local rxn_u10 : none
+local rxn_u11 : none
+local rxn_u12 : none
+local rxn_5 : none
+local rxn_6 : none
+local rxn_8 : none
+local rxn_w1 : none
+local rxn_9 : none
+local rxn_10 : none
+local rxn_11 : none
+local rxn_w2 : none
+local rxn_w3 : none
+local rxn_w4 : none
+local rxn_w5 : none
+local rxn_12 : none
+local rxn_13 : none
+local rxn_14 : none
+local rxn_15 : none
+local rxn_16 : none
+local rxn_17 : none
+local rxn_18 : none
+local rxn_19 : none
+local rxn_20 : none
+local rxn_21 : none
+local rxn_23 : none
+local rxn_25 : none
+local rxn_29 : none
+local rxn_a1 : none
+local rxn_a2 : none
+local rxn_a3 : none
+local rxn_a4 : none
+local rxn_a5 : none
+local rxn_a6 : none
+local rxn_a7 : none
+local rxn_a8 : none
+local rxn_a9 : none
+local rxn_a10 : none
+local rxn_a11 : none
+local rxn_a12 : none
+local rxn_a13 : none
+local rxn_a14 : none
+local rxn_a15 : none
+local rxn_a16 : none
+
+local UFP : none
+local BiP : none
+local IRE1 : none
+local PERK : none
+local ATF6 : none
+local spliceRate : none
+local Gamma : none
+local fGK : none
+local eIF2a : none
+local BCL2 : none
+local BH3 : none
+local BAXm : none
+local mUFPT : none
+
+local UFPT : none
+local BiUFP : none
+local BiRE1 : none
+local BiATF : none
+local BiPER : none
+local IRE1A : none
+local PERKA : none
+local mXbp1u : none
+local mXbp1s : none
+local Xbp1s : none
+local mBiPT : none
+local BiPT : none
+local ATF6T : none
+local ATF6GB : none
+local ATF6p50 : none
+local mWFS1 : none
+local WFS1 : none
+local ATF4 : none
+local mCHOP : none
+local CHOP : none
+local mGADD34 : none
+local GADD34 : none
+local BCL2T : none
+local BAXmT : none
+local BH3T : none
+local BAXmBCL2 : none
+local BH3BCL2 : none
+
+
+rel UFP=UFPT-BiUFP
+rel BiP=BiPT-BiRE1-BiATF-BiPER-BiUFP
+rel IRE1=IRE1T-BiRE1-n*IRE1A
+rel PERK=PERKT-BiPER-n*PERKA
+rel ATF6=ATF6T-BiATF
+rel spliceRate= 0.5*ksplice*(mXbp1u+0.5*n*IRE1A+krcSplice-((mXbp1u+0.5*n*IRE1A+krcSplice)^2-4*mXbp1u*0.5*n*IRE1A)^(0.5))
+rel Gamma = (kphos*0.5*n*PERKA)*(J/eIF2aT) + (kdephos*(GADD34+CReP))*(K/eIF2aT)
+rel fGK = (2*(kdephos*(GADD34+CReP))*(K/eIF2aT))/(Gamma + (( (Gamma^2) - (4*(kphos*0.5*n*PERKA-kdephos*(GADD34+CReP))*(kdephos*(GADD34+CReP))*(K/eIF2aT))^(0.5))) )
+rel eIF2a=eIF2aT*fGK
+rel BCL2=BCL2T-BH3BCL2-BAXmBCL2
+rel BH3=BH3T-BH3BCL2
+rel BAXm=BAXmT-BAXmBCL2
+rel mUFPT=13
+
+rel rxn_2=(ktrUFP*mUFPT*eIF2a)/eIF2aT
+rel rxn_3=kdUFP*UFPT
+rel rxn_4=kbu*BiUFP*UFPT
+rel rxn_u1=tmr*kf*BiP*UFP
+rel rxn_u2=tmr*kr*BiUFP
+rel rxn_u3=tmr*kf*BiP*IRE1
+rel rxn_u4=tmr*kr*BiRE1
+rel rxn_u5=tmr*kf*BiP*ATF6
+rel rxn_u6=tmr*kr*BiATF
+rel rxn_u7=tmr*kf*BiP*PERK
+rel rxn_u8=kr*tmr*BiPER
+rel rxn_u9=tmr*kff*IRE1^n
+rel rxn_u10=tmr*kr*IRE1A
+rel rxn_u11=tmr*kff*UFP*PERK^n
+rel rxn_u12=(tmr*kr*PERKA)/(1+extPERK*UFP)
+rel rxn_5=ktrATF6*mATF6T
+rel rxn_6=kdATF6*ATF6T
+rel rxn_8=ktrans*ATF6
+rel rxn_w1=kdeAW*WFS1*ATF6T
+rel rxn_9=kdATF6GB*ATF6GB
+rel rxn_10=kcleave*ATF6GB
+rel rxn_11=kdATF6p50*ATF6p50
+rel rxn_w2=(trcWFS*ATF6p50)/(krcWFS+ATF6p50)
+rel rxn_w3=kdmWFS*mWFS1
+rel rxn_w4=ktrWFS*mWFS1
+rel rxn_w5=kdWFS*WFS1
+rel rxn_12=(trcXU*(basalXBP+kmAtfsXBP*ATF6p50))/(krcXU+basalXBP+kmAtfsXBP*ATF6p50)
+rel rxn_13=kdmXU*mXbp1u
+rel rxn_14=spliceRate
+rel rxn_15=kdmXS*mXbp1s
+rel rxn_16=ktrXS*mXbp1s
+rel rxn_17=kdXS*Xbp1s
+rel rxn_18=(trcBiP*(basalBiP+kmXbp*Xbp1s+kmAtfsBiP*ATF6p50))/(krcBiP+basalBiP+kmXbp*Xbp1s+kmAtfsBiP*ATF6p50)
+rel rxn_19=kdmBiP*mBiPT
+rel rxn_20=ktrBiP*mBiPT
+rel rxn_21=kdBiP*BiPT
+rel rxn_23=(ktrATF4*mATF4)/(1+(eIF2a/kATF4)^nh)
+rel rxn_25=(trcCHOP*(kmAtff*ATF4+kmAtfs*ATF6p50))/(krcCHOP+kmAtff*ATF4+kmAtfs*ATF6p50)
+rel rxn_29=(trcGADD34*kmChop*CHOP)/(krcGADD34+kmChop*CHOP)
+rel rxn_a1=kfbc/(1+kmbc*CHOP)
+rel rxn_a2=kdbc*BCL2T
+rel rxn_a3=kfx*BAXT
+rel rxn_a4=kfxp*BH3*BAXT
+rel rxn_a5=kfx*BAXmT
+rel rxn_a6=kfxp*BH3*BAXmT
+rel rxn_a7=kbx*BAXmT
+rel rxn_a8=ks3
+rel rxn_a9=ks3p*kstr*CHOP
+rel rxn_a10=kd3*BH3T
+rel rxn_a11=kasx*BAXm*BCL2
+rel rxn_a12=kdsx*BAXmBCL2
+rel rxn_a13=kbx*BAXmBCL2
+rel rxn_a14=kas3*BH3*BCL2
+rel rxn_a15=kds3*BH3BCL2
+rel rxn_a16=kd3*BH3BCL2
+
+
+rel deriv(UFPT,t) = ( rxn_2) + (-rxn_3) + (-rxn_4) with UFPT(0) = 0
+rel deriv(BiUFP,t) = ( rxn_u1) + (-rxn_u2) with BiUFP(0) = 0
+rel deriv(BiRE1,t) = ( rxn_u3) + (-rxn_u4) with BiRE1(0) = 0
+rel deriv(BiATF,t) = ( rxn_u5) + (-rxn_u6) with BiATF(0) = 0
+rel deriv(BiPER,t) = ( rxn_u7) + (-rxn_u8) with BiPER(0) = 0
+rel deriv(IRE1A,t) = ( rxn_u9) + (-rxn_u10) with IRE1A(0) = 0
+rel deriv(PERKA,t) = ( rxn_u11) + (-rxn_u12) with PERKA(0) = 0
+rel deriv(mXbp1u,t) = ( rxn_12) + (-rxn_13) + (-rxn_14) with mXbp1u(0) = 0
+rel deriv(mXbp1s,t) = ( rxn_14) + (-rxn_15) with mXbp1s(0) = 0
+rel deriv(Xbp1s,t) = ( rxn_16) + (-rxn_17) with Xbp1s(0) = 0
+rel deriv(mBiPT,t) = ( rxn_18) + (-rxn_19) with mBiPT(0) = 0
+rel deriv(BiPT,t) = ( rxn_20) + (-rxn_21) with BiPT(0) = 0
+rel deriv(ATF6T,t) = ( rxn_5) + (-rxn_6) + (-rxn_8) + (-rxn_w1) with ATF6T(0) = 0
+rel deriv(ATF6GB,t) = ( rxn_8) + (-rxn_9) + (-rxn_10) with ATF6GB(0) = 0
+rel deriv(ATF6p50,t) = ( rxn_10) + (-rxn_11) with ATF6p50(0) = 0
+rel deriv(mWFS1,t) = ( rxn_w2) + (-rxn_w3) with mWFS1(0) = 0
+rel deriv(WFS1,t) = ( rxn_w4) + (-rxn_w5) with WFS1(0) = 0
+rel deriv(ATF4,t) = ( rxn_23) + (-kdATF4*ATF4) with ATF4(0) = 0
+rel deriv(mCHOP,t) = ( rxn_25) + (-kdmCHOP*mCHOP) with mCHOP(0) = 0
+rel deriv(CHOP,t) = ( ktrCHOP*mCHOP) + (-kdCHOP*CHOP) with CHOP(0) = 0
+rel deriv(mGADD34,t) = ( rxn_29) + (-kdmGADD34*mGADD34) with mGADD34(0) = 0
+rel deriv(GADD34,t) = ( ktrGADD34*mGADD34) + (-kdGADD34*GADD34) with GADD34(0) = 0
+rel deriv(BCL2T,t) = ( rxn_a1) + (-rxn_a2) with BCL2T(0) = 0
+rel deriv(BAXmT,t) = ( rxn_a3) + ( rxn_a4) + (-rxn_a5) + (-rxn_a6) + (-rxn_a7) with BAXmT(0) = 0
+rel deriv(BH3T,t) = ( rxn_a8) + ( rxn_a9) + (-rxn_a10) with BH3T(0) = 0
+rel deriv(BAXmBCL2,t) = ( rxn_a11) + (-rxn_a12) + (-rxn_a13) with BAXmBCL2(0) = 0
+rel deriv(BH3BCL2,t) = ( rxn_a14) + (-rxn_a15) + (-rxn_a16) with BH3BCL2(0) = 0

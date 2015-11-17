@@ -1,0 +1,224 @@
+
+*@output MR
+*@args 86,I
+*
+*@output DRp
+*@args 86,I
+*
+*@output DR
+*@args 86,I
+*
+*@output DAp
+*@args 86,I
+*
+*@output MA
+*@args 86,I
+*
+*@output C
+*@args 85,I
+*
+*@output A
+*@args 85,I
+*
+*@output rxn3
+*@args 85,I
+*
+*@output R
+*@args 84,I
+*
+*@input rxn8
+Iin_rxn8_53		83	0	DC	1.
+*
+*@input A_0
+Iin_A_0_52		83	0	DC	1.
+*
+*@input R
+Iin_R_51		83	0	DC	1.
+*
+*@input MR_0
+Iin_MR_0_50		83	0	DC	1.
+*
+*@input rxn12
+Iin_rxn12_49		83	0	DC	1.
+*
+*@input MA_0
+Iin_MA_0_48		82	0	DC	1.
+*
+*@input DRp
+Iin_DRp_47		82	0	DC	1.
+*
+*@input DR
+Iin_DR_46		81	0	DC	1.
+*
+*@input DAp
+Iin_DAp_45		81	0	DC	1.
+*
+*@input A
+Iin_A_44		81	0	DC	1.
+*
+*constant value 1.
+Icst43		81	0	DC	1.
+*
+*@input DRp_0
+Iin_DRp_0_42		81	0	DC	1.
+*
+*@input R_0
+Iin_R_0_41		81	0	DC	1.
+*
+*@input DR_0
+Iin_DR_0_40		81	0	DC	1.
+*
+*@input DAp_0
+Iin_DAp_0_39		81	0	DC	1.
+*
+*@input C_0
+Iin_C_0_38		80	0	DC	1.
+*
+*constant value 500.
+Icst37		80	0	DC	500.
+*
+*@input rxn11
+Iin_rxn11_36		80	0	DC	1.
+*
+*@input rxn5
+Iin_rxn5_35		80	0	DC	1.
+*
+*constant value 0.01
+Icst34		80	0	DC	0.01
+*
+*@input rxn1
+Iin_rxn1_33		79	0	DC	1.
+*
+*@input rxn6
+Iin_rxn6_32		79	0	DC	1.
+*
+*@input C
+Iin_C_31		79	0	DC	1.
+*
+*constant value 0.2
+Icst30		79	0	DC	0.2
+*
+*constant value 5.
+Icst29		78	0	DC	5.
+*
+*@input MR
+Iin_MR_28		78	0	DC	1.
+*
+*constant value 100.
+Icst27		77	0	DC	100.
+*
+*@input rxn14
+Iin_rxn14_26		76	0	DC	1.
+*
+*@output rxn2
+*@args 76,I
+*
+*@output rxn14
+*@args 76,I
+*
+*@output rxn7
+*@args 76,I
+*
+*@output rxn9
+*@args 76,I
+*
+*@output rxn13
+*@args 75,I
+*
+*@input DA
+Iin_DA_20		75	0	DC	1.
+*
+*@input MA
+Iin_MA_19		74	0	DC	1.
+*
+*@output rxn11
+*@args 74,I
+*
+*@output rxn5
+*@args 74,I
+*
+*@output rxn1
+*@args 74,I
+*
+*@output rxn4
+*@args 74,I
+*
+*@output rxn16
+*@args 73,I
+*
+*@output rxn15
+*@args 72,I
+*
+*constant value 0.
+Icst12		71	0	DC	0.
+*
+*@output DA
+*@args 70,I
+*
+*@output rxn6
+*@args 70,I
+*
+*@output rxn8
+*@args 70,I
+*
+*@output rxn12
+*@args 70,I
+*
+*@output rxn10
+*@args 69,I
+*
+*constant value -1.
+Icst6		69	0	DC	-1.
+*
+*@input rxn7
+Iin_rxn7_5		68	0	DC	1.
+*
+*@input rxn13
+Iin_rxn13_4		67	0	DC	1.
+*
+*@input rxn4
+Iin_rxn4_3		66	0	DC	1.
+*
+*constant value 50.
+Icst2		66	0	DC	50.
+*
+*constant value 10.
+Icst1		65	0	DC	10.
+*
+*@input DA_0
+Iin_DA_0_0		64	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xadd4_2		64	64	64	64	0	add4
+Xadd4_11		64	64	64	64	0	add4
+Xadd4_1		64	64	64	64	0	add4
+Xmult4_19		64	64	64	64	64	mult4
+Xmult4_8		64	64	64	64	64	mult4
+Xmult4_6		64	64	64	64	64	mult4
+XinputI_35		64	64	iin
+XinputI_9		67	64	iin
+XinputI_4		71	64	iin
+XinputI_43		76	64	iin
+XinputI_1		78	64	iin
+XinputI_0		66	64	iin
+XinputI_42		75	64	iin
+XinputI_20		66	64	iin
+XinputI_41		82	64	iin
+XinputI_2		83	64	iin
+XinputI_18		83	64	iin
+XinputI_48		69	64	iin
+XinputI_5		79	64	iin
+XinputI_34		81	64	iin
+XinputI_16		80	64	iin
+Xstateful_7		64	64	64	0	stateful
+Xstateful_1		64	64	64	0	stateful
+Xinh_bind_5		0	64	64	0	64	inhbind
+XoutputI_6		64	70	iout
+XoutputI_7		64	72	iout
+XoutputI_8		64	85	iout
+XoutputI_5		64	76	iout
+XoutputI_9		64	74	iout
+XoutputI_3		64	70	iout
+XoutputI_4		64	86	iout

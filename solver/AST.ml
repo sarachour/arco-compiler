@@ -335,11 +335,8 @@ struct
         nm
       in
       let sols : (symvar,symexpr) map set = SET.make (fun x y -> x = y) in
-      let rec solve wcs depth =
+      let rec solve wcs depth ban_all =
         if (SET.size sols) = n || depth == max_depth then () else
-        (*let _ = SymCaml.set_debug env true in
-        let templ = SymCaml.simpl env templ in
-        let cand = SymCaml.simpl env cand in*)
         let res = SymCaml.pattern env templ cand in
         match res with
         | Some(r) ->
@@ -352,14 +349,35 @@ struct
                   let nx = WildcardVar(n, (MAP.get symap n)::(bans)) in
                   let nwcs = LIST.sub  x nx wcs in
                   let _,nwcs = defsyms env nwcs cnv in
-                  solve nwcs (depth+1)
+                  solve nwcs (depth+1) ban_all
               | _ -> ()
             in
-            let _ = List.iter solve_with_one_ban wcs  in
-            ()
+            let solve_with_all_bans (x:symdecl list) =
+              let map_one x = match x with
+                | WildcardVar(n,bans) ->
+                  if MAP.has symap n = false then x else
+                    let nx = WildcardVar(n, (MAP.get symap n)::bans) in
+                    nx
+                | _ -> x
+              in
+              let nwcs = List.map map_one wcs in
+              let _,nwcs = defsyms env nwcs cnv in
+              solve nwcs (depth+1) ban_all
+            in
+            (**)
+            if ban_all then
+              let _ = solve_with_all_bans wcs in ()
+            else
+              let _ = List.iter solve_with_one_ban wcs  in
+              ()
         | None -> ()
       in
-      let _ = solve iwcs 0 in
+      let _ = solve iwcs 0 true in
+      let _ = if SET.size sols < n then
+        (*let _,nwcs = defsyms env iwcs cnv in
+        solve nwcs 0 false*)
+        ()
+      in
       let nlst : (a,a ast) map list = SET.map sols mmap in
       match nlst with
       | [] -> None

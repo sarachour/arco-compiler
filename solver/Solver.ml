@@ -32,8 +32,8 @@ exception SolverError of string
 let error n m = raise (SolverError (n^":"^m))
 
 
-let __max_depth = 20
-let __pattern_depth = 3
+let __max_depth = 35
+let __pattern_depth = 5
 
 module SolveLib =
 struct
@@ -149,7 +149,7 @@ struct
     in
     let _ = List.iter (fun x -> handle_node x) nodes in
     let init_cursor,search= SearchLib.mkbuf (rels) in
-    let tbl = {goals=SET.make (fun x y -> x = y); nodes=nodetbl; sln=sln; search=search} in
+    let tbl = {goals=SET.make (fun x y -> x = y); dngl=MAP.make(); nodes=nodetbl; sln=sln; search=search} in
     let tbl = SearchLib.move_cursor s tbl init_cursor in
     tbl
 
@@ -305,6 +305,27 @@ struct
     else
     goal_cursor
 
+  let canon_hw_assign lhs rhs : unid*(unid ast) =
+    match rhs with
+    | Term(rhs_term) ->
+      begin
+        match lhs,rhs_term with
+        | (HwId(HNPort(k1,c1,v1,p1,u1)),HwId(HNPort(k2,c2,v2,p2,u2))) ->
+          (*hw ports must have an input = output pattern*)
+          if k1 = HNOutput && k2 = HNInput then
+            (HwId(HNPort(k2,c2,v2,p2,u2)),Term(HwId(HNPort(k1,c1,v1,p1,u1))))
+          else if k1 = HNInput && k2 = HNOutput then
+              (lhs,rhs)
+          else if k1 = HNOutput && k2 = HNOutput && lhs <> rhs_term then
+            error "unify_exprs" ("impossible to assign output to output: "^(UnivLib.unid2str lhs)^"-> "^(UnivLib.uast2str rhs))
+          else if k1 = HNInput && k2 = HNInput  && lhs <> rhs_term then
+            error "unify_exprs" ("impossible to assign input to input: "^(UnivLib.unid2str lhs)^"-> "^(UnivLib.uast2str rhs))
+          else
+            (lhs,rhs)
+        | _ ->
+            (lhs,rhs)
+      end
+    | _ -> (lhs,rhs)
 
   let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
     (*declare event*)
@@ -319,7 +340,8 @@ struct
       let res = unify_exprs s name inst_id gl gr nl nr in
       let ret = match res with
           | Some(res) ->
-            let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
+            let gllhs,glrhs = canon_hw_assign (nl) (Term gl) in
+            let _ = List.iter (fun mp -> let _ = MAP.put mp gllhs glrhs in () ) res in
             Some(res)
           | None -> None
       in
@@ -329,9 +351,12 @@ struct
       let res = unify_exprs s name inst_id gl gr nl nr in
       let ret = match res with
         | Some(res) ->
-            let _ = List.iter (fun mp -> let _ = MAP.put mp nl (Term gl) in () ) res in
-            let _ = List.iter (fun mp -> let _ = MAP.put mp nic (Term gic) in () ) res in
-            let _ = List.iter (fun mp -> let _ = MAP.put mp nt (Term gt) in () ) res in
+            let glhs,grhs = canon_hw_assign (nl) (Term gl) in
+            let _ = List.iter (fun mp -> let _ = MAP.put mp glhs grhs in () ) res in
+            let glhs,grhs = canon_hw_assign (nic) (Term gic) in
+            let _ = List.iter (fun mp -> let _ = MAP.put mp glhs grhs in () ) res in
+            let glhs,grhs = canon_hw_assign (nt) (Term gt) in
+            let _ = List.iter (fun mp -> let _ = MAP.put mp glhs grhs in () ) res in
             Some(res)
         | None -> None
       in
@@ -488,7 +513,7 @@ struct
       let rrels = List.filter (fun x -> (MAP.has asg (get_id x)) = false ) other_rels in
       let srrels = List.map (fun x ->  sub_rel x asg) rrels in
       if List.length srrels > 0 then
-        [SAddNode(UnivLib.name2unodeid name,srrels)]
+        [SAddNode(UnivLib.name2unodeid name,iid,srrels)]
       else
         []
     in
@@ -551,6 +576,7 @@ struct
     in
     let cnt = SET.fold node.rels apply_rel 0 in
     let _ = SearchLib.move_cursor s gtbl goal_cursor in
+    let _ = Printf.printf "comp %s: %d\n" node.name cnt in
     if cnt = 0 then
         let _ = SearchLib.rm gtbl.search comp_cursor in
         let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
@@ -732,31 +758,24 @@ struct
       let _ = Printf.printf "SOLVER ==> Testing Solution\n" in
       let mint,musr = mkmenu s v None in
       let _ = flush_all() in
-      if SlnLib.mkconn_cons s v.sln && SlnLib.usecomp_cons s v.sln  then
+      let _ = mint "s" in
+      if SlnLib.usecomp_cons s v.sln  then
+      if SlnLib.mkconn_cons s v.sln then
         let _ = Printf.printf "SOLVER ==> Found valid solution.\n" in
         let _ = flush_all() in
         let cnode = SearchLib.cursor v.search in
         Some cnode
       else
-        let _ = Printf.printf "SOLVER ==> Solution does not satisfy constraints.\n" in
+        let _ = Printf.printf "SOLVER ==> Solution does not satisfy connection constraints.\n" in
+        let _ = flush_all() in
+        let _ = wait s in
+        let _ = failed () in
+        None
+      else
+        let _ = Printf.printf "SOLVER ==> Solution does not satisfy component count constraints.\n" in
         let _ = flush_all() in
         let _ = failed () in
         None
-      (*this solution is valid*)
-      (*
-      let _ = flush_all() in
-      if
-        SlnLib.mkconn_cons s v.sln &&
-        SlnLib.usecomp_cons s v.sln
-        then
-        let _ = Printf.printf "SOLVER: Found valid solution.\n" in
-        (*let _ = mint "s" in*)
-        let cnode = SearchLib.cursor v.search in
-        Some cnode
-      else
-        let _ = Printf.printf "SOLVER: Invalid.\n" in
-        (*let _ = mint "s" in*)
-      *)
     in
     let solve_goal () =
       let _  = flush_all() in
@@ -821,6 +840,7 @@ struct
       let v =  {
          goals = SET.make (fun x y -> x = y);
          nodes = nodetbl;
+         dngl = MAP.make();
          search= st;
          sln= sln;
       } in

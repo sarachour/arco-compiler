@@ -31,13 +31,15 @@ param a_tr : 1/s = 0.4995
 
 time t : s
 
+
 rel TRLacL = a0_tr + (((a_tr)*(KM^n))/( (KM^n) + (LacLp^n)))
 rel TRTetR = a0_tr + ((a_tr)*(KM^n))/( (KM^n) + (TetRp^n))
 rel TRclp = a0_tr + ((a_tr)*(KM^n))/( (KM^n) + (clp^n))
 
-rel deriv(LacLm,t) = TRLacL - (kd_mrna*LacLm) with LacLm(0) = 0
-rel deriv(clm,t) = TRclp - kd_mrna*clm with clm(0) = 0
-rel deriv(TetRm,t) = TRTetR - kd_mrna*TetRm with TetRm(0) = 0
+rel deriv(LacLm,t) = (TRLacL) - (kd_mrna*LacLm) with LacLm(0) = 0
+rel deriv(clm,t) = (TRclp) - (kd_mrna*clm) with clm(0) = 0
+
+rel deriv(TetRm,t) = (TRTetR) - (kd_mrna*TetRm) with TetRm(0) = 0
 
 rel deriv(LacLp,t) = (k_tl*LacLm)-(kd_prot*LacLp) with LacLp(0) = 0
 rel deriv(clp,t) = (k_tl*clm)-(kd_prot*clp) with clp(0) = 0

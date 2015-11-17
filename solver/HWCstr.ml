@@ -38,7 +38,7 @@ struct
 
   let getinsts e cname =
     if MAP.has e.insts cname = false then
-      error "getinsts" "there is no instance count."
+      error "getinsts" ("there is no instance count; "^cname)
     else
       MAP.get e.insts cname
 

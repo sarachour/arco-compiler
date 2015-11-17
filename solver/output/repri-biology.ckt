@@ -1,0 +1,39 @@
+
+*@input TRTetR
+Vin_TRTetR_7		31	0	DC	1.
+*
+*constant value 0.
+Vcst6		30	0	DC	0.
+*
+*@output TetRm
+*@args 29,V
+*
+*constant value 1.
+Vcst4		28	0	DC	1.
+*
+*constant value -1.
+Vcst3		27	0	DC	-1.
+*
+*@input TetRm
+Vin_TetRm_2		26	0	DC	1.
+*
+*constant value 0.15051499783
+Vcst1		25	0	DC	0.15051499783
+*
+*@input TetRm_0
+Vin_TetRm_0_0		24	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xvgain_27		20	7	19	1	vgain
+Xvgain_37		12	7	22	10	vgain
+XoutputV_6		3	29	vout
+Xvadd_6		19	19	19	19	1	10	0	3	8	vaddgain
+XinputV_0		31	19	vin
+XinputV_38		27	20	vin
+XinputV_32		28	7	vin
+XinputV_1		26	22	vin
+XinputV_22		25	12	vin
+XinputV_8		24	8	vin
+XinputV_0		31	19	vin

@@ -49,7 +49,7 @@ struct
   | HNPort(k,HCMGlobal(c,i),x,p,u) ->
     HNPort(k,HCMLocal(c),x,p,u)
   | _ -> x
-  
+
   let hwvid2str e =
     let c2str c = match c with
     | HCMLocal(n) -> n^"."
@@ -69,13 +69,16 @@ struct
   let cv2hwid c v prop inst =
     match v.typ,prop,inst with
     | (HPortType(k,m),Some(p),None) ->
+      if MAP.has m p = false then error "cv2hwid" ("property "^p^" does not exist in map for "^c.name) else
       HNPort(k,HCMLocal(c.name),v.name,p,MAP.get m p)
     | (HPortType(k,m),Some(p),Some(i)) ->
+      if MAP.has m p = false then error "cv2hwid" ("property "^p^" does not exist in map for "^c.name) else
       HNPort(k,HCMGlobal(c.name,i),v.name,p,MAP.get m p)
     | (HParamType(f,u),_,None) ->
       HNParam(HCMLocal(c.name),v.name,f,u)
     | (HParamType(f,u),_,Some(i)) ->
       HNParam(HCMGlobal(c.name,i),v.name,f,u)
+    | _ -> error "cv2hwid" "unexpected arguments"
 
   let print e =
     let pkind2str v =

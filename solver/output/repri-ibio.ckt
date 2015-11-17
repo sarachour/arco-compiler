@@ -1,0 +1,136 @@
+
+*@output TetRp
+*@args 82,I
+*
+*@output LacLp
+*@args 82,I
+*
+*@output LacLm
+*@args 82,I
+*
+*@output TetRm
+*@args 82,I
+*
+*constant value 40.
+Icst28		81	0	DC	40.
+*
+*@output TRLacL
+*@args 81,I
+*
+*@output TRTetR
+*@args 81,I
+*
+*@output TRclp
+*@args 80,I
+*
+*@input TRLacL
+Iin_TRLacL_24		80	0	DC	1.
+*
+*constant value 0.0005
+Icst23		79	0	DC	0.0005
+*
+*@input TetRp_0
+Iin_TetRp_0_22		79	0	DC	1.
+*
+*@input LacLp_0
+Iin_LacLp_0_21		79	0	DC	1.
+*
+*constant value 0.03010299956
+Icst20		79	0	DC	0.03010299956
+*
+*@input LacLm_0
+Iin_LacLm_0_19		78	0	DC	1.
+*
+*constant value 0.15051499783
+Icst18		78	0	DC	0.15051499783
+*
+*constant value 0.
+Icst17		78	0	DC	0.
+*
+*@input clm_0
+Iin_clm_0_16		78	0	DC	1.
+*
+*@input TetRm
+Iin_TetRm_15		78	0	DC	1.
+*
+*@input clp_0
+Iin_clp_0_14		77	0	DC	1.
+*
+*@input clp
+Iin_clp_13		76	0	DC	1.
+*
+*@input TetRp
+Iin_TetRp_12		75	0	DC	1.
+*
+*@input LacLm
+Iin_LacLm_11		75	0	DC	1.
+*
+*@input TetRm_0
+Iin_TetRm_0_10		75	0	DC	1.
+*
+*constant value 3.01029995664
+Icst9		74	0	DC	3.01029995664
+*
+*@output clm
+*@args 74,I
+*
+*@output clp
+*@args 73,I
+*
+*constant value 0.4995
+Icst6		72	0	DC	0.4995
+*
+*constant value 2.
+Icst5		72	0	DC	2.
+*
+*constant value 1.
+Icst4		72	0	DC	1.
+*
+*@input LacLp
+Iin_LacLp_3		72	0	DC	1.
+*
+*@input TRTetR
+Iin_TRTetR_2		71	0	DC	1.
+*
+*@input clm
+Iin_clm_1		71	0	DC	1.
+*
+*@input TRclp
+Iin_TRclp_0		70	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xadd4_6		69	69	69	69	0	add4
+Xadd4_11		69	69	69	69	0	add4
+Xmult4_9		69	69	69	69	69	mult4
+Xmult4_12		69	69	69	69	69	mult4
+Xmult4_16		69	69	69	69	69	mult4
+Xmult4_6		69	69	69	69	69	mult4
+XinputI_34		75	69	iin
+XinputI_48		79	69	iin
+XinputI_4		78	69	iin
+XinputI_10		78	69	iin
+XinputI_48		79	69	iin
+XinputI_42		79	69	iin
+XinputI_10		78	69	iin
+XinputI_15		80	69	iin
+XinputI_27		76	69	iin
+XinputI_4		78	69	iin
+XinputI_48		79	69	iin
+XinputI_40		81	69	iin
+XinputI_37		78	69	iin
+XinputI_48		79	69	iin
+XinputI_28		72	69	iin
+XinputI_48		79	69	iin
+Xstateful_2		69	69	69	0	stateful
+Xstateful_6		69	69	69	0	stateful
+Xstateful_13		69	69	69	0	stateful
+Xinh_bind_6		69	69	69	69	69	inhbind
+Xinh_bind_0		69	69	69	69	69	inhbind
+Xinh_bind_2		69	69	69	69	69	inhbind
+Xinh_bind_2		69	69	69	69	69	inhbind
+XoutputI_6		24	81	iout
+XoutputI_8		69	82	iout
+XoutputI_8		69	82	iout
+XoutputI_8		69	82	iout

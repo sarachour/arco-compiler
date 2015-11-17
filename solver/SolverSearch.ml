@@ -55,7 +55,7 @@ struct
   let step2str n = match n with
   | SAddGoal(v) -> "add "^(UnivLib.urel2str v)
   | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
-  | SAddNode(id,rels) -> "SLN ADDNODE "^(UnivLib.unodeid2name id)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")
+  | SAddNode(id,i,rels) -> "SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")
   | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | SSolAddLabel(w,p,l) -> "SLN mklbl "^(SlnLib.wire2str w)^"."^p^(SlnLib.label2str l)
@@ -165,7 +165,7 @@ struct
     match s with
     | SAddGoal(g) -> let _ = SET.add tbl.goals g in ()
     | SRemoveGoal(g) -> let _ = SET.rm tbl.goals g in ()
-    | SAddNode(id,u) -> let _ = MAP.put tbl.nodes id {name=(UnivLib.unodeid2name id);rels=SET.to_set u (fun x y -> x = y)} in ()
+    | SAddNode(id,i,u) -> let _ = MAP.put tbl.dngl (id,i) {name=(UnivLib.unodeid2name id);rels=SET.to_set u (fun x y -> x = y)} in ()
     | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
     | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
     | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
@@ -184,7 +184,7 @@ struct
   match s with
   | SAddGoal(g) -> let _ = SET.rm tbl.goals g in ()
   | SRemoveGoal(g) -> let _ = SET.add tbl.goals g in ()
-  | SAddNode(id,rels) -> let _ = MAP.rm tbl.nodes id in ()
+  | SAddNode(id,i,rels) -> let _ = MAP.rm tbl.dngl (id,i) in ()
   | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
   | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()

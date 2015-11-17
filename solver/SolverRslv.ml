@@ -68,27 +68,6 @@ struct
 
 
 
-  (*make sure each sol connection fits a match*)
-  (*)
-  let failed,decls = MAP.fold sol_conns (fun sln_src dests (failed,decls) ->
-    if failed then (failed,decls) else
-      SET.fold dests (fun sln_dest (failed,decls) ->
-       if failed then (failed,decls) else
-       let names,cstrs = decl_conns sln_src sln_dest in
-       if List.length cstrs > 0 then
-         let defines = List.fold_right (fun x r -> (Z3ConstDecl(x,Z3Bool))::r) names [] in
-         let must_have_conn = Z3Lib.or_all cstrs in
-         let exprs = List.map (fun d -> Z3IfThenElse(Z3Var(d),Z3Int 1,Z3Int 0) ) names in
-         let exactly_one_conn = Z3Eq(Z3Lib.plus_all exprs, Z3Int(1)) in
-         let asserts = [Z3Assert must_have_conn;Z3Assert exactly_one_conn] in
-         let decls = decls @ defines @ asserts in
-         (failed,decls)
-       else
-         (true,decls)
-    ) (failed,decls)
-  ) (false,[])
-  in
-  *)
 
   let to_smt_prob cfg sol : bool*z3doc*((string,instinfo) map) =
     (*set up environment*)
@@ -127,9 +106,16 @@ struct
         let res = match MAP.get cstr_conns (sc,sp) with
         | HCConnLimit(dests) ->
           if MAP.has dests (dc,dp) = false
-          then None else
+          then
+            let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+            None
+          else
             let ipairs = MAP.get dests (dc,dp) in
-            if SET.size ipairs = 0 then None else
+            if SET.size ipairs = 0 then
+              let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+              let _ = flush_all() in
+              None
+            else
             let res = SET.fold ipairs (fun (cstr_si,cstr_di) (rest)->
               let sln_si = si in
               let sln_di = di in

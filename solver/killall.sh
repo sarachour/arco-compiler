@@ -1,8 +1,8 @@
 
 
+ARG=$1
 
-
-for p in $(ps -eocomm,pid | grep run.sh | sed "s/run.sh\s*//g")
+for p in $(ps -eocomm,pid | grep  $ARG | sed "s/$ARG\s*//g")
 do
   echo "killing $p"
   kill -9 $p

@@ -98,6 +98,7 @@ struct
 
   let wires_of_label (sln:sln) (prop:propid) (v:label) : wireid list option=
     let matches = MAP.fold sln.labels (fun k props r ->
+      if MAP.has props prop = false then r else
       let lset = MAP.get props prop in
       if SET.has lset v then
       k::r else r ) []

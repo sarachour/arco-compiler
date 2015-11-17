@@ -63,7 +63,7 @@ type step =
   | SSolAddLabel of wireid*propid*label
   | SRemoveGoal of goal
   | SAddGoal of goal
-  | SAddNode of unodeid*(urel list)
+  | SAddNode of unodeid*int*(urel list)
 
 type steps = {
   mutable s :step list;
@@ -105,6 +105,7 @@ type buffer = {
 type gltbl = {
   mutable goals : urel set;
   mutable nodes : (unodeid, unode) map;
+  mutable dngl : (unodeid*int,unode) map;
   mutable search: buffer;
   mutable sln: sln;
 }

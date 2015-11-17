@@ -226,7 +226,7 @@ struct
   | UState(l,r,i,t) -> ast2complexity r
 
   let goal2complexity = urel2complexity
-  
+
   let urel2str uid = match uid with
   | UFunction(l,r) -> (unid2str l)^"="^(ASTLib.ast2str r unid2str)
   | UState(l,r,i,t) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)
