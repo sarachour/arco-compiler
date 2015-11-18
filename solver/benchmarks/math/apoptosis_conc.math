@@ -95,61 +95,6 @@ param cmp_cytoplasm : none =1.0
 param cmp_Golgi : none =1.0
 param cmp_mitochondria : none=1.0
 
-local rxn_2 : none
-local rxn_3 : none
-local rxn_4 : none
-local rxn_u1 : none
-local rxn_u2 : none
-local rxn_u3 : none
-local rxn_u4 : none
-local rxn_u5 : none
-local rxn_u6 : none
-local rxn_u7 : none
-local rxn_u8 : none
-local rxn_u9 : none
-local rxn_u10 : none
-local rxn_u11 : none
-local rxn_u12 : none
-local rxn_5 : none
-local rxn_6 : none
-local rxn_8 : none
-local rxn_w1 : none
-local rxn_9 : none
-local rxn_10 : none
-local rxn_11 : none
-local rxn_w2 : none
-local rxn_w3 : none
-local rxn_w4 : none
-local rxn_w5 : none
-local rxn_12 : none
-local rxn_13 : none
-local rxn_14 : none
-local rxn_15 : none
-local rxn_16 : none
-local rxn_17 : none
-local rxn_18 : none
-local rxn_19 : none
-local rxn_20 : none
-local rxn_21 : none
-local rxn_23 : none
-local rxn_25 : none
-local rxn_29 : none
-local rxn_a1 : none
-local rxn_a2 : none
-local rxn_a3 : none
-local rxn_a4 : none
-local rxn_a5 : none
-local rxn_a6 : none
-local rxn_a7 : none
-local rxn_a8 : none
-local rxn_a9 : none
-local rxn_a10 : none
-local rxn_a11 : none
-local rxn_a12 : none
-local rxn_a13 : none
-local rxn_a14 : none
-local rxn_a15 : none
-local rxn_a16 : none
 
 local UFP : none
 local BiP : none
@@ -208,87 +153,32 @@ rel BH3=BH3T-BH3BCL2
 rel BAXm=BAXmT-BAXmBCL2
 rel mUFPT=13
 
-rel rxn_2=(ktrUFP*mUFPT*eIF2a)/eIF2aT
-rel rxn_3=kdUFP*UFPT
-rel rxn_4=kbu*BiUFP*UFPT
-rel rxn_u1=tmr*kf*BiP*UFP
-rel rxn_u2=tmr*kr*BiUFP
-rel rxn_u3=tmr*kf*BiP*IRE1
-rel rxn_u4=tmr*kr*BiRE1
-rel rxn_u5=tmr*kf*BiP*ATF6
-rel rxn_u6=tmr*kr*BiATF
-rel rxn_u7=tmr*kf*BiP*PERK
-rel rxn_u8=kr*tmr*BiPER
-rel rxn_u9=tmr*kff*IRE1^n
-rel rxn_u10=tmr*kr*IRE1A
-rel rxn_u11=tmr*kff*UFP*PERK^n
-rel rxn_u12=(tmr*kr*PERKA)/(1+extPERK*UFP)
-rel rxn_5=ktrATF6*mATF6T
-rel rxn_6=kdATF6*ATF6T
-rel rxn_8=ktrans*ATF6
-rel rxn_w1=kdeAW*WFS1*ATF6T
-rel rxn_9=kdATF6GB*ATF6GB
-rel rxn_10=kcleave*ATF6GB
-rel rxn_11=kdATF6p50*ATF6p50
-rel rxn_w2=(trcWFS*ATF6p50)/(krcWFS+ATF6p50)
-rel rxn_w3=kdmWFS*mWFS1
-rel rxn_w4=ktrWFS*mWFS1
-rel rxn_w5=kdWFS*WFS1
-rel rxn_12=(trcXU*(basalXBP+kmAtfsXBP*ATF6p50))/(krcXU+basalXBP+kmAtfsXBP*ATF6p50)
-rel rxn_13=kdmXU*mXbp1u
-rel rxn_14=spliceRate
-rel rxn_15=kdmXS*mXbp1s
-rel rxn_16=ktrXS*mXbp1s
-rel rxn_17=kdXS*Xbp1s
-rel rxn_18=(trcBiP*(basalBiP+kmXbp*Xbp1s+kmAtfsBiP*ATF6p50))/(krcBiP+basalBiP+kmXbp*Xbp1s+kmAtfsBiP*ATF6p50)
-rel rxn_19=kdmBiP*mBiPT
-rel rxn_20=ktrBiP*mBiPT
-rel rxn_21=kdBiP*BiPT
-rel rxn_23=(ktrATF4*mATF4)/(1+(eIF2a/kATF4)^nh)
-rel rxn_25=(trcCHOP*(kmAtff*ATF4+kmAtfs*ATF6p50))/(krcCHOP+kmAtff*ATF4+kmAtfs*ATF6p50)
-rel rxn_29=(trcGADD34*kmChop*CHOP)/(krcGADD34+kmChop*CHOP)
-rel rxn_a1=kfbc/(1+kmbc*CHOP)
-rel rxn_a2=kdbc*BCL2T
-rel rxn_a3=kfx*BAXT
-rel rxn_a4=kfxp*BH3*BAXT
-rel rxn_a5=kfx*BAXmT
-rel rxn_a6=kfxp*BH3*BAXmT
-rel rxn_a7=kbx*BAXmT
-rel rxn_a8=ks3
-rel rxn_a9=ks3p*kstr*CHOP
-rel rxn_a10=kd3*BH3T
-rel rxn_a11=kasx*BAXm*BCL2
-rel rxn_a12=kdsx*BAXmBCL2
-rel rxn_a13=kbx*BAXmBCL2
-rel rxn_a14=kas3*BH3*BCL2
-rel rxn_a15=kds3*BH3BCL2
-rel rxn_a16=kd3*BH3BCL2
 
 
-rel deriv(UFPT,t) = ( rxn_2) + (-rxn_3) + (-rxn_4) with UFPT(0) = 0
-rel deriv(BiUFP,t) = ( rxn_u1) + (-rxn_u2) with BiUFP(0) = 0
-rel deriv(BiRE1,t) = ( rxn_u3) + (-rxn_u4) with BiRE1(0) = 0
-rel deriv(BiATF,t) = ( rxn_u5) + (-rxn_u6) with BiATF(0) = 0
-rel deriv(BiPER,t) = ( rxn_u7) + (-rxn_u8) with BiPER(0) = 0
-rel deriv(IRE1A,t) = ( rxn_u9) + (-rxn_u10) with IRE1A(0) = 0
-rel deriv(PERKA,t) = ( rxn_u11) + (-rxn_u12) with PERKA(0) = 0
-rel deriv(mXbp1u,t) = ( rxn_12) + (-rxn_13) + (-rxn_14) with mXbp1u(0) = 0
-rel deriv(mXbp1s,t) = ( rxn_14) + (-rxn_15) with mXbp1s(0) = 0
-rel deriv(Xbp1s,t) = ( rxn_16) + (-rxn_17) with Xbp1s(0) = 0
-rel deriv(mBiPT,t) = ( rxn_18) + (-rxn_19) with mBiPT(0) = 0
-rel deriv(BiPT,t) = ( rxn_20) + (-rxn_21) with BiPT(0) = 0
-rel deriv(ATF6T,t) = ( rxn_5) + (-rxn_6) + (-rxn_8) + (-rxn_w1) with ATF6T(0) = 0
-rel deriv(ATF6GB,t) = ( rxn_8) + (-rxn_9) + (-rxn_10) with ATF6GB(0) = 0
-rel deriv(ATF6p50,t) = ( rxn_10) + (-rxn_11) with ATF6p50(0) = 0
-rel deriv(mWFS1,t) = ( rxn_w2) + (-rxn_w3) with mWFS1(0) = 0
-rel deriv(WFS1,t) = ( rxn_w4) + (-rxn_w5) with WFS1(0) = 0
-rel deriv(ATF4,t) = ( rxn_23) + (-kdATF4*ATF4) with ATF4(0) = 0
-rel deriv(mCHOP,t) = ( rxn_25) + (-kdmCHOP*mCHOP) with mCHOP(0) = 0
-rel deriv(CHOP,t) = ( ktrCHOP*mCHOP) + (-kdCHOP*CHOP) with CHOP(0) = 0
-rel deriv(mGADD34,t) = ( rxn_29) + (-kdmGADD34*mGADD34) with mGADD34(0) = 0
-rel deriv(GADD34,t) = ( ktrGADD34*mGADD34) + (-kdGADD34*GADD34) with GADD34(0) = 0
-rel deriv(BCL2T,t) = ( rxn_a1) + (-rxn_a2) with BCL2T(0) = 0
-rel deriv(BAXmT,t) = ( rxn_a3) + ( rxn_a4) + (-rxn_a5) + (-rxn_a6) + (-rxn_a7) with BAXmT(0) = 0
-rel deriv(BH3T,t) = ( rxn_a8) + ( rxn_a9) + (-rxn_a10) with BH3T(0) = 0
-rel deriv(BAXmBCL2,t) = ( rxn_a11) + (-rxn_a12) + (-rxn_a13) with BAXmBCL2(0) = 0
-rel deriv(BH3BCL2,t) = ( rxn_a14) + (-rxn_a15) + (-rxn_a16) with BH3BCL2(0) = 0
+rel deriv(UFPT,t) = ( ((ktrUFP*mUFPT*eIF2a)/eIF2aT)) + (-(kdUFP*UFPT)) + (-(kbu*BiUFP*UFPT)) with UFPT(0) = 0
+rel deriv(BiUFP,t) = ( (tmr*kf*BiP*UFP)) + (-(tmr*kr*BiUFP)) with BiUFP(0) = 0
+rel deriv(BiRE1,t) = ( (tmr*kf*BiP*IRE1)) + (-(tmr*kr*BiRE1)) with BiRE1(0) = 0
+rel deriv(BiATF,t) = ( (tmr*kf*BiP*ATF6)) + (-(tmr*kr*BiATF)) with BiATF(0) = 0
+rel deriv(BiPER,t) = ( (tmr*kf*BiP*PERK)) + (-(kr*tmr*BiPER)) with BiPER(0) = 0
+rel deriv(IRE1A,t) = ( (tmr*kff*IRE1^n)) + (-(tmr*kr*IRE1A)) with IRE1A(0) = 0
+rel deriv(PERKA,t) = ( (tmr*kff*UFP*PERK^n)) + (-((tmr*kr*PERKA)/(1+extPERK*UFP))) with PERKA(0) = 0
+rel deriv(mXbp1u,t) = ( ((trcXU*(basalXBP+kmAtfsXBP*ATF6p50))/(krcXU+basalXBP+kmAtfsXBP*ATF6p50))) + (-(kdmXU*mXbp1u)) + (-(spliceRate)) with mXbp1u(0) = 0
+rel deriv(mXbp1s,t) = ( (spliceRate)) + (-(kdmXS*mXbp1s)) with mXbp1s(0) = 0
+rel deriv(Xbp1s,t) = ( (ktrXS*mXbp1s)) + (-(kdXS*Xbp1s)) with Xbp1s(0) = 0
+rel deriv(mBiPT,t) = ( ((trcBiP*(basalBiP+kmXbp*Xbp1s+kmAtfsBiP*ATF6p50))/(krcBiP+basalBiP+kmXbp*Xbp1s+kmAtfsBiP*ATF6p50))) + (-(kdmBiP*mBiPT)) with mBiPT(0) = 0
+rel deriv(BiPT,t) = ( (ktrBiP*mBiPT)) + (-(kdBiP*BiPT)) with BiPT(0) = 0
+rel deriv(ATF6T,t) = ( (ktrATF6*mATF6T)) + (-(kdATF6*ATF6T)) + (-(ktrans*ATF6)) + (-(kdeAW*WFS1*ATF6T)) with ATF6T(0) = 0
+rel deriv(ATF6GB,t) = ( (ktrans*ATF6)) + (-(kdATF6GB*ATF6GB)) + (-(kcleave*ATF6GB)) with ATF6GB(0) = 0
+rel deriv(ATF6p50,t) = ( (kcleave*ATF6GB)) + (-(kdATF6p50*ATF6p50)) with ATF6p50(0) = 0
+rel deriv(mWFS1,t) = ( ((trcWFS*ATF6p50)/(krcWFS+ATF6p50))) + (-(kdmWFS*mWFS1)) with mWFS1(0) = 0
+rel deriv(WFS1,t) = ( (ktrWFS*mWFS1)) + (-(kdWFS*WFS1)) with WFS1(0) = 0
+rel deriv(ATF4,t) = ( ((ktrATF4*mATF4)/(1+(eIF2a/kATF4)^nh))) + (-(kdATF4*ATF4)) with ATF4(0) = 0
+rel deriv(mCHOP,t) = ( ((trcCHOP*(kmAtff*ATF4+kmAtfs*ATF6p50))/(krcCHOP+kmAtff*ATF4+kmAtfs*ATF6p50))) + (-(kdmCHOP*mCHOP)) with mCHOP(0) = 0
+rel deriv(CHOP,t) = ( (ktrCHOP*mCHOP)) + (-(kdCHOP*CHOP)) with CHOP(0) = 0
+rel deriv(mGADD34,t) = ( ((trcGADD34*kmChop*CHOP)/(krcGADD34+kmChop*CHOP))) + (-(kdmGADD34*mGADD34)) with mGADD34(0) = 0
+rel deriv(GADD34,t) = ( (ktrGADD34*mGADD34)) + (-(kdGADD34*GADD34)) with GADD34(0) = 0
+rel deriv(BCL2T,t) = ( (kfbc/(1+kmbc*CHOP))) + (-(kdbc*BCL2T)) with BCL2T(0) = 0
+rel deriv(BAXmT,t) = ( (kfx*BAXT)) + ( (kfxp*BH3*BAXT)) + (-(kfx*BAXmT)) + (-(kfxp*BH3*BAXmT)) + (-(kbx*BAXmT)) with BAXmT(0) = 0
+rel deriv(BH3T,t) = ( (ks3)) + ( (ks3p*kstr*CHOP)) + (-(kd3*BH3T)) with BH3T(0) = 0
+rel deriv(BAXmBCL2,t) = ( (kasx*BAXm*BCL2)) + (-(kdsx*BAXmBCL2)) + (-(kbx*BAXmBCL2)) with BAXmBCL2(0) = 0
+rel deriv(BH3BCL2,t) = ( (kas3*BH3*BCL2)) + (-(kds3*BH3BCL2)) + (-(kd3*BH3BCL2)) with BH3BCL2(0) = 0

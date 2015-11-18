@@ -100,7 +100,7 @@ comp vtoi
   input K where V:mV
   output Y where I:mA
 
-  rel I(Y) = V(K)*V(X)
+  rel I(Y) = (1/V(K))*V(X)
 
   spice vtoi X K Y
 
@@ -111,7 +111,7 @@ comp itov
   input K where V:mV
   output Y where V:mV
 
-  rel V(Y) = (1/V(K))*I(X)
+  rel V(Y) = (V(K))*I(X)
 
   spice itov X K Y
 end
@@ -185,10 +185,10 @@ schematic
   inst output I : 10
   inst copy I : 10
   inst mm : 2
-  inst switch : 5
+  inst switch : 15
 
-  inst input V : 75
-  inst output V : 50
+  inst input V : 125
+  inst output V : 75
   inst copy V : 10
 
   inst vadd : 35
@@ -220,10 +220,15 @@ schematic
   conn input(V) -> mm
 
   conn mm -> output(V)
+  conn mm -> itov
+  conn mm -> iadd
+  conn mm -> vgain
+
 
   conn switch -> itov
   conn switch -> iadd
   conn switch -> output(I)
+  conn switch -> itov
 
   conn ihill -> output(I)
   conn ihill -> itov
@@ -238,11 +243,13 @@ schematic
   conn itov -> output(V)
   conn itov -> vadd
   conn itov -> vgain
+  conn itov -> switch
 
   conn iadd -> output(I)
   conn iadd -> ihill
   conn iadd -> switch
   conn iadd -> igenebind
+  conn iadd -> itov
 
   conn vtoi -> iadd
   conn vtoi -> ihill
@@ -252,6 +259,8 @@ schematic
   conn vgain -> output(V)
   conn vgain -> vadd
   conn vgain -> vtoi
+  conn vgain -> mm
+  conn vgain -> itov
   conn vgain -> vgain
 
   conn vadd -> output(V)

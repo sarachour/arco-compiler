@@ -305,7 +305,7 @@ struct
     else
     goal_cursor
 
-  let canon_hw_assign lhs rhs : unid*(unid ast) =
+  let canon_hw_assign lhs rhs : (unid*(unid ast)) option =
     match rhs with
     | Term(rhs_term) ->
       begin
@@ -313,19 +313,19 @@ struct
         | (HwId(HNPort(k1,c1,v1,p1,u1)),HwId(HNPort(k2,c2,v2,p2,u2))) ->
           (*hw ports must have an input = output pattern*)
           if k1 = HNOutput && k2 = HNInput then
-            (HwId(HNPort(k2,c2,v2,p2,u2)),Term(HwId(HNPort(k1,c1,v1,p1,u1))))
+            Some (HwId(HNPort(k2,c2,v2,p2,u2)),Term(HwId(HNPort(k1,c1,v1,p1,u1))))
           else if k1 = HNInput && k2 = HNOutput then
-              (lhs,rhs)
+              Some(lhs,rhs)
           else if k1 = HNOutput && k2 = HNOutput && lhs <> rhs_term then
-            error "unify_exprs" ("impossible to assign output to output: "^(UnivLib.unid2str lhs)^"-> "^(UnivLib.uast2str rhs))
+            None
           else if k1 = HNInput && k2 = HNInput  && lhs <> rhs_term then
-            error "unify_exprs" ("impossible to assign input to input: "^(UnivLib.unid2str lhs)^"-> "^(UnivLib.uast2str rhs))
+            None
           else
-            (lhs,rhs)
+            Some (lhs,rhs)
         | _ ->
-            (lhs,rhs)
+            Some (lhs,rhs)
       end
-    | _ -> (lhs,rhs)
+    | _ -> Some(lhs,rhs)
 
   let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
     (*declare event*)
@@ -347,9 +347,14 @@ struct
       let res = unify_exprs s name inst_id gl gr nl nr in
       let ret = match res with
           | Some(res) ->
-            let gllhs,glrhs = canon_hw_assign (nl) (Term gl) in
-            let _ = List.iter (fun mp -> let _ = MAP.put mp gllhs glrhs in () ) res in
-            Some(res)
+            let lhs = canon_hw_assign (nl) (Term gl) in
+            begin
+            match lhs with
+            | Some(gllhs,glrhs) ->
+              let _ = List.iter (fun mp -> let _ = MAP.put mp gllhs glrhs in () ) res in
+              Some(res)
+            | _ -> None
+            end
           | None -> None
       in
         ret
@@ -358,13 +363,18 @@ struct
       let res = unify_exprs s name inst_id gl gr nl nr in
       let ret = match res with
         | Some(res) ->
-            let glhs,grhs = canon_hw_assign (nl) (Term gl) in
-            let _ = List.iter (fun mp -> let _ = MAP.put mp glhs grhs in () ) res in
-            let glhs,grhs = canon_hw_assign (nic) (Term gic) in
-            let _ = List.iter (fun mp -> let _ = MAP.put mp glhs grhs in () ) res in
-            let glhs,grhs = canon_hw_assign (nt) (Term gt) in
-            let _ = List.iter (fun mp -> let _ = MAP.put mp glhs grhs in () ) res in
-            Some(res)
+            let lhs = canon_hw_assign (nl) (Term gl) in
+            let ic = canon_hw_assign (nic) (Term gic) in
+            let t = canon_hw_assign (nt) (Term gt) in
+            begin
+            match lhs,ic,t with
+            | (Some(glhs,nlhs),Some(gic,nic),Some(gt,nt)) ->
+              let _ = List.iter (fun mp -> let _ = MAP.put mp glhs nlhs in () ) res in
+              let _ = List.iter (fun mp -> let _ = MAP.put mp gic nic in () ) res in
+              let _ = List.iter (fun mp -> let _ = MAP.put mp gt nt in () ) res in
+              Some(res)
+            | (_) -> None
+            end
         | None -> None
       in
         ret
@@ -800,7 +810,7 @@ struct
       (*let _ = SearchLib.cleanup v.search in*)
       (*print goals*)
       let mint,musr= mkmenu s v None in
-      let _ = mint "g" in
+      (*let _ = mint "g" in*)
       (*do we have any goals. *)
       if is_no_goals_left v.goals target then
         let res = no_goals_left solve_goal in
