@@ -25,4 +25,4 @@ ensure err E(ES) = 0.01 : M
 
 rel S = STOT - ES
 rel E = ETOT - ES
-rel deriv(ES,t) = ((kf0 + kf*Q)*E*S) - kr*ES with ES(0) = 0.423
+rel deriv(ES,t) = (kf0*Q*E*S - kr*ES) + kf*Q*E*S with ES(0) = 0.423

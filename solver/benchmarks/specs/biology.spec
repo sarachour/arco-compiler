@@ -181,13 +181,13 @@ end
 
 schematic
 
-  inst input I : 50
+  inst input I : 25
   inst output I : 10
   inst copy I : 10
   inst mm : 2
   inst switch : 5
 
-  inst input V : 50
+  inst input V : 75
   inst output V : 10
   inst copy V : 10
 
@@ -217,6 +217,9 @@ schematic
   conn input(V) -> vadd
   conn input(V) -> vgain
   conn input(V) -> switch
+  conn input(V) -> mm
+
+  conn mm -> output(V)
 
   conn switch -> itov
   conn switch -> iadd
@@ -240,7 +243,8 @@ schematic
   conn iadd -> ihill
   conn iadd -> switch
   conn iadd -> igenebind
-
+  
+  conn vtoi -> iadd
   conn vtoi -> ihill
   conn vtoi -> switch
   conn vtoi -> output(I)
@@ -248,6 +252,7 @@ schematic
   conn vgain -> output(V)
   conn vgain -> vadd
   conn vgain -> vtoi
+  conn vgain -> vgain
 
   conn vadd -> output(V)
   conn vadd -> vtoi

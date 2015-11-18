@@ -739,7 +739,7 @@ struct
     gnum = 0
 
 
-  let rec solve_goal (_s:slvr ref) (v:gltbl) (target:mid) : steps option=
+  let rec solve_sim_eqn (_s:slvr ref) (v:gltbl) (target:mid) : steps option=
     let s = REF.dr _s in
     (*apply the current step in the search algorithm*)
     (*choose a goal in the table*)
@@ -751,7 +751,7 @@ struct
         | None ->
           false
     in
-    let failed () =
+    let failed solve_goal =
       (*mark this path as visited*)
       let goal_cursor = SearchLib.cursor v.search in
       let _ = SearchLib.deadend v.search goal_cursor in
@@ -760,10 +760,10 @@ struct
         then
           None
         else
-          let res = solve_goal _s v target in
+          let res = solve_goal () in
           res
     in
-    let no_goals_left () =
+    let no_goals_left solve_goal =
       let _ = Printf.printf "SOLVER ==> Testing Solution\n" in
       let mint,musr = mkmenu s v None in
       let _ = flush_all() in
@@ -778,15 +778,15 @@ struct
         let _ = Printf.printf "SOLVER ==> Solution does not satisfy connection constraints.\n" in
         let _ = flush_all() in
         let _ = wait s in
-        let _ = failed () in
-        None
+        let x = failed solve_goal in
+        x
       else
         let _ = Printf.printf "SOLVER ==> Solution does not satisfy component count constraints.\n" in
         let _ = flush_all() in
-        let _ = failed () in
-        None
+        let x = failed solve_goal in
+        x
     in
-    let solve_goal () =
+    let rec solve_goal () =
       let _  = flush_all() in
       let triv = resolve_trivial s v v.goals in
       let _ = SearchLib.move_cursor s v triv in
@@ -794,7 +794,7 @@ struct
       (*if this cursor is dead for some reason*)
       if SearchLib.is_deadend v.search goal_cursor then
         let _ = Printf.printf "SOLVER => Path is deadend.\n" in
-        failed()
+        failed solve_goal
       else
       (*please don't enable me, i have issues with deleting te current cursor*)
       (*let _ = SearchLib.cleanup v.search in*)
@@ -803,7 +803,7 @@ struct
       let _ = mint "g" in
       (*do we have any goals. *)
       if is_no_goals_left v.goals target then
-        let res = no_goals_left() in
+        let res = no_goals_left solve_goal in
         res
       else
         (*check for repeated patterns*)
@@ -815,7 +815,7 @@ struct
           let _ = SearchLib.deadend v.search goal_cursor in
           let succ = move_to_next (None) in
           if succ = false then None else
-            let res = solve_goal _s v target in
+            let res = solve_goal () in
             res
         else
           let g = choose_goal v.goals target in
@@ -830,7 +830,7 @@ struct
           let succ = move_to_next (Some goal_cursor) in
           (*if could not move to next, exit*)
           if succ = false then None else
-            let res = solve_goal _s v target in
+            let res = solve_goal () in
             res
     in
     let r = solve_goal () in
@@ -890,8 +890,9 @@ struct
       let rec attempt (new_tbl:gltbl) (g:goal) (rest:goal list) : step list option =
         let _ = Printf.printf "Attempt To Solve: %s\n" (UnivLib.goal2str g) in
         let gid = get_mid g in
-        let result = solve_goal _s new_tbl gid in
-        let _ = Printf.printf "Returned To: %s\n" (UnivLib.goal2str g) in
+        let result = solve_sim_eqn _s new_tbl gid in
+        let _ = Printf.printf "Returned To: %s : %s\n" (UnivLib.goal2str g)
+          (if result = None then "no solution" else "has solution") in
         match result with
         | Some(node) ->
           let _ = Printf.printf "[%d] Successfully Solved: %s. solve children\n" (node.id) (UnivLib.goal2str g) in

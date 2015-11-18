@@ -1,6 +1,6 @@
 Comps:
 
-input.I | 0 = [9,8,1,0]
+input.I | 0 = [12,11,5,0]
 output.V | 0 = [2,1,0]
 mm | 0 = [0]
 input.V | 0 = [2,1,0]
@@ -10,27 +10,27 @@ igain | 0 = [2]
 
 Conns:
 mm[0].XY->output.V[0].X
+input.I[12].O->igain[2].Y
 input.I[0].O->mm[0].kr
-input.I[1].O->iadd[1].X
 input.V[0].O->mm[0].XY0
 input.V[2].O->mm[0].Ytot
+input.I[11].O->igain[2].X
 input.V[1].O->mm[0].Xtot
 mm[0].Y->output.V[2].X
 mm[0].kf->iadd[1].Z
+input.I[5].O->iadd[1].X
 mm[0].X->output.V[1].X
-input.I[9].O->igain[2].Y
 iadd[1].Y->igain[2].Z
-input.I[8].O->igain[2].X
 
 Labels:
-I(input.I[1].X): bind 20.
-V(input.V[2].X): bind 0.11
-V(input.V[1].X): bind 0.15
-V(output.V[1].O): bind E
-I(input.I[8].X): bind 0.3
-I(input.I[0].X): bind ES
+I(input.I[11].X): bind 20.3
+V(input.V[2].X): bind 0.15
+V(input.V[1].X): bind 0.11
+V(output.V[1].O): bind S
+I(input.I[12].X): bind Q
+I(input.I[0].X): bind 0.2
 V(output.V[0].O): bind ES
-V(output.V[2].O): bind S
+V(output.V[2].O): bind E
 V(input.V[0].X): bind ES_0
-I(input.I[9].X): bind Q
+I(input.I[5].X): bind 0.
 
