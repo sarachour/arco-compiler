@@ -68,6 +68,41 @@ struct
 
 
 
+  let valid_smt_prob cfg sol : bool =
+    let sol_conns : (wireid, wireid set) map = sol.conns in
+    let cstr_conns : (string*string,hcconn) map = cfg.hw.cstr.conns in
+    let test_conns  (src:wireid) (dest:wireid) : bool =
+      let sc,si,sp = src in
+      let dc,di,dp = dest in
+      let sc : string = UnivLib.unodeid2name sc in
+      let dc : string = UnivLib.unodeid2name dc in
+      (*get all possible connections*)
+      let res = match MAP.get cstr_conns (sc,sp) with
+      | HCConnLimit(dests) ->
+        if MAP.has dests (dc,dp) = false
+        then
+          let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+          false
+        else
+          let ipairs = MAP.get dests (dc,dp) in
+          if SET.size ipairs = 0 then
+            let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+            let _ = flush_all() in
+            false
+          else
+            true
+      | HCConnNoLimit -> error "decl_conns" ("cannot handle component with underconstrained connections "^sc^" -> "^dc)
+      in
+      res
+    in
+    let success = MAP.fold sol_conns (fun sln_src dests success ->
+      if success = false then false else
+        SET.fold dests (fun sln_dest success  ->
+          (test_conns sln_src sln_dest) && success
+        ) success
+    ) true
+    in
+    success
 
   let to_smt_prob cfg sol : bool*z3doc*((string,instinfo) map) =
     (*set up environment*)
@@ -183,19 +218,22 @@ struct
     let success,decls= tosmt () in
     (success,decls,km)
 
+
     let is_valid_shallow cfg sln =
-      let is_succ,decls,_ = to_smt_prob cfg sln in
-      if is_succ = false then
-        false
-      else
-        true
+      let is_succ = valid_smt_prob cfg sln in
+      is_succ
 
     let is_valid cfg sln =
-      let is_succ,decls,_ = to_smt_prob cfg sln in
+      let is_succ = valid_smt_prob cfg sln in
       if is_succ = false then
         false
       else
-        let txt = Z3Lib.z3stmts2str decls in
+        let _ = Printf.printf "== Passed Shallow Test\n" in
+        let _  = flush_all() in
+        let _,decls,_ = to_smt_prob cfg sln in
+        let _ = Printf.printf "== Generated Constraints\n" in
+        let _ = Printf.printf "== Created Z3 Instance\n" in
+        let _  = flush_all() in
         let z = Z3Lib.exec decls in
         z.sat
 
@@ -220,7 +258,6 @@ struct
       if is_succ = false then
         error "get_sln" "failed to  construct smt problem - inconsistency."
       else
-        let txt = Z3Lib.z3stmts2str decls in
         let z = Z3Lib.exec decls in
         if z.sat = false then
           error "get_sln" "no solution exists. ie UNSAT."

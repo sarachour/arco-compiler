@@ -321,11 +321,6 @@ proptyplst:
   | TOKEN COLON TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
   | TOKEN COLON TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
 
-compname:
-  | COPY TOKEN    {let prop = $2 in HwLib.copy_cid prop}
-  | INPUT TOKEN   {let prop = $2 in HwLib.input_cid prop}
-  | OUTPUT TOKEN  {let prop = $2 in HwLib.output_cid prop}
-  | TOKEN         {let name = $1 in name }
 
 digital:
   | DIGITAL INPUT TOKEN EOL {
@@ -514,6 +509,11 @@ connterm:
     | InstConn(name,inds) -> InstPortConn(name,inds,port)
     | _ -> error "connterm" "unsupported port of term."
   }
+compname:
+  | COPY TOKEN    {let prop = $2 in HwLib.copy_cid prop}
+  | INPUT TOKEN   {let prop = $2 in HwLib.input_cid prop}
+  | OUTPUT TOKEN  {let prop = $2 in HwLib.output_cid prop}
+  | TOKEN         {let name = $1 in name }
 
 schem:
   | SCHEMATIC EOL {

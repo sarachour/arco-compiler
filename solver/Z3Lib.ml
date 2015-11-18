@@ -39,9 +39,94 @@ struct
     | Z3SAT -> "(check-sat)"
     | Z3DispModel -> "(get-model)"
 
-  let z3stmts2str x =
-    let res = List.fold_left (fun r x -> r^"\n"^(z3st2str x)) "" x in
-    res
+
+  let z3expr2buf fb x =
+    let os x = output_string fb x in
+    let rec _s x = match x with
+    | Z3And(a,b) ->
+      begin
+      os "(and ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
+    | Z3Or(a,b) ->
+      begin
+      os "(or ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
+    | Z3Eq(a,b) ->
+      begin
+      os "(= ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
+    | Z3Not(a) ->
+      begin
+      os "(not ";
+      _s a;
+      os ")"
+      end
+    | Z3Plus(a,b) ->
+      begin
+      os "(+ ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
+    | Z3IfThenElse(a,b,c) ->
+      begin
+      os "(ite ";
+      _s a;
+      os " ";
+      _s b;
+      os " ";
+      _s c;
+      os ")"
+      end
+    | Z3Var(v) -> os v
+    | Z3Int(i) -> os (string_of_int i)
+    | Z3Bool(true) -> os "true"
+    | Z3Bool(false) -> os "false"
+    | _ -> error "z3" "unexpected"
+    in
+    _s x
+
+  let z3vartyp2buf fb x =
+    let os x = output_string fb x in
+    match x with
+    | Z3Bool -> os "Bool"
+    | Z3Int -> os "Int"
+
+  let z3st2buf fb x =
+    let os x = output_string fb x in
+    match x with
+    | Z3ConstDecl(s,u) ->
+      begin
+      os ("(declare-const "^s^" ");
+      z3vartyp2buf fb u;
+      os ")"
+      end
+    | Z3Assert(q) ->
+      begin
+      os "(assert ";
+      z3expr2buf fb q;
+      os ")"
+      end
+    | Z3SAT -> os "(check-sat)"
+    | Z3DispModel -> os "(get-model)"
+
+  let z3stmts2buf fb x =
+    let os x = output_string fb x in
+    let _ = List.iter (fun x -> let _ = z3st2buf fb x in os "\n") x in
+    ()
 
   let fn_all (x:z3expr list) (fxn)=
       match x with
@@ -83,11 +168,12 @@ struct
     | (_,Z3SAT) -> -1
     | _ -> if x = y then 0 else 1
     in
-    let x = List.sort sortsts (LIST.uniq x) in
-    let prob = z3stmts2str x in
     let fname =  "__tmp__.z3" in
+    let oc = open_out fname in
+    let x = List.sort sortsts (LIST.uniq x) in
+    let _ = z3stmts2buf oc x in
+    let _ = close_out oc in
     let res = "__res__.z3" in
-    let _ = IO.save fname prob in
     let _ = Printf.printf "---> Executing SMT Solver\n" in
     let _ = flush_all () in
     let _ = Sys.command ("z3 -smt2 "^fname^" > "^res) in

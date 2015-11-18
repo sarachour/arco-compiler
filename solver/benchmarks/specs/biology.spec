@@ -188,7 +188,7 @@ schematic
   inst switch : 5
 
   inst input V : 75
-  inst output V : 10
+  inst output V : 50
   inst copy V : 10
 
   inst vadd : 35
@@ -243,7 +243,7 @@ schematic
   conn iadd -> ihill
   conn iadd -> switch
   conn iadd -> igenebind
-  
+
   conn vtoi -> iadd
   conn vtoi -> ihill
   conn vtoi -> switch

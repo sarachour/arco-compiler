@@ -769,17 +769,17 @@ struct
       let _ = flush_all() in
       let _ = mint "s" in
       if SlnLib.usecomp_cons s v.sln  then
-      if SlnLib.mkconn_cons s v.sln then
-        let _ = Printf.printf "SOLVER ==> Found valid solution.\n" in
-        let _ = flush_all() in
-        let cnode = SearchLib.cursor v.search in
-        Some cnode
-      else
-        let _ = Printf.printf "SOLVER ==> Solution does not satisfy connection constraints.\n" in
-        let _ = flush_all() in
-        let _ = wait s in
-        let x = failed solve_goal in
-        x
+        if SlnLib.mkconn_cons s v.sln then
+          let _ = Printf.printf "SOLVER ==> Found valid solution.\n" in
+          let _ = flush_all() in
+          let cnode = SearchLib.cursor v.search in
+          Some cnode
+        else
+          let _ = Printf.printf "SOLVER ==> Solution does not satisfy connection constraints.\n" in
+          let _ = flush_all() in
+          let _ = wait s in
+          let x = failed solve_goal in
+          x
       else
         let _ = Printf.printf "SOLVER ==> Solution does not satisfy component count constraints.\n" in
         let _ = flush_all() in

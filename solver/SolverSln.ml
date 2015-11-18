@@ -134,7 +134,12 @@ struct
     let prop id (lst,n) (r:bool) : bool =
       let nuses = SET.size lst in
       let maxuses = Shim.max4unodeid s id in
-      if maxuses >= nuses then r else false
+      if maxuses >= nuses then
+        r
+      else
+        let _ = Printf.printf "# over limit: %s: %d %d\n"(UnivLib.unodeid2name id) nuses maxuses in
+        let _ = flush_all() in
+        false
     in
     let res = MAP.fold (sln.comps) prop true in
     res
