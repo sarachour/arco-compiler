@@ -1,0 +1,81 @@
+
+*constant value 0.
+Icst13		98	0	DC	0.
+*
+*constant value -1.
+Icst12		97	0	DC	-1.
+*
+*constant value 25000000000.
+Vcst11		96	0	DC	25000000000.
+*
+*constant value 25.
+Vcst10		95	0	DC	25.
+*
+*@input PERKA
+Vin_PERKA_9		94	0	DC	1.
+*
+*constant value 0.04
+Vcst8		93	0	DC	0.04
+*
+*constant value 4.
+Vcst7		93	0	DC	4.
+*
+*constant value 1.
+Icst6		92	0	DC	1.
+*
+*@input PERK
+Iin_PERK_5		91	0	DC	1.
+*
+*constant value 0.
+Vcst4		90	0	DC	0.
+*
+*constant value 1.
+Vcst3		89	0	DC	1.
+*
+*@input PERKA_0
+Vin_PERKA_0_2		88	0	DC	1.
+*
+*@input UFP
+Iin_UFP_1		87	0	DC	1.
+*
+*@output PERKA
+*@args 86,V
+*
+*
+*
+* === Connectivity Schem ==== 
+Xvgain_26		82	82	82	82	vgain
+Xvgain_35		82	14	82	67	vgain
+Xvgain_22		82	67	82	82	vgain
+Xvgain_1		82	82	82	82	vgain
+Xvgain_37		82	82	82	21	vgain
+Xvgain_0		82	21	82	82	vgain
+Xvgain_26		82	82	82	82	vgain
+Xvgain_6		82	82	82	82	vgain
+Xvgain_5		82	82	82	65	vgain
+Xvgain_25		82	65	82	82	vgain
+Xvgain_6		82	82	82	82	vgain
+Xvgain_38		82	24	82	82	vgain
+Xvgain_1		82	82	82	82	vgain
+Xvgain_1		82	82	82	82	vgain
+Xswitch_0		55	82	36	28	switch
+Xswitch_1		78	82	36	30	switch
+XinputI_1		91	80	iin
+XinputI_3		87	10	iin
+XinputI_6		97	5	iin
+XinputI_0		98	64	iin
+XinputI_17		92	36	iin
+XoutputV_42		16	86	vout
+Xvadd_27		85	82	85	82	0	16	82	vadd
+XinputV_50		93	14	vin
+XinputV_73		93	82	vin
+XinputV_34		95	82	vin
+XinputV_22		89	82	vin
+XinputV_35		96	82	vin
+XinputV_73		93	82	vin
+XinputV_1		94	82	vin
+XinputV_18		90	85	vin
+Xitov_12		28	82	82	itov
+Xitov_3		30	82	24	itov
+Xiadd_5		5	80	64	64	55	iadd
+Xiadd_27		5	10	64	64	78	iadd

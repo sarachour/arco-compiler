@@ -1,0 +1,104 @@
+Comps:
+
+vgain | 0 = [20,18,17,16,15,14,13,11,8,5,4,3,2,1]
+switch | 0 = [24,9]
+input.I | 0 = [136,107,106,105,90]
+output.V | 0 = [4]
+copy.V | 0 = []
+vadd | 0 = [0]
+ihill | 0 = []
+vtoi | 0 = []
+igenebind | 0 = []
+mm | 0 = []
+input.V | 0 = [101,68,22,21,13,10,9,8]
+itov | 0 = [22,6]
+iadd | 0 = [25,10]
+output.I | 0 = []
+copy.I | 0 = []
+
+Conns:
+input.V[8].O->vadd[0].C
+input.V[8].O->vadd[0].A
+vgain[8].Y->vgain[11].P
+input.I[136].O->iadd[25].B
+switch[9].SUB->iadd[10].OUT
+input.V[9].O->vadd[0].D
+input.V[22].O->vgain[2].X
+input.V[22].O->vgain[3].Z
+input.V[22].O->vgain[4].X
+input.V[22].O->vgain[5].Z
+input.V[22].O->vgain[8].X
+input.V[22].O->vgain[11].Z
+input.V[22].O->vgain[13].X
+input.V[22].O->vgain[14].X
+input.V[22].O->vgain[15].X
+input.V[22].O->vgain[16].X
+input.V[22].O->vgain[17].Z
+input.V[22].O->vgain[20].Z
+vgain[17].Y->vgain[18].P
+vgain[5].Y->vgain[8].P
+input.I[105].O->iadd[10].C
+input.I[105].O->iadd[10].D
+input.I[105].O->iadd[25].D
+input.I[105].O->iadd[25].C
+input.V[10].O->vadd[0].OUT2_0
+vgain[4].Z->vgain[5].P
+switch[24].SUB->iadd[25].OUT
+input.V[68].O->switch[9].n
+input.V[68].O->switch[24].n
+input.V[21].O->vgain[2].Y
+input.V[21].O->vgain[3].X
+input.V[21].O->vgain[4].Y
+input.V[21].O->vgain[5].X
+input.V[21].O->itov[6].K
+input.V[21].O->vgain[8].Z
+input.V[21].O->vgain[11].X
+input.V[21].O->vgain[13].Y
+input.V[21].O->vgain[14].Z
+input.V[21].O->vgain[15].Z
+input.V[21].O->vgain[16].Z
+input.V[21].O->vgain[17].X
+input.V[21].O->vgain[18].X
+input.V[21].O->vgain[20].X
+input.V[21].O->itov[22].K
+vgain[13].Z->vgain[14].P
+vgain[16].Y->vgain[17].P
+input.I[90].O->switch[9].Vmax
+input.I[90].O->switch[9].Kmod
+input.I[90].O->switch[24].Vmax
+input.I[90].O->switch[24].Kmod
+itov[6].X->switch[9].PROD
+itov[22].X->switch[24].PROD
+input.V[13].O->vgain[1].X
+vgain[3].Y->itov[6].Y
+vgain[1].Y->vgain[2].P
+vgain[14].Y->vgain[15].P
+vgain[18].Z->vgain[20].P
+vgain[2].Z->vgain[4].P
+vadd[0].B->vgain[1].P
+vadd[0].OUT2->output.V[4].X
+input.V[101].O->vgain[18].Y
+vgain[20].Y->itov[22].Y
+input.I[107].O->iadd[10].B
+vgain[1].Z->vgain[3].P
+vgain[15].Y->vgain[16].P
+input.I[106].O->iadd[10].A
+input.I[106].O->iadd[25].A
+vgain[11].Y->vgain[13].P
+
+Labels:
+V(output.V[4].O): bind PERKA
+I(input.I[107].X): bind UFP
+V(input.V[10].X): bind PERKA_0
+V(input.V[21].X): bind 1.
+V(input.V[8].X): bind 0.
+I(input.I[136].X): bind PERK
+I(input.I[90].X): bind 1.
+V(input.V[68].X): bind 4.
+V(input.V[101].X): bind 0.04
+V(input.V[9].X): bind PERKA
+V(input.V[22].X): bind 25.
+V(input.V[13].X): bind 25000000000.
+I(input.I[106].X): bind -1.
+I(input.I[105].X): bind 0.
+
