@@ -1,0 +1,23 @@
+.INCLUDE magnz.hl
+
+.SUBCKT vadd2 A B C
+  ESUM	CNN 0 VALUE = { (V(A)+V(B)) }
+  XNOISE CNN CR vnoise
+  XCLMP CR C vclamp
+
+.ENDS vadd2
+
+.SUBCKT vmul2 A B C
+  ESUM	CNN 0 VALUE = { (V(A)*V(B)) }
+  XNOISE CNN CR vnoise
+  XCLMP CR C vclamp
+.ENDS vmul2
+
+.SUBCKT vout A B
+  RX A B 0
+.ENDS vout
+
+
+.SUBCKT vin A B
+  RX A B 0
+.ENDS vin

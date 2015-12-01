@@ -1,0 +1,10 @@
+# Performance Measures
+Settling Time: Latency to get a stable result. Ie performance is settling-time*nsteps
+Power Consumption: Need to determine this - we can use this (times computation time) to determine power consumption of circuit
+
+# Circuit Property Measures 
+Input Sensitivity: Determine the fluctuation in error with an input delta.
+Range: Determine the valid input range from components.
+
+
+
