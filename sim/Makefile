@@ -7,14 +7,16 @@ FLAGS=-use-ocamlfind -use-menhir -menhir "menhir --infer --explain"
 DEBUG_FLAGS=-cflag -g
 
 
-all: solver solver.debug
+all: sim sim.debug solver
 
+solver:
+	ln -s ../solver solver
 
-solver.debug: $(DEPS) $(COMP_DEPS)
+sim.debug: $(DEPS) $(COMP_DEPS) solver
 	 $(ARGS) ocamlbuild $(DEBUG_FLAGS) $(FLAGS) Main.byte && mv Main.byte sim.debug
 	 chmod +x sim.debug
 
-solver: $(DEPS) $(COMP_DEPS)
+sim: $(DEPS) $(COMP_DEPS) solver
 	  $(ARGS) ocamlbuild $(FLAGS) Main.native && mv Main.native sim
 	 chmod +x sim
 
