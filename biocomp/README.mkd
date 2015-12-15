@@ -1,0 +1,11 @@
+1. Install ocaml, opam, setup ubuntu.
+2. Biomodels Database: https://www.ebi.ac.uk/biomodels-main
+  - Find a model, download the octave file, play around with it.
+  - 
+3. Understand destination language: Problem specification language for Arco
+  - Paper: send paper
+
+4. Manually convert a file, make sure my compiler parses it (making my compiler) 
+5. Choose language, work on parsing m file
+6. Generate problem file 
+7. Crawl website for specifications.
