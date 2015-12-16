@@ -196,6 +196,8 @@ struct
         | LBindValue(f) -> "bind value "^handle^" :: "^(string_of_float f)
         | LBindVar(HNInput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"input "^n
         | LBindVar(HNOutput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"output "^n
+        | LBindVar(_,MNTime(_)) -> "bind time "^handle
+        | LBindVar(_,MNParam(n,p,u)) -> "bind value "^handle^" :: "^(string_of_number p)
         | _ -> "%unsupported label"
         in
         os (cmd^"\n")

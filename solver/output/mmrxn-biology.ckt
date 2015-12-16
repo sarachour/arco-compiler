@@ -1,89 +1,85 @@
 
-*@output E
-*@args 57,V
-*
-*constant value 25.25
-Vcst17		57	0	DC	25.25
-*
-*@input S
-Vin_S_16		56	0	DC	1.
-*
-*@input E
-Vin_E_15		55	0	DC	1.
-*
-*@output P
-*@args 54,V
-*
-*@input E_0
-Vin_E_0_13		54	0	DC	1.
-*
-*constant value 2.1
-Icst12		53	0	DC	2.1
-*
-*@input P_0
-Vin_P_0_11		53	0	DC	1.
-*
-*@input ES
-Iin_ES_10		52	0	DC	1.
-*
 *constant value 0.00126823081801
-Vcst9		52	0	DC	0.00126823081801
+Vcst17		78	0	DC	0.00126823081801
 *
 *constant value 23.15
-Vcst8		52	0	DC	23.15
-*
-*constant value 1.
-Vcst7		51	0	DC	1.
-*
-*constant value 631.25
-Vcst6		51	0	DC	631.25
-*
-*@output S
-*@args 50,V
-*
-*@input ES
-Vin_ES_4		49	0	DC	1.
+Icst16		77	0	DC	23.15
 *
 *@output ES
-*@args 48,V
+*@args 76,V
+*
+*@input P_0
+Vin_P_0_14		75	0	DC	1.
+*
+*@input E
+Vin_E_13		74	0	DC	1.
+*
+*@output E
+*@args 73,V
+*
+*@output S
+*@args 72,V
+*
+*@input ES
+Iin_ES_10		71	0	DC	1.
+*
+*@input S
+Vin_S_9		70	0	DC	1.
+*
+*constant value 1.
+Vcst8		69	0	DC	1.
+*
+*constant value 2.1
+Vcst7		68	0	DC	2.1
 *
 *@input S_0
-Vin_S_0_2		48	0	DC	1.
+Vin_S_0_6		67	0	DC	1.
+*
+*@output P
+*@args 66,V
+*
+*@input E_0
+Vin_E_0_4		65	0	DC	1.
+*
+*@input ES
+Vin_ES_3		64	0	DC	1.
 *
 *@input ES_0
-Vin_ES_0_1		47	0	DC	1.
+Vin_ES_0_2		63	0	DC	1.
 *
 *constant value 0.
-Vcst0		46	0	DC	0.
+Vcst1		62	0	DC	0.
+*
+*constant value 0.00158415841584
+Vcst0		61	0	DC	0.00158415841584
 *
 *
 *
 * === Connectivity Schem ==== 
-Xvgain_37		0	0	37	31	vgain
-Xvgain_7		1	45	37	3	vgain
-Xvgain_38		37	23	45	37	vgain
-XinputI_47		52	33	iin
-XinputI_48		53	28	iin
-XoutputV_53		5	48	vout
-XoutputV_72		45	57	vout
-XoutputV_0		7	50	vout
-XoutputV_72		45	57	vout
-Xvadd_23		31	3	37	45	0	5	45	vadd
-Xvadd_32		37	37	37	37	0	45	45	vadd
-Xvadd_14		37	9	37	37	0	7	45	vadd
-Xvadd_32		37	37	37	37	0	45	45	vadd
-XinputV_26		55	1	vin
-XinputV_122		57	45	vin
-XinputV_122		57	45	vin
-XinputV_122		57	45	vin
-XinputV_123		51	37	vin
-XinputV_99		49	45	vin
-XinputV_9		51	23	vin
-XinputV_122		57	45	vin
-XinputV_123		51	37	vin
-XinputV_80		56	37	vin
-XinputV_122		57	45	vin
-XinputV_122		57	45	vin
-XinputV_122		57	45	vin
-Xitov_27		33	45	9	itov
-Xitov_28		28	45	37	itov
+Xvgain_38		57	5	42	35	vgain
+Xvgain_34		19	3	14	31	vgain
+XinputI_26		77	1	iin
+XinputI_47		71	33	iin
+XoutputV_71		23	72	vout
+XoutputV_42		43	66	vout
+XoutputV_73		9	73	vout
+XoutputV_56		37	76	vout
+Xvadd_9		56	27	56	14	0	23	7	vadd
+Xvadd_3		29	56	56	0	0	43	15	vadd
+Xvadd_10		35	56	56	14	0	9	25	vadd
+Xvadd_33		21	31	56	42	0	37	59	vadd
+Xvadd_32		56	56	56	56	21	0	0	vadd
+XinputV_66		67	7	vin
+XinputV_84		68	17	vin
+XinputV_22		75	15	vin
+XinputV_42		62	56	vin
+XinputV_4		70	14	vin
+XinputV_103		65	25	vin
+XinputV_10		61	5	vin
+XinputV_118		64	42	vin
+XinputV_115		69	57	vin
+XinputV_52		63	59	vin
+XinputV_77		78	3	vin
+XinputV_18		74	19	vin
+Xitov_28		1	42	27	itov
+Xitov_3		33	17	29	itov
