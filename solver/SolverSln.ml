@@ -164,45 +164,53 @@ struct
     let _ = SET.rm lst i in
     s.comps <- MAP.put s.comps id (lst,n)
 
-  let torepr (s:sln) : string =
+  let repr2buf fb (s:sln) : unit =
+    let os x = let _ = output_string fb x in () in
     let inst2repr (cname:unodeid) (inst:int) =
-      "comp "^(UnivLib.unodeid2name cname)^" "^(string_of_int inst)
+      os ("comp "^(UnivLib.unodeid2name cname)^" "^(string_of_int inst)^"\n")
     in
-    let comp2repr (cname:unodeid) (insts:int set) =
-      SET.fold insts (fun i r -> r^"\n"^(inst2repr cname i)) ""
+    let comp2repr (cname:unodeid) (insts:int set) : unit =
+      SET.iter insts (fun i  -> (inst2repr cname i))
     in
-    let comps2repr c =
-      let res : string = MAP.fold c (fun k (l,n) r -> r^"\n"^(comp2repr k l)) "" in
-      res
+    let comps2repr c : unit =
+      let _ = MAP.iter c (fun k (l,n) -> comp2repr k l) in
+      ()
     in
     let conns2repr c =
       let conn2repr src snk =
-        "n"
+        os ("n"^"\n")
       in
-      let forsnks src sset = SET.fold sset (fun snk r -> r^"\n"^(conn2repr src snk) ) "" in
-      let res : string = MAP.fold c (fun src snkset r -> (forsnks src snkset)^r) "" in
-      res^"\n"
+      let forsnks src sset = SET.iter sset (fun snk -> (conn2repr src snk) ) in
+      let _ = MAP.iter c (fun src snkset -> (forsnks src snkset)) in
+      ()
     in
     let labels2repr c =
       let prplbl2repr wire prp lbl =
-        "l"
+        os ("l\n")
       in
       let prplbls2repr wire prp labels =
         if SET.size labels > 0 then
-          (SET.tostr labels (fun x -> prplbl2repr wire prp x) "\n")^"\n"
+          (SET.iter labels (fun x -> prplbl2repr wire prp x))
         else
-          ""
+          ()
       in
       let lbls2repr k props =
-        (MAP.fold props (fun prp v r -> r^(prplbls2repr k prp v) ) "")
+        let _ = MAP.iter props (fun prp v -> prplbls2repr k prp v ) in
+        ()
       in
-      MAP.fold c (fun k v r -> r^(lbls2repr k v)) ""
+      MAP.iter c (fun k v -> lbls2repr k v)
     in
-    let cstr = comps2repr s.comps in
-    let cnstr = conns2repr s.conns in
-    let lstr = labels2repr s.labels in
-    cstr^"\n"^cnstr^"\n"^lstr
+    let () = comps2repr s.comps in
+    let () = conns2repr s.conns in
+    let () = labels2repr s.labels in
+    ()
 
+  let repr2file fn (s:sln) :unit =
+    let fname = fn in
+    let oc = open_out fname in
+    let _ = repr2buf oc s in
+    let _ = close_out oc in
+    ()
 
   let tostr (s:sln) : string=
     let comp2str cname clist id =
