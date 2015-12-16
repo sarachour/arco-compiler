@@ -227,170 +227,47 @@ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3o
 ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/LexZ3.cmo solver/LexZ3.ml
 # Target: solver/Logic.ml.depends, tags: { debug, extension:ml, file:solver/Logic.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/Logic.ml > solver/Logic.ml.depends # cached
-# Target: solver/Solver.ml.depends, tags: { debug, extension:ml, file:solver/Solver.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/Solver.ml > solver/Solver.ml.depends # cached
-# Target: solver/Interactive.ml.depends, tags: { debug, extension:ml, file:solver/Interactive.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/Interactive.ml > solver/Interactive.ml.depends # cached
-# Target: solver/SolverData.ml.depends, tags: { debug, extension:ml, file:solver/SolverData.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/SolverData.ml > solver/SolverData.ml.depends # cached
-# Target: solver/SolverData.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/SolverData.cmo, file:solver/SolverData.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverData.cmo solver/SolverData.ml
-# Target: solver/SolverRslv.ml.depends, tags: { debug, extension:ml, file:solver/SolverRslv.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/SolverRslv.ml > solver/SolverRslv.ml.depends # cached
-# Target: solver/SolverUtil.ml.depends, tags: { debug, extension:ml, file:solver/SolverUtil.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/SolverUtil.ml > solver/SolverUtil.ml.depends # cached
-# Target: solver/Z3Lib.ml.depends, tags: { debug, extension:ml, file:solver/Z3Lib.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/Z3Lib.ml > solver/Z3Lib.ml.depends # cached
-# Target: solver/Compile.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/Compile.cmo, file:solver/Compile.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Compile.cmo solver/Compile.ml
-# Target: solver/SolverUtil.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/SolverUtil.cmo, file:solver/SolverUtil.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverUtil.cmo solver/SolverUtil.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverUtil.cmo solver/SolverUtil.ml
-File "solver/SolverUtil.ml", line 140, characters 4-31:
-Warning 11: this match case is unused.
-File "solver/SolverUtil.ml", line 253, characters 6-8:
-Warning 26: unused variable nr.
-# Target: solver/Z3Lib.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/Z3Lib.cmo, file:solver/Z3Lib.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Z3Lib.cmo solver/Z3Lib.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Z3Lib.cmo solver/Z3Lib.ml
-File "solver/Z3Lib.ml", line 27, characters 6-7:
-Warning 11: this match case is unused.
-File "solver/Z3Lib.ml", line 98, characters 6-7:
-Warning 11: this match case is unused.
-# Target: solver/SolverSearch.ml.depends, tags: { debug, extension:ml, file:solver/SolverSearch.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/SolverSearch.ml > solver/SolverSearch.ml.depends # cached
-# Target: solver/SolverSln.ml.depends, tags: { debug, extension:ml, file:solver/SolverSln.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/SolverSln.ml > solver/SolverSln.ml.depends # cached
-# Target: solver/SolverRslv.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/SolverRslv.cmo, file:solver/SolverRslv.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverRslv.cmo solver/SolverRslv.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverRslv.cmo solver/SolverRslv.ml
-File "solver/SolverRslv.ml", line 35, characters 4-392:
-Warning 8: this pattern-matching is not exhaustive.
-Here is an example of a value that is not matched:
-[]
-File "solver/SolverRslv.ml", line 184, characters 10-15:
-Warning 26: unused variable decls.
-# Target: solver/SolverSln.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/SolverSln.cmo, file:solver/SolverSln.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverSln.cmo solver/SolverSln.ml
-# Target: solver/SpiceLib.ml.depends, tags: { debug, extension:ml, file:solver/SpiceLib.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/SpiceLib.ml > solver/SpiceLib.ml.depends # cached
-# Target: solver/Interactive.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/Interactive.cmo, file:solver/Interactive.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Interactive.cmo solver/Interactive.ml
-# Target: solver/SolverSearch.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/SolverSearch.cmo, file:solver/SolverSearch.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverSearch.cmo solver/SolverSearch.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SolverSearch.cmo solver/SolverSearch.ml
-File "solver/SolverSearch.ml", line 62, characters 4-5:
-Warning 11: this match case is unused.
-# Target: solver/SpiceLib.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/SpiceLib.cmo, file:solver/SpiceLib.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SpiceLib.cmo solver/SpiceLib.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/SpiceLib.cmo solver/SpiceLib.ml
-File "solver/SpiceLib.ml", line 145, characters 10-12:
-Warning 26: unused variable id.
+# Target: SimParserGenerator.ml.depends, tags: { debug, extension:ml, file:SimParserGenerator.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
+ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules SimParserGenerator.ml > SimParserGenerator.ml.depends # cached
 # Target: solver/Sym.ml.depends, tags: { debug, extension:ml, file:solver/Sym.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/Sym.ml > solver/Sym.ml.depends # cached
+# Target: solver/Compile.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/Compile.cmo, file:solver/Compile.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
+ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Compile.cmo solver/Compile.ml
 # Target: solver/Logic.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/Logic.cmo, file:solver/Logic.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Logic.cmo solver/Logic.ml
-# Target: solver/Solver.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/Solver.cmo, file:solver/Solver.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Solver.cmo solver/Solver.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Solver.cmo solver/Solver.ml
-File "solver/Solver.ml", line 176, characters 2-5:
-Warning 1: this is the start of a comment.
-File "solver/Solver.ml", line 694, characters 8-11:
-Warning 1: this is the start of a comment.
-File "solver/Solver.ml", line 974, characters 2-4:
-Warning 20: this argument will not be used by the function.
-File "solver/Solver.ml", line 171, characters 6-7:
-Warning 11: this match case is unused.
-File "solver/Solver.ml", line 282, characters 12-14:
-Warning 26: unused variable tc.
-File "solver/Solver.ml", line 285, characters 12-14:
-Warning 26: unused variable tc.
-File "solver/Solver.ml", line 395, characters 10-16:
-Warning 26: unused variable mksubs.
-File "solver/Solver.ml", line 419, characters 12-15:
-Warning 26: unused variable snl.
-File "solver/Solver.ml", line 426, characters 12-15:
-Warning 26: unused variable snl.
-File "solver/Solver.ml", line 812, characters 15-19:
-Warning 26: unused variable musr.
-File "solver/Solver.ml", line 812, characters 10-14:
-Warning 26: unused variable mint.
-File "solver/Solver.ml", line 824, characters 19-23:
-Warning 26: unused variable musr.
-File "solver/Solver.ml", line 824, characters 14-18:
-Warning 26: unused variable mint.
+# Target: SimParserGenerator.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:SimParserGenerator.cmo, file:SimParserGenerator.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
+ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o SimParserGenerator.cmo SimParserGenerator.ml
 # Target: solver/Sym.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/Sym.cmo, file:solver/Sym.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/Sym.cmo solver/Sym.ml
 # Target: Main.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:Main.cmo, file:Main.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o Main.cmo Main.ml
++ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o Main.cmo Main.ml
+File "Main.ml", line 27, characters 15-18:
+Warning 26: unused variable cfg.
+File "Main.ml", line 27, characters 11-14:
+Warning 26: unused variable snv.
+File "Main.ml", line 27, characters 6-10:
+Warning 26: unused variable henv.
 # Target: solver/symcaml/SymCamlParser.ml.depends, tags: { debug, extension:ml, file:solver/symcaml/SymCamlParser.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), package(yojson,extlib,core,pycaml,str), quiet, thread, traverse }
 ocamlfind ocamldep -package yojson,extlib,core,pycaml,str -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/symcaml/SymCamlParser.ml > solver/symcaml/SymCamlParser.ml.depends # cached
 # Target: solver/symcaml/SymCamlParser.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/symcaml/SymCamlParser.cmo, file:solver/symcaml/SymCamlParser.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), package(yojson,extlib,core,pycaml,str), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package yojson,extlib,core,pycaml,str -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver/symcaml -I solver -o solver/symcaml/SymCamlParser.cmo solver/symcaml/SymCamlParser.ml
+ocamlfind ocamlc -c -g -g -thread -package yojson,extlib,core,pycaml,str -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver/symcaml -I solver -o solver/symcaml/SymCamlParser.cmo solver/symcaml/SymCamlParser.ml # cached
 # Target: solver/ParseAST.ml.depends, tags: { debug, extension:ml, file:solver/ParseAST.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/ParseAST.ml > solver/ParseAST.ml.depends # cached
+# Target: solver/ParseAST.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/ParseAST.cmo, file:solver/ParseAST.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
+ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseAST.cmo solver/ParseAST.ml # cached
 # Target: solver/ParseHW.ml.depends, tags: { debug, extension:ml, file:solver/ParseHW.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/ParseHW.ml > solver/ParseHW.ml.depends # cached
+# Target: solver/ParseHW.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/ParseHW.cmo, file:solver/ParseHW.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
+ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseHW.cmo solver/ParseHW.ml # cached
 # Target: solver/ParseMath.ml.depends, tags: { debug, extension:ml, file:solver/ParseMath.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/ParseMath.ml > solver/ParseMath.ml.depends # cached
+# Target: solver/ParseMath.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/ParseMath.cmo, file:solver/ParseMath.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
+ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseMath.cmo solver/ParseMath.ml # cached
 # Target: solver/ParseZ3.ml.depends, tags: { debug, extension:ml, file:solver/ParseZ3.ml, ocaml, ocamldep, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
 ocamlfind ocamldep -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -modules solver/ParseZ3.ml > solver/ParseZ3.ml.depends # cached
-# Target: solver/ParseAST.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/ParseAST.cmo, file:solver/ParseAST.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseAST.cmo solver/ParseAST.ml
-# Target: solver/ParseHW.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/ParseHW.cmo, file:solver/ParseHW.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseHW.cmo solver/ParseHW.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseHW.cmo solver/ParseHW.ml
-File "solver/ParseHW.ml", line 1862, characters 4-195:
-Warning 8: this pattern-matching is not exhaustive.
-Here is an example of a value that is not matched:
-(Acc (_, _)|OpN (_, _)|Op2 (_, _, _)|Op1 (_, _)|Deriv (_, _)|Decimal _|
-Integer _)
-File "solver/ParseHW.ml", line 142, characters 8-17:
-Warning 26: unused variable all_comps.
-File "solver/ParseHW.ml", line 143, characters 8-17:
-Warning 26: unused variable all_ports.
-File "solver/ParseHW.ml", line 154, characters 10-14:
-Warning 26: unused variable cstr.
-File "solver/ParseHW.ml", line 645, characters 34-37:
-Warning 26: unused variable typ.
-File "solver/ParseHW.ml", line 695, characters 34-37:
-Warning 26: unused variable typ.
-File "solver/ParseHW.ml", line 721, characters 49-52:
-Warning 26: unused variable typ.
-File "solver/ParseHW.ml", line 1242, characters 4-5:
-Warning 11: this match case is unused.
-# Target: solver/ParseMath.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/ParseMath.cmo, file:solver/ParseMath.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseMath.cmo solver/ParseMath.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseMath.cmo solver/ParseMath.ml
-File "solver/ParseMath.ml", line 191, characters 4-31:
-Warning 10: this expression should have type unit.
-File "solver/ParseMath.ml", line 239, characters 4-34:
-Warning 10: this expression should have type unit.
-File "solver/ParseMath.ml", line 263, characters 4-34:
-Warning 10: this expression should have type unit.
-File "solver/ParseMath.ml", line 287, characters 4-34:
-Warning 10: this expression should have type unit.
-File "solver/ParseMath.ml", line 479, characters 4-35:
-Warning 10: this expression should have type unit.
-File "solver/ParseMath.ml", line 330, characters 25-26:
-Warning 26: unused variable t.
-File "solver/ParseMath.ml", line 374, characters 25-26:
-Warning 26: unused variable t.
-File "solver/ParseMath.ml", line 449, characters 23-26:
-Warning 26: unused variable lbr.
-File "solver/ParseMath.ml", line 449, characters 36-39:
-Warning 26: unused variable rbr.
 # Target: solver/ParseZ3.cmo, tags: { byte, compile, debug, extension:cmo, extension:ml, file:solver/ParseZ3.cmo, file:solver/ParseZ3.ml, implem, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), quiet, thread, traverse }
-ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseZ3.cmo solver/ParseZ3.ml
-+ ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseZ3.cmo solver/ParseZ3.ml
-File "solver/ParseZ3.ml", line 245, characters 8-9:
-Warning 26: unused variable n.
-File "solver/ParseZ3.ml", line 246, characters 8-9:
-Warning 26: unused variable v.
-File "solver/ParseZ3.ml", line 279, characters 8-9:
-Warning 26: unused variable n.
-File "solver/ParseZ3.ml", line 280, characters 8-9:
-Warning 26: unused variable v.
+ocamlfind ocamlc -c -g -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay -I solver -I solver/symcaml -o solver/ParseZ3.cmo solver/ParseZ3.ml # cached
 # Target: Main.byte, tags: { byte, debug, dont_link_with, extension:byte, file:Main.byte, link, ocaml, package(threads,core,pycaml,str,camlp4,Z3,Z3overlay), program, quiet, thread, traverse }
-ocamlfind ocamlc -linkpkg -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay solver/Globals.cmo solver/Util.cmo solver/symcaml/SymCamlData.cmo solver/symcaml/PyCamlWrapper.cmo solver/symcaml/SymCamlParser.cmo solver/symcaml/SymCamlLexer.cmo solver/symcaml/SymCaml.cmo solver/AST.cmo solver/ParseAST.cmo solver/LexAST.cmo solver/CompileUtil.cmo solver/Common.cmo solver/Unit.cmo solver/HWData.cmo solver/HWCstr.cmo solver/HW.cmo solver/ParseHW.cmo solver/LexHW.cmo solver/MathCstr.cmo solver/Math.cmo solver/ParseMath.cmo solver/LexMath.cmo solver/Z3Data.cmo solver/ParseZ3.cmo solver/LexZ3.cmo solver/Compile.cmo solver/Logic.cmo solver/SolverData.cmo solver/Interactive.cmo solver/SolverUtil.cmo solver/Z3Lib.cmo solver/SolverRslv.cmo solver/SolverSln.cmo solver/SolverSearch.cmo solver/SpiceLib.cmo solver/Solver.cmo solver/Sym.cmo Main.cmo -o Main.byte
+ocamlfind ocamlc -linkpkg -g -thread -package threads,core,pycaml,str,camlp4,Z3,Z3overlay SimParserGenerator.cmo solver/Globals.cmo solver/Util.cmo solver/symcaml/SymCamlData.cmo solver/symcaml/PyCamlWrapper.cmo solver/symcaml/SymCamlParser.cmo solver/symcaml/SymCamlLexer.cmo solver/symcaml/SymCaml.cmo solver/AST.cmo solver/ParseAST.cmo solver/LexAST.cmo solver/CompileUtil.cmo solver/Common.cmo solver/Unit.cmo solver/HWData.cmo solver/HWCstr.cmo solver/HW.cmo solver/ParseHW.cmo solver/LexHW.cmo solver/MathCstr.cmo solver/Math.cmo solver/ParseMath.cmo solver/LexMath.cmo solver/Z3Data.cmo solver/ParseZ3.cmo solver/LexZ3.cmo solver/Compile.cmo solver/Logic.cmo solver/Sym.cmo Main.cmo -o Main.byte
 # Compilation successful.

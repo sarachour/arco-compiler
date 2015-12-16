@@ -10,33 +10,37 @@ open HW
 open Logic
 open Util
 
+open SimParserGenerator
 open Compile
 
 
 
 exception MainException of string*string;;
 
-let read_data f h =
-  let fenv = ParserGenerator.file_to_formula f in
+let read_data h s c =
   let henv = ParserGenerator.file_to_hwspec h in
-  (fenv,henv)
+  let senv = SimParserGenerator.file_to_slnspec s in
+  let cfg = SimParserGenerator.file_to_simcfg c in
+  (henv,senv,cfg)
 
-let gen h f o is_interactive=
-  let mathenv,hwenv = read_data f h in
-  let _ = Solver.solve hwenv mathenv o is_interactive in
+let gen h s c =
+  let henv,snv,cfg = read_data h s c in
   ()
+
 let command =
   Command.basic
     ~summary:"Compile to circuit"
     Command.Spec.(
       empty
       +> flag "-hwspec" (optional string) ~doc:"hardware specification"
-      +> flag "-formula" (optional string) ~doc:"formula specification"
-      +> flag "-solution" (optional string) ~doc:"solution"
-      +> flag "-config" (optional string) ~doc:"config file specification"
+      +> flag "-solution" (optional string) ~doc:"solution specification"
+      +> flag "-sim" (optional string) ~doc:"simulation config specification"
     )
-    (fun hwspec formula config solution () ->
-      match (hwspec,formula,config,solution) with
+    (fun hwspec sim solution () ->
+      match (hwspec,sim,solution) with
+      | (Some(h),Some(c),Some(s)) ->
+        let _ = gen h s c in
+        ()
       | _ ->
         raise (MainException("command","Must provide hwspec output, and formula"))
     )
