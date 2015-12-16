@@ -178,15 +178,27 @@ struct
     in
     let conns2repr c =
       let conn2repr src snk =
-        os ("n"^"\n")
+        let sname,sid,sport = src in
+        let dname,did,dport = snk in
+        let snn = (UnivLib.unodeid2name sname)^" "^(string_of_int sid)^" "^sport in
+        let dnn = (UnivLib.unodeid2name dname)^" "^(string_of_int did)^" "^dport in
+        os ("conn "^snn^" :: "^dnn^"\n")
       in
       let forsnks src sset = SET.iter sset (fun snk -> (conn2repr src snk) ) in
       let _ = MAP.iter c (fun src snkset -> (forsnks src snkset)) in
       ()
     in
     let labels2repr c =
-      let prplbl2repr wire prp lbl =
-        os ("l\n")
+      let prplbl2repr wire (prp:string) lbl =
+        let sname,sid,sport = wire in
+        let handle = prp^" of "^(UnivLib.unodeid2name sname)^" "^(string_of_int sid)^" "^sport in
+        let cmd = match lbl with
+        | LBindValue(f) -> "bind value "^handle^" :: "^(string_of_float f)
+        | LBindVar(HNInput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"input "^n
+        | LBindVar(HNOutput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"output "^n
+        | _ -> "%unsupported label"
+        in
+        os (cmd^"\n")
       in
       let prplbls2repr wire prp labels =
         if SET.size labels > 0 then
