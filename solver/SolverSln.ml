@@ -164,6 +164,45 @@ struct
     let _ = SET.rm lst i in
     s.comps <- MAP.put s.comps id (lst,n)
 
+  let torepr (s:sln) : string =
+    let inst2repr (cname:unodeid) (inst:int) =
+      "comp "^(UnivLib.unodeid2name cname)^" "^(string_of_int inst)
+    in
+    let comp2repr (cname:unodeid) (insts:int set) =
+      SET.fold insts (fun i r -> r^"\n"^(inst2repr cname i)) ""
+    in
+    let comps2repr c =
+      let res : string = MAP.fold c (fun k (l,n) r -> r^"\n"^(comp2repr k l)) "" in
+      res
+    in
+    let conns2repr c =
+      let conn2repr src snk =
+        "n"
+      in
+      let forsnks src sset = SET.fold sset (fun snk r -> r^"\n"^(conn2repr src snk) ) "" in
+      let res : string = MAP.fold c (fun src snkset r -> (forsnks src snkset)^r) "" in
+      res^"\n"
+    in
+    let labels2repr c =
+      let prplbl2repr wire prp lbl =
+        "l"
+      in
+      let prplbls2repr wire prp labels =
+        if SET.size labels > 0 then
+          (SET.tostr labels (fun x -> prplbl2repr wire prp x) "\n")^"\n"
+        else
+          ""
+      in
+      let lbls2repr k props =
+        (MAP.fold props (fun prp v r -> r^(prplbls2repr k prp v) ) "")
+      in
+      MAP.fold c (fun k v r -> r^(lbls2repr k v)) ""
+    in
+    let cstr = comps2repr s.comps in
+    let cnstr = conns2repr s.conns in
+    let lstr = labels2repr s.labels in
+    cstr^"\n"^cnstr^"\n"^lstr
+
 
   let tostr (s:sln) : string=
     let comp2str cname clist id =

@@ -966,6 +966,7 @@ let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
       let _ = IO.save out (SpiceLib.to_str sp) in
       let _ = Printf.printf "===== Concretizing to summary file =====\n" in
       let _ = IO.save (out^".summary") (SlnLib.tostr tbl.sln) in
+      let _ = IO.save (out^".caml") (SlnLib.torepr tbl.sln) in
       let _ = Printf.printf "===== Solution Found ======\n" in
       ()
     | None ->
