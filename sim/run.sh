@@ -1,7 +1,7 @@
 #!/bin/bash
 
 HWSPEC="biology"
-SLN="mmrxn-biology.ckt"
-SIM="_tags"
+SLN="mmrxn-biology"
+SIM="empty"
 HWSPECDIR="benchmarks/specs"
-./sim -hwspec ../solver/$HWSPECDIR/$HWSPEC.spec -solution ../solver/output/$SLN.ckt -sim $SIM
+make && ./sim -hwspec ../solver/$HWSPECDIR/$HWSPEC.spec -solution ../solver/output/$SLN.ckt.caml -sim test/$SIM.cfg

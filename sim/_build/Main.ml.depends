@@ -1,1 +1,1 @@
-Main.ml: AST Command Compile Core HW Logic Math ParserGenerator SimParserGenerator Sym Sys Util
+Main.ml: AST Command Compile Core HW Logic Math Printf SimCompile SimParserGenerator Sym Sys Util
