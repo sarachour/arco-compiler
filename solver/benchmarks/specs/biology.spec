@@ -2,46 +2,48 @@
 type us
 type mA
 type mV
-
+type bits
 
 prop I : mA
 prop V : mV
+prop D : bits
 
 time t: us
 
 
 digital input I
-  input X
+  input X where D:bits
   output O where I:mA
   spice iin X O
-
+  rel I(O) = D(X)
 end
 
 digital output I
   input X where I:mA
-  output O
-
+  output O where D:bits
+  rel D(O) = I(X)
   spice iout X O
 end
 
 comp copy I
   input X where I:mA
   output Y where I:mA
-
   spice icopy X Y
+
+  rel I(Y) = I(X)
 end
 
 digital input V
-  input X
+  input X where D:bits
   output O where V:mV
   spice vin X O
-
+  rel V(O) = D(X)
 end
 
 digital output V
   input X where V:mV
-  output O
-
+  output O where D:bits
+  rel D(O) = V(X)
   spice vout X O
 end
 

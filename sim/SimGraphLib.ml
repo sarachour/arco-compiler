@@ -35,6 +35,13 @@ type simstate = (simvar,float) map
 
 type simgraph = (simnode,simstate) graph
 
+
+
+exception SimGraphException of string*string;;
+
+let error s s2 =
+  raise (SimGraphException (s,s2))
+
 module SimGraphLib =
 struct
   let simnode2str (n:simnode) =
@@ -82,6 +89,7 @@ struct
         let svexpr = hwast2simast rhs in
         let ic = 0. in
         (sv,knd,svexpr, ic)
+      | HRNone -> error "cmprel2simrel" ("did not have an ast.")
       in
       let err : simvar ast = Integer(0) in
       let min = 0. in
@@ -93,6 +101,7 @@ struct
       let hwcmp = HwLib.getcomp h (UnivLib.unodeid2name id) in
       let ident = (UnivLib.unodeid2name id, inst) in
       let rels = MAP.make () in
+      let _ = Printf.printf ("-> component %s\n") (UnivLib.unodeid2name id) in
       let inps : simport list = MAP.fold hwcmp.vars (fun k v r -> if is_kind v.typ HNInput then k::r else r) [] in
       let outs : simport list = MAP.fold hwcmp.vars (fun k v r -> if is_kind v.typ HNOutput then k::r else r) [] in
       let _ = List.iter (fun x ->

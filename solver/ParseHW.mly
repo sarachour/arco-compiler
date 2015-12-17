@@ -365,7 +365,11 @@ digital:
     let _ = mkdfl cname iname in
     ()
   }
-  | digital EOL {()}
+  | digital REL rel EOL {
+    let pname,r = $3 and cname = get_cmpname() in
+    let _ = HwLib.mkrel dat cname pname r in
+    ()
+  }
   | digital ASSUME SAMPLE expr EVERY number TOKEN EOL {
     let e = $4 in
     let n = float_of_number $6 in
@@ -393,6 +397,8 @@ digital:
       let _ = HwLib.mkspice dat cname spname args in
       ()
   }
+
+  | digital EOL {()}
 
 
 comp:
