@@ -12,15 +12,24 @@ open Util
 
 open SimCompile
 open Compile
-
+open SolverSln
 
 
 exception MainException of string*string;;
 
+let error s s2 =
+  raise (MainException (s,s2))
+
 let read_data h s c =
   let _ = Printf.printf "# PARSING\n" in
   let senv = SimParserGenerator.file_to_slnspec s in
+  let senv = match senv with
+    | Some(sln) -> sln
+    | None -> error "read_data" "no solution read."
+  in
+  let str = SlnLib.tostr senv in
   let _ = Printf.printf "-> parsed sln.\n" in
+  let _ = Printf.printf "%s\n\n" str in 
   (*let cfg = SimParserGenerator.file_to_simcfg c in*)
   let cfg = "" in
   let _ = Printf.printf "-> parsed simulation.\n" in

@@ -154,6 +154,8 @@ struct
         if maxuses > nuses then true else false
 
   let usecomp_mark (s:sln) id (i:int) =
+    let _ = if MAP.has s.comps id = false then
+      let _ = mkcomp s id in () else () in
     let lst,n = MAP.get s.comps id in
     let lst = SET.add lst i in
     s.comps <- MAP.put s.comps id (lst,n)
