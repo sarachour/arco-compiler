@@ -13,6 +13,7 @@ open Util
 open SimCompile
 open Compile
 open SolverSln
+open SimGraphLib
 
 
 exception MainException of string*string;;
@@ -34,7 +35,8 @@ let read_data h s c =
   let _ = Printf.printf "-> parsed simulation.\n" in
   let henv = ParserGenerator.file_to_hwspec h in
   let _ = Printf.printf "-> parsed hardware.\n" in
-  let henv = "" in
+  let g = SimGraphLib.make () in
+  let _ = SimGraphLib.init g henv senv in 
   (henv,senv,cfg)
 
 let gen h s c =
