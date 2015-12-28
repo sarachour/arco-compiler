@@ -56,19 +56,27 @@ struct
   let simstate2str (e:simstate) =
     ""
 
+  let simwire2str (e:simwire) =
+    ""
 
   let simgraph2str (e:simgraph) =
-    GRAPH.tostr e
+    let n0 = SET.nth e.ins 0 in
+    GRAPH.tostr e.g n0
 
   let make () : simgraph =
-    let g = GRAPH.make (fun (x:simstate) y -> false) simnode2str simstate2str in
-    g
+    let g = GRAPH.make (fun (x:simwire) y -> false) simnode2str simwire2str in
+    let ins = SET.make (fun a b -> a = b) in
+    let outs = SET.make (fun a b -> a = b) in
+    {g=g; ins=ins; outs=outs}
 
     (*adds components*)
   let init (g:simgraph) (h:hwenv) (s:sln) =
     let is_kind (t:hwtype) (v:hwvkind) = match t with
       | HPortType(k,_) -> k = v
       | _ -> false
+    in
+    let newstate () =
+      MAP.make ()
     in
     let hwvar2simvar x = match x with
     | HNPort(k,c,n,p,u) -> (n,p)
@@ -92,7 +100,7 @@ struct
     let wire2node (w:wireid) =
       let unid, inst, port = w in
       let ident = toident unid inst in
-      let matches = GRAPH.getnodes g (fun n -> n.id = ident) in
+      let matches = GRAPH.getnodes g.g (fun n -> n.id = ident) in
       let onematch = match matches with
       | [h] -> h
       | [] -> error "wire2node" "no matches"
@@ -137,20 +145,22 @@ struct
         ) outs
       in
       let simnode = {inputs=inps; outputs=outs; rels=rels; id=ident} in
-      let _ = GRAPH.mknode g simnode in
+      let _ = GRAPH.mknode g.g simnode in
       ()
     in
     let conn2simconn (src:wireid) (snk:wireid) =
       let src, srcport = wire2node src in
       let dst, dstport = wire2node snk in
-      let prs = match GRAPH.getedge g src dst with
+      let prs = match GRAPH.getedge g.g src dst with
         | Some(prs) -> prs
         | None ->
           let prs = MAP.make () in
-          let _ = GRAPH.mkedge g src dst prs in
+          let _ = GRAPH.mkedge g.g src dst prs in
           prs
       in
-
+      let dests = if MAP.has prs srcport then MAP.get prs srcport else MAP.make() in
+      let _ = MAP.put dests dstport (newstate()) in
+      let _ = MAP.put prs srcport dests in
       ()
     in
     let lbl2simlbl (wire:wireid) (prop:string) (lbl:label) =

@@ -364,6 +364,9 @@ struct
     | [h] -> Some(h)
     | _ -> None
 
+  let nth s n =
+    List.nth s.lst n
+
   let filter s f =
     List.filter f (s.lst)
 
