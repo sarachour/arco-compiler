@@ -29,8 +29,17 @@ type simnode = {
   id: string*int;
 }
 
-type simstate = (simvar,float) map
-type simgraph = (simnode,simstate) graph
+(*the state*)
+type simstate = (simprop,float) map
+(*determine the wire situation*)
+type simwire = (simport, (simport, simstate) map) map
+
+
+type simgraph = {
+  ins: simnode set;
+  outs: simnode set;
+  g: (simnode,simwire) graph;
+}
 
 
 
