@@ -34,10 +34,18 @@ type simstate = (simprop,float) map
 (*determine the wire situation*)
 type simwire = (simport, (simport, simstate) map) map
 
+type simval = SimVar of string | SimVal of float
+
+type simiface = {
+  comp: string*int;
+  port: simport;
+  prop: simprop;
+  v: simval;
+}
 
 type simgraph = {
-  ins: simnode set;
-  outs: simnode set;
+  ins: simiface set;
+  outs: simiface set;
   g: (simnode,simwire) graph;
 }
 
@@ -59,8 +67,16 @@ struct
   let simwire2str (e:simwire) =
     ""
 
+  let ident2node g v =
+    let n = GRAPH.getnodes g.g (fun x -> x.id = v) in
+    match n with
+    | [h] -> h
+    | [] -> error "ident2node" "no ident"
+    | _ -> error "ident2node" "multiple nodes"
+
   let simgraph2str (e:simgraph) =
-    let n0 = SET.nth e.ins 0 in
+    let v0 = SET.nth e.ins 0 in
+    let n0 = ident2node e v0.comp in
     GRAPH.tostr e.g n0
 
   let make () : simgraph =
@@ -68,6 +84,18 @@ struct
     let ins = SET.make (fun a b -> a = b) in
     let outs = SET.make (fun a b -> a = b) in
     {g=g; ins=ins; outs=outs}
+
+  let _mkiface g cmp port prop vl =
+    let v = {comp=cmp; port=port;prop=prop; v=vl} in
+    v
+
+  let mkinput g cmp port prop vl =
+    let v = _mkiface g cmp port prop vl in
+    SET.add g.ins v
+
+  let mkoutput g cmp port prop vl =
+    let v = _mkiface g cmp port prop vl in
+    SET.add g.outs v
 
     (*adds components*)
   let init (g:simgraph) (h:hwenv) (s:sln) =
@@ -164,6 +192,12 @@ struct
       ()
     in
     let lbl2simlbl (wire:wireid) (prop:string) (lbl:label) =
+      let src,srcport = wire2node wire in
+      let _ = match lbl with
+        | LBindValue(f) -> mkinput g src.id srcport prop (SimVal f)
+        | LBindVar(HNInput,MNVar(_,name,_)) -> mkinput g src.id srcport prop (SimVar name)
+        | LBindVar(HNOutput,MNVar(_,name,_)) -> mkoutput g src.id srcport prop (SimVar name)
+      in
       ()
     in
     (*make nodes*)
@@ -173,7 +207,7 @@ struct
       (fun prop lbls -> SET.iter lbls (fun lbl -> lbl2simlbl wire prop lbl))
       ) in
     let gstr = simgraph2str g in
-    (*let _ = Printf.printf "### Resulting Graph\n%s" gstr in*)
+    let _ = Printf.printf "### Resulting Graph\n%s" gstr in
     g
 
 end
