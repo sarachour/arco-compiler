@@ -30,9 +30,6 @@ type simnode = {
 }
 
 type simstate = (simvar,float) map
-
-
-
 type simgraph = (simnode,simstate) graph
 
 
@@ -49,6 +46,10 @@ struct
 
   let simstate2str (e:simstate) =
     ""
+
+
+  let simgraph2str (e:simgraph) =
+    GRAPH.tostr e
 
   let make () : simgraph =
     let g = GRAPH.make (fun (x:simstate) y -> false) simnode2str simstate2str in
@@ -75,6 +76,21 @@ struct
       let xp = ASTLib.map x hwvar2simvar in
       xp
     in
+    let toident unid inst =
+      let ident = (UnivLib.unodeid2name unid, inst) in
+      ident
+    in
+    let wire2node (w:wireid) =
+      let unid, inst, port = w in
+      let ident = toident unid inst in
+      let matches = GRAPH.getnodes g (fun n -> n.id = ident) in
+      let onematch = match matches with
+      | [h] -> h
+      | [] -> error "wire2node" "no matches"
+      | _ -> error "wire2node" "too many matches"
+      in
+      (onematch,port)
+    in
     let cmprel2simrel (rel:hwrel): simvar*simrel =
       let (sv:simvar), (kind), (rel : simvar ast), ic = match rel with
       | HRFunction(lhs,rhs) ->
@@ -99,7 +115,7 @@ struct
     in
     let cmp2simnode (id:unodeid) (inst:int) =
       let hwcmp = HwLib.getcomp h (UnivLib.unodeid2name id) in
-      let ident = (UnivLib.unodeid2name id, inst) in
+      let ident = toident id inst in
       let rels = MAP.make () in
       let _ = Printf.printf ("-> component %s\n") (UnivLib.unodeid2name id) in
       let inps : simport list = MAP.fold hwcmp.vars (fun k v r -> if is_kind v.typ HNInput then k::r else r) [] in
@@ -115,7 +131,30 @@ struct
       let _ = GRAPH.mknode g simnode in
       ()
     in
+    let conn2simconn (src:wireid) (snk:wireid) =
+      let src, srcport = wire2node src in
+      let dst, dstport = wire2node snk in
+      let prs = match GRAPH.getedge g src dst with
+        | Some(prs) -> prs
+        | None ->
+          let prs = MAP.make () in
+          let _ = GRAPH.mkedge g src dst prs in
+          prs
+      in
+
+      ()
+    in
+    let lbl2simlbl (wire:wireid) (prop:string) (lbl:label) =
+      ()
+    in
+    (*make nodes*)
     let _ = MAP.iter s.comps (fun k (is,n) -> SET.iter is (fun i -> cmp2simnode k i)) in
+    let _ = MAP.iter s.conns (fun src (snks) -> SET.iter snks (fun snk -> conn2simconn src snk)) in
+    let _ = MAP.iter s.labels (fun wire prlbls -> MAP.iter prlbls
+      (fun prop lbls -> SET.iter lbls (fun lbl -> lbl2simlbl wire prop lbl))
+      ) in
+    let gstr = simgraph2str g in
+    (*let _ = Printf.printf "### Resulting Graph\n%s" gstr in*)
     g
 
 end

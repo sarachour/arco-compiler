@@ -2,6 +2,9 @@
 #all: deps lang solver
 all: solver deps
 
+simulator:
+	cd sim; make 
+
 solver:
 	cd solver; make
 
@@ -11,4 +14,5 @@ deps:
 
 clean:
 	cd solver; make clean
+	cd sim; make clean
 	cd dep; make clean

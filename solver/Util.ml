@@ -296,10 +296,28 @@ struct
   let str (type a) (type b) (x:(a,b) map) (kf: a -> string) (vf: b->string):string =
     Hashtbl.fold (fun k v r -> r^(kf k)^" = "^(vf v)^"\n") x ""
 
-  let map (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> b) : (a,b) map =
-    let repl k v = let _ = put x k (f k v) in () in
-    let _ = iter x repl in
+
+  let repl (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> b) : (a,b) map =
+    let _repl k v = let _ = put x k (f k v) in () in
+    let _ = iter x _repl in
     x
+
+  let map_vals (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> c) : (a,c) map =
+    let xn = make () in
+    let repl k v = let _ = put xn k (f k v) in () in
+    let _ = iter x repl in
+    xn
+
+  let map_keys (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> c) : (c,b) map =
+    let xn = make () in
+    let repl k v = let _ = put xn (f k v) v in () in
+    let _ = iter x repl in
+    xn
+
+  let map (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> c) : c list =
+    let repl k v r = (f k v)::r in
+    let res = fold x repl [] in
+    res
 
   let filter (type a) (type b) (type c) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
     fold x (fun q v k -> if f q v then (q,v)::k else k) []
@@ -379,7 +397,7 @@ end
 
 
 type ('a,'b) graph = {
-  mutable adj : ('a,('a*'b) set) map;
+  mutable adj : ('a,('a,'b) map) map;
   vcmp : 'b -> 'b -> bool;
   node2str: 'a -> string;
   val2str: 'b -> string;
@@ -394,33 +412,44 @@ struct
   let hasnode (type a) (type b) (g) (n:a) : bool =
     MAP.has (g.adj) n
 
-  let hasedge (type a) (type b) g s e v : bool =
+  let getedge (type a) (type b) (g) (n1:a) (n2:a) : b option =
+    let chld = MAP.get (g.adj) n1 in
+    if MAP.has chld n2 then
+      Some (MAP.get chld n2)
+    else
+      None
+
+  let hasedge (type a) (type b) g s e : bool =
     if hasnode g s == false || hasnode g e == false then
       false
     else
-      let chld = MAP.get (g.adj) s in
-      SET.has chld (e,v)
+      if getedge g s e = None then
+        false
+      else
+        true
 
   let mknode (type a) (type b) (g) (n:a) : (a,b) graph =
     if hasnode g n then
       error "mknode" "node already exists"
     else
       let cmp ((n1,v1):a*b) (n2,v2) = (n1 = n2) && g.vcmp v1 v2 in
-      let _ = MAP.put (g.adj) n (SET.make cmp) in
+      let _ = MAP.put (g.adj) n (MAP.make ()) in
       g
 
+  let getnodes (type a) (type b) (g) (f:a->bool) : a list =
+    MAP.fold g.adj (fun k v r -> if f k then k::r else r) []
 
   let mkedge (type a) (type b) (g) (a:a) (b:a) (v:b) : (a,b) graph =
-    if hasnode g a && hasnode g b && hasedge g a b v = false then
+    if hasnode g a && hasnode g b && hasedge g a b = false then
       let dest = MAP.get (g.adj) (a) in
-      let _ = SET.add dest (b,v) in
+      let _ = MAP.put dest b v in
       g
     else
       if hasnode g a = false then
         error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
       else if hasnode g b = false then
         error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
-      else if hasedge g a b v = true then
+      else if hasedge g a b = true then
         error "mkedge" ("edge "^(g.node2str a)^"->"^(g.node2str b)^":"^(g.val2str v)^" already exists in graph.")
       else
         error "mkedge" "unknown"
@@ -431,7 +460,7 @@ struct
     in
     let itermap k v =
       let src = k in
-      SET.iter v (fun (snk,vl) -> iterset src snk vl)
+      MAP.iter v (fun snk vl -> iterset src snk vl)
     in
     MAP.iter (g.adj) itermap
 
@@ -448,8 +477,8 @@ struct
           else
             vl
         in
-          let visitset ((x,v):a*b) :c = visit x v in
-          let subres : c list = SET.map (chldrn) visitset in
+          let visitsinks (x:a) (v:b) : c = visit x v in
+          let subres : c list = MAP.map (chldrn) visitsinks in
           red subres
     in
       let path = [st] in

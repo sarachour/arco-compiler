@@ -22,4 +22,4 @@ sim: $(DEPS) $(COMP_DEPS) solver
 
 clean:
 	ocamlbuild -clean
-	rm sim sim.debug
+	rm -f sim sim.debug
