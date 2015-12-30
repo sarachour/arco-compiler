@@ -24,7 +24,11 @@ struct
     ""
 
   let simwire2str (e:simwire) =
-    ""
+    let tostr src snk st =
+      src^":"^snk^", "
+    in
+    MAP.fold e (fun src snks r -> MAP.fold snks (fun snk st r -> r^(tostr src snk st)) r) ""
+
 
   let ident2node g v =
     let n = GRAPH.getnodes g.g (fun x -> x.id = v) in
@@ -34,12 +38,8 @@ struct
     | _ -> error "ident2node" "multiple nodes"
 
   let simgraph2str (e:simgraph) =
-    let mki n =
-      let n0 = ident2node e n.comp in
-      GRAPH.tostr e.g n0
-    in
-    let v = SET.fold e.ins (fun x r -> (mki x)^r) "" in
-    v
+    let res = GRAPH.tostr e.g in
+    res
 
   let make () : simgraph =
     let g = GRAPH.make (fun (x:simwire) y -> false) simnode2str simwire2str in
@@ -139,8 +139,6 @@ struct
       ()
     in
     let conn2simconn (src:wireid) (snk:wireid) =
-      let src, srcport = wire2node src in
-      let dst, dstport = wire2node snk in
       let rslvorder s sp d dp =
         if LIST.has s.inputs sp && LIST.has d.outputs dp then
           d,dp,s,sp
@@ -149,10 +147,13 @@ struct
         else
           error "rslvorder" "cannot connect input to input or output to output"
       in
-      let src, srcport, dst, dstport = rslvorder src srcport dst dstport in
       let ident2str (a,b) = a^"."^(string_of_int b) in
+      let src, srcport = wire2node src in
+      let dst, dstport = wire2node snk in
+      let src, srcport, dst, dstport = rslvorder src srcport dst dstport in
       let prs = match GRAPH.getedge g.g src dst with
-        | Some(prs) -> prs
+        | Some(prs) ->
+          prs
         | None ->
           let prs = MAP.make () in
           let _ = GRAPH.mkedge g.g src dst prs in

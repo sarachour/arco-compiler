@@ -469,38 +469,18 @@ struct
     in
     MAP.iter (g.adj) itermap
 
-  let visit (type a) (type b) (type c) (g) (st:a) (init) (fxn: a -> a -> b  -> c -> bool*c) (red: c list -> c) =
-    let rec _traverse n (path:a list) (res:c) : c =
-      if hasnode g n  = false then
-        error "graph:traverse" "node doesn't exist"
-      else
-        let chldrn  = MAP.get (g.adj) (n) in
-        let visit ch v : c =
-          let cont,vl = fxn n ch v res in
-          if cont && LIST.has path ch then
-            _traverse ch (ch::path) vl
-          else
-            vl
-        in
-          let visitsinks (x:a) (v:b) : c = visit x v in
-          let subres : c list = MAP.map (chldrn) visitsinks in
-          red subres
-    in
-      let path = [st] in
-      _traverse st path init
 
 
-  let tostr g n =
+  let tostr g =
     let prodstr src snk edge r  =
       let src_str = g.node2str src in
       let dest_str = g.node2str snk in
       let edge_str = g.val2str edge in
-      true, r^(src_str^" -> "^dest_str^" : "^edge_str)
+      let str = src_str^" -> "^dest_str^" : "^edge_str^"\n" in
+      let _ = Printf.printf "map : %s" str in
+      (r^str)
     in
-    let redstr lst =
-      List.fold_right (fun x r -> x^"\n"^r) lst ""
-    in
-    visit g n "" prodstr redstr
+    MAP.fold g.adj (fun n chl r -> MAP.fold chl (fun c e r -> prodstr n c e r) r) ""
 
 end
 
