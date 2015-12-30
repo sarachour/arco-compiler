@@ -354,6 +354,8 @@ struct
   let fold s f iv =
     List.fold_right f (s.lst) iv
 
+  let fold_i  s f iv =
+    List.fold_right (fun x (i,v) -> (f x i v)) s.lst (0,iv)
 
   let map (type a) (type b) (s:a set) (f:a->b): b list  =
     let v = List.map f (s.lst) in

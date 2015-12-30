@@ -5,49 +5,7 @@ open HWData
 open Common
 open HW
 open SolverUtil
-
-type simport = string
-type simprop = string
-type simrelkind = SimState | SimFunction
-
-type simvar = simport*simprop
-
-type simrel = {
-    kind: simrelkind;
-    rel: simvar ast;
-    err: simvar ast;
-    min: float;
-    max: float;
-    value: float;
-}
-
-
-type simnode = {
-  inputs : simport list;
-  outputs : simport list;
-  rels : (simvar, simrel) map;
-  id: string*int;
-}
-
-(*the state*)
-type simstate = (simprop,float) map
-(*determine the wire situation*)
-type simwire = (simport, (simport, simstate) map) map
-
-type simval = SimVar of string | SimVal of float
-
-type simiface = {
-  comp: string*int;
-  port: simport;
-  prop: simprop;
-  v: simval;
-}
-
-type simgraph = {
-  ins: simiface set;
-  outs: simiface set;
-  g: (simnode,simwire) graph;
-}
+open SimGraphData
 
 
 
@@ -59,7 +17,8 @@ let error s s2 =
 module SimGraphLib =
 struct
   let simnode2str (n:simnode) =
-    ""
+    let cname,cid = n.id in
+    cname^"."^(string_of_int cid)
 
   let simstate2str (e:simstate) =
     ""
@@ -75,9 +34,12 @@ struct
     | _ -> error "ident2node" "multiple nodes"
 
   let simgraph2str (e:simgraph) =
-    let v0 = SET.nth e.ins 0 in
-    let n0 = ident2node e v0.comp in
-    GRAPH.tostr e.g n0
+    let mki n =
+      let n0 = ident2node e n.comp in
+      GRAPH.tostr e.g n0
+    in
+    let v = SET.fold e.ins (fun x r -> (mki x)^r) "" in
+    v
 
   let make () : simgraph =
     let g = GRAPH.make (fun (x:simwire) y -> false) simnode2str simwire2str in
@@ -179,6 +141,16 @@ struct
     let conn2simconn (src:wireid) (snk:wireid) =
       let src, srcport = wire2node src in
       let dst, dstport = wire2node snk in
+      let rslvorder s sp d dp =
+        if LIST.has s.inputs sp && LIST.has d.outputs dp then
+          d,dp,s,sp
+        else if LIST.has s.outputs sp && LIST.has d.inputs dp then
+          s,sp,d,dp
+        else
+          error "rslvorder" "cannot connect input to input or output to output"
+      in
+      let src, srcport, dst, dstport = rslvorder src srcport dst dstport in
+      let ident2str (a,b) = a^"."^(string_of_int b) in
       let prs = match GRAPH.getedge g.g src dst with
         | Some(prs) -> prs
         | None ->
@@ -186,6 +158,7 @@ struct
           let _ = GRAPH.mkedge g.g src dst prs in
           prs
       in
+      let _  = Printf.printf "%s %s -> %s %s\n" (ident2str src.id) srcport (ident2str dst.id) dstport in
       let dests = if MAP.has prs srcport then MAP.get prs srcport else MAP.make() in
       let _ = MAP.put dests dstport (newstate()) in
       let _ = MAP.put prs srcport dests in
