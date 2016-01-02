@@ -1,6 +1,6 @@
 
 #all: deps lang solver
-all: solver deps
+all: simulator solver deps
 
 simulator:
 	cd sim; make 
@@ -10,7 +10,7 @@ solver:
 
 deps:
 	cd dep; make
-	cp dep/z3/build/libz3.dylib solver/
+	#cp dep/z3/build/libz3.dylib solver/
 
 clean:
 	cd solver; make clean

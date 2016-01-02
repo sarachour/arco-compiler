@@ -5,7 +5,7 @@ open HWData
 open Common
 open HW
 open SolverUtil
-open SimGraphData
+open SimData
 
 
 
