@@ -22,10 +22,9 @@ type simplace =
 
 type simident = string*int*simport*simprop
 
-
 (*the current state, the props that have been visited*)
 type simstate = {
-  mutable state: (simident, float) map;
+  mutable state: (simident, simval) map;
   mutable v: simident set;
   mutable order: simplace list;
 }
@@ -48,7 +47,7 @@ struct
     let order = [] in
     let proc_qty (compn:string) (compi:int) (port:simport) (prop:simprop) =
       let _ = Printf.printf "qty: %s %d %s %s\n" compn compi port prop in
-      let _ = MAP.put st (compn, compi, port, prop) 0.0 in
+      let _ = MAP.put st (compn, compi, port, prop) (SimVal 0.0) in
       ()
     in
     let proc_port (compn:string) (compi:int) (port:simport) =
@@ -59,7 +58,16 @@ struct
       let _ = List.iter (fun x -> proc_port n i x) node.outputs in
       ()
     in
-    let _ = GRAPH.iter_node g.g (fun n -> proc_node n) in 
+    let proc_iface (iface:simiface) =
+      let compn, compi = iface.comp in
+      let port = iface.port in
+      let prop = iface.prop in
+      let _ = Printf.printf "iface: %s %d %s %s\n" compn compi port prop in
+      let _ = MAP.put st (compn, compi, port, prop) iface.v in
+      ()
+    in
+    let _ = GRAPH.iter_node g.g (fun n -> proc_node n) in
+    let _ = SET.iter g.ins (fun n -> proc_iface n) in
     {v=v; state=st; order=order}
 
   (*initialize integrator state*)

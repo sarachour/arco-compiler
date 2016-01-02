@@ -121,6 +121,7 @@ struct
   let count lst n =
       List.length (List.filter (fun x -> n = x) lst)
 
+  let iter = List.iter
   (*joins list into tuples*)
   let zip a b =
       let rec zip_i x y  =

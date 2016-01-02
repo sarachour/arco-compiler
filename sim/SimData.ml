@@ -32,7 +32,7 @@ type simnode = {
 (*determine the wire situation*)
 type simwire = (simport, simport set) map
 
-type simval = SimVar of string | SimVal of float
+type simval = SimFxn of (float -> float)*float | SimVal of float | SimVar of string
 
 type simiface = {
   comp: string*int;
