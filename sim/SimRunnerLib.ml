@@ -43,7 +43,12 @@ struct
 
   (*setup integrator state*)
   let setup (pref:simprops) (g:simgraph) =
+    let v = SET.make (fun x y -> x = y) in
+    let st = MAP.make() in
+    let order = [] in
     let proc_qty (compn:string) (compi:int) (port:simport) (prop:simprop) =
+      let _ = Printf.printf "qty: %s %d %s %s\n" compn compi port prop in
+      let _ = MAP.put st (compn, compi, port, prop) 0.0 in
       ()
     in
     let proc_port (compn:string) (compi:int) (port:simport) =
@@ -54,9 +59,7 @@ struct
       let _ = List.iter (fun x -> proc_port n i x) node.outputs in
       ()
     in
-    let v = SET.make (fun x y -> x = y) in
-    let st = MAP.make() in
-    let order = [] in
+    let _ = GRAPH.iter_node g.g (fun n -> proc_node n) in 
     {v=v; state=st; order=order}
 
   (*initialize integrator state*)

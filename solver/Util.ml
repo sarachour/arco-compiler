@@ -417,6 +417,10 @@ struct
   let hasnode (type a) (type b) (g) (n:a) : bool =
     MAP.has (g.adj) n
 
+  let iter_node g f =
+    let _ = MAP.iter g.adj (fun x dests -> f x ) in
+    ()
+
   let getedge (type a) (type b) (g) (n1:a) (n2:a) : b option =
     let chld = MAP.get (g.adj) n1 in
     if MAP.has chld n2 then
