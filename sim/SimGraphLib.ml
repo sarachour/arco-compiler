@@ -20,14 +20,12 @@ struct
     let cname,cid = n.id in
     cname^"."^(string_of_int cid)
 
-  let simstate2str (e:simstate) =
-    ""
 
   let simwire2str (e:simwire) =
-    let tostr src snk st =
+    let tostr src snk =
       src^":"^snk^", "
     in
-    MAP.fold e (fun src snks r -> MAP.fold snks (fun snk st r -> r^(tostr src snk st)) r) ""
+    MAP.fold e (fun src snks r -> SET.fold snks (fun snk r -> r^(tostr src snk)) r) ""
 
 
   let ident2node g v =
@@ -45,7 +43,8 @@ struct
     let g = GRAPH.make (fun (x:simwire) y -> false) simnode2str simwire2str in
     let ins = SET.make (fun a b -> a = b) in
     let outs = SET.make (fun a b -> a = b) in
-    {g=g; ins=ins; outs=outs}
+    let props = SET.make (fun a b -> a = b) in
+    {g=g; ins=ins; outs=outs; props=props}
 
   let _mkiface g cmp port prop vl =
     let v = {comp=cmp; port=port;prop=prop; v=vl} in
@@ -160,8 +159,8 @@ struct
           prs
       in
       let _  = Printf.printf "%s %s -> %s %s\n" (ident2str src.id) srcport (ident2str dst.id) dstport in
-      let dests = if MAP.has prs srcport then MAP.get prs srcport else MAP.make() in
-      let _ = MAP.put dests dstport (newstate()) in
+      let dests = if MAP.has prs srcport then MAP.get prs srcport else SET.make (fun x y -> x = y) in
+      let _ = SET.add dests dstport in
       let _ = MAP.put prs srcport dests in
       ()
     in
@@ -174,12 +173,17 @@ struct
       in
       ()
     in
+    let prop2simprop (prop: string) =
+      let _ = g.props <- SET.add g.props prop in
+      ()
+    in
     (*make nodes*)
     let _ = MAP.iter s.comps (fun k (is,n) -> SET.iter is (fun i -> cmp2simnode k i)) in
     let _ = MAP.iter s.conns (fun src (snks) -> SET.iter snks (fun snk -> conn2simconn src snk)) in
     let _ = MAP.iter s.labels (fun wire prlbls -> MAP.iter prlbls
       (fun prop lbls -> SET.iter lbls (fun lbl -> lbl2simlbl wire prop lbl))
       ) in
+    let _ = MAP.iter s.props (fun prop -> prop2simprop prop) in
     let gstr = simgraph2str g in
     let _ = Printf.printf "### Resulting Graph\n%s" gstr in
     g
