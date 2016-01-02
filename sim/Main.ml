@@ -38,7 +38,7 @@ let read_data h s c =
   (henv,senv,cfg)
 
 let gen h s c =
-  let henv,snv,cfg = read_data h s c in
+  let henv,senv,cfg = read_data h s c in
   let g = SimGraphLib.make () in
   let _ = SimGraphLib.init g henv senv in
   let res = SimRunner.run cfg g in

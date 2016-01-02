@@ -45,5 +45,5 @@ type simgraph = {
   ins: simiface set;
   outs: simiface set;
   g: (simnode,simwire) graph;
-  mutable props: simprop set; 
+  mutable props: simprop set;
 }

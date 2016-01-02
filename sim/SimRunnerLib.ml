@@ -8,7 +8,7 @@ type integrator =
   | Euler
   | RungaKutta4
 
-type sim_props = {
+type simprops = {
   step_size: float;
   time_end: float;
   time_start: float;
@@ -16,7 +16,7 @@ type sim_props = {
 
 }
 
-type place =
+type simplace =
   | PlcNode of string*int
   | PlcIface
 
@@ -27,7 +27,7 @@ type simident = string*int*simport*simprop
 type simstate = {
   mutable state: (simident, float) map;
   mutable v: simident set;
-  mutable order: place list;
+  mutable order: simplace list;
 }
 
 module SimRunner =
@@ -42,7 +42,7 @@ struct
     }
 
   (*setup integrator state*)
-  let setup (pref:sim_props) (g:simgraph) =
+  let setup (pref:simprops) (g:simgraph) =
     let proc_qty (compn:string) (compi:int) (port:simport) (prop:simprop) =
       ()
     in
@@ -51,7 +51,7 @@ struct
     in
     let proc_node (node:simnode) =
       let n,i = node.id in
-      let _ = SET.iter node.outs (fun x -> proc_port n i x) in
+      let _ = List.iter (fun x -> proc_port n i x) node.outputs in
       ()
     in
     let v = SET.make (fun x y -> x = y) in
@@ -60,26 +60,29 @@ struct
     {v=v; state=st; order=order}
 
   (*initialize integrator state*)
-  let init (pref:sim_props) (g:simgraph) (st:simstate) =
+  let init (pref:simprops) (g:simgraph) (st:simstate) =
     ()
 
-  let step (pref:sim_props) (g:simgraph) (st:simstate) (time:float) =
+  let visit (pref:simprops) (g:simgraph) (st:simstate) (place:simplace) (time:float) =
+    ()
+
+  let step (pref:simprops) (g:simgraph) (st:simstate) (time:float) =
     (*initialize visited nodes*)
     let _ = init pref g st in
     (*visit each node in order*)
-    let _ = List.iter (fun plc -> visit pref g st plc) st.order time in
-    (st, time+pref.step_size)
+    let _ = List.iter (fun plc -> visit pref g st plc time) st.order in
+    (st, time+.pref.step_size)
 
-  let run (pref:sim_props) (g:simgraph) =
+  let run (pref:simprops) (g:simgraph) =
     let st = setup pref g in
-    let while_step t st =
-      if t < pref.time_end then
+    let rec foreach_step time st =
+      if time < pref.time_end then
         let newst, ntime = step pref g st time in
-        while_step ntime newst
+        foreach_step ntime newst
       else
         ()
     in
-    while_step 0.0 st
+    foreach_step 0.0 st
 
 
 

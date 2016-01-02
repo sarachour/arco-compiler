@@ -183,7 +183,7 @@ struct
     let _ = MAP.iter s.labels (fun wire prlbls -> MAP.iter prlbls
       (fun prop lbls -> SET.iter lbls (fun lbl -> lbl2simlbl wire prop lbl))
       ) in
-    let _ = MAP.iter s.props (fun prop -> prop2simprop prop) in
+    let _ = MAP.iter h.props (fun prop units -> prop2simprop prop) in
     let gstr = simgraph2str g in
     let _ = Printf.printf "### Resulting Graph\n%s" gstr in
     g
