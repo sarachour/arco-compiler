@@ -42,32 +42,51 @@ struct
 
   (*setup integrator state*)
   let setup (pref:simprops) (g:simgraph) =
+    let setup_valvector () =
+      let st = MAP.make() in
+      let proc_qty (compn:string) (compi:int) (port:simport) (prop:simprop) =
+        let _ = Printf.printf "qty: %s %d %s %s\n" compn compi port prop in
+        let _ = MAP.put st (compn, compi, port, prop) (SimVal 0.0) in
+        ()
+      in
+      let proc_port (compn:string) (compi:int) (port:simport) =
+        SET.iter g.props (fun pr -> proc_qty compn compi port pr)
+      in
+      let proc_node (node:simnode) =
+        let n,i = node.id in
+        let _ = List.iter (fun x -> proc_port n i x) node.outputs in
+        ()
+      in
+      let proc_iface (iface:simiface) =
+        let compn, compi = iface.comp in
+        let port = iface.port in
+        let prop = iface.prop in
+        let _ = Printf.printf "iface: %s %d %s %s\n" compn compi port prop in
+        let _ = MAP.put st (compn, compi, port, prop) iface.v in
+        ()
+      in
+      let _ = GRAPH.iter_node g.g (fun n -> proc_node n) in
+      let _ = SET.iter g.ins (fun n -> proc_iface n) in
+      st
+    in
+    let setup_order () =
+      let ord : simplace list = [] in
+      let oref = REF.mk ord in
+      let proc_node (node:simnode) =
+        ()
+      in
+      let proc_iface (iface:simiface) =
+        let pl = PlcIface in
+        let _ = REF.upd oref (fun ord -> pl::ord) in
+        ()
+      in
+      let _ = GRAPH.iter_node g.g (fun n -> proc_node n) in
+      let _ = SET.iter g.ins (fun n -> proc_iface n) in
+      ord
+    in
     let v = SET.make (fun x y -> x = y) in
-    let st = MAP.make() in
-    let order = [] in
-    let proc_qty (compn:string) (compi:int) (port:simport) (prop:simprop) =
-      let _ = Printf.printf "qty: %s %d %s %s\n" compn compi port prop in
-      let _ = MAP.put st (compn, compi, port, prop) (SimVal 0.0) in
-      ()
-    in
-    let proc_port (compn:string) (compi:int) (port:simport) =
-      SET.iter g.props (fun pr -> proc_qty compn compi port pr)
-    in
-    let proc_node (node:simnode) =
-      let n,i = node.id in
-      let _ = List.iter (fun x -> proc_port n i x) node.outputs in
-      ()
-    in
-    let proc_iface (iface:simiface) =
-      let compn, compi = iface.comp in
-      let port = iface.port in
-      let prop = iface.prop in
-      let _ = Printf.printf "iface: %s %d %s %s\n" compn compi port prop in
-      let _ = MAP.put st (compn, compi, port, prop) iface.v in
-      ()
-    in
-    let _ = GRAPH.iter_node g.g (fun n -> proc_node n) in
-    let _ = SET.iter g.ins (fun n -> proc_iface n) in
+    let st = setup_valvector () in
+    let order = setup_order () in
     {v=v; state=st; order=order}
 
   (*initialize integrator state*)

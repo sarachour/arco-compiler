@@ -670,9 +670,13 @@ sig
   * so it contains y. *)
   val set : 'a ref -> 'a -> unit
 
+  val upd: 'a ref -> ('a -> 'a) -> unit
+
 end =
 struct
   let mk v = ref v
   let dr v = !v
   let set v x = v := x
+  let upd (type a) (v:a ref) (f:a -> a) =
+    v := (f (!v))
 end
