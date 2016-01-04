@@ -10,40 +10,55 @@ type simport = string
 type simprop = string
 type simrelkind = SimState | SimFunction
 
-type simvar = simport*simprop
 
-type simrel = {
+type simident = string*int*simport*simprop
+
+type simvar =
+  | SVVar of simident
+  | SVThis
+  | SVUnset 
+
+type simrel = simvar ast
+
+type simval =
+  SimFxn of (float -> float)*float
+  | SLVal of float
+  | SLExtern of string
+  | SLVar of simident
+
+type simbhv = {
     kind: simrelkind;
-    rel: simvar ast;
-    err: simvar ast;
+    rel: simrel;
+    err: simrel;
     min: float;
     max: float;
-    value: float;
+    ic: simval;
 }
 
 
-type simnode = {
-  inputs : simport list;
-  outputs : simport list;
-  rels : (simvar, simrel) map;
-  id: string*int;
-}
+type simplace =
+  | PlcNode of simident
+  | PlcIface of simident
 
 (*determine the wire situation*)
 type simwire = (simport, simport set) map
 
-type simval = SimFxn of (float -> float)*float | SimVal of float | SimVar of string
+type simnode = {
+  rel: simrel;
+  err: simrel;
+  min: float;
+  max: float;
+}
+
 
 type simiface = {
-  comp: string*int;
-  port: simport;
-  prop: simprop;
+  ident:simident;
   v: simval;
 }
 
 type simgraph = {
-  ins: simiface set;
-  outs: simiface set;
-  g: (simnode,simwire) graph;
+  ins: (simident,simval) map;
+  outs: (simident,simval) map;
+  g: (simident,simbhv) map;
   mutable props: simprop set;
 }

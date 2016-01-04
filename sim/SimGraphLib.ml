@@ -16,47 +16,91 @@ let error s s2 =
 
 module SimGraphLib =
 struct
-  let simnode2str (n:simnode) =
-    let cname,cid = n.id in
-    cname^"."^(string_of_int cid)
 
 
-  let simwire2str (e:simwire) =
-    let tostr src snk =
-      src^":"^snk^", "
+
+  let simident2str (i:simident) =
+    let cn,ci,p,pr = i in
+    cn^"("^(string_of_int ci)^")"^":"^p^"."^pr
+
+  let mkdeps (g:simgraph) =
+    let dep_graph : (simident,unit) graph =
+      GRAPH.make (fun x y -> x = y) (fun (cn,ci,p,pr) -> cn^"["^(string_of_int ci)^"]."^p^"."^pr) (fun x -> "()") in
+    (*
+    let queue_node (node:simnode) =
+      let compn,compi = node.id in
+      let get_inps (iport,iprop) : simident =
+        (*get all the originating edges*)
+        let srcs : (simnode*simwire) list = GRAPH.srcs g.g node in
+        let find_edge srcnode srcedj : simident option =
+          match MAP.filter srcedj (fun s dests -> SET.has dests iport) with
+          | [(srcport,destports)] ->
+          if SET.has destports iport then
+            let act_name, act_inst = srcnode.id in
+            let act_port = force_conc (SET.get destports iport) in
+            Some (act_name,act_inst,act_port, iprop)
+          else
+            None
+          | _ -> error "mkdeps.find_edge" "unsupported."
+        in
+        let filter_edges (srcnode,srcedj) r : simident option =
+          let res = find_edge srcnode srcedj in
+          if r != None && res != None then
+            error "mkdeps.filter_edges" "cannot have two edges to the same port."
+          else if res != None then
+            res
+          else
+            r
+        in
+        match LIST.fold srcs (fun x r -> filter_edges x r) None with
+        | Some(ident) -> ident
+        | _ -> error "mkdeps.get_inps" "impossible. There are no originating edges for port."
+      in
+      let queue_var oident (iport,iprop) =
+        let iident : simident = get_inps (iport,iprop) in
+        let _ = GRAPH.mknode dep_graph iident in
+        let _ = GRAPH.mknode dep_graph oident in
+        let _ = GRAPH.mkedge dep_graph iident oident () in
+        ()
+      in
+      let queue_rel (port,prop) rel =
+        let ident :simident = (compn, compi, port, prop) in
+        let ins = ASTLib.get_vars rel in
+        let _ = LIST.iter (fun x -> queue_var ident x) ins in
+        ()
+      in
+      let _ = MAP.iter node.rels (fun id x -> queue_rel id x.rel) in
+      ()
     in
-    MAP.fold e (fun src snks r -> SET.fold snks (fun snk r -> r^(tostr src snk)) r) ""
+    let _ = GRAPH.iter_node g.g (fun n -> queue_node n) in
+    *)
+    dep_graph
 
+  let simvar2str b : string  = match b with
+  | SVVar(ident) -> simident2str ident
+  | SVThis -> "$"
 
-  let ident2node g v =
-    let n = GRAPH.getnodes g.g (fun x -> x.id = v) in
-    match n with
-    | [h] -> h
-    | [] -> error "ident2node" "no ident"
-    | _ -> error "ident2node" "multiple nodes"
+  let simbhv2str (b: simbhv) : string =
+    let relstr : string = ASTLib.ast2str b.rel simvar2str in
+    relstr
 
-  let simgraph2str (e:simgraph) =
-    let res = GRAPH.tostr e.g in
+  let simgraph2str (e:simgraph) : string =
+    let res = MAP.str e.g simident2str simbhv2str in
     res
 
   let make () : simgraph =
-    let g = GRAPH.make (fun (x:simwire) y -> false) simnode2str simwire2str in
-    let ins = SET.make (fun a b -> a = b) in
-    let outs = SET.make (fun a b -> a = b) in
+    let g = MAP.make () in
+    let ins = MAP.make () in
+    let outs = MAP.make () in
     let props = SET.make (fun a b -> a = b) in
     {g=g; ins=ins; outs=outs; props=props}
 
-  let _mkiface g cmp port prop vl =
-    let v = {comp=cmp; port=port;prop=prop; v=vl} in
-    v
 
-  let mkinput g cmp port prop vl =
-    let v = _mkiface g cmp port prop vl in
-    SET.add g.ins v
+  let mkinput g ident vl =
+    MAP.put g.ins ident vl
 
-  let mkoutput g cmp port prop vl =
-    let v = _mkiface g cmp port prop vl in
-    SET.add g.outs v
+  let mkoutput g ident vl =
+    MAP.put g.outs ident vl
 
     (*adds components*)
   let init (g:simgraph) (h:hwenv) (s:sln) =
@@ -67,109 +111,134 @@ struct
     let newstate () =
       MAP.make ()
     in
-    let hwvar2simvar x = match x with
-    | HNPort(k,c,n,p,u) -> (n,p)
-    | HNParam(_) -> error "hwvar2simvar ""cannot handle param"
-    | HNTime (_) ->  error "hwvar2simvar ""cannot handle time"
+    let conv_map : ((string*int*string, string*int*string) map) = MAP.make () in
+    let hwvar2simvar thisident x =
+      let thisc,thisi,thisn,thisp = thisident in
+      match x with
+      | HNPort(k,HCMGlobal(c,i),n,p,u) ->
+        (*if (c,i,n,p) = thisident then SVThis else
+          SVVar(c,i,n,p)*)
+        error "hwvar2simvar"
+        ("global components not supported: "^(simident2str (c,i,n,p))^" in "^(simident2str thisident))
+      | HNPort(k, HCMLocal(c),n,p,u) ->
+        (*this if self-referential*)
+        let ret :simvar= if c = thisc && n = thisn && p = thisp then SVThis else
+          begin
+          let nident  = (c,thisi,n) in
+          if MAP.has conv_map nident then
+            let vc,vi,vn = MAP.get conv_map nident in
+            SVVar(vc,vi,vn,p)
+          else
+            (*if not connected to anything, connect to ground*)
+            SVUnset
+          end
+        in
+          ret
+      | HNParam(_) -> error "hwvar2simvar ""cannot handle param"
+      | HNTime (_) ->  error "hwvar2simvar ""cannot handle time"
     in
-    let hwast2simast (x:hwvid ast) : simvar ast =
+    let hwast2simast (x:hwvid ast) (ths:simident) : simvar ast =
       let x = ASTLib.trans x (fun x -> match x with
         | Term(HNParam(_,_,Decimal(v),_)) -> Some (Decimal(v))
         | Term(HNParam(_,_,Integer(v),_)) -> Some (Integer(v))
         | _ -> None
         )
       in
-      let xp = ASTLib.map x hwvar2simvar in
+      let xp = ASTLib.map x (hwvar2simvar ths) in
       xp
     in
-    let toident unid inst =
+    let tocompident unid inst : string*int =
       let ident = (UnivLib.unodeid2name unid, inst) in
       ident
     in
-    let wire2node (w:wireid) =
+    let wire2mapid (w:wireid) : string*int*string =
       let unid, inst, port = w in
-      let ident = toident unid inst in
-      let matches = GRAPH.getnodes g.g (fun n -> n.id = ident) in
-      let onematch = match matches with
-      | [h] -> h
-      | [] -> error "wire2node" "no matches"
-      | _ -> error "wire2node" "too many matches"
-      in
-      (onematch,port)
+      let cn,ci = tocompident unid inst in
+      (cn,ci,port)
     in
-    let cmprel2simrel (rel:hwrel): simvar*simrel =
-      let (sv:simvar), (kind), (rel : simvar ast), ic = match rel with
+    let cmprel2simrel (id:string*int) (rel:hwrel): simrelkind*simident*(simvar ast)*simval =
+      let hwvar2ident th v = match hwvar2simvar th v with
+        | SVVar(x) -> x
+        | SVThis -> th
+      in
+      let lhwvar2ident v = let cn,ci = id in match v with
+        | HNPort(k,_,port,prop,_) -> (cn,ci,port,prop)
+        | _ -> error "cmprel2simrel.hwvar2portprop" "not a var"
+      in
+      match rel with
       | HRFunction(lhs,rhs) ->
-        let knd = SimFunction in
-        let sv = hwvar2simvar lhs in
-        let svexpr = hwast2simast rhs in
-        let ic = 0. in
-        (sv,knd,svexpr, ic)
+        let knd = SimFunction  in
+        let thisid : simident = lhwvar2ident lhs in
+        let svexpr : simrel = hwast2simast rhs thisid in
+        (SimFunction,thisid,svexpr,SLVal(0.))
       | HRState(lhs,rhs,icvar) ->
         let knd = SimState in
-        let sv = hwvar2simvar lhs in
-        let svexpr = hwast2simast rhs in
-        let ic = 0. in
-        (sv,knd,svexpr, ic)
+        let thisid : simident = lhwvar2ident lhs in
+        let svexpr : simrel = hwast2simast rhs thisid in
+        let icvar : simident = hwvar2ident thisid icvar in
+        (SimState,thisid,svexpr,SLVar(icvar))
       | HRNone -> error "cmprel2simrel" ("did not have an ast.")
-      in
-      let err : simvar ast = Integer(0) in
-      let min = 0. in
-      let max = 0. in
-      let relnode = {kind=kind; rel=rel; err=err; min=min; max=max; value=ic} in
-      (sv,relnode)
     in
     let cmp2simnode (id:unodeid) (inst:int) =
       let hwcmp = HwLib.getcomp h (UnivLib.unodeid2name id) in
-      let ident = toident id inst in
-      let rels = MAP.make () in
-      let _ = Printf.printf ("-> component %s\n") (UnivLib.unodeid2name id) in
-      let inps : simport list = MAP.fold hwcmp.vars (fun k v r -> if is_kind v.typ HNInput then k::r else r) [] in
       let outs : simport list = MAP.fold hwcmp.vars (fun k v r -> if is_kind v.typ HNOutput then k::r else r) [] in
       let _ = List.iter (fun x ->
           let vr : hwvar = MAP.get hwcmp.vars x in
-          let rn,rr = cmprel2simrel vr.rel in
-          let _ = MAP.put rels rn rr in
+          let rknd,ident,rel,ic = cmprel2simrel (tocompident id inst) vr.rel in
+          let err : simrel = Decimal(0.) in
+          let min = 0. in
+          let max = 100. in
+          let bhv : simbhv = {kind=rknd;rel=rel;min=min;max=max;err=err;ic=ic} in
+          let _ = MAP.put g.g ident bhv in
           ()
         ) outs
       in
-      let simnode = {inputs=inps; outputs=outs; rels=rels; id=ident} in
-      let _ = GRAPH.mknode g.g simnode in
       ()
     in
     let conn2simconn (src:wireid) (snk:wireid) =
-      let rslvorder s sp d dp =
-        if LIST.has s.inputs sp && LIST.has d.outputs dp then
-          d,dp,s,sp
-        else if LIST.has s.outputs sp && LIST.has d.inputs dp then
-          s,sp,d,dp
+      let insert_mapping srcid destid =
+        let knd v = match v.typ with
+          | HPortType(k,_) -> k
+          | _ -> error "conn2simconn.knd" "only ports may be connected"
+        in
+        let srccn,_,srcp = srcid in
+        let dstn,_,dstp = destid in
+        let srcv = MAP.get (HwLib.getcomp h srccn).vars srcp in
+        let dstv = MAP.get (HwLib.getcomp h dstn).vars dstp in
+        (*insert self-referential mapping for output.*)
+        if knd srcv = HNInput && knd dstv = HNOutput then
+          let _ = MAP.put conv_map srcid destid in
+          let _ = MAP.put conv_map destid destid in ()
+        else if knd srcv = HNOutput && knd dstv = HNInput then
+          let _ = MAP.put conv_map destid srcid in
+          let _ = MAP.put conv_map srcid srcid in ()
         else
           error "rslvorder" "cannot connect input to input or output to output"
       in
       let ident2str (a,b) = a^"."^(string_of_int b) in
-      let src, srcport = wire2node src in
-      let dst, dstport = wire2node snk in
-      let src, srcport, dst, dstport = rslvorder src srcport dst dstport in
-      let prs = match GRAPH.getedge g.g src dst with
-        | Some(prs) ->
-          prs
-        | None ->
-          let prs = MAP.make () in
-          let _ = GRAPH.mkedge g.g src dst prs in
-          prs
-      in
-      let _  = Printf.printf "%s %s -> %s %s\n" (ident2str src.id) srcport (ident2str dst.id) dstport in
-      let dests = if MAP.has prs srcport then MAP.get prs srcport else SET.make (fun x y -> x = y) in
-      let _ = SET.add dests dstport in
-      let _ = MAP.put prs srcport dests in
+      let srcid = wire2mapid src in
+      let dstid = wire2mapid snk in
+      let _ = insert_mapping srcid dstid in
+      (*create mapping table*)
       ()
     in
     let lbl2simlbl (wire:wireid) (prop:string) (lbl:label) =
-      let src,srcport = wire2node wire in
+      let sc,si,sp = wire2mapid wire in
+      let ident = (sc,si,sp,prop) in
+      let sident = (sc,si,sp) in
       let _ = match lbl with
-        | LBindValue(f) -> mkinput g src.id srcport prop (SimVal f)
-        | LBindVar(HNInput,MNVar(_,name,_)) -> mkinput g src.id srcport prop (SimVar name)
-        | LBindVar(HNOutput,MNVar(_,name,_)) -> mkoutput g src.id srcport prop (SimVar name)
+        | LBindValue(f) ->
+          let _ = mkinput g ident (SLVal f) in
+          let _ = MAP.put conv_map sident sident in
+          ()
+        | LBindVar(HNInput,MNVar(_,name,_)) ->
+          let _ = mkinput g ident (SLExtern name) in
+          let _ = MAP.put conv_map sident sident in
+          ()
+        | LBindVar(HNOutput,MNVar(_,name,_)) ->
+          let _ = mkoutput g ident (SLExtern name) in
+          let _ = MAP.put conv_map sident sident in
+          ()
       in
       ()
     in
@@ -177,14 +246,15 @@ struct
       let _ = g.props <- SET.add g.props prop in
       ()
     in
-    (*make nodes*)
-    let _ = MAP.iter s.comps (fun k (is,n) -> SET.iter is (fun i -> cmp2simnode k i)) in
+    (*make mappings from conns*)
     let _ = MAP.iter s.conns (fun src (snks) -> SET.iter snks (fun snk -> conn2simconn src snk)) in
     let _ = MAP.iter s.labels (fun wire prlbls -> MAP.iter prlbls
       (fun prop lbls -> SET.iter lbls (fun lbl -> lbl2simlbl wire prop lbl))
-      ) in
+      )
+    in
+    let _ = MAP.iter s.comps (fun k (is,n) -> SET.iter is (fun i -> cmp2simnode k i)) in
     let _ = MAP.iter h.props (fun prop units -> prop2simprop prop) in
-    let gstr = simgraph2str g in
+    let gstr : string = simgraph2str g in
     let _ = Printf.printf "### Resulting Graph\n%s" gstr in
     g
 

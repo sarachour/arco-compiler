@@ -42,6 +42,7 @@ cmd:
     let dname = UnivLib.name2unodeid $6 in
     let did = $7 in
     let dport = $8 in
+    let _ = Printf.printf "%s -> %s \n" sport dport in 
     let _ = SlnLib.mkconn data (sname,sid,sport) (dname,did,dport) in
     ()
   }
