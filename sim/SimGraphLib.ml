@@ -48,54 +48,6 @@ struct
       let _ = MAP.iter g.g queue_node in
       deps
 
-    (*
-    let queue_node (node:simnode) =
-      let compn,compi = node.id in
-      let get_inps (iport,iprop) : simident =
-        (*get all the originating edges*)
-        let srcs : (simnode*simwire) list = GRAPH.srcs g.g node in
-        let find_edge srcnode srcedj : simident option =
-          match MAP.filter srcedj (fun s dests -> SET.has dests iport) with
-          | [(srcport,destports)] ->
-          if SET.has destports iport then
-            let act_name, act_inst = srcnode.id in
-            let act_port = force_conc (SET.get destports iport) in
-            Some (act_name,act_inst,act_port, iprop)
-          else
-            None
-          | _ -> error "mkdeps.find_edge" "unsupported."
-        in
-        let filter_edges (srcnode,srcedj) r : simident option =
-          let res = find_edge srcnode srcedj in
-          if r != None && res != None then
-            error "mkdeps.filter_edges" "cannot have two edges to the same port."
-          else if res != None then
-            res
-          else
-            r
-        in
-        match LIST.fold srcs (fun x r -> filter_edges x r) None with
-        | Some(ident) -> ident
-        | _ -> error "mkdeps.get_inps" "impossible. There are no originating edges for port."
-      in
-      let queue_var oident (iport,iprop) =
-        let iident : simident = get_inps (iport,iprop) in
-        let _ = GRAPH.mknode dep_graph iident in
-        let _ = GRAPH.mknode dep_graph oident in
-        let _ = GRAPH.mkedge dep_graph iident oident () in
-        ()
-      in
-      let queue_rel (port,prop) rel =
-        let ident :simident = (compn, compi, port, prop) in
-        let ins = ASTLib.get_vars rel in
-        let _ = LIST.iter (fun x -> queue_var ident x) ins in
-        ()
-      in
-      let _ = MAP.iter node.rels (fun id x -> queue_rel id x.rel) in
-      ()
-    in
-    let _ = GRAPH.iter_node g.g (fun n -> queue_node n) in
-    *)
 
   let simvar2str b : string  = match b with
   | SVVar(ident) -> simident2str ident

@@ -42,6 +42,16 @@ struct
   let setup (pref:simprops) (g:simgraph) =
     let setup_valvector () =
       let st = MAP.make() in
+      let proc_pair (x:simident) (v:simbhv) =
+        match v.ic with
+        | SLVal(f) ->
+          let _ = MAP.put st x f in
+          ()
+        | _ ->
+          let _ = MAP.put st x 0. in
+          ()
+      in
+      let _ = MAP.iter g.g (fun x y -> proc_pair x y) in
       st
     in
     (*first make interfaces*)
