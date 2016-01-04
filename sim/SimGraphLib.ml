@@ -23,9 +23,31 @@ struct
     let cn,ci,p,pr = i in
     cn^"("^(string_of_int ci)^")"^":"^p^"."^pr
 
-  let mkdeps (g:simgraph) =
-    let dep_graph : (simident,unit) graph =
-      GRAPH.make (fun x y -> x = y) (fun (cn,ci,p,pr) -> cn^"["^(string_of_int ci)^"]."^p^"."^pr) (fun x -> "()") in
+    let mkdeps (g:simgraph) : (simident,unit) graph=
+      let deps : (simident,unit) graph =
+        GRAPH.make (fun x y -> x = y) (fun id -> simident2str id) (fun x -> "()")
+      in
+      let mkif id = if GRAPH.hasnode deps id = false then
+        let _ = GRAPH.mknode deps id in () else ()
+      in
+      let queue_node (id:simident) (beh:simbhv) =
+        let _ = mkif id in
+        let queue_in x =
+          match x with
+          | SVVar(q) ->
+            let _ = mkif q in
+            let _ = GRAPH.mkedge deps q id () in
+            ()
+          | SVThis -> ()
+          | SVUnset -> ()
+        in
+        let ins = ASTLib.get_vars beh.rel in
+        let _ = LIST.iter (fun x -> queue_in x) ins in
+        ()
+      in
+      let _ = MAP.iter g.g queue_node in
+      deps
+
     (*
     let queue_node (node:simnode) =
       let compn,compi = node.id in
@@ -74,7 +96,6 @@ struct
     in
     let _ = GRAPH.iter_node g.g (fun n -> queue_node n) in
     *)
-    dep_graph
 
   let simvar2str b : string  = match b with
   | SVVar(ident) -> simident2str ident
@@ -131,6 +152,7 @@ struct
             SVVar(vc,vi,vn,p)
           else
             (*if not connected to anything, connect to ground*)
+            let _ = Printf.printf "warning: there is no mapping for %s\n" (simident2str (c,thisi,n,p)) in
             SVUnset
           end
         in
