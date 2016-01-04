@@ -16,7 +16,7 @@ type simident = string*int*simport*simprop
 type simvar =
   | SVVar of simident
   | SVThis
-  | SVUnset 
+  | SVUnset
 
 type simrel = simvar ast
 
@@ -25,6 +25,7 @@ type simval =
   | SLVal of float
   | SLExtern of string
   | SLVar of simident
+  | SLUnset 
 
 type simbhv = {
     kind: simrelkind;

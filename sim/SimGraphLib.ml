@@ -158,9 +158,10 @@ struct
       (cn,ci,port)
     in
     let cmprel2simrel (id:string*int) (rel:hwrel): simrelkind*simident*(simvar ast)*simval =
-      let hwvar2ident th v = match hwvar2simvar th v with
-        | SVVar(x) -> x
-        | SVThis -> th
+      let hwvar2val th v = match hwvar2simvar th v with
+        | SVVar(x) -> SLVar x
+        | SVThis -> SLVar th
+        | SVUnset -> SLUnset
       in
       let lhwvar2ident v = let cn,ci = id in match v with
         | HNPort(k,_,port,prop,_) -> (cn,ci,port,prop)
@@ -176,8 +177,8 @@ struct
         let knd = SimState in
         let thisid : simident = lhwvar2ident lhs in
         let svexpr : simrel = hwast2simast rhs thisid in
-        let icvar : simident = hwvar2ident thisid icvar in
-        (SimState,thisid,svexpr,SLVar(icvar))
+        let icvar : simval = hwvar2val thisid icvar in
+        (SimState,thisid,svexpr,icvar)
       | HRNone -> error "cmprel2simrel" ("did not have an ast.")
     in
     let cmp2simnode (id:unodeid) (inst:int) =
