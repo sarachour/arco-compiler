@@ -181,6 +181,8 @@ struct
     in
     mk 0
 
+  let fold x f c0 = List.fold_right f x c0
+
   let tostr (type a) (fn: a->string) (delim:string) (lst:a list) =
     match lst with
     | h::t -> List.fold_left (fun r x -> r^delim^(fn x)) (fn h) t
@@ -418,9 +420,32 @@ struct
   let hasnode (type a) (type b) (g) (n:a) : bool =
     MAP.has (g.adj) n
 
+  let iter (type a) (type b) (g) (fn : a-> a-> b -> unit) =
+    let iterset src snk v =
+      fn src snk v
+    in
+    let itermap k v =
+      let src = k in
+      MAP.iter v (fun snk vl -> iterset src snk vl)
+    in
+    MAP.iter (g.adj) itermap
+
+  let fold (type a) (type b) (type c) (g) (fn : a -> a -> b -> c -> c) (c0:c)=
+    MAP.fold g.adj (fun src dests r0 ->
+      MAP.fold dests (fun dest edj r -> fn src dest edj r) r0 ) c0
+
   let iter_node g f =
     let _ = MAP.iter g.adj (fun x dests -> f x ) in
     ()
+
+  let srcs (type a) (type b) (g:(a,b) graph) (node:a) : (a*b) list =
+    let proc_edge (srcn:a) (snkn:a) (edj:b) (r:(a*b) list) =
+      if snkn = node then
+        (srcn,edj)::r
+      else
+        r
+    in
+    fold g proc_edge []
 
   let getedge (type a) (type b) (g) (n1:a) (n2:a) : b option =
     let chld = MAP.get (g.adj) n1 in
@@ -438,7 +463,7 @@ struct
       else
         true
 
-  let mknode (type a) (type b) (g) (n:a) : (a,b) graph =
+  let mknode (type a) (type b) (g:(a,b) graph) (n:a) : (a,b) graph =
     if hasnode g n then
       error "mknode" "node already exists"
     else
@@ -464,15 +489,7 @@ struct
       else
         error "mkedge" "unknown"
 
-  let iter (type a) (type b) (g) (fn : a-> a-> b -> unit) =
-    let iterset src snk v =
-      fn src snk v
-    in
-    let itermap k v =
-      let src = k in
-      MAP.iter v (fun snk vl -> iterset src snk vl)
-    in
-    MAP.iter (g.adj) itermap
+
 
 
 

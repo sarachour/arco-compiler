@@ -57,6 +57,7 @@ module ASTLib : sig
     val expand : ('a ast)  -> ('a -> 'b ast)  -> ('b ast)
     val iter : ('a ast) -> ('a ast -> unit) -> unit
     val fold : ('a ast) -> ('a ast -> 'b -> 'b) -> 'b -> 'b
+    val get_vars : ('a ast) -> ('a list)
     val to_symcaml : ('a ast) -> ('a -> symvar) -> (symexpr)
     val eq : ('a ast) -> ('a ast) -> ('a -> symvar) -> ('a -> ('a->symvar)-> symdecl) -> bool
     val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> bool-> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
@@ -160,6 +161,14 @@ struct
       in
         _fold a b0
 
+    let get_vars (type a) (e:a ast) =
+      let vset : a set = fold e (fun xast st ->
+          match xast with
+          | Term(l) -> SET.add st l
+          | _ -> st
+          ) (SET.make (fun x y -> x = y))
+      in
+      SET.to_list vset
     let compute (type x) (a:x ast) : float option =
       let conv (lst: x ast list) fn =
         let fnlst = List.fold_right (fun x r ->
