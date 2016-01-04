@@ -79,6 +79,7 @@ struct
   let simvar2str b : string  = match b with
   | SVVar(ident) -> simident2str ident
   | SVThis -> "$"
+  | SVUnset -> "?"
 
   let simbhv2str (b: simbhv) : string =
     let relstr : string = ASTLib.ast2str b.rel simvar2str in
