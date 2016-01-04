@@ -130,6 +130,7 @@ struct
       (*generate a dependency graph*)
       let deps = mkdeps g in
       let depstr = GRAPH.tostr deps in
+      let _ = Printf.printf "#### Dependency Graph..\n" in
       let _ = Printf.printf "%s\n" depstr in
       (* *)
 
