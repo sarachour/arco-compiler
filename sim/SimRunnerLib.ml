@@ -21,8 +21,7 @@ type simprops = {
 (*the current state, the props that have been visited*)
 type simstate = {
   mutable state: (simident, float) map;
-  mutable v: simident set;
-  mutable order: simplace list;
+  mutable order: simident queue;
 }
 
 module SimRunner =
@@ -44,40 +43,71 @@ struct
       let st = MAP.make() in
       let proc_pair (x:simident) (v:simbhv) =
         match v.ic with
-        | SLVal(f) ->
-          let _ = MAP.put st x f in
-          ()
-        | _ ->
-          let _ = MAP.put st x 0. in
-          ()
+        | SLVal(f) -> let _ = MAP.put st x f in ()
+        | _ -> let _ = MAP.put st x 0. in ()
       in
       let _ = MAP.iter g.g (fun x y -> proc_pair x y) in
       st
     in
     (*first make interfaces*)
-    let setup_order () : simplace list =
+    let setup_order () : simident list =
       (* global ordering list *)
-      let ord : simplace list = [] in
-      let oref = REF.mk ord in
+      let order : simident queue = QUEUE.make () in
+      let ord = REF.mk order in
       (*generate a dependency graph*)
       let deps = SimGraphLib.mkdeps g in
+      (*update the queue to include the identifier if all the inputs are already enqueued*)
+      let upd_q (id:simident) (b:simbhv) ndefer =
+        if QUEUE.has order id then ndefer else
+          let is_queued v =
+            match v with
+            | SVVar(v) ->
+              if QUEUE.has order v then
+                let _ = Printf.printf "%s true: %s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
+                true
+              else
+                let _ = Printf.printf "%s false: %s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
+                false
+            | SVThis -> true
+            | SVUnset -> true
+          in
+          let vars = ASTLib.get_vars b.rel in
+          let allvars = LIST.fold vars (fun x r -> (is_queued x) && r) true in
+          let _ = Printf.printf "%s all vars? %b\n" (SimGraphLib.simident2str id) allvars in
+          if allvars then
+            let _ = REF.upd ord (fun m -> QUEUE.enq m id) in
+            ndefer
+          else
+            ndefer+1
+      in
+      let rec cycle () : unit =
+        let ndefer = MAP.fold g.g (fun id bhv ndefer -> upd_q id bhv ndefer) 0 in
+        if ndefer > 0 then
+          let _ = Printf.printf "num deferred: %d / %d\n" ndefer (QUEUE.length order) in
+          cycle ()
+        else
+          ()
+      in
+      let _ = cycle () in
       let depstr = GRAPH.tostr deps in
       let _ = Printf.printf "#### Dependency Graph..\n" in
       let _ = Printf.printf "%s\n" depstr in
       let _ = Printf.printf "------------\n" in
+      let _ = Printf.printf "#### Queue\n" in
+      let str = QUEUE.tostr order (fun x -> SimGraphLib.simident2str x) in
+      let _ = Printf.printf "%s\n--------\n" str in
       (* *)
-      ord
+      order
     in
-    let v = SET.make (fun x y -> x = y) in
     let st = setup_valvector () in
-    let order : simplace list = setup_order () in
-    {v=v; state=st; order=order}
+    let order : simident queue = setup_order () in
+    {state=st; order=order}
 
   (*initialize integrator state*)
   let init (pref:simprops) (g:simgraph) (st:simstate) =
     ()
 
-  let visit (pref:simprops) (g:simgraph) (st:simstate) (place:simplace) (time:float) =
+  let visit (pref:simprops) (g:simgraph) (st:simstate) (place:simident) (time:float) =
     ()
 
   let step (pref:simprops) (g:simgraph) (st:simstate) (time:float) =

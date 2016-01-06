@@ -110,6 +110,42 @@ struct
     (min,max)
 end
 
+type 'a queue = 'a list
+module QUEUE =
+struct
+  let make () = []
+  let enq (type a) (s:a queue) (x:a) : a queue =
+    s @ [x]
+
+  let deq (type a) (s:a queue) (x:a) : a queue =
+    match s with
+    | h::t -> t
+    | [] -> error "queue.deq" "failed to dequeue empty list"
+
+  let peek (type a) (s:a queue) : a =
+    match s with
+    | h::t -> h
+    | _ -> error "queue.peek" "can't peek empty list"
+
+  let empty (type a) (s:a queue) : a queue =
+    []
+
+  let filter (type a) (s:a queue) (f:a->bool) : a queue =
+    List.filter f s
+
+  let has (type a) (s:a queue) (x:a) : bool =
+    match filter s (fun q -> q = x) with
+    | [] -> false
+    | _ -> true
+
+  let tostr (type a) (s:a queue) (st : a -> string) =
+    List.fold_left (fun r x -> r^"\n"^(st x) ) "" s
+
+  let length (type a) (s:a queue) =
+    List.length s 
+end
+
+
 module LIST =
 struct
   type sortorder =

@@ -71,10 +71,20 @@ struct
 
 
   let mkinput g ident vl =
-    MAP.put g.ins ident vl
+    let rknd = SimFunction in
+    let rel = Term(SVUnset) in
+    let min = None in
+    let max = None in
+    let err = None in
+    let ic = vl in
+    let beh = {kind=rknd;rel=rel;min=min;max=max;err=err;ic=ic} in
+    let _ = MAP.put g.ins ident vl in
+    let _ = MAP.put g.g ident beh in 
+    ()
 
   let mkoutput g ident vl =
-    MAP.put g.outs ident vl
+    let _ = MAP.put g.outs ident vl in
+    ()
 
     (*adds components*)
   let init (g:simgraph) (h:hwenv) (s:sln) =
@@ -161,9 +171,9 @@ struct
       let _ = List.iter (fun x ->
           let vr : hwvar = MAP.get hwcmp.vars x in
           let rknd,ident,rel,ic = cmprel2simrel (tocompident id inst) vr.rel in
-          let err : simrel = Decimal(0.) in
-          let min = 0. in
-          let max = 100. in
+          let err : simrel option = None in
+          let min = None in
+          let max = None in
           let bhv : simbhv = {kind=rknd;rel=rel;min=min;max=max;err=err;ic=ic} in
           let _ = MAP.put g.g ident bhv in
           ()

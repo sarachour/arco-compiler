@@ -25,24 +25,16 @@ type simval =
   | SLVal of float
   | SLExtern of string
   | SLVar of simident
-  | SLUnset 
+  | SLUnset
 
 type simbhv = {
     kind: simrelkind;
     rel: simrel;
-    err: simrel;
-    min: float;
-    max: float;
+    err: simrel option;
+    min: float option;
+    max: float option;
     ic: simval;
 }
-
-
-type simplace =
-  | PlcNode of simident
-  | PlcIface of simident
-
-(*determine the wire situation*)
-type simwire = (simport, simport set) map
 
 type simnode = {
   rel: simrel;
