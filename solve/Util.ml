@@ -36,9 +36,17 @@ let str_of_float f =
   let s : string = Printf.sprintf "%8.8f" f in
   s
 
-let force_conc (type a) (f:a option): a = match f with
-  |Some(q) -> q
-  |_ -> error "force_conc" "none is disallowed."
+module OPTION =
+struct
+  let force_conc (type a) (f:a option): a = match f with
+    |Some(q) -> q
+    |_ -> error "force_conc" "none is disallowed."
+
+  let casc_some (type a) (f: a option) (dflt :a) = match f with
+  | Some(q) -> Some(q)
+  | None -> Some dflt
+
+end
 
 module MATH =
 struct
@@ -58,6 +66,7 @@ struct
   let int_of_float x =  int_of_float (round x)
 
 end
+
 module IO =
 struct
   let save fname str =
@@ -114,6 +123,7 @@ type 'a queue = 'a list
 module QUEUE =
 struct
   let make () = []
+
   let enq (type a) (s:a queue) (x:a) : a queue =
     s @ [x]
 
@@ -142,7 +152,7 @@ struct
     List.fold_left (fun r x -> r^"\n"^(st x) ) "" s
 
   let length (type a) (s:a queue) =
-    List.length s 
+    List.length s
 end
 
 
@@ -371,6 +381,9 @@ end
 module SET =
 struct
   let make (type a) fn : a set = {lst=[]; cmp=fn}
+
+  let make_dflt (type a) () : a set =
+    {lst=[]; cmp=(fun x y -> x=y)}
 
   let has s e =
     List.length (List.filter (fun x ->s.cmp x e) s.lst) > 0

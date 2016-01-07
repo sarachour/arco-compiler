@@ -330,7 +330,7 @@ struct
         | _ -> None
       in
       let triv_sln = match_trivial e1 e2  in
-      if triv_sln <> None then force_conc triv_sln else
+      if triv_sln <> None then OPTION.force_conc triv_sln else
       let max_depth = __ast_pattern_depth in
       let max_breadth = __ast_pattern_breadth in
       let decl_tmpl_or_pat i x cnv =  if i = 0 then decl x false cnv else decl x true cnv in

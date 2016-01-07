@@ -116,7 +116,7 @@ struct
       match x.rel with
       | MRFunction(l,r) -> UFunction(m2u l, tf r)
       | MRState(l,r,x) ->
-        let time = (MathLib.getvar s.prob (force_conc s.prob.time)).typ in
+        let time = (MathLib.getvar s.prob (OPTION.force_conc s.prob.time)).typ in
         UState(m2u l, tf r, m2u x, m2u time)
       | MRNone -> error "math2goal" "impossible."
     in
@@ -181,7 +181,17 @@ struct
       [SSolAddConn(sw,dw)]
       *)
 
-  let mkio s t kind cmp port prop : (step list)*wireid=
+  let mkio s t kind cmp port prop : (step list)*wireid*propid=
+    let get_prop ty : propid = match ty with
+    | HPortType(v,prmap) ->
+      let pr = MAP.fold prmap (fun pr uns r -> OPTION.casc_some r (pr,uns)) None  in
+      begin
+      match pr with
+      | Some(pr,_) -> pr
+      | None -> error "mkio.get_prop" "no props for io port."
+      end
+    | _ -> error "mkio.get_prop" "impossible."
+    in
     let dest = SlnLib.hwport2wire cmp port in
     match kind with
     | HNInput ->
@@ -193,19 +203,27 @@ struct
       let port_dangle = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name inpid) in
       let pwire = (inpid,inpinst,port.name) in
       let mkconn = SSolAddConn(pwire,dest) in
-      ([use_input; mkconn],(inpid,inpinst,port_dangle.name))
+      let steps : step list= [use_input;mkconn] in
+      let wire = (inpid,inpinst,port_dangle.name) in
+      let bprop : propid = get_prop (port_dangle.typ) in
+      (steps, wire,bprop)
     | HNOutput ->
+      (*output element*)
       let outid = (UNoOutput prop) in
       let outinst = SlnLib.usecomp t.sln outid in
       let _ = SlnLib.usecomp_unmark t.sln outid outinst in
       let use_output = SSolUseNode(outid,outinst) in
+      (*get ports of use*)
       let port = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name outid) in
       let port_dangle = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name outid) in
       let pwire = (outid,outinst,port.name) in
       (*determine if we need to copy dest*)
       let oconn = mkconn s t dest pwire prop in
       (*return output port and list of steps, including copier steps.*)
-      ([use_output] @ oconn,(outid,outinst,port_dangle.name))
+      let steps : step list = use_output::oconn in
+      let wire = (outid,outinst,port_dangle.name) in
+      let bprop = get_prop (port_dangle.typ) in
+      (steps,wire,bprop)
 
 
   let reuse_io s t kind c v prop lbl : (step list) option =
@@ -246,8 +264,8 @@ struct
           let _ = SearchLib.apply_steps s t {s=steps;id=0} in
           steps
         | None ->
-          let inps,port = mkio s t (k) c v prop in
-          let stps = [SSolAddLabel(port,prop,lbl)] @ inps in
+          let inps,port,bprop = mkio s t (k) c v prop in
+          let stps = [SSolAddLabel(port,bprop,lbl)] @ inps in
           let _ = SearchLib.apply_steps s t {s=stps;id=0} in
           stps
       in
@@ -942,8 +960,7 @@ struct
         let _ = Printf.printf "Result has %d elements \n" (List.length steps) in
         let mint,musr= mkmenu s ntbl None in
         let _ = mint "s" in
-        let v  = SpiceLib.to_spice s ntbl.sln in
-        Some(ntbl,v)
+        Some(s,ntbl)
       | None ->
       let _ = Printf.printf "No Result\n" in
         None
@@ -961,9 +978,14 @@ let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
   let _ = pr sl "===== Beginning Interactive Solver ======\n" in
   let spdoc = SolveLib.solve (REF.mk sl) (tbl) in
   match spdoc with
-    | Some(tbl,sp) ->
+    | Some(s,tbl) ->
     let _ = Printf.printf "===== Concretizing to Spice File ======\n" in
-      let _ = IO.save out (SpiceLib.to_str sp) in
+      let _ = try
+        let sp = SpiceLib.to_spice s tbl.sln in
+        IO.save out (SpiceLib.to_str sp)
+      with
+        | SpiceLibException(m) -> Printf.printf "ERROR: SPICE Generation Failed. %s" m
+      in
       let _ = Printf.printf "===== Concretizing to summary file =====\n" in
       let _ = IO.save (out^".summary") (SlnLib.tostr tbl.sln) in
       let _ = SlnLib.repr2file (out^".caml") tbl.sln in

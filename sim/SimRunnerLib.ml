@@ -24,6 +24,23 @@ type simstate = {
   mutable order: simident queue;
 }
 
+
+let wait ()  =
+  let fxn () =
+    let _ = Printf.printf "<please press key to continue. 'q' to quit>:"  in
+    let _ = flush_all() in
+    let inp = input_line stdin in
+    let _ = Printf.printf "\n" in
+    let _ = flush_all() in
+    if STRING.startswith inp "q" then
+      let _ = exit 0 in
+      ()
+    else
+      ()
+  in
+  fxn ()
+
+
 module SimRunner =
 struct
 
@@ -52,30 +69,44 @@ struct
     (*first make interfaces*)
     let setup_order () : simident list =
       (* global ordering list *)
-      let order : simident queue = QUEUE.make () in
-      let ord = REF.mk order in
+      let ord = REF.mk (QUEUE.make ()) in
       (*generate a dependency graph*)
       let deps = SimGraphLib.mkdeps g in
+      let add_queue id = REF.upd ord (fun m -> QUEUE.enq m id) in
+      let has_queue id = QUEUE.has (REF.dr ord) id in
+      let q2str () = QUEUE.tostr (REF.dr ord) (fun x -> SimGraphLib.simident2str x) in
+      let queue_len () = QUEUE.length (REF.dr ord) in
+      let add_labels () =
+        let add_label id =
+          let _ = add_queue id in
+          let _ = Printf.printf "LABEL %s\n" (SimGraphLib.simident2str id) in
+          ()
+        in
+        let _ = MAP.iter g.ins (fun id lbls -> add_label id) in
+        let _ = MAP.iter g.outs (fun id lbls -> add_label id) in
+        ()
+      in
       (*update the queue to include the identifier if all the inputs are already enqueued*)
       let upd_q (id:simident) (b:simbhv) ndefer =
-        if QUEUE.has order id then ndefer else
+        if has_queue id then ndefer else
           let is_queued v =
             match v with
             | SVVar(v) ->
-              if QUEUE.has order v then
-                let _ = Printf.printf "%s true: %s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
-                true
+              if has_queue v then
+              let _ = Printf.printf "  TRUE: out=%s in=%s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
+              true
               else
-                let _ = Printf.printf "%s false: %s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
-                false
+              let _ = Printf.printf "  FALSE: out=%s in=%s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
+              false
             | SVThis -> true
             | SVUnset -> true
           in
+          let _ = Printf.printf "START: %s\n" (SimGraphLib.simident2str id) in
           let vars = ASTLib.get_vars b.rel in
           let allvars = LIST.fold vars (fun x r -> (is_queued x) && r) true in
           let _ = Printf.printf "%s all vars? %b\n" (SimGraphLib.simident2str id) allvars in
           if allvars then
-            let _ = REF.upd ord (fun m -> QUEUE.enq m id) in
+            let _ = add_queue id in
             ndefer
           else
             ndefer+1
@@ -83,21 +114,25 @@ struct
       let rec cycle () : unit =
         let ndefer = MAP.fold g.g (fun id bhv ndefer -> upd_q id bhv ndefer) 0 in
         if ndefer > 0 then
-          let _ = Printf.printf "num deferred: %d / %d\n" ndefer (QUEUE.length order) in
+          let _ = Printf.printf "num deferred: %d / %d\n" ndefer (queue_len ()) in
+          let _ = wait() in
           cycle ()
         else
           ()
       in
+      let _ = add_labels () in
+      let str = q2str () in
+      let _ = Printf.printf "%s\n--------\n" str in
       let _ = cycle () in
       let depstr = GRAPH.tostr deps in
       let _ = Printf.printf "#### Dependency Graph..\n" in
       let _ = Printf.printf "%s\n" depstr in
       let _ = Printf.printf "------------\n" in
       let _ = Printf.printf "#### Queue\n" in
-      let str = QUEUE.tostr order (fun x -> SimGraphLib.simident2str x) in
+      let str = q2str () in
       let _ = Printf.printf "%s\n--------\n" str in
       (* *)
-      order
+      (REF.dr ord)
     in
     let st = setup_valvector () in
     let order : simident queue = setup_order () in
