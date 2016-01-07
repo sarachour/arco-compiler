@@ -9,17 +9,17 @@ DEBUG_FLAGS=-cflag -g
 
 all: sim sim.debug solver
 
-../solver/*:
-	cd ../solver; make
+../solve/*:
+	cd ../solve; make
 
 solver:
-	ln -s ../solver solver
+	ln -s ../solve solver
 
-sim.debug: $(DEPS) $(COMP_DEPS) solver ../solver/*
+sim.debug: $(DEPS) $(COMP_DEPS) solver ../solve/*
 	 $(ARGS) ocamlbuild $(DEBUG_FLAGS) $(FLAGS) Main.byte && mv Main.byte sim.debug
 	 chmod +x sim.debug
 
-sim: $(DEPS) $(COMP_DEPS) solver ../solver/*
+sim: $(DEPS) $(COMP_DEPS) solver ../solve/*
 	 $(ARGS) ocamlbuild $(FLAGS) Main.native && mv Main.native sim
 	 chmod +x sim
 

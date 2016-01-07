@@ -36,9 +36,17 @@ let str_of_float f =
   let s : string = Printf.sprintf "%8.8f" f in
   s
 
-let force_conc (type a) (f:a option): a = match f with
-  |Some(q) -> q
-  |_ -> error "force_conc" "none is disallowed."
+module OPTION =
+struct
+  let force_conc (type a) (f:a option): a = match f with
+    |Some(q) -> q
+    |_ -> error "force_conc" "none is disallowed."
+
+  let casc_some (type a) (f: a option) (dflt :a) = match f with
+  | Some(q) -> Some(q)
+  | None -> Some dflt
+
+end
 
 module MATH =
 struct
@@ -58,6 +66,7 @@ struct
   let int_of_float x =  int_of_float (round x)
 
 end
+
 module IO =
 struct
   let save fname str =
@@ -109,6 +118,43 @@ struct
     let max = if b < y then b else y in
     (min,max)
 end
+
+type 'a queue = 'a list
+module QUEUE =
+struct
+  let make () = []
+
+  let enq (type a) (s:a queue) (x:a) : a queue =
+    s @ [x]
+
+  let deq (type a) (s:a queue) (x:a) : a queue =
+    match s with
+    | h::t -> t
+    | [] -> error "queue.deq" "failed to dequeue empty list"
+
+  let peek (type a) (s:a queue) : a =
+    match s with
+    | h::t -> h
+    | _ -> error "queue.peek" "can't peek empty list"
+
+  let empty (type a) (s:a queue) : a queue =
+    []
+
+  let filter (type a) (s:a queue) (f:a->bool) : a queue =
+    List.filter f s
+
+  let has (type a) (s:a queue) (x:a) : bool =
+    match filter s (fun q -> q = x) with
+    | [] -> false
+    | _ -> true
+
+  let tostr (type a) (s:a queue) (st : a -> string) =
+    List.fold_left (fun r x -> r^"\n"^(st x) ) "" s
+
+  let length (type a) (s:a queue) =
+    List.length s
+end
+
 
 module LIST =
 struct
@@ -180,6 +226,8 @@ struct
       else []
     in
     mk 0
+
+  let fold x f c0 = List.fold_right f x c0
 
   let tostr (type a) (fn: a->string) (delim:string) (lst:a list) =
     match lst with
@@ -334,6 +382,9 @@ module SET =
 struct
   let make (type a) fn : a set = {lst=[]; cmp=fn}
 
+  let make_dflt (type a) () : a set =
+    {lst=[]; cmp=(fun x y -> x=y)}
+
   let has s e =
     List.length (List.filter (fun x ->s.cmp x e) s.lst) > 0
 
@@ -418,9 +469,32 @@ struct
   let hasnode (type a) (type b) (g) (n:a) : bool =
     MAP.has (g.adj) n
 
+  let iter (type a) (type b) (g) (fn : a-> a-> b -> unit) =
+    let iterset src snk v =
+      fn src snk v
+    in
+    let itermap k v =
+      let src = k in
+      MAP.iter v (fun snk vl -> iterset src snk vl)
+    in
+    MAP.iter (g.adj) itermap
+
+  let fold (type a) (type b) (type c) (g) (fn : a -> a -> b -> c -> c) (c0:c)=
+    MAP.fold g.adj (fun src dests r0 ->
+      MAP.fold dests (fun dest edj r -> fn src dest edj r) r0 ) c0
+
   let iter_node g f =
     let _ = MAP.iter g.adj (fun x dests -> f x ) in
     ()
+
+  let srcs (type a) (type b) (g:(a,b) graph) (node:a) : (a*b) list =
+    let proc_edge (srcn:a) (snkn:a) (edj:b) (r:(a*b) list) =
+      if snkn = node then
+        (srcn,edj)::r
+      else
+        r
+    in
+    fold g proc_edge []
 
   let getedge (type a) (type b) (g) (n1:a) (n2:a) : b option =
     let chld = MAP.get (g.adj) n1 in
@@ -438,7 +512,7 @@ struct
       else
         true
 
-  let mknode (type a) (type b) (g) (n:a) : (a,b) graph =
+  let mknode (type a) (type b) (g:(a,b) graph) (n:a) : (a,b) graph =
     if hasnode g n then
       error "mknode" "node already exists"
     else
@@ -464,15 +538,7 @@ struct
       else
         error "mkedge" "unknown"
 
-  let iter (type a) (type b) (g) (fn : a-> a-> b -> unit) =
-    let iterset src snk v =
-      fn src snk v
-    in
-    let itermap k v =
-      let src = k in
-      MAP.iter v (fun snk vl -> iterset src snk vl)
-    in
-    MAP.iter (g.adj) itermap
+
 
 
 
