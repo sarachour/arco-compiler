@@ -1,0 +1,11 @@
+ - install scrapy packages for python 
+
+ - to run, make sure to be in same directory as scrapy project
+
+ - run on command line:
+
+	scrapy crawl arco_ls
+
+ - to export results to csv file for convenient viewing of obtained data:
+	
+	scrapy crawl arco_pls -o results.csv -t csv
