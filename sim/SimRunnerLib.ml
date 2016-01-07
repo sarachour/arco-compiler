@@ -82,7 +82,9 @@ struct
           let _ = Printf.printf "LABEL %s\n" (SimGraphLib.simident2str id) in
           ()
         in
+        let _ = Printf.printf "# Ins \n"  in
         let _ = MAP.iter g.ins (fun id lbls -> add_label id) in
+        let _ = Printf.printf "# Outs \n" in
         let _ = MAP.iter g.outs (fun id lbls -> add_label id) in
         ()
       in
@@ -92,19 +94,12 @@ struct
           let is_queued v =
             match v with
             | SVVar(v) ->
-              if has_queue v then
-              let _ = Printf.printf "  TRUE: out=%s in=%s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
-              true
-              else
-              let _ = Printf.printf "  FALSE: out=%s in=%s\n" (SimGraphLib.simident2str id) (SimGraphLib.simident2str v) in
-              false
+              if has_queue v then true else false
             | SVThis -> true
             | SVUnset -> true
           in
-          let _ = Printf.printf "START: %s\n" (SimGraphLib.simident2str id) in
           let vars = ASTLib.get_vars b.rel in
           let allvars = LIST.fold vars (fun x r -> (is_queued x) && r) true in
-          let _ = Printf.printf "%s all vars? %b\n" (SimGraphLib.simident2str id) allvars in
           if allvars then
             let _ = add_queue id in
             ndefer
