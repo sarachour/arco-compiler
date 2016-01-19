@@ -32,15 +32,23 @@ comp emmblock
 end
 
 /*
+*** Protein chip
 20 emmblocks per chip
 40 DACs / 5 blocks (160 total)
 24 ADCs
 max 100 connections (output->input, output -> adc)
+(for gene chip, refer to the paper)
 
 Currents can also be created by DAC
 -> Atot, Btot, Dfree (input ports of the block) (may be connected to DAC)
 -> KDfw, KDrv, kr1, kr2, ratC (only connected to DAC)
 Cfree, Cprod, Cdeg, Ctot_in only come from other blocks
+
+A paramter programmed by digital bits
+-> hill coefficient (n)
+-> can be programmed between sqrt(1~16)
+
+Switches
 
 # of copies for output variables
 -> Ctot: 5 (3 positive and 2 negative)
@@ -60,5 +68,7 @@ ex) kr=100nA, C=100nF, phi_t=25.9mV -> 40 (1/s)
 -> Dfree/KDrv is assumed 1, Cpar ~ 1pF
 -> min(Afree,Bfree) depends on actually simulation, but minimium of it 100pA.
 -> Atot/KDfw, Btot/KDfw is typically less than 10 in biology
+
+
 
 */
