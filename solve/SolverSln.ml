@@ -96,12 +96,20 @@ struct
     let _ = SET.add pset v in
     ()
 
-  let wires_of_label (sln:sln) (prop:propid) (v:label) : wireid list option=
-    let matches = MAP.fold sln.labels (fun k props r ->
-      if MAP.has props prop = false then r else
-      let lset = MAP.get props prop in
-      if SET.has lset v then
-      k::r else r ) []
+  let wires_of_label (sln:sln) (prop:propid) (v:label -> bool) : wireid list option=
+    let check_label cwire cproplabels =
+      if MAP.has cproplabels prop then
+        let lbls = MAP.get cproplabels prop in
+        let haslbl = SET.fold lbls (fun x r -> r || (v x)) true in
+        haslbl
+      else false
+    in
+    let matches = MAP.fold sln.labels (fun wire proplbls r ->
+      if check_label wire proplbls then
+        wire::r
+      else
+        r
+      ) []
     in
     match matches with
     | h::t -> Some(matches)

@@ -207,6 +207,7 @@ struct
       let wire = (inpid,inpinst,port_dangle.name) in
       let bprop : propid = get_prop (port_dangle.typ) in
       (steps, wire,bprop)
+
     | HNOutput ->
       (*output element*)
       let outid = (UNoOutput prop) in
@@ -227,9 +228,18 @@ struct
 
 
   let reuse_io s t kind c v prop lbl : (step list) option =
+    let cmp_lbls lb v =
+      let _ = Printf.printf "   %s =? %s\n" (SlnLib.label2str lb) (SlnLib.label2str v) in
+      match (lb,v) with
+      | (LBindValue(x), LBindValue(y)) -> x=y
+      | (LBindVar(_,x),LBindVar(_,y)) -> x=y
+      | _ -> false
+    in
     let src = SlnLib.hwport2wire c v in
-    match SlnLib.wires_of_label t.sln prop lbl with
+    let _ = Printf.printf "CHECKING: %s\n" (SlnLib.label2str lbl) in
+    match SlnLib.wires_of_label t.sln prop (cmp_lbls lbl) with
     |Some([w]) ->
+      let _ = Printf.printf "REUSE: %s\n" (SlnLib.wire2str w) in
       let (cmp,inst,port) = w in
       if kind = HNInput then
         let nport = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name cmp) in
