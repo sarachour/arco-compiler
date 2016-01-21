@@ -153,107 +153,17 @@ struct
     let tbl = SearchLib.move_cursor s tbl init_cursor in
     tbl
 
-  let ifover_mkcopier s t (dest:wireid) prop =
-    match SlnLib.conns_with_dest t.sln dest with
-    | [] -> None
-    | lst ->
-      let _ = Printf.printf "MKCOPY: copy necessity detected\n" in
-      let copyid = UNoCopy prop in
-      let copyinst = SlnLib.usecomp t.sln copyid in
-      let _ = SlnLib.usecomp_unmark t.sln copyid copyinst in
-      let use_copier = SSolUseNode(copyid,copyinst) in
-      let port_in = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name copyid) in
-      let port_out = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name copyid) in
-      let inwire = (copyid,copyinst,port_in.name) in
-      let outwire = (copyid,copyinst,port_out.name) in
-      let inconn = SSolAddConn(dest,inwire) in
-      Some([use_copier;inconn], outwire)
-    | _ -> error "ifover_copier" "destination should not be overdrawn"
-
 
   let mkconn s t sw dw pr =
     [SSolAddConn(sw,dw)]
-  (*)
+    (*
     match ifover_mkcopier s t sw pr with
     | Some(steps,nsw) ->
       SSolAddConn(nsw,dw)::steps
     | None ->
       [SSolAddConn(sw,dw)]
-      *)
+    *)
 
-  let mkio s t kind cmp port prop : (step list)*wireid*propid=
-    let get_prop ty : propid = match ty with
-    | HPortType(v,prmap) ->
-      let pr = MAP.fold prmap (fun pr uns r -> OPTION.casc_some r (pr,uns)) None  in
-      begin
-      match pr with
-      | Some(pr,_) -> pr
-      | None -> error "mkio.get_prop" "no props for io port."
-      end
-    | _ -> error "mkio.get_prop" "impossible."
-    in
-    let dest = SlnLib.hwport2wire cmp port in
-    match kind with
-    | HNInput ->
-      let inpid = (UNoInput prop) in
-      let inpinst = SlnLib.usecomp t.sln inpid in
-      let _ = SlnLib.usecomp_unmark t.sln inpid inpinst in
-      let use_input = SSolUseNode(inpid,inpinst) in
-      let port = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name inpid) in
-      let port_dangle = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name inpid) in
-      let pwire = (inpid,inpinst,port.name) in
-      let mkconn = SSolAddConn(pwire,dest) in
-      let steps : step list= [use_input;mkconn] in
-      let wire = (inpid,inpinst,port_dangle.name) in
-      let bprop : propid = get_prop (port_dangle.typ) in
-      (steps, wire,bprop)
-
-    | HNOutput ->
-      (*output element*)
-      let outid = (UNoOutput prop) in
-      let outinst = SlnLib.usecomp t.sln outid in
-      let _ = SlnLib.usecomp_unmark t.sln outid outinst in
-      let use_output = SSolUseNode(outid,outinst) in
-      (*get ports of use*)
-      let port = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name outid) in
-      let port_dangle = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name outid) in
-      let pwire = (outid,outinst,port.name) in
-      (*determine if we need to copy dest*)
-      let oconn = mkconn s t dest pwire prop in
-      (*return output port and list of steps, including copier steps.*)
-      let steps : step list = use_output::oconn in
-      let wire = (outid,outinst,port_dangle.name) in
-      let bprop = get_prop (port_dangle.typ) in
-      (steps,wire,bprop)
-
-
-  let reuse_io s t kind c v prop lbl : (step list) option =
-    let cmp_lbls lb v =
-      let _ = Printf.printf "   %s =? %s\n" (SlnLib.label2str lb) (SlnLib.label2str v) in
-      match (lb,v) with
-      | (LBindValue(x), LBindValue(y)) -> x=y
-      | (LBindVar(_,x),LBindVar(_,y)) -> x=y
-      | _ -> false
-    in
-    let src = SlnLib.hwport2wire c v in
-    let _ = Printf.printf "CHECKING: %s\n" (SlnLib.label2str lbl) in
-    match SlnLib.wires_of_label t.sln prop (cmp_lbls lbl) with
-    |Some([w]) ->
-      let _ = Printf.printf "REUSE: %s\n" (SlnLib.wire2str w) in
-      let (cmp,inst,port) = w in
-      if kind = HNInput then
-        let nport = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name cmp) in
-        let w : wireid = (cmp,inst,nport.name) in
-        let iconn = mkconn s t w src prop in
-        Some (iconn)
-      else
-        let nport = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name cmp) in
-        let w : wireid = (cmp,inst,nport.name) in
-        Some ([SSolAddConn(src,w)])
-    |Some(lst) ->
-      let _ = List.iter (fun x -> Printf.printf "%s\n" (SlnLib.wire2str x)) lst in
-      error "reuse_io" "unexpected: multiple wires."
-    | None -> None
 
 
   let is_trivial g =
@@ -265,19 +175,153 @@ struct
     | UFunction(MathId(v),Term(HwId(_))) -> true
     | UFunction(HwId(v),Term(MathId(_))) -> true
     | _ -> false
+    (*
+    determine if a label is mapping
+  *)
+  let _hwkind2wire (slvr:slvr) (sln:sln) (id:unodeid) (inst:int) (knd:hwvkind) =
+    let identname = UnivLib.unodeid2name id in
+    let ivar = HwLib.get_port_by_kind slvr.hw knd identname in
+    let wire : wireid = (id,inst,ivar.name) in
+    let prop,_ = MAP.singleton (HwLib.getprops slvr.hw identname ivar.name) in
+    let wid = SlnLib.wire2uid slvr.hw wire prop in
+    wid, wire, prop
+
+  let mkinp  (slvr:slvr) (sln:sln) wire prop (lbl:label) =
+    let ident = UNoInput(prop) in
+    if (SlnLib.usecomp_valid slvr sln ident) = false then
+      error "mkinp" "cannot make input port."
+    else
+      (*let comp = HwLib.getcomp s.hw node.name in*)
+      let inst = SlnLib.usecomp sln ident in
+      let usenode = SSolUseNode(ident,inst) in
+      let wid = SlnLib.wire2uid slvr.hw wire prop in
+      let iid,iwire,iprop = _hwkind2wire slvr sln ident inst HNInput in
+      let oid,owire,oprop = _hwkind2wire slvr sln ident inst HNOutput in
+      let connport = SAddGoal(UFunction(oid,Term(wid))) in
+      let bindlbl = SSolAddLabel(iwire, iprop, lbl) in
+      [usenode; connport; bindlbl]
+
+  let mkout (slvr:slvr) (sln:sln) wire prop (lbl:label) =
+    let ident = UNoOutput(prop) in
+    if (SlnLib.usecomp_valid slvr sln ident) = false then
+      error "mkinp" "cannot make input port."
+    else
+      (*let comp = HwLib.getcomp s.hw node.name in*)
+      let inst = SlnLib.usecomp sln ident in
+      let usenode = SSolUseNode(ident,inst) in
+      let wid = SlnLib.wire2uid slvr.hw wire prop in
+      let iid,iwire,iprop = _hwkind2wire slvr sln ident inst HNInput in
+      let oid,owire,oprop = _hwkind2wire slvr sln ident inst HNOutput in
+      let connport = SAddGoal(UFunction(iid,Term(wid))) in
+      let bindlbl = SSolAddLabel(owire, oprop, lbl) in
+      [usenode;bindlbl;connport]
+
+  let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (name:mid) (knd:hwvkind) : step list =
+    (*find all pending input connections with same label*)
+    let conn_inputs nwire nprop (nm:mid) =
+      let conv w p l =
+        let snk : unid = SlnLib.wire2uid slvr.hw wire prop in
+        let src : unid = SlnLib.wire2uid slvr.hw nwire nprop in
+        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
+        let rm_lbl = SSolRemoveLabel(w,p,l) in
+        [add_goal; rm_lbl]
+      in
+      let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
+        (fun w p x -> match x with LBindVar(v) -> v = nm | _ -> false)
+      in
+      let steps : step list = List.fold_right (fun (w,p,l) r -> r @ (conv w p l)) lbls [] in
+      steps
+    in
+    (*find all existing inputs with same label*)
+    let find_input nwire nprop nm =
+      let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
+        (fun w p x -> match x with LBindVar(v) -> v = nm && p = nprop | _ -> false)
+      in
+      match lbls with
+      | [] ->
+        let stps = mkinp slvr sln nwire nprop (LBindVar(name)) in
+        stps
+      | [(w,p,l)] ->
+        let snk : unid = SlnLib.wire2uid slvr.hw w p in
+        let src : unid = SlnLib.wire2uid slvr.hw nwire nprop in
+        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
+        let rm_lbl = SSolRemoveLabel(w,p,l) in
+        [add_goal; rm_lbl]
+      | _ ->
+        error "rslv_label.find_input" "too many labels."
+    in
+    (*all the wires that needed to be assigned labels*)
+    match (knd, (MathLib.getkind slvr.prob (MathLib.mid2name name)) ) with
+    (*output value, resolve labels that are buffering on this by making connections back.
+    if this variable is marked as an output by the menv, connect to an output port*)
+    | (HNOutput, Some MOutput) ->
+      let conn_outs = conn_inputs wire prop name in
+      let outport = mkout slvr sln wire prop (LBindVar name) in
+      conn_outs @ outport
+      (*create an output port and map all inputs*)
+    | (HNOutput, Some MLocal) ->
+      let conn_outs = conn_inputs wire prop name in
+      conn_outs
+    (*input value, add to buffer if variable is also local. Otherwise, map to a port.*)
+    | (HNInput, Some MInput) ->
+      let conn_ins = find_input wire prop name in
+      conn_ins
+      (*determine if the input is already mapped.*)
+    | (HNInput, Some MLocal) ->
+      let stp = SSolAddLabel(wire,prop,LBindVar(name)) in
+      [stp]
+      (*add label to this wire, do not create input*)
+    | (HNInput, Some MOutput) ->
+      let stp = SSolAddLabel(wire,prop,LBindVar(name)) in
+      [stp]
+    | (HNInput, None) ->
+      let conn_ins = find_input wire prop name in
+      conn_ins
+      (* add label to this wire, don't create an input *)
+    | (_,None) -> error "rslv_label" ("bound label is not a variable: "^
+          "wire <-> "^(MathLib.mid2name name))
+
+    | (_,Some MLocal) -> error "rslv_label" ("bound label is a local variable: "^
+          "wire <-> "^(MathLib.mid2name name))
+
+    | (_,Some MOutput) -> error "rslv_label" ("bound label is a output variable: "^
+          "wire <-> "^(MathLib.mid2name name))
+
+    | (_,Some MInput) -> error "rslv_label" ("bound label is an input variable: "^
+          "wire <-> "^(MathLib.mid2name name))
 
 
-  let get_trivial_step s t g : step list =
-    let bind_var k c v prop lbl =
-      let res = match reuse_io s t k c v prop lbl with
-        | Some(steps) ->
-          let _ = SearchLib.apply_steps s t {s=steps;id=0} in
-          steps
-        | None ->
-          let inps,port,bprop = mkio s t (k) c v prop in
-          let stps = [SSolAddLabel(port,bprop,lbl)] @ inps in
-          let _ = SearchLib.apply_steps s t {s=stps;id=0} in
-          stps
+  let rslv_value (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (valu:number) knd =
+    let find_input nwire nprop (valu:number) =
+      let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
+        (fun w p x -> match x with LBindValue(v) -> v = valu && p = nprop | _ -> false)
+      in
+      match lbls with
+      | [] ->
+        let stps = mkinp slvr sln nwire nprop (LBindValue(valu)) in
+        stps
+      | [(w,p,l)] ->
+        let snk : unid = SlnLib.wire2uid slvr.hw w p in
+        let src : unid = SlnLib.wire2uid slvr.hw wire prop in
+        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
+        let rm_lbl = SSolRemoveLabel(w,p,l) in
+        [add_goal; rm_lbl]
+    in
+    match knd with
+    (*impossible to map an output to a value*)
+    | HNOutput ->
+      error "rslv_value" "impossible situation."
+    (*impossible to map an input to a value*)
+    | HNInput ->
+      let stps = find_input wire prop (valu) in
+      stps
+
+
+  let get_trivial_step (s:slvr) (t:gltbl) g : step list =
+    let apply_steps stps =
+      let res =
+        let _ = SearchLib.apply_steps s t {s=stps;id=0} in
+        stps
       in
       res
     in
@@ -291,27 +335,33 @@ struct
           conn
         else error "get_trivial_step" "is nontrivial."
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
-        let lbl = LBindValue(q) in
-        bind_var k c v prop lbl
+        let wire = SlnLib.hwport2wire c v in
+        let stps = rslv_value s t.sln wire prop (Decimal q) k in
+        apply_steps stps
 
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
-        let lbl = LBindValue(float_of_int q) in
-        bind_var k c v prop lbl
+        let wire = SlnLib.hwport2wire c v in
+        let stps = rslv_value s t.sln wire prop (Integer q) k in
+        apply_steps stps
 
     | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
-        let lbl = LBindVar(k,q) in
-        bind_var k c v prop lbl
+        let wire = SlnLib.hwport2wire c v in
+        let stps = rslv_label (s) t.sln wire prop q k in
+        apply_steps stps
 
     | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
-        let lbl = LBindVar(k,q) in
-        bind_var k c v prop lbl
+        let wire = SlnLib.hwport2wire c v in
+        let stps = rslv_label (s) (t.sln) wire prop q k in
+        apply_steps stps
 
     | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
         let tc = () in
         []
+
     | UFunction(HwId(HNTime(cmp,uh)), Term (MathId(MNTime(um))) ) ->
         let tc = () in
         []
+
     | _ -> []
 
   let resolve_trivial s t goals =
@@ -897,7 +947,7 @@ struct
     (*
     Continue working on this.
     *)
-    let solve (_s) v =
+    let solve_topology _s v =
       let s = REF.dr _s in
       let init_goals = LIST.shuffle (SET.to_list v.goals) in
       let _ = Printf.printf "====Solving===\n" in
@@ -925,42 +975,42 @@ struct
       | _ -> error "get_mid" "expected goal with mid on the other end."
       in
       let rec try_solve (ctx:step list) goals =
-      let rec attempt (new_tbl:gltbl) (g:goal) (rest:goal list) : step list option =
-        let _ = Printf.printf "Attempt To Solve: %s\n" (UnivLib.goal2str g) in
-        let gid = get_mid g in
-        let result = solve_sim_eqn _s new_tbl gid in
-        let _ = Printf.printf "Returned To: %s : %s\n" (UnivLib.goal2str g)
-          (if result = None then "no solution" else "has solution") in
-        match result with
-        | Some(node) ->
-          let _ = Printf.printf "[%d] Successfully Solved: %s. solve children\n" (node.id) (UnivLib.goal2str g) in
-          let steps = get_steps new_tbl node in
-          if List.length rest = 0 then
-            Some(steps)
-          else
-            let next_result = try_solve (steps) rest in
-            begin
-            match next_result with
-            | Some(steps) ->
-              let _ = Printf.printf "Successfully Solved children of: %s\n" (UnivLib.goal2str g) in
+        let rec attempt (new_tbl:gltbl) (g:goal) (rest:goal list) : step list option =
+          let _ = Printf.printf "Attempt To Solve: %s\n" (UnivLib.goal2str g) in
+          let gid = get_mid g in
+          let result = solve_sim_eqn _s new_tbl gid in
+          let _ = Printf.printf "Returned To: %s : %s\n" (UnivLib.goal2str g)
+            (if result = None then "no solution" else "has solution") in
+          match result with
+          | Some(node) ->
+            let _ = Printf.printf "[%d] Successfully Solved: %s. solve children\n" (node.id) (UnivLib.goal2str g) in
+            let steps = get_steps new_tbl node in
+            if List.length rest = 0 then
               Some(steps)
-            | None ->
-              let _ = Printf.printf "Failed to Solve children of: %s\n" (UnivLib.goal2str g) in
-              (*mark the current solution a dead end and try again*)
-              let _ = SearchLib.deadend new_tbl.search node in
-              let res = attempt new_tbl g rest in
-              res
-            end
-        | None ->
-          let _ = Printf.printf "No solutions found: %s\n" (UnivLib.goal2str g) in
-          None
-      in
-      match goals with
-      | g::t ->
-        let new_tbl = mknewtbl ctx init_goals in
-        let result = attempt new_tbl g t in
-        result
-      | [] -> None
+            else
+              let next_result = try_solve (steps) rest in
+              begin
+              match next_result with
+              | Some(steps) ->
+                let _ = Printf.printf "Successfully Solved children of: %s\n" (UnivLib.goal2str g) in
+                Some(steps)
+              | None ->
+                let _ = Printf.printf "Failed to Solve children of: %s\n" (UnivLib.goal2str g) in
+                (*mark the current solution a dead end and try again*)
+                let _ = SearchLib.deadend new_tbl.search node in
+                let res = attempt new_tbl g rest in
+                res
+              end
+          | None ->
+            let _ = Printf.printf "No solutions found: %s\n" (UnivLib.goal2str g) in
+            None
+        in
+        match goals with
+        | g::t ->
+          let new_tbl = mknewtbl ctx init_goals in
+          let result = attempt new_tbl g t in
+          result
+        | [] -> None
     in
       let result = try_solve ([]) init_goals in
       let _ = Printf.printf "Completed search.\n" in
@@ -977,13 +1027,17 @@ struct
 
 
 
+    let solve (_s) (v) =
+      let res = solve_topology _s v in
+      res
+
 end
 
 
 
 let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
   let _ = init_utils() in
-  let sl = SolveLib.mkslv  hw prob interactive in
+  let sl = SolveLib.mkslv hw prob interactive in
   let tbl = SolveLib.mktbl sl in
   let _ = pr sl "===== Beginning Interactive Solver ======\n" in
   let spdoc = SolveLib.solve (REF.mk sl) (tbl) in

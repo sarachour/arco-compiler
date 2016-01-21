@@ -176,16 +176,12 @@ struct
       in
       match lbl with
       | LBindValue(vl) ->
-        let cmt = SpcComment("constant value "^(string_of_float vl)) in
-        let vs = mksrc ("cst"^indx) (SpcFlatValue(vl)) in
+        let cmt = SpcComment("constant value "^(string_of_number vl)) in
+        let vs = mksrc ("cst"^indx) (SpcFlatValue(float_of_number vl)) in
         [cmt;vs;cmtsp]
-      | LBindVar(HNInput,q) ->
-          let cmt = SpcComment("@input "^(MathLib.mid2str q)) in
+      | LBindVar(q) ->
+          let cmt = SpcComment("@var "^(MathLib.mid2str q)) in
           let vs = mksrc ("in_"^(MathLib.mid2str q)^"_"^indx) (SpcFlatValue(1.)) in
-          [cmt;vs;cmtsp]
-      | LBindVar(HNOutput,q) ->
-          let cmt = SpcComment("@output "^(MathLib.mid2str q)) in
-          let vs = mksnk ("out_"^(MathLib.mid2str q)^"_"^indx)  in
           [cmt;vs;cmtsp]
       | _ -> []
     in

@@ -376,6 +376,17 @@ struct
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
     mp
 
+  let singleton (type a) (type b) (x:(a,b) map): (a*b) =
+    if size x != 1 then
+      error "MAP.singleton" "must have exactly one element."
+    else
+      let r = match fold x (fun x y r -> Some(x,y)) None with
+        | Some(v) -> v
+        | None ->
+          error "MAP.singleton" "must have exactly one element."
+      in
+      r
+
 end
 
 module SET =

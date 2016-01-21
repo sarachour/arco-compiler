@@ -23,6 +23,17 @@ struct
     let n,i,p = wire in
     (UnivLib.unodeid2name n)^"["^(string_of_int i)^"]."^p
 
+  let wire2hid he (wire:wireid) prop =
+    let cmpn,cmpid,name = wire in
+    let cmpname = UnivLib.unodeid2name cmpn in
+    let knd = HwLib.getkind he cmpname name in
+    let unt = HwLib.getunit he cmpname name prop in
+    HNPort(knd, HCMGlobal(cmpname,cmpid), name, prop, unt)
+
+  let wire2uid he (wire:wireid) prop =
+    let hid = wire2hid he wire prop in
+    HwId(hid)
+
   let label2str pr =
     match pr with
     | LMagnitude(hwrng,hwp,mrng,mp) ->
@@ -34,11 +45,12 @@ struct
       let mr = (RANGE.tostr mrng)^" "^(mp) in
       "time "^hwr^" => "^mr
     | LError -> "error prop"
-    | LBindValue(v) -> "bind "^(string_of_float v)
-    | LBindVar(k,v) -> "bind "^(MathLib.mid2str v)
+    | LBindValue(v) -> "bind "^(string_of_number v)
+    | LBindVar(v) -> "bind "^(MathLib.mid2str v)
 
   let mksln () : sln =
     {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
+
 
   let mkcomp (sln:sln) (id:unodeid) =
     MAP.put sln.comps id (SET.make (fun x y -> x = y),0)
@@ -96,6 +108,14 @@ struct
     let _ = SET.add pset v in
     ()
 
+  let get_labels (sln:sln) (fxn:(wireid->propid->label->bool)) =
+    MAP.fold sln.labels (fun w pl lst1 ->
+      MAP.fold pl (fun pr lbls lst2 ->
+        SET.fold lbls (fun lb lst3 -> if fxn w pr lb then
+          (w,pr,lb)::lst3 else lst3) lst2
+      ) lst1
+    ) []
+
   let wires_of_label (sln:sln) (prop:propid) (v:label -> bool) : wireid list option=
     let check_label cwire cproplabels =
       if MAP.has cproplabels prop then
@@ -152,6 +172,8 @@ struct
     let res = MAP.fold (sln.comps) prop true in
     res
 
+
+
   let usecomp_valid (s:slvr) (sln:sln) id : bool =
     if MAP.has sln.comps id = false
       then error "usecomp_valid" ("does not exist in solution: "^(UnivLib.unodeid2name id))
@@ -203,11 +225,10 @@ struct
         let sname,sid,sport = wire in
         let handle = prp^" of "^(UnivLib.unodeid2name sname)^" "^(string_of_int sid)^" "^sport in
         let cmd = match lbl with
-        | LBindValue(f) -> "bind value "^handle^" :: "^(string_of_float f)
-        | LBindVar(HNInput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"input "^n
-        | LBindVar(HNOutput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"output "^n
-        | LBindVar(_,MNTime(_)) -> "bind time "^handle
-        | LBindVar(_,MNParam(n,p,u)) -> "bind value "^handle^" :: "^(string_of_number p)
+        | LBindValue(f) -> "bind value "^handle^" :: "^(string_of_number f)
+        | LBindVar(MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
+        | LBindVar(MNTime(_)) -> "bind time "^handle
+        | LBindVar(MNParam(n,p,u)) -> "bind value "^handle^" :: "^(string_of_number p)
         | _ -> "%unsupported label"
         in
         os (cmd^"\n")

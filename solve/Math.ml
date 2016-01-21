@@ -40,10 +40,12 @@ sig
   val print : menv -> unit
   val cstrs : menv -> mcstrs
   val mid2str : mid -> string
+  val mid2name : mid -> string
   val rel2str : mrel -> string
   val mkvar : menv -> string -> mkind -> unt -> menv
   val mktime : menv -> string -> unt -> menv
   val getvar : menv -> string -> mvar
+  val getkind : menv -> string -> mkind option
   val mkparam : menv -> string -> number -> unt -> menv
   val mkstrel : menv -> string -> mid ast -> number -> menv
   val mkrel : menv -> string -> mid ast -> menv
@@ -81,6 +83,13 @@ struct
     |MNParam(_,_,u) -> u
     |MNTime(u) -> u
 
+  let mid2name x =
+    match x with
+    | MNVar(_,n,u) -> n
+    | MNParam(n,v,u) -> n
+    | MNTime(u) ->  "t"
+
+
 
   let typ2str (v:mtype) : string = mid2str v
 
@@ -100,11 +109,23 @@ struct
   let gettime e =
    e.time
 
+
+  let hasvar e name =
+    MAP.has e.vars name
+
   let getvar e name =
-    if MAP.has (e.vars) name = false then
+    if hasvar e name = false then
       error "mkrel" ("variable "^name^" does not exist.")
     else
       MAP.get (e.vars) name
+
+  let getkind e name =
+    if hasvar e name then
+      match (getvar e name).typ with
+      | MNVar(k,_,_) -> Some k
+      | _ -> None
+    else
+      error "getkind" ("variable "^name^" does not exist")
 
   let getunit e name =
     let n = getvar e name in

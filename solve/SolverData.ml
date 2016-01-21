@@ -46,8 +46,8 @@ type label =
   | LMagnitude of range*untid*range*unt
   | LTime of range*untid*range*untid
   | LError
-  | LBindValue of float
-  | LBindVar of hwvkind*mid
+  | LBindValue of number
+  | LBindVar of mid
 
 type sln = {
   (*how many of each component is used *)
@@ -61,6 +61,7 @@ type step =
   | SSolUseNode of unodeid*int
   | SSolAddConn of wireid*wireid
   | SSolAddLabel of wireid*propid*label
+  | SSolRemoveLabel of wireid*propid*label
   | SRemoveGoal of goal
   | SAddGoal of goal
   | SAddNode of unodeid*int*(urel list)
@@ -88,7 +89,7 @@ type status =
 type status_table = {
   (*stalled, waiting for another subtree to finish*)
   mutable tbl: (int,status) map;
-  (*current number of nodes*)
+  (*store variable bindings *)
 }
 
 type buffer = {

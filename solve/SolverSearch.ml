@@ -171,6 +171,7 @@ struct
     | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
     | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
     | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
+    | SSolRemoveLabel(wid,prop,lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
     let sort_steps x y = match (x,y) with
@@ -194,6 +195,7 @@ struct
   | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
   | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()
+  | SSolRemoveLabel(wid,prop,lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
       let sort_steps x y = match (x,y) with

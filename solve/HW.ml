@@ -187,7 +187,7 @@ struct
     let c = getcomp e cname in
     MAP.to_values c.vars
 
-  let get_port_by_kind e k c =
+  let get_port_by_kind e (k:hwvkind) (c:string) : hwvar =
     let vrs = getvars e c in
     let o = List.filter (fun q -> match q.typ with
         | HPortType(z,_) -> z = k
@@ -202,7 +202,13 @@ struct
   let getcomps e  =
     MAP.to_values e.comps
 
-  let getunit e (cname:string) pname propname =
+  let getprops e (cname:string) pname : (string,string) map =
+    let p = getvar e cname pname in
+    match p.typ with
+    | HPortType(_,unts) -> unts
+    | _ -> error "getunit" "param doesn't have type unit."
+
+let getunit e (cname:string) pname propname =
     let p = getvar e cname pname in
     match p.typ with
     | HPortType(_,unts) ->
@@ -212,6 +218,11 @@ struct
         error "getunit" ("unit does not exist for param "^propname)
     | _ -> error "getunit" "param doesn't have type unit."
 
+  let getkind e (cname:string) pname =
+    let p = getvar e cname pname in
+    match p.typ with
+    | HPortType(knd, _) -> knd
+    | _ -> error "getunit" "param doesn't have type unit."
 
   let mkport e cname (hwkind:hwvkind) iname (types:(propid*untid) list) =
     if hascomp e cname = false then
