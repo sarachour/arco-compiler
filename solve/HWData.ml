@@ -26,14 +26,18 @@ type hcmag =
   | HCNoMag
 
 type hcconn =
-  | HCConnLimit of (string*string, (int*int) set) map
-  | HCConnNoLimit
+  | HCCAll
+  | HCCRange of irange
+  | HCCIndiv of int
 
 type hcdigital =
   | HCDigSample of string*string*float*untid
 
+(*port to port*)
+type connid = string*string
+
 type hwcstrs = {
-  conns: (string*string, hcconn) map;
+  conns: (connid, (connid,(hcconn*hcconn) set) map) map;
   mags: (string*string*string,hcmag) map;
   tcs: (string,hcmag) map;
   errs: (string*string*string, herel) map;

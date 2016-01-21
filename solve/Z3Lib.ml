@@ -21,6 +21,10 @@ struct
     | Z3Plus(a,b) -> "(+ "^(_s a)^" "^(_s b)^")"
     | Z3IfThenElse(a,b,c) -> "(ite "^(_s a)^" "^(_s b)^" "^(_s c)^")"
     | Z3Var(v) -> v
+    | Z3LT(a,b) -> "(< "^(_s a)^" "^(_s b)^")"
+    | Z3GT(a,b) -> "(> "^(_s a)^" "^(_s b)^")"
+    | Z3LTE(a,b) -> "(<= "^(_s a)^" "^(_s b)^")"
+    | Z3GTE(a,b) -> "(>= "^(_s a)^" "^(_s b)^")"
     | Z3Int(i) -> string_of_int i
     | Z3Bool(true) -> "true"
     | Z3Bool(false) -> "false"
@@ -89,6 +93,38 @@ struct
       _s b;
       os " ";
       _s c;
+      os ")"
+      end
+    | Z3LT(a,b) ->
+      begin
+      os "(< ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
+    | Z3LTE(a,b) ->
+      begin
+      os "(<= ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
+    | Z3GT(a,b) ->
+      begin
+      os "(> ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
+    | Z3GTE(a,b) ->
+      begin
+      os "(>= ";
+      _s a;
+      os " ";
+      _s b;
       os ")"
       end
     | Z3Var(v) -> os v

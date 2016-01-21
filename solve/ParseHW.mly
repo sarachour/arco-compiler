@@ -17,6 +17,7 @@
   let meta = {comp=None}
 
 
+
   type conn =
     | AllConn
     | CompConn of string
@@ -28,67 +29,61 @@
 
   type pid =  (string*string*int)
 
-  let indices2intarr ilst n : int list =
-    let indice2intarr i : int list =
-      match i with
-      | IRange(s,e) -> LIST.mkrange s e
-      | IIndex(i) -> [i]
-      | IToStart(e) -> LIST.mkrange 0 e
-      | IToEnd(s) -> LIST.mkrange s (n-1)
-    in
-    List.fold_right (fun x r -> (indice2intarr x) @ r) ilst []
-
-  let rec expandconn v conntype : pid list =
-    let skind = if conntype = Input then HNInput else HNOutput in
-    let all_comps = [] in
-    let all_ports p = [] in
-    let n_insts c =
-      let cstr = HwLib.getcstr dat in
-      HwCstrLib.getinsts cstr c
-    in
-    let getvars c flt = let vars = HwLib.getvars dat c in
-      List.filter (fun x -> flt x) vars
-    in
-    match v with
-    | AllConn ->
-      let cmps = List.map (fun x -> x.name) (HwLib.getcomps dat) in
-      let cstr = HwLib.getcstr dat in
-      let handle x r = (expandconn (CompConn x) conntype) @ r
-      in
-      List.fold_right (fun x r -> handle x r) cmps []
-    | CompConn(c) ->
-      let fltvar v = match v.typ with HPortType(k,_) -> skind = k | _ -> false in
-      let n = n_insts c in
-      let vrs : string list = List.map (fun (x:hwvar) -> x.name) (getvars c fltvar) in
-      let inds = LIST.mkrange 0 n in
-      let vp = LIST.prod vrs inds in
-      List.map (fun ((v,i):string*int) -> (c,v,i)) vp
-    | CompPortConn(c,p) ->
-      let n = n_insts c in
-      let nrng = LIST.mkrange 0 n in
-      List.map (fun i -> (c,p,i)) nrng
-    | InstConn(c,i) ->
-      let fltvar v = match v.typ with HPortType(k,_) -> skind = k | _ -> false in
-      let n = n_insts c in
-      let vrs : string list = List.map (fun (x:hwvar) -> x.name) (getvars c fltvar) in
-      let inds : int list= indices2intarr i n in
-      let vp = LIST.prod vrs inds in
-      List.map (fun ((v,i):string*int) -> (c,v,i)) vp
-    | InstPortConn(c,i,p) ->
-      let n =  n_insts c in
-      let inds : int list = indices2intarr i n in
-      List.map (fun i -> (c,p,i)) inds
-
-  let addallconns src snk =
-    let e1 = expandconn src Output in
-    let e2 = expandconn snk Input in
-    let eprod : (pid*pid) list = LIST.prod e1 e2 in
-    let c = HwLib.getcstr dat in
-    let add (sc,sp,si) (dc,dp,di) =
-      let _ = HwCstrLib.mkconn c sc sp si dc dp di in
+  let conn_iter (c:conn) (conntype:conntype) (fxn:(string*string)->index->unit)  =
+    let conntype = if conntype = Input then HNInput else HNOutput in
+    (*determine if this is what we're filtering against*)
+    let isconntype v = match v.typ with HPortType(k,_) -> k = conntype | _ -> false in
+    let itercmp cmp (idx:index option) =
+      let gidx = if idx = None then IToEnd 0 else OPTION.force_conc idx in
+      let _ = MAP.iter cmp.vars (fun vname vr -> if isconntype vr then fxn (cmp.name,vname) gidx else ()) in
       ()
     in
-    let _ = List.iter (fun (src,snk) -> add src snk) eprod in
+    match c with
+    | AllConn ->
+      let cmps = HwLib.getcomps dat in
+      let itercmp cmp = List.iter (fun cmp -> itercmp cmp None) cmps in
+      ()
+    | CompConn(c) ->
+      let cmp = HwLib.getcomp dat c in
+      itercmp cmp None
+    | CompPortConn(c,p) ->
+      let ident = (c,p) in
+      fxn ident (IToEnd 0)
+    | InstConn(c,i) ->
+      let cmp = HwLib.getcomp dat c in
+      let _ = List.iter (fun idx ->
+        itercmp cmp (Some idx)) i
+      in
+      ()
+    | InstPortConn(c,i,p) ->
+      let _ = List.iter (fun idx ->
+        fxn (c,p) idx
+        ) i
+      in
+      ()
+
+  let idx2hcconn (c:string) (idx:index) : hcconn =
+    let insts = HwCstrLib.getinsts dat.cstr c in
+    let res = match idx with
+    | IIndex(i) -> HCCIndiv(i)
+    | IRange(r) -> HCCRange(r)
+    | IToStart(i) -> HCCRange(0,i)
+    | IToEnd(i) -> HCCRange(i,insts)
+    in
+    res
+
+  let add_conns (src:conn) (snk:conn)=
+    let handle_conns sc sp sidx dc dp didx =
+      let sconn = idx2hcconn sc sidx in
+      let dconn = idx2hcconn dc didx in
+      let _ = HwCstrLib.mkconn dat.cstr sc sp dc dp sconn dconn in
+      ()
+    in
+    let _ = conn_iter src Output (fun (sc,sp) sconn ->
+      conn_iter snk Input (fun (dc,dp) dconn ->
+        handle_conns sc sp sconn dc dp dconn
+    ))
+    in
     ()
 
 
@@ -532,7 +527,7 @@ schem:
   }
   | schem CONN connterm ARROW connterm EOL {
     let src = $3 and snk = $5 in
-    let _ = addallconns src snk in
+    let _ = add_conns src snk in
     ()
   }
   | schem ENSURE MAG TOKEN IN rng COLON TOKEN {

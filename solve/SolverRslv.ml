@@ -5,6 +5,7 @@ open SolverData
 open SolverUtil
 open Z3Lib
 open Z3Data
+open HWCstr
 
 
 exception HwConnRslvrException of string
@@ -67,34 +68,23 @@ struct
       ()
 
 
-  let report_noconns msg sc si dc di =
-    let _ = Printf.printf "[Resolver]: no connections between %s.%d -> %s.%d (%s)\n" sc si dc di msg in
+  let report_noconns msg sc si sp dc di dp =
+    let _ = Printf.printf "[Resolver]: no connections between %s[%d].%s -> %s[%d].%s (%s)\n" sc si sp dc di dp msg in
     ()
 
   let valid_smt_prob cfg sol : bool =
     let sol_conns : (wireid, wireid set) map = sol.conns in
-    let cstr_conns : (string*string,hcconn) map = cfg.hw.cstr.conns in
+    let cstr_conns = cfg.hw.cstr.conns in
     let test_conns  (src:wireid) (dest:wireid) : bool =
       let sc,si,sp = src in
       let dc,di,dp = dest in
       let sc : string = UnivLib.unodeid2name sc in
       let dc : string = UnivLib.unodeid2name dc in
-      (*get all possible connections*)
-      let res = match MAP.get cstr_conns (sc,sp) with
-      | HCConnLimit(dests) ->
-        if MAP.has dests (dc,dp) = false
-        then
-          let _ = report_noconns "no source <-> dest connection" sc si dc di in
-          false
+      let res = if HwCstrLib.valid_conn cfg.hw.cstr sc sp dc dp then
+          true
         else
-          let ipairs = MAP.get dests (dc,dp) in
-          if SET.size ipairs = 0 then
-            let _ = report_noconns "no instances" sc si dc di in
-            let _ = flush_all() in
-            false
-          else
-            true
-      | HCConnNoLimit -> error "decl_conns" ("cannot handle component with underconstrained connections "^sc^" -> "^dc)
+          let _ = report_noconns "no source <-> dest connection" sc si sp dc di dp in
+          false
       in
       res
     in
@@ -106,6 +96,24 @@ struct
     ) true
     in
     success
+
+  let conn2smt (e:hcconn) (v:string) : z3expr = match e with
+  | HCCAll -> (Z3Bool(true))
+  | HCCRange(low,hi) -> Z3And(Z3LT(Z3Var(v),Z3Int(hi)), Z3GTE(Z3Var(v),Z3Int(low)))
+  | HCCIndiv(i) -> Z3Eq(Z3Int(i),Z3Var(v))
+
+
+  let tosmtexpr (src:hcconn) (sv:string) (dest:hcconn) (dv:string) : z3expr=
+    let connsrc = conn2smt src  sv in
+    let conndest = conn2smt dest dv in
+    Z3And(connsrc,conndest)
+
+  let tosmtexprs (conns:(hcconn*hcconn) set) (src:string) (dest:string) : z3expr =
+    let exprs = SET.fold conns (fun (srcc,destc) r ->
+      let ex = tosmtexpr srcc src destc dest in
+      Z3Or(ex,r)) (Z3Bool false)
+    in
+    exprs
 
   let to_smt_prob cfg sol : bool*z3doc*((string,instinfo) map) =
     (*set up environment*)
@@ -120,8 +128,11 @@ struct
         ()
     in
     let km : (string,instinfo) map= MAP.make() in
+    (*iterate over instances, sinsts are the solution variables, whereas cinsts are the constraint comps*)
+    let mapc fn ic = MAP.fold km (fun name iinfo r -> SET.fold iinfo.cinsts (fun inst r -> fn name inst iinfo r) r) ic in
+    let maps fn ic = MAP.fold km (fun name iinfo r -> SET.fold iinfo.sinsts (fun inst r -> fn name inst iinfo r) r) ic in
     let sol_conns : (wireid, wireid set) map = sol.conns in
-    let cstr_conns : (string*string,hcconn) map = cfg.hw.cstr.conns in
+    let cstr_conns  = cfg.hw.cstr.conns in
     let sol_cmps : (unodeid,(int set)*int) map = sol.comps in
     let cstr_cmps : (string,hcinst) map= cfg.hw.cstr.insts in
     let _ = MAP.iter sol_cmps (fun k (v,cnt) -> if SET.size v = 0 then () else SET.iter v (fun x  -> declvar km (UnivLib.unodeid2name k) x false) ) in
@@ -129,8 +140,6 @@ struct
     (*decl conns helper routine*)
 
     let tosmt () : bool*z3doc =
-      let mapc fn ic = MAP.fold km (fun name iifo r -> SET.fold iifo.cinsts (fun inst r -> fn name inst iifo r ) r) ic in
-      let maps fn ic = MAP.fold km (fun name iifo r -> SET.fold iifo.sinsts (fun inst r -> fn name inst iifo r ) r) ic in
       (*declare each solution instance*)
       let decls : z3st list = maps (fun n i ifo r ->
         let vname = tovar km n i in (Z3ConstDecl(vname,Z3Int))::r) []
@@ -141,34 +150,15 @@ struct
         let sc : string = UnivLib.unodeid2name sc in
         let dc : string = UnivLib.unodeid2name dc in
         (*get all possible connections*)
-        let res = match MAP.get cstr_conns (sc,sp) with
-        | HCConnLimit(dests) ->
-          if MAP.has dests (dc,dp) = false
-          then
-            let _ = report_noconns "no source <-> dest connection" sc si dc di in
-            None
+        let res = if HwCstrLib.valid_conn cfg.hw.cstr sc sp dc dp then
+            let src = tovar km sc (si) in
+            let dest = tovar km dc (di) in
+            let conns : (hcconn*hcconn) set = (MAP.get (MAP.get cfg.hw.cstr.conns (sc,sp)) (dc,dp)) in
+            let smtexpr = tosmtexprs conns src dest in
+            Some smtexpr
           else
-            let ipairs = MAP.get dests (dc,dp) in
-            if SET.size ipairs = 0 then
-              let _ = report_noconns "no instances" sc si dc di in
-              let _ = flush_all() in
-              None
-            else
-            let res = SET.fold ipairs (fun (cstr_si,cstr_di) (rest)->
-              let sln_si = si in
-              let sln_di = di in
-              let src = tovar km sc (sln_si) in
-              let dest = tovar km dc (sln_di) in
-              (*instances are this hardware connection*)
-              let src_is_inst = Z3Eq(Z3Var(src),Z3Int(cstr_si)) in
-              let dest_is_inst = Z3Eq(Z3Var(dest), Z3Int(cstr_di)) in
-              let conn_is_inst = Z3And(src_is_inst,dest_is_inst) in
-              match rest with
-              | Some(node) -> Some(Z3Or(conn_is_inst,node))
-              | None -> Some conn_is_inst
-            ) None in
-            res
-        | HCConnNoLimit -> error "decl_conns" ("cannot handle component with underconstrained connections "^sc^" -> "^dc)
+            let _ = report_noconns "no source <-> dest connection" sc si sp dc di dp in
+            None
         in
         res
       in
@@ -216,6 +206,7 @@ struct
       in
       let gdecls = gdecls @ decls in
       let gdecls = gdecls@[Z3SAT;Z3DispModel] in
+      let _ = Printf.printf "Number of decls: %d\n" (List.length gdecls) in
       (has_failed = false,gdecls)
     in
     let success,decls= tosmt () in

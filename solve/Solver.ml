@@ -155,6 +155,7 @@ struct
 
 
   let mkconn s t sw dw pr =
+    if sw = dw then [] else
     [SSolAddConn(sw,dw)]
     (*
     match ifover_mkcopier s t sw pr with

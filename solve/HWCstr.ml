@@ -42,6 +42,7 @@ struct
     else
       MAP.get e.insts cname
 
+  (**)
   let dflport e cname pname prop =
     let k = (cname,pname,prop) in
     let _ = if MAP.has e.insts cname = false then
@@ -57,7 +58,7 @@ struct
       MAP.put e.errs k HERNoError else e.errs
     in
     let _ = if MAP.has e.conns (cname,pname) = false then
-      MAP.put e.conns (cname,pname) HCConnNoLimit
+      MAP.put e.conns (cname,pname) (MAP.make ())
       else e.conns
     in
     let _ = if MAP.has e.digs cname = false then
@@ -65,6 +66,17 @@ struct
       else e.digs
     in
     ()
+
+  let valid_conn hcs src_comp src_port dest_comp dest_port =
+    if MAP.has hcs.conns (src_comp,src_port)= false then
+      false
+    else
+      let dests = MAP.get hcs.conns (src_comp,src_port) in
+      if MAP.has dests (dest_comp,dest_port) = false then
+        false
+      else
+        let ids = MAP.get dests (dest_comp,dest_port) in
+        SET.size ids > 0
 
   let mag e cmp port prop  =
     match MAP.get e.mags (cmp,port,prop) with
@@ -141,29 +153,29 @@ struct
       let _ = MAP.put e.errs key efun in
       ()
 
-  let mkconn e srccomp srcport srcinst destcomp destport destinst =
+  let mkconn e srccomp srcport destcomp destport srcconn destconn =
     let ksrc = (srccomp,srcport) and ksnk = (destcomp,destport) in
-    let src2dest = (srcinst,destinst) and dest2src = (destinst,srcinst) in
-    let _ = if MAP.has e.conns ksrc = false || MAP.get e.conns ksrc = HCConnNoLimit then
-      let _ = MAP.put e.conns ksrc (HCConnLimit (MAP.make())) in ()
+    let _ = if MAP.has e.conns ksrc = false then
+      let _ = MAP.put e.conns ksrc (MAP.make()) in ()
     in
-    let _ = if MAP.has e.conns ksnk = false || MAP.get e.conns ksnk = HCConnNoLimit then
-      let _ = MAP.put e.conns ksnk (HCConnLimit (MAP.make())) in ()
+    let _ = if MAP.has e.conns ksnk = false  then
+      let _ = MAP.put e.conns ksnk (MAP.make()) in ()
     in
-    let tblsrc = MAP.get e.conns ksrc and tblsnk = MAP.get e.conns ksnk in
-    match (tblsrc,tblsnk) with
-    | (HCConnLimit(mapsrc), HCConnLimit(mapsnk)) ->
-      begin
-        let _ = if MAP.has mapsrc ksnk = false then MAP.put mapsrc ksnk (SET.make refl) else mapsrc in
-        let _ = if MAP.has mapsnk ksrc = false then MAP.put mapsnk ksrc (SET.make refl) else mapsnk in
-        let setsrc = MAP.get mapsrc ksnk in
-        let setsnk = MAP.get mapsnk ksrc in
-        let _ = SET.add setsrc src2dest in
-        let _ = SET.add setsnk dest2src in
-        e
-      end
-    | _ -> error "mkconn" "doesn't make sense bro."
+    let mapsrc = MAP.get e.conns ksrc in
+    let mapsnk = MAP.get e.conns ksnk in
+    let _ = if MAP.has mapsrc ksnk = false then MAP.put mapsrc ksnk (SET.make_dflt ()) else mapsrc in
+    let _ = if MAP.has mapsnk ksrc = false then MAP.put mapsnk ksrc (SET.make_dflt ()) else mapsnk in
+    let setsrc = MAP.get mapsrc ksnk in
+    let setsnk = MAP.get mapsnk ksrc in
+    let _ = SET.add setsrc (srcconn,destconn) in
+    let _ = SET.add setsnk (destconn,srcconn) in
+    e
 
+
+  let hcconn2str c = match c with
+  | HCCAll -> "*"
+  | HCCIndiv(i) -> string_of_int i
+  | HCCRange((s,e)) -> (string_of_int s)^":"^(string_of_int e)
 
   let print e =
     let pr_inst k v = k^" has "^(string_of_int v)^" instances"
@@ -188,14 +200,15 @@ struct
       | HCNoMag -> prefix^" infinite operating range"
     in
     let pr_conns (c,p) v =
-      let prefix = "conn "^c^"."^p in
-      let intpairlst2str lst =
-        let one (x,y) = "("^(string_of_int x)^","^(string_of_int y)^")" in
-        List.fold_right (fun x r -> (one x)^" "^r) (SET.to_list lst) ""
+      let pr_conn sc sp dc dp is id =
+        "conn "^sc^"["^(hcconn2str is)^"]."^sp^" <-> "^
+        "conn "^dc^"["^(hcconn2str id)^"]."^dp^"\n"
       in
-      match v with
-      | HCConnLimit(snks) -> prefix^":"^(MAP.fold snks (fun (c,v) pairs r -> r^"\n   "^c^"."^v^"->"^(intpairlst2str pairs)) "")
-      | HCConnNoLimit -> prefix^" is *"
+      let pr_dests sc sp smap r =
+        MAP.fold smap (fun (dc,dp) idx r ->
+          SET.fold idx (fun (is,id) r -> r^(pr_conn sc sp dc dp is id)) r) r
+      in
+      MAP.fold e.conns (fun (sc,sp) dests r -> pr_dests sc sp dests r) ""
     in
     let apply f k x r = r^"\n"^(f k x) in
     let istr = MAP.fold e.insts (apply pr_inst) "" in

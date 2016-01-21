@@ -6,6 +6,10 @@ type z3expr =
   | Z3Not of z3expr
   | Z3Plus of z3expr*z3expr
   | Z3Bool of bool
+  | Z3LTE of z3expr*z3expr
+  | Z3GTE of z3expr*z3expr
+  | Z3LT of z3expr*z3expr
+  | Z3GT of z3expr*z3expr
   | Z3IfThenElse of z3expr*z3expr*z3expr
   | Z3Eq of z3expr*z3expr
 

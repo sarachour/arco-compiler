@@ -11,6 +11,7 @@ type 'a set = {
 }
 
 type range = float*float
+type irange = int*int
 
 type ('a,'b) map = ('a, 'b) Hashtbl.t
 

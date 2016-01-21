@@ -20,7 +20,7 @@ type ast_op1 =
   | Neg
 
 type index =
-  | IRange of int*int
+  | IRange of irange
   | IIndex of int
   | IToStart of int
   | IToEnd of int
