@@ -67,6 +67,9 @@ struct
       ()
 
 
+  let report_noconns msg sc si dc di =
+    let _ = Printf.printf "[Resolver]: no connections between %s.%d -> %s.%d (%s)\n" sc si dc di msg in
+    ()
 
   let valid_smt_prob cfg sol : bool =
     let sol_conns : (wireid, wireid set) map = sol.conns in
@@ -81,12 +84,12 @@ struct
       | HCConnLimit(dests) ->
         if MAP.has dests (dc,dp) = false
         then
-          let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+          let _ = report_noconns "no source <-> dest connection" sc si dc di in
           false
         else
           let ipairs = MAP.get dests (dc,dp) in
           if SET.size ipairs = 0 then
-            let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+            let _ = report_noconns "no instances" sc si dc di in
             let _ = flush_all() in
             false
           else
@@ -142,12 +145,12 @@ struct
         | HCConnLimit(dests) ->
           if MAP.has dests (dc,dp) = false
           then
-            let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+            let _ = report_noconns "no source <-> dest connection" sc si dc di in
             None
           else
             let ipairs = MAP.get dests (dc,dp) in
             if SET.size ipairs = 0 then
-              let _ = Printf.printf "RESOLVER: no connections between %s -> %s\n" sc dc in
+              let _ = report_noconns "no instances" sc si dc di in
               let _ = flush_all() in
               None
             else
