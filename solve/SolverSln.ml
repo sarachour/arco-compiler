@@ -46,7 +46,7 @@ struct
       "time "^hwr^" => "^mr
     | LError -> "error prop"
     | LBindValue(v) -> "bind "^(string_of_number v)
-    | LBindVar(v) -> "bind "^(MathLib.mid2str v)
+    | LBindVar(k,v) -> "bind "^(MathLib.mid2str v)
 
   let mksln () : sln =
     {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
@@ -226,9 +226,10 @@ struct
         let handle = prp^" of "^(UnivLib.unodeid2name sname)^" "^(string_of_int sid)^" "^sport in
         let cmd = match lbl with
         | LBindValue(f) -> "bind value "^handle^" :: "^(string_of_number f)
-        | LBindVar(MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
-        | LBindVar(MNTime(_)) -> "bind time "^handle
-        | LBindVar(MNParam(n,p,u)) -> "bind value "^handle^" :: "^(string_of_number p)
+        | LBindVar(HNInput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
+        | LBindVar(HNOutput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
+        | LBindVar(HNInput,MNTime(_)) -> "bind time "^handle
+        | LBindVar(HNInput,MNParam(n,p,u)) -> "bind value "^handle^" :: "^(string_of_number p)
         | _ -> "%unsupported label"
         in
         os (cmd^"\n")

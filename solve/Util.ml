@@ -65,6 +65,12 @@ struct
 
   let int_of_float x =  int_of_float (round x)
 
+  let cmp_numbers (n1:number) (n2:number) (eps:float) =
+    let f1 = float_of_number n1 in
+    let f2 = float_of_number n2 in
+    let diff = abs_float(f1 -. f2) in
+    diff < eps
+
 end
 
 module IO =

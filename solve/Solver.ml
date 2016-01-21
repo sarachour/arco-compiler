@@ -131,7 +131,7 @@ struct
         | HRState(l,r,i) ->
           let time = HNTime(HCMLocal(c.name),c.time) in
           UState(h2u l, tf r, h2u i, h2u time)
-        | _ -> error "comp2node" "impossible"
+        | _ -> error "math2goal.comp2node" "impossible"
       in
       let nrels = List.map var2urel nvars in
       let n = {rels=SET.from_list nrels; name=c.name} in
@@ -178,7 +178,7 @@ struct
     (*
     determine if a label is mapping
   *)
-  let _hwkind2wire (slvr:slvr) (sln:sln) (id:unodeid) (inst:int) (knd:hwvkind) =
+  let hwkind2wire (slvr:slvr) (sln:sln) (id:unodeid) (inst:int) (knd:hwvkind) =
     let identname = UnivLib.unodeid2name id in
     let ivar = HwLib.get_port_by_kind slvr.hw knd identname in
     let wire : wireid = (id,inst,ivar.name) in
@@ -195,11 +195,12 @@ struct
       let inst = SlnLib.usecomp sln ident in
       let usenode = SSolUseNode(ident,inst) in
       let wid = SlnLib.wire2uid slvr.hw wire prop in
-      let iid,iwire,iprop = _hwkind2wire slvr sln ident inst HNInput in
-      let oid,owire,oprop = _hwkind2wire slvr sln ident inst HNOutput in
+      let iid,iwire,iprop = hwkind2wire slvr sln ident inst HNInput in
+      let oid,owire,oprop = hwkind2wire slvr sln ident inst HNOutput in
       let connport = SAddGoal(UFunction(oid,Term(wid))) in
       let bindlbl = SSolAddLabel(iwire, iprop, lbl) in
-      [usenode; connport; bindlbl]
+      let bindlbl2 = SSolAddLabel(owire, oprop, lbl) in
+      [usenode; connport; bindlbl;bindlbl2]
 
   let mkout (slvr:slvr) (sln:sln) wire prop (lbl:label) =
     let ident = UNoOutput(prop) in
@@ -210,11 +211,12 @@ struct
       let inst = SlnLib.usecomp sln ident in
       let usenode = SSolUseNode(ident,inst) in
       let wid = SlnLib.wire2uid slvr.hw wire prop in
-      let iid,iwire,iprop = _hwkind2wire slvr sln ident inst HNInput in
-      let oid,owire,oprop = _hwkind2wire slvr sln ident inst HNOutput in
+      let iid,iwire,iprop = hwkind2wire slvr sln ident inst HNInput in
+      let oid,owire,oprop = hwkind2wire slvr sln ident inst HNOutput in
       let connport = SAddGoal(UFunction(iid,Term(wid))) in
       let bindlbl = SSolAddLabel(owire, oprop, lbl) in
-      [usenode;bindlbl;connport]
+      let bindlbl2 = SSolAddLabel(iwire, iprop, lbl) in
+      [usenode;bindlbl;connport;bindlbl2]
 
   let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (name:mid) (knd:hwvkind) : step list =
     (*find all pending input connections with same label*)
@@ -227,7 +229,7 @@ struct
         [add_goal; rm_lbl]
       in
       let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
-        (fun w p x -> match x with LBindVar(v) -> v = nm | _ -> false)
+        (fun w p x -> match x with LBindVar(_,v) -> v = nm | _ -> false)
       in
       let steps : step list = List.fold_right (fun (w,p,l) r -> r @ (conv w p l)) lbls [] in
       steps
@@ -235,11 +237,11 @@ struct
     (*find all existing inputs with same label*)
     let find_input nwire nprop nm =
       let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
-        (fun w p x -> match x with LBindVar(v) -> v = nm && p = nprop | _ -> false)
+        (fun w p x -> match x with LBindVar(_,v) -> v = nm && p = nprop | _ -> false)
       in
       match lbls with
       | [] ->
-        let stps = mkinp slvr sln nwire nprop (LBindVar(name)) in
+        let stps = mkinp slvr sln nwire nprop (LBindVar(HNInput,name)) in
         stps
       | [(w,p,l)] ->
         let snk : unid = SlnLib.wire2uid slvr.hw w p in
@@ -250,13 +252,28 @@ struct
       | _ ->
         error "rslv_label.find_input" "too many labels."
     in
+    let conn_if_exists wire prop name =
+      (*Find any output labels*)
+      let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
+        (fun w p x -> match x with LBindVar(k,v) -> v = name && p = prop && k = HNOutput | _ -> false)
+      in
+      match lbls with
+      | [(ow,op,ol)] ->
+        let snk : unid = SlnLib.wire2uid slvr.hw ow op in
+        let src : unid = SlnLib.wire2uid slvr.hw wire prop in
+        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
+        [add_goal]
+      | [] ->
+        let stp = SSolAddLabel(wire,prop,LBindVar(HNInput, name)) in
+        [stp]
+    in
     (*all the wires that needed to be assigned labels*)
     match (knd, (MathLib.getkind slvr.prob (MathLib.mid2name name)) ) with
     (*output value, resolve labels that are buffering on this by making connections back.
     if this variable is marked as an output by the menv, connect to an output port*)
     | (HNOutput, Some MOutput) ->
       let conn_outs = conn_inputs wire prop name in
-      let outport = mkout slvr sln wire prop (LBindVar name) in
+      let outport = mkout slvr sln wire prop (LBindVar (HNOutput,name)) in
       conn_outs @ outport
       (*create an output port and map all inputs*)
     | (HNOutput, Some MLocal) ->
@@ -268,12 +285,12 @@ struct
       conn_ins
       (*determine if the input is already mapped.*)
     | (HNInput, Some MLocal) ->
-      let stp = SSolAddLabel(wire,prop,LBindVar(name)) in
-      [stp]
+      let stps = conn_if_exists wire prop name in
+      stps
       (*add label to this wire, do not create input*)
     | (HNInput, Some MOutput) ->
-      let stp = SSolAddLabel(wire,prop,LBindVar(name)) in
-      [stp]
+      let stps = conn_if_exists wire prop name in
+      stps
     | (HNInput, None) ->
       let conn_ins = find_input wire prop name in
       conn_ins
@@ -294,7 +311,10 @@ struct
   let rslv_value (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (valu:number) knd =
     let find_input nwire nprop (valu:number) =
       let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
-        (fun w p x -> match x with LBindValue(v) -> v = valu && p = nprop | _ -> false)
+        (fun w p x -> match x with LBindValue(v) ->
+          p = nprop &&
+          MATH.cmp_numbers v valu 0.000000000001
+          | _ -> false)
       in
       match lbls with
       | [] ->

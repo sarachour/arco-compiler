@@ -47,7 +47,7 @@ type label =
   | LTime of range*untid*range*untid
   | LError
   | LBindValue of number
-  | LBindVar of mid
+  | LBindVar of hwvkind*mid
 
 type sln = {
   (*how many of each component is used *)
