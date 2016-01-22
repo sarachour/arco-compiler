@@ -206,7 +206,6 @@ struct
       in
       let gdecls = gdecls @ decls in
       let gdecls = gdecls@[Z3SAT;Z3DispModel] in
-      let _ = Printf.printf "Number of decls: %d\n" (List.length gdecls) in
       (has_failed = false,gdecls)
     in
     let success,decls= tosmt () in

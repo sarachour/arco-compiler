@@ -201,7 +201,7 @@ struct
       let connport = SAddGoal(UFunction(oid,Term(wid))) in
       let bindlbl = SSolAddLabel(iwire, iprop, lbl) in
       let bindlbl2 = SSolAddLabel(owire, oprop, lbl) in
-      [usenode; connport; bindlbl;bindlbl2]
+      [usenode; connport;bindlbl;bindlbl2]
 
   let mkout (slvr:slvr) (sln:sln) wire prop (lbl:label) =
     let ident = UNoOutput(prop) in
@@ -217,7 +217,7 @@ struct
       let connport = SAddGoal(UFunction(iid,Term(wid))) in
       let bindlbl = SSolAddLabel(owire, oprop, lbl) in
       let bindlbl2 = SSolAddLabel(iwire, iprop, lbl) in
-      [usenode;bindlbl;connport;bindlbl2]
+      [usenode;connport;bindlbl;bindlbl2]
 
   let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (name:mid) (knd:hwvkind) : step list =
     (*find all pending input connections with same label*)
@@ -310,23 +310,42 @@ struct
 
 
   let rslv_value (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (valu:number) knd =
-    let find_input nwire nprop (valu:number) =
+    let find_input (nwire:wireid) (nprop:propid) (nval:number) =
+      let print_labels lbls : unit =
+        let _ = List.iter (fun (w,p,l) ->
+          Printf.printf "%s %s %s\n" (SlnLib.wire2str w) p (SlnLib.label2str l)
+        ) lbls in ()
+      in
+      let is_input_comp c = match c with
+      | UNoInput(_) -> true
+      | _ -> false
+      in
       let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
         (fun w p x -> match x with LBindValue(v) ->
-          p = nprop &&
+          let c,_,_ = w in
+          p = nprop && is_input_comp c &&
           MATH.cmp_numbers v valu 0.000000000001
           | _ -> false)
       in
+      let nlbl = LBindValue(nval) in
+      let _ = print_labels lbls in
       match lbls with
       | [] ->
-        let stps = mkinp slvr sln nwire nprop (LBindValue(valu)) in
-        stps
-      | [(w,p,l)] ->
-        let snk : unid = SlnLib.wire2uid slvr.hw w p in
-        let src : unid = SlnLib.wire2uid slvr.hw wire prop in
-        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
-        let rm_lbl = SSolRemoveLabel(w,p,l) in
+        let stps = mkinp slvr sln nwire nprop (nlbl) in
+        let rm_lbl = SSolRemoveLabel(nwire,nprop,nlbl) in
+        let _ = Printf.printf "# Make New: %s\n" (string_of_number valu) in
+        rm_lbl::stps
+      | (w,p,l)::[] ->
+        let _ = Printf.printf "# Reuse : %s\n" (string_of_number valu) in
+        let src : unid = SlnLib.wire2uid slvr.hw w p in
+        let snk : unid = SlnLib.wire2uid slvr.hw nwire nprop in
+        let add_goal = SAddGoal(UFunction(snk,Term(src))) in
+        let rm_lbl = SSolRemoveLabel(nwire,nprop,nlbl) in
         [add_goal; rm_lbl]
+      | h::t ->
+        let _ = Printf.printf "# Failed : %s\n" (string_of_number valu) in
+        let _ = print_labels lbls in
+        error "rslv_value" "too many bindings."
     in
     match knd with
     (*impossible to map an output to a value*)

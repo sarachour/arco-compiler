@@ -145,22 +145,30 @@ struct
       let id = if MAP.has wmaps w then MAP.get wmaps w else 0 in
       let indx = string_of_int (get_const_id ())  in
       let cmtsp = SpcComment("") in
-      let mksrc varname vl =
+      let is_port_comp c = match c with
+        | UNoInput(_) -> true
+        | UNoOutput(_) -> true
+        | _ -> false
+      in
+      let mksrc varname vl : spicest option =
           (*make a new connection between the input component and the source*)
           let vout = (List.length (MAP.to_values wmaps)) + 1 in
           (*get the port that feeds into this component and connect to voltage source*)
-          let nport = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name nm) in
-          let inpcompwire = (nm, inst, nport.name) in
-          let _ = MAP.put wmaps inpcompwire vout in
-          let res =
-            if pr = "V" || pr = "v" then
-              SpcVoltageSource(varname,vout,0,SpcDC,vl)
-            else if pr = "I" || pr = "i" then
-              SpcCurrentSource(varname,vout,0,SpcDC,vl)
-            else
-              error "handle_lbl" "unknown property"
-          in
-          res
+          if is_port_comp nm then
+            let nport = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name nm) in
+            let inpcompwire = (nm, inst, nport.name) in
+            let _ = MAP.put wmaps inpcompwire vout in
+            let res =
+              if pr = "V" || pr = "v" then
+                Some (SpcVoltageSource(varname,vout,0,SpcDC,vl))
+              else if pr = "I" || pr = "i" then
+                Some (SpcCurrentSource(varname,vout,0,SpcDC,vl))
+              else
+                None
+            in
+              res
+          else
+            None
       in
       let mksnk varname  =
         let vout = List.length (MAP.to_values wmaps) + 1 in
@@ -178,15 +186,27 @@ struct
       | LBindValue(vl) ->
         let cmt = SpcComment("constant value "^(string_of_number vl)) in
         let vs = mksrc ("cst"^indx) (SpcFlatValue(float_of_number vl)) in
-        [cmt;vs;cmtsp]
+        let res = match vs with
+          | Some(vs) -> [cmt;vs;cmtsp]
+          | None -> []
+        in
+          res
       | LBindVar(HNInput,q) ->
           let cmt = SpcComment("@input "^(MathLib.mid2str q)) in
           let vs = mksrc ("in_"^(MathLib.mid2str q)^"_"^indx) (SpcFlatValue(1.)) in
-          [cmt;vs;cmtsp]
+          let res = match vs with
+            | Some(vs) -> [cmt;vs;cmtsp]
+            | None -> []
+          in
+            res
       | LBindVar(HNOutput,q) ->
           let cmt = SpcComment("@output "^(MathLib.mid2str q)) in
           let vs = mksrc ("out_"^(MathLib.mid2str q)^"_"^indx) (SpcFlatValue(1.)) in
-          [cmt;vs;cmtsp]
+          let res = match vs with
+            | Some(vs) -> [cmt;vs;cmtsp]
+            | None -> []
+          in
+            res
       | _ -> []
     in
     let _ = MAP.iter sln.conns (fun w1 ws -> SET.iter ws (fun w2 -> handle_conn w1 w2)) in

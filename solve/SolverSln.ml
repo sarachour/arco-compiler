@@ -109,12 +109,13 @@ struct
     ()
 
   let get_labels (sln:sln) (fxn:(wireid->propid->label->bool)) =
-    MAP.fold sln.labels (fun w pl lst1 ->
+    let lbls = MAP.fold sln.labels (fun w pl lst1 ->
       MAP.fold pl (fun pr lbls lst2 ->
         SET.fold lbls (fun lb lst3 -> if fxn w pr lb then
           (w,pr,lb)::lst3 else lst3) lst2
       ) lst1
-    ) []
+    ) [] in
+    lbls
 
   let wires_of_label (sln:sln) (prop:propid) (v:label -> bool) : wireid list option=
     let check_label cwire cproplabels =
