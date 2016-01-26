@@ -43,8 +43,6 @@ comp emmblock
   input Cdeg
   input Ctotin
 
-  input Dprod
-  input Ddeg
   input Dfree
 
 
@@ -53,12 +51,14 @@ comp emmblock
   input KDfw
   input KDrv
   input ratC
-  input k1
-  input k2
+  input kr1
+  input kr2
 
   % 2 copiers each
   output Afree
+  output Afree1
   output Bfree
+  output Bfree1
 
   % 3 + copiers, 3 - copiers
   output Ctot
@@ -67,36 +67,69 @@ comp emmblock
   output Ctotn1
   output Ctotn2
 
-  output Dtot
+
+  input A_SW
+  input B_SW
+  input FF_SW1
+  input FF_SW2
+  input FF_SW3
+  input FF_SW4
 
 
-  rel I(Afree) = I(Atot) - I(K)*I(Ctot)
-  rel I(Bfree) = I(Atot) - I(K)*I(Ctot)
+  rel I(Afree) = I(Atot) - D(A_SW)*I(Ctot)
+  rel I(Bfree) = I(Atot) - D(B_SW)*I(Ctot)
   rel I(rateFW) = I(Afree)*((I(Bfree)/I(KDfw0))^D(n))
-  rel I(rateFWUp) = I(Cprod) - I(K)*I(rateFW)
-  rel I(rateFWTot) = I(Cprod) + I(K)*I(rateFw)
+  rel I(rateFWUp) = I(Cprod) - D(FF_SW1)*I(rateFW)
+  rel I(rateFWTot) = I(Cprod) + D(FF_SW2)*I(rateFw)
   rel I(rateRV) = I(Cfree)*I(Dfree)/I(KDrv0)
-  rel I(rateRVTot) = I(Cdeg) + I(ratC)*I(Cfree) + I(K)*I(rateRV)
-  rel I(rateRVUp) = I(Cdeg) + I(ratC)*I(Cfree) - I(K)*I(rateRV)
+  rel I(rateRVTot) = I(Cdeg) + I(ratC)*I(Cfree) + D(FF_SW3)*I(rateRV)
+  rel I(rateRVUp) = I(Cdeg) + I(ratC)*I(Cfree) - D(FF_SW4)*I(rateRV)
   rel I(DfreeCopy) = I(Dfree)
   rel I(CfreeCopy) = I(Cfree)
 
-  rel deriv(I(Ctot),t) = I(k1)*(I(Cprod + I(K)*I(rateFW) )) - I(k2)*(I(Cdeg) + I(Cfree)*I(ratC))
+  rel deriv(I(Ctot),t) = I(kr1)*(I(Cprod + C_FF_EN*I(rateFW) )) - I(kr2)*(I(Cdeg) + I(Cfree)*I(ratC))
   % copiers
   rel I(Ctot2) = I(Ctot)
   rel I(Ctot3) = I(Ctot)
   rel I(Ctotn1) = -I(Ctot)
   rel I(Ctotn2) = -I(Ctot)
 
-  rel I(Dtot) = I(Dprod)+I(Ddeg)
+  rel I(Afree1) = I(Afree)
+  rel I(Bfree1) = I(Bfree)
+
 end
 
 
+comp digiswitch
+  output O
+  output O2
+  rel D(O) = 0
+  rel D(O2) = 1
+end
+
+comp addi
+  input A
+  input B
+  input C
+  output O
+
+  rel I(O) = I(A) + I(B) + I(C)
+
+end
+
 schematic
   inst emmblock : 20
+  inst digiswitch : 1
   inst input(D) : 20
   inst input(I) : 160
   inst output(I) : 24
+
+  conn digiswitch -> emmblock.A_SW
+  conn digiswitch -> emmblock.B_SW
+  conn digiswitch -> emmblock.FF_SW1
+  conn digiswitch -> emmblock.FF_SW2
+  conn digiswitch -> emmblock.FF_SW3
+  conn digiswitch -> emmblock.FF_SW4
 
   conn input(I) -> emmblock.Atot
   conn input(I) -> emmblock.Btot
@@ -108,5 +141,14 @@ schematic
   conn input(I) -> emmblock.k1
   conn input(I) -> emmblock.k2
   conn input(D) -> emmblock.n
+
+  conn emmblock.Ctot -> addi
+
+  conn addi.O -> emmblock.Cfree
+  conn addi.O -> emmblock.Cprod
+  conn addi.O -> emmblock.Cdeg
+  conn addi.O -> emmblock.Ctot_in
+
+  conn addi.O -> output(I)
 
 end
