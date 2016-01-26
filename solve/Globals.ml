@@ -13,7 +13,7 @@ let _ = MAP.put glbls "ast_pattern_breadth" (GlblPropInt 15)
 let _ = MAP.put glbls "ast_pattern_depth" (GlblPropInt 2)
 let _ = MAP.put glbls "ast_pattern_frac_ban" (GlblPropFloat 0.65)
 let _ = MAP.put glbls "search_max_depth" (GlblPropInt 65)
-let _ = MAP.put glbls "search_pattern_depth" (GlblPropInt 5)
+let _ = MAP.put glbls "search_n_patterns_found" (GlblPropInt 5)
 let _ = MAP.put glbls "interactive" (GlblPropBool true)
 let _ = MAP.put glbls "debug" (GlblPropBool false)
 
@@ -54,18 +54,23 @@ let get_glbl_bool key =
 let get_glbls () =
   glbls
 
-let upd_glbls v =
-  let _ = MAP.iter glbls (fun k v -> set_glbl k v) in
-  ()
-
-let glbls_to_file file =
-  let to_prop k v = match v with
+let glbl2str k v = match v with
   | GlblPropBool(b) -> "bool "^k^" "^(string_of_bool b)
   | GlblPropInt(i) -> "int "^k^" "^(string_of_int i)
   | GlblPropFloat(f) -> "float "^k^" "^(string_of_float f)
   | GlblPropString(s) -> "string "^k^" "^s
-  in
+
+
+let print_glbls () =
+  let _ = MAP.iter glbls (fun k v -> Printf.printf "%s\n" (glbl2str k v)) in
+  ()
+
+let upd_glbls v =
+  let _ = MAP.iter v (fun k v -> upd_glbl k v) in
+  ()
+
+let glbls_to_file file =
   let oc = open_out file in    (* create or truncate file, return channel *)
      (* write something *)
-  let _ = MAP.iter glbls (fun k v -> fprintf oc "%s\n" (to_prop k v)) in
+  let _ = MAP.iter glbls (fun k v -> fprintf oc "%s\n" (glbl2str k v)) in
   close_out oc;

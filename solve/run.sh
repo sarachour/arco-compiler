@@ -37,3 +37,4 @@ mv *.ckt output/
 mv *.ckt.caml output/
 mv *.summary output/
 mv *.z3 .tmp/
+mv *.debug.txt .tmp/

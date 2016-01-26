@@ -446,7 +446,7 @@ struct
   let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
     (*declare event*)
     let declwcunid = Shim.unid2wcsym name inst_id in
-    let n_tries = get_glbl_int "search_pattern_depth" in
+    let n_tries = get_glbl_int "search_n_patterns_found" in
     let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid n_tries in
     (*let _ = match res with
       Some(res) ->
@@ -831,7 +831,7 @@ struct
     match select_best_path v c with
     | Some(p) ->
       let depth =  List.length (TREE.get_path v.search.paths p) in
-      if depth >= get_glbl_int "max_depth"
+      if depth >= get_glbl_int "search_max_depth"
         then
           let _ = Printf.printf "hit max depth for path\n" in
           let _ = SearchLib.deadend v.search p in

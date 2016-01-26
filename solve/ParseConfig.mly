@@ -13,13 +13,13 @@
 
   exception ParseConfigException of string
 
-  let glbls : (string,glblprop) map = MAP.make()
+  let tbl : (string,glblprop) map = MAP.make()
 
   let error n m =
     raise (ParseConfigException (n^": "^m) )
 
   let add_glbl key v =
-    let _ = MAP.put glbls key v in
+    let _ = MAP.put tbl key v in
     ()
 
 %}
@@ -55,4 +55,4 @@ props:
   | props prop {let k,v = $2 in add_glbl k v}
 
 toplvl:
-  | props EOF {let _ = $1 in glbls}
+  | props EOF {let _ = $1 in tbl}

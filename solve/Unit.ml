@@ -28,7 +28,7 @@ sig
   val mkenv : unit -> unt_env
   val define : unt_env -> string -> unt_env
   val mkrule : unt_env -> string -> float -> string ->float -> unt_env
-  val print : unt_env -> unit
+  val to_buf : unt_env -> out_channel -> unit
   val unit2str : unt -> string
   val has: unt_env -> untid -> bool
 end =
@@ -41,12 +41,13 @@ struct
     let cmpval v1 v2 = true in
     {units=SET.make (fun x y -> x = y); graph=(GRAPH.make cmpval node2str val2str)}
 
-  let print e =
-    let print_elem src snk flt  =
-      Printf.printf "%s -> %s: %f\n" src snk  flt
+  let to_buf e fb =
+    let os x = output_string fb x in
+    let elem_to_buf src snk flt  =
+      os (src^" -> "^snk ^": "^(string_of_float flt)^"\n")
     in
-    SET.iter e.units (fun x -> Printf.printf "type %s\n" x);
-    GRAPH.iter e.graph print_elem
+    SET.iter e.units (fun x -> os ("type "^x^"\n"));
+    GRAPH.iter e.graph elem_to_buf
 
   let has e id =
     SET.has e.units id

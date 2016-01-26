@@ -19,8 +19,8 @@ exception MainException of string*string;;
 let read_data f h =
   let fenv = ParserGenerator.file_to_formula f in
   let henv = ParserGenerator.file_to_hwspec h in
-  let hwstr = HwLib.print henv in
-  let hwstr = MathLib.print fenv in
+  let hwstr = exec_debug (fun () -> HwLib.to_file henv "henv.debug.txt") in
+  let hwstr = exec_debug (fun () -> MathLib.to_file fenv "fenv.debug.txt" ) in
   (fenv,henv)
 
 let gen h f o cfg =
@@ -28,6 +28,9 @@ let gen h f o cfg =
     | Some(c) ->
       let nglbls = ParserGenerator.file_to_config c in
       let _ = upd_glbls nglbls in
+      let _ = Printf.printf "==== Loaded Config File (%s) ====\n" c in
+      let _ = print_glbls () in
+      let _ = Printf.printf "=================================\n" in
       ()
     | None -> ()
   in
