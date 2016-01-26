@@ -7,10 +7,8 @@ open Common
 open HWData
 
 type slvr =  {
-  interactive: bool;
   hw: hwenv;
   prob: menv;
-  max_depth: int;
   cnt: int;
 }
 
