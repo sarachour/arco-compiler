@@ -1,10 +1,14 @@
  - install scrapy packages for python 
 
+- scraper dependent on cryptography, lxml python packages
+
+- scraper dependent on libssl-dev, openssl-devel, libxml2-dev, libxslt1-dev
+
  - to run, make sure to be in same directory as scrapy project
 
  - run on command line:
 
-	scrapy crawl arco_ls
+	scrapy crawl arco_pls
 
  - to export results to csv file for convenient viewing of obtained data:
 	
