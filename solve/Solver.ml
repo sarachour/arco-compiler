@@ -80,13 +80,13 @@ struct
         ()
     in
     let internal_menu_handle x = menu_handle x (fun () -> ()) in
-    let rec user_menu_handle () = menu s (fun x -> menu_handle x user_menu_handle) menu_desc in
+    let rec user_menu_handle () = menu (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
 
   let goal2str g = UnivLib.urel2str g
 
-  let mkslv h p i = {interactive=i; hw=h; prob=p; max_depth=__max_depth; cnt=0;}
+  let mkslv h p = {hw=h; prob=p; cnt=0;}
 
   let mktbl s : gltbl =
     (* add all relations to the tableau of goals. *)
@@ -446,7 +446,7 @@ struct
   let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
     (*declare event*)
     let declwcunid = Shim.unid2wcsym name inst_id in
-    let n_tries = __pattern_depth in
+    let n_tries = get_glbl_int "search_pattern_depth" in
     let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid n_tries in
     (*let _ = match res with
       Some(res) ->
@@ -831,7 +831,7 @@ struct
     match select_best_path v c with
     | Some(p) ->
       let depth =  List.length (TREE.get_path v.search.paths p) in
-      if depth >= s.max_depth
+      if depth >= get_glbl_int "max_depth"
         then
           let _ = Printf.printf "hit max depth for path\n" in
           let _ = SearchLib.deadend v.search p in
@@ -903,7 +903,7 @@ struct
         else
           let _ = Printf.printf "SOLVER ==> Solution does not satisfy connection constraints.\n" in
           let _ = flush_all() in
-          let _ = wait s in
+          let _ = wait () in
           let x = failed solve_goal in
           x
       else
@@ -1073,11 +1073,11 @@ end
 
 
 
-let solve (hw:hwenv) (prob:menv) (out:string) (interactive:bool) =
+let solve (hw:hwenv) (prob:menv) (out:string) =
   let _ = init_utils() in
-  let sl = SolveLib.mkslv hw prob interactive in
+  let sl = SolveLib.mkslv hw prob in
   let tbl = SolveLib.mktbl sl in
-  let _ = pr sl "===== Beginning Interactive Solver ======\n" in
+  let _ = print_inter "===== Beginning Interactive Solver ======\n" in
   let spdoc = SolveLib.solve (REF.mk sl) (tbl) in
   match spdoc with
     | Some(s,tbl) ->

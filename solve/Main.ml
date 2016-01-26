@@ -11,8 +11,8 @@ open Logic
 open Util
 
 open Compile
-
-
+open Interactive
+open Globals
 
 exception MainException of string*string;;
 
@@ -23,11 +23,22 @@ let read_data f h =
   let hwstr = MathLib.print fenv in
   (fenv,henv)
 
-let gen h f o is_interactive=
-  let _ = set_
+let gen h f o cfg =
+  let _ = match cfg with
+    | Some(c) ->
+      let nglbls = ParserGenerator.file_to_config c in
+      let _ = upd_glbls nglbls in
+      ()
+    | None -> ()
+  in
   let mathenv,hwenv = read_data f h in
-  let _ = Solver.solve hwenv mathenv o is_interactive in
+  let _ = Solver.solve hwenv mathenv o in
   ()
+
+let gen_cfg o =
+  let _ = glbls_to_file o in
+  ()
+
 let command =
   Command.basic
     ~summary:"Compile to circuit"
@@ -36,17 +47,24 @@ let command =
       +> flag "-hwspec" (optional string) ~doc:"hardware specification"
       +> flag "-formula" (optional string) ~doc:"formula specification"
       +> flag "-output" (optional string) ~doc:"output file specification"
-      +> flag "-interactive" no_arg ~doc:"interactively solve the system."
-      +> flag "-debug" no_arg ~doc:"debug the benchmark."
+      +> flag "-config" (optional string)  ~doc:"interactively solve the system."
+      +> flag "-print-config" (no_arg)  ~doc:"dump teh default set of globals."
     )
-    (fun hwspec formula output is_interactive debug () ->
-      match (hwspec,formula, output) with
-      | (Some h, Some f, Some o) ->
-        gen h f o is_interactive
-      | (Some h, Some f, None) ->
-        gen h f "out.ckt" is_interactive debug
-      | (_,_,_) ->
-        raise (MainException("command","Must provide hwspec output, and formula"))
+    (fun hwspec formula output config dumpglobals () ->
+      if dumpglobals then
+        match output with
+        | Some(o) ->
+          gen_cfg o
+        | None ->
+          gen_cfg "default.cfg"
+      else
+        match (hwspec,formula,output) with
+        | (Some h, Some f, Some o) ->
+          gen h f o config
+        | (Some h, Some f, None) ->
+          gen h f "out.ckt" config
+        | (_,_,_) ->
+          raise (MainException("command","Must provide hwspec output, and formula"))
     )
 
 let main () = Command.run command;;

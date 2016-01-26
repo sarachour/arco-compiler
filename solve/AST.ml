@@ -331,8 +331,8 @@ struct
       in
       let triv_sln = match_trivial e1 e2  in
       if triv_sln <> None then OPTION.force_conc triv_sln else
-      let max_depth = __ast_pattern_depth in
-      let max_breadth = __ast_pattern_breadth in
+      let max_depth = get_glbl_int "ast_pattern_depth" in
+      let max_breadth = get_glbl_int "ast_pattern_breadth" in
       let decl_tmpl_or_pat i x cnv =  if i = 0 then decl x false cnv else decl x true cnv in
       let env,iwcs,syms = mkenv [e1;e2] cnv decl_tmpl_or_pat in
       let cand = to_symcaml e1 cnv in
@@ -370,7 +370,7 @@ struct
 
         | None -> ()
       in
-      let _ = solve iwcs 0  __ast_pattern_frac_ban in
+      let _ = solve iwcs 0 (get_glbl_float "ast_pattern_frac_ban") in
       let nlst : (a,a ast) map list = SET.map sols mmap in
       match nlst with
       | [] -> None

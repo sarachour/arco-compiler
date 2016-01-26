@@ -1,20 +1,13 @@
-import Util
-
-let __max_depth = 65
-let __pattern_depth = 5
-
-let __ast_pattern_breadth = 15
-let __ast_pattern_depth = 2
-let __ast_pattern_frac_ban = 0.65
-
-let debug = false
-
-let glbls = MAP.make ()
+open Util
+open Printf
 
 type glblprop = GlblPropInt of int
   | GlblPropFloat of float
   | GlblPropBool of bool
   | GlblPropString of string
+
+
+let glbls : (string,glblprop) map = MAP.make ();;
 
 let _ = MAP.put glbls "ast_pattern_breadth" (GlblPropInt 15)
 let _ = MAP.put glbls "ast_pattern_depth" (GlblPropInt 2)
@@ -24,5 +17,55 @@ let _ = MAP.put glbls "search_pattern_depth" (GlblPropInt 5)
 let _ = MAP.put glbls "interactive" (GlblPropBool true)
 let _ = MAP.put glbls "debug" (GlblPropBool false)
 
-let set_prop key val =
-  MAP.put glbls key val
+(*
+
+*)
+let set_glbl key v =
+  let _ = MAP.put glbls key v in
+  ()
+
+let upd_glbl key v =
+  if MAP.has glbls key then
+    set_glbl key v
+  else
+    error "upd_glbl" "no global with that name"
+
+let get_glbl key =
+  if MAP.has glbls key then
+    MAP.get glbls key
+  else
+    error "get_glbl" ("no global property with name: "^key)
+
+let get_glbl_int key =
+  match get_glbl key with
+  | GlblPropInt(i) -> i
+  | _ -> error "get_glbl_int" "unexpected property type with name. Expected int"
+
+let get_glbl_float key =
+  match get_glbl key with
+  | GlblPropFloat(i) -> i
+  | _ -> error "get_glbl_int" "unexpected property type with name. Expected int"
+
+let get_glbl_bool key =
+  match get_glbl key with
+  | GlblPropBool(i) -> i
+  | _ -> error "get_glbl_int" "unexpected property type with name. Expected int"
+
+let get_glbls () =
+  glbls
+
+let upd_glbls v =
+  let _ = MAP.iter glbls (fun k v -> set_glbl k v) in
+  ()
+
+let glbls_to_file file =
+  let to_prop k v = match v with
+  | GlblPropBool(b) -> "bool "^k^" "^(string_of_bool b)
+  | GlblPropInt(i) -> "int "^k^" "^(string_of_int i)
+  | GlblPropFloat(f) -> "float "^k^" "^(string_of_float f)
+  | GlblPropString(s) -> "string "^k^" "^s
+  in
+  let oc = open_out file in    (* create or truncate file, return channel *)
+     (* write something *)
+  let _ = MAP.iter glbls (fun k v -> fprintf oc "%s\n" (to_prop k v)) in
+  close_out oc;

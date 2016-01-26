@@ -4,6 +4,7 @@
 CMD=$1
 NAME=$2
 HWSPEC=$3
+CFG=$4
 
 SOLVER=./solver.debug
 
@@ -20,13 +21,13 @@ if [ "$CMD" = "test-slv" ]; then
 fi
 
 if [ "$CMD" = "run" ]; then
-  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -output "$NAME-$HWSPEC".ckt -interactive
+  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "$NAME-$HWSPEC".ckt
 fi
 
-if [ "$CMD" = "run-auto" ]; then
-  make && time ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -output "$NAME-$HWSPEC".ckt > .tmp/log.txt
-fi
 
+if [ "$CMD" = "config" ]; then
+  make && time ${SOLVER} -print-config -output "$NAME".cfg > .tmp/log.txt
+fi
 
 
 mkdir -p output

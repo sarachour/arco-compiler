@@ -39,6 +39,11 @@ struct
     let lb = string_to_lexbuf fn in
     ParseAST.toplvl LexAST.expr lb
 
+  let file_to_config fn =
+    let lb = file_to_lexbuf fn in
+    let res = parse_lexbuf "config" (fun x -> ParseConfig.toplvl LexConfig.toplvl x) lb in
+    res
+
   let file_to_formula fn =
     let lb = file_to_lexbuf fn in
     let res = parse_lexbuf "math" (fun x -> ParseMath.env LexMath.env x) lb in
