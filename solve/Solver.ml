@@ -43,6 +43,28 @@ struct
     in
     SET.fold g goal2str ""
 
+    let is_trivial g =
+      match g with
+      | UFunction(id,Decimal(_)) -> true
+      | UFunction(id,Integer(_)) -> true
+      | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
+          if prop1 = prop2 then true else false
+      | UFunction(MathId(v),Term(HwId(_))) -> true
+      | UFunction(HwId(v),Term(MathId(_))) -> true
+      | _ -> false
+
+  let wrap_goal (u:urel) : goal =
+    if is_trivial u then
+      TrivialGoal(u)
+    else
+      NonTrivialGoal(u)
+
+  let unwrap_goal (g:goal) : urel = match g with
+  | TrivialGoal(v) -> v
+  | NonTrivialGoal(v) -> v
+
+
+  let goal_is_trivial g = match g with TrivialGoal(g) -> true | _ -> false
 
   let mkmenu (s:slvr) (v:gltbl) (g:goal option) =
     let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
@@ -88,6 +110,16 @@ struct
 
   let mkslv h p = {hw=h; prob=p; cnt=0;}
 
+  let is_trivial (u:urel) =
+    match u with
+    | UFunction(id,Decimal(_)) -> true
+    | UFunction(id,Integer(_)) -> true
+    | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
+        if prop1 = prop2 then true else false
+    | UFunction(MathId(v),Term(HwId(_))) -> true
+    | UFunction(HwId(v),Term(MathId(_))) -> true
+    | _ -> false
+
   let mktbl s : gltbl =
     (* add all relations to the tableau of goals. *)
     let rm_pars x : unid ast option =
@@ -96,28 +128,20 @@ struct
       | Term(MathId(MNParam(n,v,u))) ->Some (ast_of_number (v))
       | _ -> None
     in
-
-    let simpl v : unid ast =
-      (*let declunid = Shim.unid2sym "N/A" (-1) in
-      let _ = Printf.printf "simplify: %s -> " (UnivLib.uast2str v) in
-      let vq = ASTLib.simpl v UnivLib.unid2var (UnivLib.var2unid s) declunid in
-      let _ = Printf.printf "%s\n" (UnivLib.uast2str vq) in
-      vq
-      *)
-      v
-    in
-    let math2goal (x:mvar) =
+    let math2goal (x:mvar) : goal =
       let m2u = UnivLib.mid2unid in
       let tf x =
         let t = ASTLib.trans (ASTLib.map x m2u) rm_pars in
-        let tsimpl = simpl t in
-        tsimpl
+        t
       in
       match x.rel with
-      | MRFunction(l,r) -> UFunction(m2u l, tf r)
+      | MRFunction(l,r) ->
+        let rel = UFunction(m2u l, tf r) in
+        (wrap_goal rel)
       | MRState(l,r,x) ->
         let time = (MathLib.getvar s.prob (OPTION.force_conc s.prob.time)).typ in
-        UState(m2u l, tf r, m2u x, m2u time)
+        let rel = UState(m2u l, tf r, m2u x, m2u time) in
+        (wrap_goal rel)
       | MRNone -> error "math2goal" "impossible."
     in
     let fltmath x = x.rel <> MRNone in
@@ -138,7 +162,7 @@ struct
       n
     in
     let nodetbl : (unodeid,unode) map = MAP.make () in
-    let rels : urel list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
+    let goals : goal list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
     let sln = SlnLib.mksln () in
     let nodes : unode list = List.map comp2node (MAP.to_values s.hw.comps) in
     let handle_node (x) =
@@ -148,7 +172,7 @@ struct
        ()
     in
     let _ = List.iter (fun x -> handle_node x) nodes in
-    let init_cursor,search= SearchLib.mkbuf (rels) in
+    let init_cursor,search= SearchLib.mkbuf (goals) in
     let tbl = {goals=SET.make (fun x y -> x = y); dngl=MAP.make(); nodes=nodetbl; sln=sln; search=search} in
     let tbl = SearchLib.move_cursor s tbl init_cursor in
     tbl
@@ -167,15 +191,7 @@ struct
 
 
 
-  let is_trivial g =
-    match g with
-    | UFunction(id,Decimal(_)) -> true
-    | UFunction(id,Integer(_)) -> true
-    | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
-        if prop1 = prop2 then true else false
-    | UFunction(MathId(v),Term(HwId(_))) -> true
-    | UFunction(HwId(v),Term(MathId(_))) -> true
-    | _ -> false
+
     (*
     determine if a label is mapping
   *)
@@ -198,7 +214,7 @@ struct
       let wid = SlnLib.wire2uid slvr.hw wire prop in
       let iid,iwire,iprop = hwkind2wire slvr sln ident inst HNInput in
       let oid,owire,oprop = hwkind2wire slvr sln ident inst HNOutput in
-      let connport = SAddGoal(UFunction(oid,Term(wid))) in
+      let connport = SAddGoal(TrivialGoal(UFunction(oid,Term(wid)))) in
       let bindlbl = SSolAddLabel(iwire, iprop, lbl) in
       let bindlbl2 = SSolAddLabel(owire, oprop, lbl) in
       [usenode; connport;bindlbl;bindlbl2]
@@ -214,7 +230,7 @@ struct
       let wid = SlnLib.wire2uid slvr.hw wire prop in
       let iid,iwire,iprop = hwkind2wire slvr sln ident inst HNInput in
       let oid,owire,oprop = hwkind2wire slvr sln ident inst HNOutput in
-      let connport = SAddGoal(UFunction(iid,Term(wid))) in
+      let connport = SAddGoal(TrivialGoal(UFunction(iid,Term(wid)))) in
       let bindlbl = SSolAddLabel(owire, oprop, lbl) in
       let bindlbl2 = SSolAddLabel(iwire, iprop, lbl) in
       [usenode;connport;bindlbl;bindlbl2]
@@ -225,7 +241,7 @@ struct
       let conv w p l =
         let snk : unid = SlnLib.wire2uid slvr.hw wire prop in
         let src : unid = SlnLib.wire2uid slvr.hw nwire nprop in
-        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
+        let add_goal = SAddGoal(TrivialGoal(UFunction(src,Term(snk)))) in
         let rm_lbl = SSolRemoveLabel(w,p,l) in
         [add_goal; rm_lbl]
       in
@@ -247,7 +263,7 @@ struct
       | [(w,p,l)] ->
         let snk : unid = SlnLib.wire2uid slvr.hw w p in
         let src : unid = SlnLib.wire2uid slvr.hw nwire nprop in
-        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
+        let add_goal = SAddGoal(TrivialGoal(UFunction(src,Term(snk)))) in
         let rm_lbl = SSolRemoveLabel(w,p,l) in
         [add_goal; rm_lbl]
       | _ ->
@@ -262,7 +278,7 @@ struct
       | [(ow,op,ol)] ->
         let snk : unid = SlnLib.wire2uid slvr.hw ow op in
         let src : unid = SlnLib.wire2uid slvr.hw wire prop in
-        let add_goal = SAddGoal(UFunction(src,Term(snk))) in
+        let add_goal = SAddGoal(TrivialGoal(UFunction(src,Term(snk)))) in
         [add_goal]
       | [] ->
         let stp = SSolAddLabel(wire,prop,LBindVar(HNInput, name)) in
@@ -336,7 +352,7 @@ struct
       | (w,p,l)::[] ->
         let src : unid = SlnLib.wire2uid slvr.hw w p in
         let snk : unid = SlnLib.wire2uid slvr.hw nwire nprop in
-        let add_goal = SAddGoal(UFunction(snk,Term(src))) in
+        let add_goal = SAddGoal(TrivialGoal(UFunction(snk,Term(src)))) in
         let rm_lbl = SSolRemoveLabel(nwire,nprop,nlbl) in
         [add_goal; rm_lbl]
       | h::t ->
@@ -363,7 +379,7 @@ struct
       in
       res
     in
-    match g with
+    match unwrap_goal g with
       (*check for duplicates*)
     | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
         if prop1 = prop2 then
@@ -402,24 +418,6 @@ struct
 
     | _ -> []
 
-  let resolve_trivial s t goals =
-    let handle_goal g =
-      if is_trivial g then
-        let _ = SearchLib.add_step t.search (SRemoveGoal g) in
-        let steps = get_trivial_step s t g  in
-        let _ = List.iter (fun x -> let _ = SearchLib.add_step t.search x in ()) steps in
-        ()
-    in
-    let goal_cursor = SearchLib.cursor t.search in
-    if (SET.fold goals (fun x r -> if is_trivial x then r+1 else r) 0) > 0 then
-      let _ = SearchLib.start t.search in
-      let _ = SET.iter goals handle_goal in
-      let trivial_cursor = SearchLib.commit t.search in
-      (*let _ = SearchLib.deadend t.search goal_cursor in*)
-      let _ = SearchLib.move_cursor s t trivial_cursor in
-      trivial_cursor
-    else
-    goal_cursor
 
   let canon_hw_assign lhs rhs : (unid*(unid ast)) option =
     match rhs with
@@ -457,8 +455,9 @@ struct
     in*)
     res
 
-  let unify_rels (s:slvr) (name:string) (inst_id:int) (g:urel) (v:urel) : (unid,unid ast) map list option=
-    match (Shim.rel_lcl2glbl inst_id g),(Shim.rel_lcl2glbl inst_id v) with
+  let unify_rels (s:slvr) (name:string) (inst_id:int) (g:goal) (v:urel) : (unid,unid ast) map list option=
+    let gr = unwrap_goal g in
+    match (Shim.rel_lcl2glbl inst_id gr),(Shim.rel_lcl2glbl inst_id v) with
     | (UFunction(gl,gr), UFunction(nl,nr))->
       let res = unify_exprs s name inst_id gl gr nl nr in
       let ret = match res with
@@ -505,7 +504,17 @@ struct
       | UFunction(l,_) -> l
       | UState(l,_,_,_) -> l
     in
-    let get_rel id lst = List.fold_right (fun q r -> if (get_id q) = id then Some(q) else r) lst None in
+    let get_goal (id:unid) (lst:goal list) =
+      List.fold_right
+        (fun q r -> if (get_id (unwrap_goal q)) = id then Some(q) else r)
+        lst None
+    in
+
+    let get_rel (id:unid) (lst:urel list) =
+      List.fold_right
+        (fun q r -> if (get_id q) = id then Some(q) else r)
+        lst None
+    in
     (*substitute expression with concretized goals*)
     let sub_rel (rel:urel) assigns : urel =
       let mksubs (repls: (unid*unid ast) list) =
@@ -554,10 +563,10 @@ struct
         UState(nl,snr,snic,snt)
 
     in
-    let resolve_goal curr_goal others =
-      match curr_goal with
+    let resolve_goal (curr_goal:goal) (other_goals: goal list) =
+      match unwrap_goal curr_goal with
       | UFunction(HwId(q),Term(MathId(z))) ->
-        let res = match get_rel (MathId z) others with
+        let res = match get_goal (MathId z) other_goals with
         | Some(new_goal) -> new_goal
         | None -> curr_goal
         in
@@ -569,22 +578,22 @@ struct
     MAIN ROUTINE
     ========
     *)
-    let other_goals = SET.filter all_goals (fun x -> x <> g)  in
-    let other_rels = List.map
+    let other_goals : goal list = SET.filter all_goals (fun x -> x <> g)  in
+    let other_rels : urel list = List.map
       (fun q -> Shim.rel_lcl2glbl iid q) (SET.filter all_rels (fun x -> x <> rel))
     in
     (*determine if the assignment is ever on the left hand side of a relation*)
     (*take a mapping*)
-    let rec solve_assign id expr assigns other_rels other_goals : (step list) option =
-      let goal = UFunction(id,expr) in
+    let rec solve_assign id expr assigns (other_rels:urel list) (other_goals:goal list) : (step list) option =
+      let goal : goal = wrap_goal (UFunction(id,expr)) in
       match get_rel id other_rels with
       | Some(orel) ->
         (* this is the concretized version of the relation
           if this fails  *)
-        let orelsub = sub_rel orel assigns in
-        let ngoal = resolve_goal goal other_goals in
+        let orelconc : urel = sub_rel orel assigns in
+        let ngoal : goal = resolve_goal goal other_goals in
         (*force unification between the expression and goal *)
-        let un = unify_rels s name iid ngoal orelsub in
+        let un = unify_rels s name iid ngoal orelconc in
         (*id this works, we have resolved the goal of interest successfully by applying another node.*)
         let psteps = [SRemoveGoal(ngoal)] in
         let res = match un with
@@ -622,7 +631,7 @@ struct
           res
       | None ->
         (*not bound locally.*)
-        Some([SAddGoal(UFunction(id,expr))])
+        Some([SAddGoal(wrap_goal (UFunction(id,expr)))])
     in
     let proc k v rest =
       let res = solve_assign k v assigns other_rels other_goals in
@@ -641,7 +650,10 @@ struct
       let asg = MAP.make () in
       let _ = List.iter (fun x ->
         match x with
-          | SAddGoal(UFunction(id,expr)) -> let _ = MAP.put asg id expr in ()
+          | SAddGoal(TrivialGoal(UFunction(id,expr))) ->
+            let _ = MAP.put asg id expr in ()
+          | SAddGoal(NonTrivialGoal(UFunction(id,expr))) ->
+            let _ = MAP.put asg id expr in ()
           | _ -> ()
       ) gls
       in
@@ -694,8 +706,6 @@ struct
         let _ = List.iter (fun x -> SearchLib.add_step gtbl.search x) sts in
         let sol_cursor = SearchLib.commit gtbl.search in
         let _ = SearchLib.move_cursor s gtbl sol_cursor in
-        let triv = resolve_trivial s gtbl gtbl.goals in
-        let _ = SearchLib.move_cursor s gtbl triv in
         true
 
       | None ->
@@ -749,52 +759,18 @@ struct
      is_valid = false
 
 
-  let path_is_useless v n =
-    let build_gl (x:step) (adds,reds) = match x with
-      | SAddGoal(g) -> let gl = Shim.rel_glbl2lcl g in
-        if is_trivial g = false then (gl::adds, reds) else (adds,reds)
-      | SRemoveGoal(g) -> let gl = Shim.rel_glbl2lcl g in
-        if is_trivial g = false then (adds, gl::reds) else (adds,reds)
-      | _ -> (adds,reds)
-    in
-    let judge adds reds =
-      let cycle_set = List.filter (fun q -> LIST.count adds q > 1) reds  in
-      let red_set = List.filter (fun q -> LIST.count adds q > 1 ) reds  in
-      let print set =
-        let str = List.fold_right (fun x r -> r^(goal2str x)^"\n") set "" in
-        Printf.printf "%s\n" str
-      in
-      match cycle_set,red_set with
-      | [],[] -> false
-      | _,[] ->
-        let _ = print cycle_set in
-        let _ = Printf.printf "cycle detected\n" in
-        true
-      | [],_ ->
-        let _ = print red_set in
-        let _ = Printf.printf "redundent pattern detected\n" in
-        true
-      | _,_ ->
-        let _ = print cycle_set in
-        let _ = Printf.printf "cycle detected\n" in
-        let _ = print red_set in
-        let _ = Printf.printf "redundent pattern detected\n" in
-        true
-    in
-    let icgl = ([],[]) in
-    let adds,reds  = SearchLib.fold_path v.search n build_gl icgl in
-    judge adds reds
-
   let select_best_path (v:gltbl) (cnode:steps option) : steps option =
     let ngoals (s:steps) =
-      let score g =
-        let cplx = (UnivLib.goal2complexity g) in
-        (*let lru = ((float_of_int (ftbl_lru g))) in
-        let lru = if lru > 30. then 30. else lru in
-        let lru = float_of_int (RAND.rand_int(10)) in*)
-        let lru = 0. in
-        let score = cplx+.lru in
-        score
+      let score (g:goal) =
+        if goal_is_trivial g then 0. else
+          let r = unwrap_goal g in
+          let cplx = (UnivLib.goal2complexity r) in
+          (*let lru = ((float_of_int (ftbl_lru g))) in
+          let lru = if lru > 30. then 30. else lru in
+          let lru = float_of_int (RAND.rand_int(10)) in*)
+          let lru = 0. in
+          let score = cplx+.lru in
+          score
       in
       SearchLib.fold_path v.search s (fun x r ->
         match x with
@@ -848,7 +824,7 @@ struct
       None
 
 
-  let is_goal_in_play gs (targ:mid) = match gs with
+  let is_goal_in_play (gs:goal) (targ:mid) = match unwrap_goal gs with
   | UState(MathId(q),_,_,_) -> q = targ
   | UFunction(MathId(q),_) -> q = targ
   | _ -> true
@@ -912,18 +888,54 @@ struct
         let x = failed solve_goal in
         x
     in
+    (*attempt to solve a trivial goal. If it fails, undo*)
+    let test_trivial_goal g backup_ptr : step list =
+      (*get steps required and make a node*)
+      let u = unwrap_goal g in
+      let steps = (get_trivial_step s v g)  in
+      let _ = SearchLib.start v.search in
+      let _ = List.iter (fun x -> let _ = SearchLib.add_step v.search x in ()) steps in
+      let head = SearchLib.commit v.search in
+      let succ = move_to_next (Some head) in
+      let _ = SearchLib.move_cursor s v backup_ptr in
+      let _ = SearchLib.rm v.search head in
+      (*attempt to move to this node. If it works, keep it*)
+      if succ then
+        let _ = print_debug ("successfullly solved trivial goal: "^(UnivLib.goal2str g)) in
+        (SRemoveGoal g)::steps
+      else
+        let _ = print_debug ("upgrading goal that failed to resolve: "^(UnivLib.goal2str g)) in
+        [(SRemoveGoal g); (SAddGoal (NonTrivialGoal u))]
+    in
+    let solve_trivial_goals (gls:goal set) backup_ptr =
+      let steps : step list = SET.fold gls (fun x r->
+        if goal_is_trivial x then
+          let stps : step list = test_trivial_goal x backup_ptr in
+          stps @ r
+        else
+          r
+        ) []
+      in
+      if List.length steps > 0 then
+        let _ = print_debug "simplified some nontrivial steps" in
+        let _ = SearchLib.start v.search in
+        let _ = List.iter (fun x -> let _ = SearchLib.add_step v.search x in ()) steps in
+        let triv = SearchLib.commit v.search in
+        let _ = SearchLib.move_cursor s v triv in
+        triv
+      else
+          backup_ptr
+    in
     let rec solve_goal () =
       let _  = flush_all() in
-      let triv = resolve_trivial s v v.goals in
-      let _ = SearchLib.move_cursor s v triv in
       let goal_cursor = SearchLib.cursor v.search in
       (*if this cursor is dead for some reason*)
       if SearchLib.is_deadend v.search goal_cursor then
-        let _ = Printf.printf "SOLVER => Path is deadend.\n" in
+        let _ = print_debug "SOLVER => Path is deadend.\n" in
         failed solve_goal
       else
+      let goal_cursor = solve_trivial_goals v.goals goal_cursor in
       (*please don't enable me, i have issues with deleting te current cursor*)
-      (*let _ = SearchLib.cleanup v.search in*)
       (*print goals*)
       let mint,musr= mkmenu s v None in
       (*let _ = mint "g" in*)
@@ -936,7 +948,7 @@ struct
         if path_is_impossible s v || false
           (* path_is_useless v goal_cursor*)
         then
-          let _ = Printf.printf "SOLVER => Path is impossible.\n" in
+          let _ = print_debug "SOLVER => Path is impossible.\n" in
           let mint,musr= mkmenu s v None in
           let _ = SearchLib.deadend v.search goal_cursor in
           let succ = move_to_next (None) in
@@ -945,18 +957,22 @@ struct
             res
         else
           let g = choose_goal v.goals target in
-          (*mark this goal as used*)
-          (*let _ = ftbl_use g in*)
           let mint,musr = mkmenu s v (Some g) in
-          (*show goals and current solution*)
-          (*let _ = mint "s" in*)
           let _ = mint "c" in
-          let _ = apply_nodes s v g in
-          let _ = musr () in
-          let succ = move_to_next (Some goal_cursor) in
-          (*if could not move to next, exit*)
-          if succ = false then None else
-            let res = solve_goal () in
+          match g with
+          | NonTrivialGoal(u) ->
+            (*show goals and current solution*)
+            let _ = print_debug "target goal is non-trivial" in 
+            let _ = apply_nodes s v g in
+            let _ = musr () in
+            let succ = move_to_next (Some goal_cursor) in
+            (*if could not move to next, exit*)
+            if succ = false then None else
+              let res = solve_goal () in
+              res
+          | _ ->
+            let _ = print_debug "target goal is trivial" in
+            let res = solve_goal() in
             res
     in
     let r = solve_goal () in
@@ -1015,7 +1031,9 @@ struct
       let rec try_solve (ctx:step list) goals =
         let rec attempt (new_tbl:gltbl) (g:goal) (rest:goal list) : step list option =
           let _ = Printf.printf "Attempt To Solve: %s\n" (UnivLib.goal2str g) in
-          let gid = get_mid g in
+          let ur = unwrap_goal g in
+          (*solve a nontrivial relation*)
+          let gid = get_mid ur in
           let result = solve_sim_eqn _s new_tbl gid in
           let _ = Printf.printf "Returned To: %s : %s\n" (UnivLib.goal2str g)
             (if result = None then "no solution" else "has solution") in

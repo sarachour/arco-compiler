@@ -60,9 +60,9 @@ let wait () =
   in
   _if_interactive fxn
 
-let print_debug (m:string) (v:string) =
+let print_debug (v:string) =
   let fxn () =
-    let _ = Printf.printf "DBG [%s]: %s\n" m v in
+    let _ = Printf.printf "[DBG]: %s\n" v in
     flush_all()
   in
   _if_debug fxn

@@ -36,8 +36,10 @@ type unode = {
 }
 
 (*A particular goal to strive for*)
-type goal = urel
-
+type goal =
+  | TrivialGoal of urel
+  | NonTrivialGoal of urel
+  
 type wireid = unodeid*int*string
 
 type label =
@@ -102,7 +104,7 @@ type buffer = {
 
 
 type gltbl = {
-  mutable goals : urel set;
+  mutable goals : goal set;
   mutable nodes : (unodeid, unode) map;
   mutable dngl : (unodeid*int,unode) map;
   mutable search: buffer;

@@ -52,9 +52,10 @@ end
 
 module SearchLib =
 struct
+
   let step2str n = match n with
-  | SAddGoal(v) -> "add "^(UnivLib.urel2str v)
-  | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
+  | SAddGoal(v) -> "add "^(UnivLib.goal2str v)
+  | SRemoveGoal(v) -> "rm "^(UnivLib.goal2str v)
   | SAddNode(id,i,rels) -> "SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")
   | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)

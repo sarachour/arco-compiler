@@ -58,15 +58,15 @@ struct
       HwId(HNTime(HCMGlobal(c,iid),u))
     | _ -> x
 
-    let glblid2lclid x =
-      match x with
-      | HwId(HNPort(k,HCMGlobal(c,i),p,prop,un)) ->
-        HwId(HNPort(k,HCMLocal(c),p,prop,un))
-      | HwId(HNParam(HCMGlobal(c,i), name, vl, u)) ->
-        HwId(HNParam(HCMLocal(c),name,vl,u))
-      | HwId(HNTime(HCMGlobal(c,i),u)) ->
-        HwId(HNTime(HCMLocal(c),u))
-      | _ -> x
+  let glblid2lclid x =
+    match x with
+    | HwId(HNPort(k,HCMGlobal(c,i),p,prop,un)) ->
+      HwId(HNPort(k,HCMLocal(c),p,prop,un))
+    | HwId(HNParam(HCMGlobal(c,i), name, vl, u)) ->
+      HwId(HNParam(HCMLocal(c),name,vl,u))
+    | HwId(HNTime(HCMGlobal(c,i),u)) ->
+      HwId(HNTime(HCMLocal(c),u))
+    | _ -> x
 
 
   let  lcl2glbl iid (a:unid ast) : unid ast =
@@ -254,6 +254,9 @@ struct
   node
 
 
-  let goal2str = urel2str
+  let goal2str n = match n with
+  | NonTrivialGoal(g) -> ""^(urel2str g)
+  | TrivialGoal(g) -> "@"^(urel2str g)
+
 
 end

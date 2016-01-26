@@ -6,7 +6,7 @@ open SolverUtil
 open Z3Lib
 open Z3Data
 open HWCstr
-
+open Interactive
 
 exception HwConnRslvrException of string
 
@@ -69,7 +69,14 @@ struct
 
 
   let report_noconns msg sc si sp dc di dp =
-    let _ = Printf.printf "[Resolver]: no connections between %s[%d].%s -> %s[%d].%s (%s)\n" sc si sp dc di dp msg in
+    let _ =
+      exec_debug (fun () ->
+        let _ = Printf.printf
+          "[Resolver]: no connections between %s[%d].%s -> %s[%d].%s (%s)\n"
+          sc si sp dc di dp msg
+        in
+        ()
+        ) in
     ()
 
   let valid_smt_prob cfg sol : bool =
