@@ -1,4 +1,0 @@
-BIO_ID : BIOMD0000000001
-Publication_ID : 8983160
-Submission_Date : Sep 2005 12:18:50 UTC
-URL : https://www.ebi.ac.uk/biomodels-main/BIOMD0000000001

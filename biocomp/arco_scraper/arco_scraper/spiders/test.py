@@ -6,7 +6,7 @@ class MySpider(BaseSpider):
     name = 'arco_pls'
     allowed_domains = ['https://www.ebi.ac.uk/biomodels-main/']
     start_urls = []
-    for i in range(1):   # change the range to 583 for full models
+    for i in range(583):
         if i < 9:
             i = '00' + str(i+1)
         elif i < 99:
