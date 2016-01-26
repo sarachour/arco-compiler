@@ -1,36 +1,4 @@
 
-
-type us
-type mA
-type mV
-type bits
-
-prop I : mA
-prop V : mV
-prop D : bits
-
-time t: us
-
-
-digital input I
-  input X where D:bits
-  output O where I:mA
-  spice iin X O
-  rel I(O) = D(X)
-end
-
-digital output I
-  input X where I:mA
-  output O where D:bits
-  rel D(O) = I(X)
-  spice iout X O
-end
-
-/*p53 in simulink*/
-comp emmblock
-
-end
-
 /*
 *** Protein chip
 20 emmblocks per chip
@@ -44,7 +12,7 @@ Currents can also be created by DAC
 -> KDfw, KDrv, kr1, kr2, ratC (only connected to DAC)
 Cfree, Cprod, Cdeg, Ctot_in only come from other blocks
 
-A paramter programmed by digital bits
+A parameter programmed by digital bits
 -> hill coefficient (n)
 -> can be programmed between sqrt(1~16)
 

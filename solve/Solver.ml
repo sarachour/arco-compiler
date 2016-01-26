@@ -328,15 +328,12 @@ struct
           | _ -> false)
       in
       let nlbl = LBindValue(nval) in
-      let _ = print_labels lbls in
       match lbls with
       | [] ->
         let stps = mkinp slvr sln nwire nprop (nlbl) in
         let rm_lbl = SSolRemoveLabel(nwire,nprop,nlbl) in
-        let _ = Printf.printf "# Make New: %s\n" (string_of_number valu) in
         rm_lbl::stps
       | (w,p,l)::[] ->
-        let _ = Printf.printf "# Reuse : %s\n" (string_of_number valu) in
         let src : unid = SlnLib.wire2uid slvr.hw w p in
         let snk : unid = SlnLib.wire2uid slvr.hw nwire nprop in
         let add_goal = SAddGoal(UFunction(snk,Term(src))) in
@@ -350,7 +347,8 @@ struct
     match knd with
     (*impossible to map an output to a value*)
     | HNOutput ->
-      error "rslv_value" "impossible situation."
+      let assign = (SlnLib.wire2str wire)^":"^prop^" = "^(string_of_number valu) in
+      error "rslv_value" ("impossible assignment: "^assign)
     (*impossible to map an input to a value*)
     | HNInput ->
       let stps = find_input wire prop (valu) in
