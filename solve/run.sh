@@ -7,29 +7,27 @@ HWSPEC=$3
 
 SOLVER=./solver.debug
 
-if [ "$CMD" = "tmath" ]; then
+if [ "$CMD" = "test-math" ]; then
   make && ${SOLVER} -hwspec test/math/empty.spec -formula test/math-parser/$NAME.math -interactive "tm-$NAME.ckt"
 fi
 
-if [ "$CMD" = "thw" ]; then
+if [ "$CMD" = "test-hw" ]; then
   make && ${SOLVER} -hwspec test/hw/$NAME.spec -formula test/hw-parser/empty.math -interactive "th-$NAME.ckt"
 fi
 
-if [ "$CMD" = "tslv" ]; then
+if [ "$CMD" = "test-slv" ]; then
   make && ${SOLVER} -hwspec test/solver/$NAME.spec -formula test/solver/$NAME.math -interactive -output "ts-$NAME.ckt"
 fi
 
-if [ "$CMD" = "bmark" ]; then
-  make && ${SOLVER} -hwspec benchmarks/specs/$HWSPEC.spec -formula benchmarks/math/$NAME.math -output "$NAME-$HWSPEC".ckt -interactive
+if [ "$CMD" = "run" ]; then
+  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -output "$NAME-$HWSPEC".ckt -interactive
 fi
 
-if [ "$CMD" = "auto" ]; then
-  make && time ${SOLVER} -hwspec benchmarks/specs/$HWSPEC.spec -formula benchmarks/math/$NAME.math -output "$NAME-$HWSPEC".ckt > .tmp/log.txt
+if [ "$CMD" = "run-auto" ]; then
+  make && time ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -output "$NAME-$HWSPEC".ckt > .tmp/log.txt
 fi
 
-if [ "$NAME" = "exec" ]; then
-  make && ${SOLVER} -hwspec $HWSPEC -formula $NAME
-fi
+
 
 mkdir -p output
 mkdir -p .tmp
