@@ -329,17 +329,24 @@ struct
     let find_input (nwire:wireid) (nprop:propid) (nval:number) =
       let print_labels lbls : unit =
         let _ = List.iter (fun (w,p,l) ->
-          Printf.printf "%s %s %s\n" (SlnLib.wire2str w) p (SlnLib.label2str l)
+          print_debug ("binding: "^(SlnLib.wire2str w)^" "^p^" "^(SlnLib.label2str l))
         ) lbls in ()
       in
       let is_input_comp c = match c with
       | UNoInput(_) -> true
       | _ -> false
       in
+      let is_output_port c port =
+        let cn = UnivLib.unodeid2name c in
+        match HwLib.getkind slvr.hw cn port with
+        | HNInput -> false
+        | HNOutput -> true
+      in
       let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
         (fun w p x -> match x with LBindValue(v) ->
-          let c,_,_ = w in
+          let c,_,port = w in
           p = nprop && is_input_comp c &&
+          is_output_port c port &&
           MATH.cmp_numbers v valu 0.000000000001
           | _ -> false)
       in
@@ -356,7 +363,8 @@ struct
         let rm_lbl = SSolRemoveLabel(nwire,nprop,nlbl) in
         [add_goal; rm_lbl]
       | h::t ->
-        let _ = Printf.printf "# Failed : %s\n" (string_of_number valu) in
+        let _ = print_debug ("# Failed : "^(string_of_number valu)) in
+        let _ = print_labels in
         let _ = print_labels lbls in
         error "rslv_value" "too many bindings."
     in
@@ -962,7 +970,7 @@ struct
           match g with
           | NonTrivialGoal(u) ->
             (*show goals and current solution*)
-            let _ = print_debug "target goal is non-trivial" in 
+            let _ = print_debug "target goal is non-trivial" in
             let _ = apply_nodes s v g in
             let _ = musr () in
             let succ = move_to_next (Some goal_cursor) in
