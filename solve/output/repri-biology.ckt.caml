@@ -1,0 +1,126 @@
+comp input.I 42
+comp input.I 12
+comp input.I 19
+comp input.I 20
+comp input.I 31
+comp vadd 5
+comp vadd 4
+comp vadd 2
+comp vadd 1
+comp vadd 0
+comp vadd 3
+comp ihill 3
+comp ihill 1
+comp ihill 5
+comp input.V 81
+comp input.V 79
+comp input.V 56
+comp input.V 28
+comp input.V 27
+comp input.V 3
+comp input.V 4
+comp input.V 26
+comp input.V 51
+comp input.V 59
+comp input.V 76
+comp itov 11
+comp itov 9
+comp itov 5
+comp itov 3
+comp itov 1
+comp itov 7
+comp iadd 1
+comp iadd 0
+comp iadd 2
+conn vadd 1 C :: input.V 3 O
+conn input.V 59 O :: vadd 3 OUT2_0
+conn vadd 3 B :: itov 7 Y
+conn iadd 1 C :: input.I 20 O
+conn itov 9 K :: input.V 76 O
+conn input.V 51 O :: ihill 1 n
+conn vadd 0 B :: itov 1 Y
+conn vadd 3 C :: input.V 3 O
+conn input.V 56 O :: vadd 2 OUT2_0
+conn input.V 27 O :: vadd 1 OUT2_0
+conn input.V 3 O :: vadd 0 C
+conn iadd 1 B :: ihill 3 REP
+conn input.I 42 O :: itov 5 X
+conn input.V 26 O :: itov 1 K
+conn iadd 0 B :: ihill 1 REP
+conn input.I 31 O :: ihill 1 Vmax
+conn vadd 4 C :: input.V 3 O
+conn ihill 5 n :: input.V 51 O
+conn input.V 81 O :: vadd 5 OUT2_0
+conn vadd 2 A :: input.V 3 O
+conn vadd 2 C :: input.V 3 O
+conn input.I 20 O :: iadd 0 D
+conn iadd 2 A :: input.I 19 O
+conn iadd 2 B :: ihill 5 REP
+conn ihill 5 Vmax :: input.I 31 O
+conn ihill 3 n :: input.V 51 O
+conn iadd 1 A :: input.I 19 O
+conn iadd 0 C :: input.I 20 O
+conn vadd 5 B :: itov 11 Y
+conn vadd 2 B :: itov 5 Y
+conn vadd 1 A :: itov 3 Y
+conn input.V 4 O :: vadd 0 OUT2_0
+conn ihill 3 Vmax :: input.I 31 O
+conn vadd 0 A :: input.V 3 O
+conn vadd 3 A :: input.V 3 O
+conn input.V 76 O :: itov 7 K
+conn input.V 79 O :: vadd 4 OUT2_0
+conn vadd 4 B :: itov 9 Y
+conn input.I 19 O :: iadd 0 A
+conn iadd 2 D :: input.I 20 O
+conn vadd 5 C :: input.V 3 O
+conn itov 11 K :: input.V 26 O
+conn vadd 5 A :: input.V 3 O
+conn iadd 1 D :: input.I 20 O
+conn iadd 2 C :: input.I 20 O
+conn input.I 12 O :: itov 3 X
+conn vadd 1 B :: input.V 3 O
+conn vadd 4 A :: input.V 3 O
+conn input.V 28 O :: vadd 1 D
+bind var I of ihill 3 Km :: var KM
+bind var I of ihill 5 Km :: var KM
+bind var I of itov 11 X :: var clm
+bind value V of input.V 59 O :: 0
+bind value V of input.V 51 O :: 2
+bind value D of input.V 4 X :: 0
+bind var V of vadd 3 D :: var clm
+bind value V of input.V 56 O :: 0
+bind value V of input.V 27 O :: 0
+bind value V of input.V 3 O :: 0
+bind value I of input.I 42 O :: 10
+bind value V of input.V 26 O :: 30.1029995664
+bind value D of input.I 19 X :: 0.0005
+bind value I of input.I 31 O :: 0.4995
+bind var I of itov 7 X :: var TRclp
+bind value D of input.V 76 X :: 10
+bind value V of input.V 81 O :: 0
+bind value D of input.I 12 X :: 30.1029995664
+bind value D of input.V 28 X :: 0.3010299956
+bind value I of input.I 20 O :: 0
+bind value D of input.V 51 X :: 2
+bind value D of input.V 56 X :: 0
+bind var V of vadd 0 D :: var LacLp
+bind value D of input.V 26 X :: 30.1029995664
+bind var I of ihill 3 S :: var TetRp
+bind value V of input.V 4 O :: 0
+bind var I of ihill 1 Km :: var KM
+bind var V of itov 5 K :: var TRLacL
+bind value V of input.V 76 O :: 10
+bind value D of input.V 81 X :: 0
+bind value V of input.V 79 O :: 0
+bind value D of input.V 27 X :: 0
+bind value I of input.I 19 O :: 0.0005
+bind var I of ihill 1 S :: var LacLp
+bind value D of input.I 20 X :: 0
+bind value D of input.V 79 X :: 0
+bind value D of input.I 42 X :: 10
+bind value D of input.V 59 X :: 0
+bind var V of vadd 4 D :: var TetRm
+bind value D of input.V 3 X :: 0
+bind value I of input.I 12 O :: 30.1029995664
+bind value V of input.V 28 O :: 0.3010299956
+bind value D of input.I 31 X :: 0.4995

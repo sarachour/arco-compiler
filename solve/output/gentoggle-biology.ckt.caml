@@ -1,0 +1,69 @@
+comp switch 0
+comp input.I 24
+comp input.I 16
+comp input.I 2
+comp input.I 3
+comp input.I 20
+comp vadd 1
+comp vadd 0
+comp ihill 1
+comp ihill 0
+comp input.V 51
+comp input.V 43
+comp input.V 26
+comp input.V 25
+comp input.V 11
+comp input.V 10
+comp input.V 2
+comp input.V 20
+comp itov 3
+comp itov 1
+conn vadd 1 C :: input.V 10 O
+conn input.V 20 O :: ihill 0 n
+conn input.V 51 O :: ihill 1 n
+conn input.V 11 O :: vadd 0 OUT2_0
+conn vadd 0 B :: itov 1 Y
+conn input.V 26 O :: vadd 1 D
+conn input.V 2 O :: switch 0 n
+conn input.I 20 O :: ihill 0 Vmax
+conn vadd 1 A :: itov 3 Y
+conn input.I 16 O :: itov 1 X
+conn vadd 0 A :: input.V 10 O
+conn input.V 43 O :: itov 3 K
+conn input.I 2 O :: switch 0 Kmod
+conn input.I 24 O :: ihill 1 Vmax
+conn input.V 10 O :: vadd 0 C
+conn input.V 25 O :: vadd 1 OUT2_0
+conn vadd 1 B :: input.V 10 O
+conn input.I 3 O :: switch 0 SUB
+bind value D of input.V 2 X :: 2.0015
+bind value D of input.V 20 X :: 2.5
+bind value V of input.V 20 O :: 2.5
+bind value V of input.V 51 O :: 1
+bind value D of input.I 16 X :: 10
+bind value V of input.V 11 O :: 0.5
+bind value D of input.V 10 X :: 0
+bind value V of input.V 26 O :: 0.01
+bind value D of input.V 43 X :: 10
+bind value V of input.V 2 O :: 2.0015
+bind value D of input.V 25 X :: 0.35
+bind value D of input.V 51 X :: 1
+bind var I of itov 3 X :: var UTF
+bind value I of input.I 20 O :: 156.25
+bind value D of input.V 26 X :: 0.01
+bind value D of input.V 11 X :: 0.5
+bind var I of ihill 1 Km :: var Km
+bind value I of input.I 16 O :: 10
+bind value V of input.V 43 O :: 10
+bind value I of input.I 2 O :: 2.9618e-05
+bind var I of ihill 1 S :: var umodif
+bind var D of input.I 3 X :: var IPTG
+bind value I of input.I 24 O :: 15.6
+bind value D of input.I 24 X :: 15.6
+bind value D of input.I 2 X :: 2.9618e-05
+bind value D of input.I 20 X :: 156.25
+bind value V of input.V 10 O :: 0
+bind value V of input.V 25 O :: 0.35
+bind var I of input.I 3 O :: var IPTG
+bind var I of ihill 0 S :: var V
+bind var I of ihill 0 Km :: var Km

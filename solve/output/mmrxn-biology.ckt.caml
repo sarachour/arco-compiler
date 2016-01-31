@@ -1,0 +1,73 @@
+comp vgain 3
+comp vgain 1
+comp vgain 2
+comp vgain 4
+comp input.I 0
+comp output.V 0
+comp vadd 3
+comp vadd 1
+comp vadd 0
+comp vadd 2
+comp input.V 8
+comp input.V 4
+comp input.V 5
+comp input.V 3
+comp input.V 1
+comp input.V 0
+comp input.V 2
+comp input.V 6
+comp input.V 7
+comp itov 1
+conn vgain 4 X :: input.V 4 O
+conn vadd 3 B :: itov 1 Y
+conn vadd 1 C :: input.V 1 O
+conn vadd 3 C :: input.V 1 O
+conn vadd 0 B :: vgain 2 P
+conn input.V 3 O :: vadd 1 OUT2_0
+conn input.V 6 O :: vadd 2 OUT2_0
+conn input.V 1 O :: vadd 0 C
+conn input.V 2 O :: vgain 2 Y
+conn vadd 2 A :: input.V 1 O
+conn vgain 1 X :: input.V 1 O
+conn vadd 2 C :: input.V 1 O
+conn input.V 7 O :: vgain 4 Y
+conn input.V 4 O :: vgain 3 X
+conn vadd 1 A :: vgain 3 P
+conn vadd 2 B :: vgain 4 P
+conn vadd 3 A :: input.V 1 O
+conn vadd 0 A :: vgain 1 P
+conn input.V 0 O :: vadd 0 OUT2_0
+conn output.V 0 X :: vadd 1 OUT2
+conn input.V 5 O :: vgain 3 Y
+conn input.I 0 O :: itov 1 X
+conn vadd 1 B :: input.V 1 O
+conn input.V 8 O :: vadd 3 OUT2_0
+bind value D of input.V 2 X :: 0.00126823081801
+bind value D of input.V 1 X :: 0
+bind var V of vadd 3 D :: var S
+bind value D of input.V 4 X :: 1
+bind value D of input.V 5 X :: 0.0190476190476
+bind var V of vgain 2 Z :: var S
+bind value V of input.V 3 O :: 0
+bind value V of input.V 6 O :: 0.256
+bind var V of itov 1 K :: var ES
+bind value V of input.V 1 O :: 0
+bind value V of input.V 2 O :: 0.00126823081801
+bind value D of input.V 8 X :: 0.124
+bind value D of input.V 7 X :: 0.00172786177106
+bind var V of vadd 0 D :: var ES
+bind value V of input.V 7 O :: 0.00172786177106
+bind value V of input.V 4 O :: 1
+bind value D of input.V 6 X :: 0.256
+bind value V of input.V 0 O :: 0
+bind value D of input.I 0 X :: 25.25
+bind var V of output.V 0 X :: var P
+bind var D of output.V 0 O :: var P
+bind value D of input.V 0 X :: 0
+bind var V of vadd 2 D :: var S
+bind var V of vgain 4 Z :: var ES
+bind value V of input.V 5 O :: 0.0190476190476
+bind var V of vgain 3 Z :: var ES
+bind value I of input.I 0 O :: 25.25
+bind value D of input.V 3 X :: 0
+bind value V of input.V 8 O :: 0.124

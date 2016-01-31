@@ -1,0 +1,251 @@
+comp vgain 11
+comp vgain 10
+comp vgain 9
+comp vgain 6
+comp vgain 3
+comp vgain 1
+comp vgain 2
+comp vgain 0
+comp switch 3
+comp switch 2
+comp switch 1
+comp switch 0
+comp input.I 10
+comp input.I 8
+comp input.I 6
+comp input.I 5
+comp input.I 4
+comp input.I 2
+comp input.I 3
+comp input.I 0
+comp input.I 1
+comp input.I 7
+comp input.I 9
+comp vadd 5
+comp vadd 4
+comp vadd 3
+comp vadd 2
+comp vadd 0
+comp vadd 1
+comp vadd 6
+comp vadd 7
+comp vtoi 0
+comp mm 1
+comp mm 0
+comp input.V 22
+comp input.V 19
+comp input.V 16
+comp input.V 15
+comp input.V 14
+comp input.V 13
+comp input.V 11
+comp input.V 10
+comp input.V 8
+comp input.V 7
+comp input.V 2
+comp input.V 3
+comp input.V 0
+comp input.V 1
+comp input.V 5
+comp input.V 4
+comp input.V 6
+comp input.V 9
+comp input.V 12
+comp input.V 17
+comp input.V 18
+comp input.V 20
+comp input.V 21
+comp itov 22
+comp itov 18
+comp itov 15
+comp itov 14
+comp itov 10
+comp itov 5
+comp itov 4
+comp itov 1
+comp itov 0
+comp itov 2
+comp itov 6
+comp itov 7
+comp itov 17
+comp itov 19
+comp itov 21
+conn vgain 11 Y :: input.V 2 O
+conn switch 1 n :: input.V 11 O
+conn mm 0 kr :: input.I 2 O
+conn input.I 10 O :: switch 3 SUB
+conn vadd 1 C :: input.V 0 O
+conn vgain 9 Y :: input.V 3 O
+conn vgain 9 X :: input.V 2 O
+conn vadd 0 C :: input.V 0 O
+conn vadd 3 C :: vgain 6 P
+conn mm 1 kf :: input.I 9 O
+conn vgain 6 X :: input.V 2 O
+conn input.V 3 O :: vgain 1 Y
+conn vadd 7 C :: input.V 0 O
+conn input.V 1 O :: vadd 0 OUT2_0
+conn vadd 5 D :: itov 10 Y
+conn input.V 2 O :: vgain 1 X
+conn input.V 13 O :: vadd 4 OUT2_0
+conn vgain 3 X :: input.V 6 O
+conn itov 17 X :: input.I 0 O
+conn vadd 2 C :: input.V 0 O
+conn input.I 4 O :: switch 1 Kmod
+conn vadd 5 B :: vgain 10 P
+conn vadd 1 A :: input.V 0 O
+conn input.V 17 O :: vadd 6 OUT2_0
+conn switch 2 n :: input.V 11 O
+conn vgain 6 Y :: input.V 3 O
+conn input.I 2 O :: switch 0 SUB
+conn itov 21 K :: input.V 4 O
+conn input.V 10 O :: vgain 0 Y
+conn vadd 6 B :: input.V 0 O
+conn vadd 7 A :: itov 21 Y
+conn input.I 7 O :: itov 19 X
+conn input.V 22 O :: itov 22 K
+conn vgain 10 Y :: input.V 2 O
+conn input.I 0 O :: itov 1 X
+conn itov 2 K :: input.V 2 O
+conn input.V 9 O :: vgain 0 X
+conn input.I 3 O :: switch 0 Kmod
+conn vadd 1 B :: vgain 2 P
+conn vgain 11 X :: input.V 15 O
+conn vadd 4 A :: itov 14 Y
+conn vgain 2 Y :: input.V 2 O
+conn input.I 8 O :: switch 2 Kmod
+conn input.V 18 O :: mm 0 XY0
+conn vadd 3 B :: itov 4 Y
+conn input.V 20 O :: vtoi 0 K
+conn mm 1 kr :: input.I 2 O
+conn input.V 11 O :: switch 0 n
+conn input.V 15 O :: vgain 10 X
+conn vadd 0 B :: vgain 1 P
+conn input.I 9 O :: mm 0 kf
+conn switch 2 SUB :: input.I 2 O
+conn vadd 6 C :: input.V 0 O
+conn vadd 7 B :: input.V 0 O
+conn input.I 5 O :: itov 15 X
+conn input.V 6 O :: vgain 2 X
+conn itov 4 K :: input.V 4 O
+conn vgain 3 Y :: input.V 2 O
+conn switch 3 n :: input.V 11 O
+conn input.V 14 O :: itov 10 K
+conn vgain 0 X :: input.V 2 O
+conn input.I 6 O :: itov 18 X
+conn vadd 4 C :: vgain 9 P
+conn vadd 2 A :: input.V 0 O
+conn input.V 7 O :: vadd 2 OUT2_0
+conn switch 3 Kmod :: input.I 2 O
+conn vadd 2 B :: vgain 3 P
+conn input.V 4 O :: vadd 1 D
+conn itov 5 K :: input.V 4 O
+conn vadd 3 A :: itov 5 Y
+conn input.V 0 O :: vadd 0 A
+conn vadd 4 B :: vadd 5 OUT
+conn vgain 0 Y :: input.V 2 O
+conn input.V 12 O :: vgain 0 Y
+conn vadd 6 A :: itov 17 Y
+conn input.V 21 O :: vadd 7 OUT2_0
+conn vadd 5 C :: itov 15 Y
+conn vadd 2 D :: input.V 4 O
+conn input.I 1 O :: itov 6 X
+conn switch 1 SUB :: input.I 2 O
+conn input.V 16 O :: itov 14 K
+conn input.V 5 O :: vadd 1 OUT2_0
+conn vadd 5 A :: vgain 11 P
+conn vadd 4 D :: input.V 4 O
+conn input.V 19 O :: mm 1 XY0
+conn input.V 8 O :: vadd 3 OUT2_0
+bind value D of input.I 7 X :: 50
+bind var V of vgain 9 Z :: var rxn2
+bind var I of itov 0 X :: var DA
+bind value D of input.V 20 X :: 0.2
+bind value I of input.I 10 O :: 49
+bind value D of input.V 18 X :: 0
+bind value D of input.V 4 X :: 10
+bind value V of input.V 3 O :: 0.004
+bind var I of itov 2 X :: var C
+bind value D of input.V 21 X :: 0
+bind value V of input.V 1 O :: 0
+bind value V of input.V 2 O :: 1
+bind var V of vgain 0 Z :: var MR
+bind var V of vgain 0 Z :: var R
+bind value D of input.V 8 X :: 0
+bind value V of input.V 13 O :: 0
+bind value D of input.V 11 X :: -1
+bind var V of vadd 0 D :: var rxn5
+bind value I of input.I 4 O :: 0.0204081632653
+bind value V of input.V 17 O :: 0
+bind value D of input.V 19 X :: 0
+bind value D of input.V 15 X :: 2500
+bind value D of input.V 6 X :: 250
+bind var V of itov 17 K :: var rxn5
+bind value D of input.I 4 X :: 0.0204081632653
+bind value I of input.I 2 O :: 1
+bind value D of input.I 0 X :: 10
+bind value D of input.I 3 X :: 0.00200400801603
+bind value D of input.V 14 X :: -100
+bind value D of input.I 2 X :: 1
+bind value V of input.V 10 O :: 0.04
+bind var V of itov 15 K :: var rxn11
+bind value D of input.V 13 X :: 0
+bind var I of switch 0 Vmax :: var DAp
+bind value I of input.I 7 O :: 50
+bind value V of input.V 22 O :: 50
+bind value I of input.I 0 O :: 10
+bind value V of input.V 9 O :: 12.5
+bind var V of vadd 7 D :: var rxn12
+bind value I of input.I 3 O :: 0.00200400801603
+bind value D of input.I 1 X :: 0.01
+bind var V of itov 7 K :: var DR
+bind value D of input.V 2 X :: 1
+bind value I of input.I 8 O :: 0.010101010101
+bind value D of input.V 1 X :: 0
+bind value V of input.V 18 O :: 0
+bind value V of input.V 20 O :: 0.2
+bind value V of input.V 11 O :: -1
+bind value V of input.V 15 O :: 2500
+bind value I of input.I 9 O :: 0
+bind value D of input.V 10 X :: 0.04
+bind var V of vgain 6 Z :: var rxn1
+bind value D of input.V 5 X :: 0
+bind var I of itov 14 X :: var rxn1
+bind value I of input.I 5 O :: -100
+bind value D of input.V 16 X :: -10
+bind value V of input.V 6 O :: 250
+bind var V of itov 6 K :: var DR
+bind var I of itov 4 X :: var rxn16
+bind value V of input.V 14 O :: -100
+bind value I of input.I 6 O :: 0.2
+bind value D of input.V 7 X :: 0
+bind value D of input.I 10 X :: 49
+bind var I of itov 22 X :: var DRp
+bind var I of switch 2 Vmax :: var DRp
+bind value V of input.V 7 O :: 0
+bind value D of input.V 9 X :: 12.5
+bind value D of input.V 22 X :: 50
+bind value V of input.V 4 O :: 10
+bind value D of input.I 8 X :: 0.010101010101
+bind value D of input.I 6 X :: 0.2
+bind value V of input.V 0 O :: 0
+bind var V of vgain 11 Z :: var rxn10
+bind value D of input.V 0 X :: 0
+bind value V of input.V 12 O :: 0.0008
+bind value V of input.V 21 O :: 0
+bind var I of itov 21 X :: var rxn11
+bind value D of input.I 5 X :: -100
+bind var I of itov 5 X :: var rxn3
+bind var I of switch 3 Vmax :: var DAp
+bind value I of input.I 1 O :: 0.01
+bind value D of input.V 12 X :: 0.0008
+bind value D of input.I 9 X :: 0
+bind var V of vtoi 0 X :: var MR
+bind value V of input.V 16 O :: -10
+bind value V of input.V 5 O :: 0
+bind var V of vgain 3 Z :: var rxn1
+bind var I of switch 1 Vmax :: var DA
+bind value D of input.V 3 X :: 0.004
+bind value D of input.V 17 X :: 0
+bind value V of input.V 19 O :: 0
+bind var V of itov 18 K :: var R
+bind value V of input.V 8 O :: 0
