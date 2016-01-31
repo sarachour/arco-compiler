@@ -1,15 +1,14 @@
-
 output A : none
 output B : none
 
 param kr1 : none = 10
-param kr2 : none = 5
+param kr2 : none = 10
 param KDrv : none = 10
 param KDfw : none = 10
 param ratC4 : none = 1
-param ratC5 : none = 3
+param ratC7 : none = 1
 
-time t : none
+time t: none
 
-rel deriv(A,t) = ((20*(10/KDfw)*kr1 - (kr1/KDfw)*A*B*2) + kr1*B*2) - kr2*ratC5*A with A(0) = 0
-rel deriv(B,t) = ((kr1/KDfw)*A - kr1*B - kr2*ratC4*B) with B(0) = 0
+rel deriv(A,t) = ((10*(10/KDfw)*kr1 - kr1*A) + (kr1/KDrv)*B*B) - kr2*ratC7*A with A(0) = 0
+rel deriv(B,t) = kr1*A*2 - (kr1/KDrv)*B*B*2 - kr2*ratC4*B with B(0) = 0

@@ -1,30 +1,20 @@
-% name "michaelis menten reaction"
-% 4 diffeqs
 
-% en.wikipedia.org/wiki/Michaelis-Menten_kinetics
-type s
-type M
+output P : none
+local E : none
+local S : none
+local ES : none
 
-local E : M
-local S : M
-local ES : M
-output P : M
+param kr1 : none = 10
+param kr2 : none = 5
+param KDrv : none = 10
+param KDfw : none =10
+param ratC8 : none = 0.1
+param ratC9 : none = 0.03
+param ratC10 : none = 0.06
 
-param kf : 1/s = 3.154
-param kr : 1/s = 2.315
-param kcat : 1/s = 0.21
+time t: none
 
-time t : s
-
-
-assume mag E in (0,1) : M
-assume mag S in (0,1) : M
-assume mag ES in (0,1) : M
-assume mag P in (0,1) : M
-
-ensure err E(P) = 0.01 : M
-
-rel deriv(S,t) = (-kf)*E*S + kr*ES with S(0) = 0.256
-rel deriv(E,t) = (-kf)*E*S + kr*ES + kcat*ES with E(0) = 0.124
-rel deriv(ES,t) = kf*E*S - kr*ES - kcat*ES with ES(0) = 0
-rel deriv(P,t) = kcat*ES with P(0) = 0
+rel deriv(S,t) =( (5*(10/KDfw)*kr1 - (kr1/KDfw)*E*S) + kr1*ES) - (ratC9*kr2*S) with S(0) = 0
+rel deriv(E,t) = ( ( 10*(10/KDfw)*kr1 - (kr1/KDfw)*E*S) + kr1*ES + (kr1/KDfw)*ES) - ratC8*kr2*E with E(0) = 0
+rel deriv(ES,t) = (kr1/KDfw)*E*S - kr1*ES - (kr1/KDfw)*ES with ES(0) = 0
+rel deriv(P,t) = (kr1/KDfw)*ES - ratC10*kr2*P with P(0) = 0

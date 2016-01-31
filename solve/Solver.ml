@@ -909,7 +909,7 @@ struct
       let _ = SearchLib.rm v.search head in
       (*attempt to move to this node. If it works, keep it*)
       if succ then
-        let _ = print_debug ("successfullly solved trivial goal: "^(UnivLib.goal2str g)) in
+        let _ = print_debug ("successfully solved trivial goal: "^(UnivLib.goal2str g)) in
         (SRemoveGoal g)::steps
       else
         let _ = print_debug ("upgrading goal that failed to resolve: "^(UnivLib.goal2str g)) in
