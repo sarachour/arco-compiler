@@ -325,7 +325,12 @@ struct
     let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl) (n:int) =
       let match_trivial e1 e2 =
         match (compute e1,compute e2) with
-        | (Some(x),Some(y)) ->if x = y then Some(Some([])) else Some(None)
+        | (Some(x),Some(y)) ->
+          if x = y then
+            (*make a single solution of empty assignments*)
+            let empty = MAP.make () in
+            Some(Some([empty]))
+          else Some(None)
         | (_,Some(x)) -> Some(None)
         | _ -> None
       in
@@ -346,7 +351,7 @@ struct
       in
       let sols : (symvar,symexpr) map set = SET.make (fun x y -> x = y) in
       let rec solve wcs depth fracbans =
-        if (SET.size sols) = n || depth == max_depth then () else
+        if (SET.size sols) = n || depth = max_depth then () else
         let res = SymCaml.pattern env templ cand in
         match res with
         | Some(r) ->

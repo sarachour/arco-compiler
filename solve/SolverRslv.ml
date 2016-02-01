@@ -28,9 +28,9 @@ struct
     {id=n; cinsts = SET.make (fun x y -> x =y ); sinsts = SET.make (fun x y -> x = y)}
 
 
-  let to_id id = id + 1
+  let to_id id = id
 
-  let from_id id = id - 1
+  let from_id id = id
 
   let fromvar mk (name:string) =
     match STRING.split name "[_v]" with

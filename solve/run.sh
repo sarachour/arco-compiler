@@ -2,9 +2,9 @@
 
 #default is min and simple
 CMD=$1
-NAME=$2
-HWSPEC=$3
-CFG=$4
+HWSPEC=$2
+CFG=$3
+NAME=$4
 
 SOLVER=./solver.debug
 
@@ -21,7 +21,7 @@ if [ "$CMD" = "test-slv" ]; then
 fi
 
 if [ "$CMD" = "run" ]; then
-  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "$NAME-$HWSPEC".ckt
+  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "$NAME".ckt
 fi
 
 
@@ -30,11 +30,14 @@ if [ "$CMD" = "config" ]; then
 fi
 
 
-mkdir -p output
-mkdir -p .tmp
+OUTDIR=output/$HWSPEC
+TMPDIR=.tmp
 
-mv *.ckt output/
-mv *.ckt.caml output/
-mv *.summary output/
-mv *.z3 .tmp/
-mv *.debug.txt .tmp/
+mkdir -p $OUTDIR
+mkdir -p $TMPDIR
+
+mv *.ckt $OUTDIR/
+mv *.ckt.caml $OUTDIR/
+mv *.summary $OUTDIR/
+mv *.z3 $TMPDIR/
+mv *.debug.txt $TMPDIR

@@ -45,8 +45,8 @@ struct
 
     let is_trivial g =
       match g with
-      | UFunction(id,Decimal(_)) -> true
-      | UFunction(id,Integer(_)) -> true
+      | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Decimal(_)) -> true
+      | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Integer(_)) -> true
       | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
           if prop1 = prop2 then true else false
       | UFunction(MathId(v),Term(HwId(_))) -> true
@@ -355,12 +355,14 @@ struct
       | [] ->
         let stps = mkinp slvr sln nwire nprop (nlbl) in
         let rm_lbl = SSolRemoveLabel(nwire,nprop,nlbl) in
+        let _ = print_debug ("[rslv_value] Making new port for "^(SlnLib.label2str nlbl)) in
         rm_lbl::stps
       | (w,p,l)::[] ->
         let src : unid = SlnLib.wire2uid slvr.hw w p in
         let snk : unid = SlnLib.wire2uid slvr.hw nwire nprop in
         let add_goal = SAddGoal(TrivialGoal(UFunction(snk,Term(src)))) in
         let rm_lbl = SSolRemoveLabel(nwire,nprop,nlbl) in
+        let _ = print_debug ("[rsvl_value] Using existing input for "^(SlnLib.label2str nlbl)) in
         [add_goal; rm_lbl]
       | h::t ->
         let _ = print_debug ("# Failed : "^(string_of_number valu)) in
@@ -372,7 +374,7 @@ struct
     (*impossible to map an output to a value*)
     | HNOutput ->
       let assign = (SlnLib.wire2str wire)^":"^prop^" = "^(string_of_number valu) in
-      error "rslv_value" ("impossible assignment: "^assign)
+      error "rslv_value" ("impossible assignment of value to output: "^assign)
     (*impossible to map an input to a value*)
     | HNInput ->
       let stps = find_input wire prop (valu) in
@@ -387,6 +389,7 @@ struct
       in
       res
     in
+    let _ = print_debug "[get_trivial_step] resolving trivial goal" in
     match unwrap_goal g with
       (*check for duplicates*)
     | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
@@ -394,37 +397,56 @@ struct
           let src = SlnLib.hwport2wire c1 v1 in
           let snk = SlnLib.hwport2wire c2 v2 in
           let conn = mkconn s t src snk prop1 in
+          let _ = print_debug "[get_trivial_step] trivial goal is port-to-port connection" in
           conn
         else error "get_trivial_step" "is nontrivial."
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Decimal(q)) ->
         let wire = SlnLib.hwport2wire c v in
         let stps = rslv_value s t.sln wire prop (Decimal q) k in
+        let _ = print_debug "[get_trivial_step] trivial goal is decimal mapping" in
         apply_steps stps
 
     | UFunction(HwId(HNPort(k,c,v,prop,u)),Integer(q)) ->
         let wire = SlnLib.hwport2wire c v in
         let stps = rslv_value s t.sln wire prop (Integer q) k in
+        let _ = print_debug "[get_trivial_step] trivial goal is integer mapping" in
         apply_steps stps
+
+    | UFunction(MathId(q),Decimal(n)) ->
+        (*find a mapping*)
+        let _ = print_debug "[get_trivial_step] trivial goal is actually non-trivial mathid to number" in
+        error "get_trivial_step" ("unknown trivial goal "^(UnivLib.goal2str g))
+
+    | UFunction(MathId(q),Integer(n)) ->
+        let _ = print_debug "[get_trivial_step] trivial goal is actually non-trivial mathid to number" in
+        error "get_trivial_step" ("unknown trivial goal "^(UnivLib.goal2str g))
+
 
     | UFunction(HwId(HNPort(k,c,v,prop,u)), Term(MathId(q)) ) ->
         let wire = SlnLib.hwport2wire c v in
         let stps = rslv_label (s) t.sln wire prop q k in
+        let _ = print_debug "[get_trivial_step] trivial goal is math id binding" in
         apply_steps stps
 
     | UFunction(MathId(q), Term(HwId(HNPort(k,c,v,prop,u))) ) ->
         let wire = SlnLib.hwport2wire c v in
         let stps = rslv_label (s) (t.sln) wire prop q k in
+        let _ = print_debug "[get_trivial_step] trivial goal is math id binding" in
         apply_steps stps
 
     | UFunction(MathId(MNTime(um)), Term (HwId(HNTime(cmp,uh))) ) ->
         let tc = () in
+        let _ = print_debug "[get_trivial_step] trivial goal is time binding" in
         []
 
     | UFunction(HwId(HNTime(cmp,uh)), Term (MathId(MNTime(um))) ) ->
+        let _ = print_debug "[get_trivial_step] trivial goal is time binding" in
         let tc = () in
         []
 
-    | _ -> []
+    | _ ->
+      let _ = print_debug "[get_trivial_step] trivial goal is unknown" in
+      error "get_trivial_step" ("unknown trivial goal "^(UnivLib.goal2str g))
 
 
   let canon_hw_assign lhs rhs : (unid*(unid ast)) option =
@@ -467,18 +489,28 @@ struct
     let gr = unwrap_goal g in
     match (Shim.rel_lcl2glbl inst_id gr),(Shim.rel_lcl2glbl inst_id v) with
     | (UFunction(gl,gr), UFunction(nl,nr))->
+
       let res = unify_exprs s name inst_id gl gr nl nr in
       let ret = match res with
           | Some(res) ->
             let lhs = canon_hw_assign (nl) (Term gl) in
+            let _ = print_debug ("unified rels "^
+              (UnivLib.uast2str gr)^" with "^(UnivLib.uast2str nr)
+              ^" and attained "^(string_of_int (List.length res))^" results.") in
             begin
             match lhs with
             | Some(gllhs,glrhs) ->
               let _ = List.iter (fun mp -> let _ = MAP.put mp gllhs glrhs in () ) res in
               Some(res)
-            | _ -> None
+            | _ ->
+              let _ = print_debug ("unified rels but failed to resolve left hand side.") in
+              None
             end
-          | None -> None
+          | None ->
+            let _ = print_debug ("unified rels "^
+            (UnivLib.uast2str gr)^" with "^(UnivLib.uast2str nr)
+            ^" and attained no results.") in
+            None
       in
         ret
 
@@ -489,6 +521,9 @@ struct
             let lhs = canon_hw_assign (nl) (Term gl) in
             let ic = canon_hw_assign (nic) (Term gic) in
             let t = canon_hw_assign (nt) (Term gt) in
+            let _ = print_debug ("unified rels "^
+              (UnivLib.uast2str gr)^" with "^(UnivLib.uast2str nr)
+              ^" and attained "^(string_of_int (List.length res))^" results.") in
             begin
             match lhs,ic,t with
             | (Some(glhs,nlhs),Some(gic,nic),Some(gt,nt)) ->
@@ -498,7 +533,11 @@ struct
               Some(res)
             | (_) -> None
             end
-        | None -> None
+        | None ->
+            let _ = print_debug ("unified rels "^
+            (UnivLib.uast2str gr)^" with "^(UnivLib.uast2str nr)
+            ^" and attained no results.") in
+            None
       in
         ret
     | _ ->
@@ -608,6 +647,7 @@ struct
           | Some(sols) ->
             let other_rels = List.filter (fun x -> x <> orel) other_rels in
             let other_goals = List.filter (fun x -> x <> ngoal) other_goals in
+            let _ = print_debug "[solve_assign] found some solutions" in
             let try_sln sln =
               (*create a new map containg the new bindings and old bindings*)
               let cassigns = MAP.copy assigns in
@@ -634,6 +674,7 @@ struct
             result
           (*no solution: this entire solution doesn't apply*)
           | None ->
+            let _ = print_debug "[solve_assign] found no solutions" in 
             None
         in
           res
