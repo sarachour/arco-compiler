@@ -190,6 +190,9 @@ struct
   let uniq a =
     List.fold_right (fun x r -> if count r x = 0 then x::r else r) a []
 
+  let exclude lst v =
+    List.filter (fun x -> x <> v) lst
+
   (*makes a list of tuples that is the product of the two lists*)
   let prod (a:'a list) (b:'b list) : ('a*'b) list =
     let prod_sc a x =
@@ -233,6 +236,8 @@ struct
       else []
     in
     mk 0
+
+  let filter x y = List.filter x y
 
   let fold x f c0 = List.fold_right f x c0
 
@@ -298,6 +303,9 @@ struct
     f
 
   let rand (type a) (s: a list) :a  =
+    if List.length s == 0 then
+      error "rand" "cannot take random element of empty list."
+    else
     let n = List.length s in
     let i = Random.int(n) in
     List.nth s i
@@ -626,6 +634,8 @@ struct
       let chld,_ = MAP.get (g.adj) s in
       SET.has chld (e,v)
 
+
+
   let mknode (type a) (type b) (g) (n:a) : (a,b) tree =
     if hasnode g n then
       error "mknode" "node already exists"
@@ -678,6 +688,10 @@ struct
     in
     _fold_path node ic
 
+  let has_ancestor (type a) (type b) (g:(a,b) tree) (en:a) (anc:a) : bool =
+    let is_anc = fold_path (fun n c -> if g.ncmp n anc then true else c) (fun x y z c -> c) g en false in
+    is_anc
+
   let get_path (type a) (type b) (g: (a,b) tree) (en:a) : a list =
     fold_path (fun x lst -> lst @ [x]) (fun src snk v r -> r) g en []
 
@@ -690,6 +704,7 @@ struct
     match anc with
     | Some(a) -> a
     | None -> error "ancestor" "two nodes must have an ancestor."
+
 
   let setroot (type a) (type b) (g:(a,b) tree) (src:a) =
     if g.root = None then

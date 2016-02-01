@@ -39,7 +39,7 @@ type unode = {
 type goal =
   | TrivialGoal of urel
   | NonTrivialGoal of urel
-  
+
 type wireid = unodeid*int*string
 
 type label =
@@ -64,6 +64,8 @@ type step =
   | SSolRemoveLabel of wireid*propid*label
   | SRemoveGoal of goal
   | SAddGoal of goal
+  | SMakeGoalPassive of goal
+  | SMakeGoalActive of goal
   | SAddNode of unodeid*int*(urel list)
 
 type steps = {
@@ -81,8 +83,9 @@ If the node
 *)
 type status =
   (*A node that's a dead end. *)
-  | DeadEnd
-  | Visited
+  | GLStatDeadEnd
+  | GLStatVisited
+  | GLStatSolution
   (*A node that's blocking on some other node*)
   (*| Active of int*)
 
@@ -105,8 +108,10 @@ type buffer = {
 
 type gltbl = {
   mutable goals : goal set;
+  mutable blacklist : goal set;
   mutable nodes : (unodeid, unode) map;
   mutable dngl : (unodeid*int,unode) map;
+  is_trivial: urel->bool;
   mutable search: buffer;
   mutable sln: sln;
 }
