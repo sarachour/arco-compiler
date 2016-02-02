@@ -8,7 +8,8 @@ param KDrv : none = 10
 
 time t : none
 
-%monomer
-%rel deriv(A,t) = (-1*kr1*A) + (kr1/KDrv)*B*B with A(0) = 0
-%dimer
-rel deriv(B,t) = kr1*A*2 - (kr1/KDrv)*B*B*2 with B(0) = 0
+%monomer, this should map to AFREE
+rel deriv(A,t) = (-1*kr1*A) + (kr1/KDrv)*B*B with A(0) = 0
+
+%dimer, this should map to CFREE
+%rel deriv(B,t) = kr1*A*2 - (kr1/KDrv)*B*B*2 with B(0) = 0

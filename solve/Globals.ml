@@ -16,6 +16,8 @@ let _ = MAP.put glbls "search_max_depth" (GlblPropInt 65)
 let _ = MAP.put glbls "search_n_patterns_found" (GlblPropInt 5)
 let _ = MAP.put glbls "interactive" (GlblPropBool true)
 let _ = MAP.put glbls "debug" (GlblPropBool false)
+let _ = MAP.put glbls "path_search_selector_type" (GlblPropString "random")
+let _ = MAP.put glbls "goal_search_selector_type" (GlblPropString "random")
 
 (*
 
@@ -50,6 +52,12 @@ let get_glbl_bool key =
   match get_glbl key with
   | GlblPropBool(i) -> i
   | _ -> error "get_glbl_int" "unexpected property type with name. Expected int"
+
+let get_glbl_string key =
+  match get_glbl key with
+  | GlblPropString(i) -> i
+  | _ -> error "get_glbl_int" "unexpected property type with name. Expected int"
+
 
 let get_glbls () =
   glbls

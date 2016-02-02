@@ -363,32 +363,50 @@ struct
 
 
   (*select best node, given a criteria*)
-  let select_best_node (v:gltbl) (glgrader:goal->float) (root:steps option) : steps option =
+  let select_best_node (v:gltbl) (grade_goals:step set->goal set->float->float) (root:steps option) : steps option =
     let currnode = cursor v.search in
-    let ngoals (s:steps) =
+    let build_tbl_and_steps (s:steps) (tbl:goal set) : (step set)*(goal set) =
+      let stps = SET.make_dflt () in
       let score = fold_path v.search s (fun x r ->
         match x with
-        | SAddGoal(g) -> r-.(glgrader g)
-        | SRemoveGoal(g) -> r+.(glgrader g)
-        | _ -> r
-        ) 0.
+        | SAddGoal(g) ->
+          let _ = SET.add tbl g in
+          let _ = SET.add stps (SAddGoal (g)) in
+          ()
+        | SRemoveGoal(g) ->
+          let _ = SET.rm tbl g in
+          let _ = SET.add stps (SRemoveGoal (g)) in
+          ()
+        | _ -> ()
+        ) ()
       in
-        score
+        stps,tbl
     in
-    let score_path (s:steps) : float =
-      let score = ngoals s in
+    let score_node (s:steps) (tbl:goal set) (last:float) : (goal set)*float =
+      let stps,tbl = build_tbl_and_steps s tbl in
+      let score = grade_goals stps tbl last in
+      tbl,score
+    in
+    let score_path (endnode:steps) : float =
+      let init_score : float = 0. in
+      let path : steps list= TREE.get_path v.search.paths endnode in
+      let gltbl = SET.make_dflt () in
+      let _,score = List.fold_right (fun nd (gls,score)->
+          let ngls,nscore = score_node nd gls score in (ngls,nscore)
+        ) path (gltbl,init_score)
+      in
       score
     in
     (*get all the paths for teh root node*)
-    let paths = if root = None
+    let leaves = if root = None
       then get_paths v.search None
       else get_paths v.search (root)
     in
-    match paths with
+    match leaves with
     | [] -> None
     | h::t ->
       (*look at everything but the current node*)
-      let paths = LIST.filter (fun x -> x <> currnode) paths in
-      let _,best = LIST.max (fun x -> score_path x) paths in
+      let leaves = LIST.filter (fun x -> x <> currnode) leaves in
+      let _,best = LIST.max (fun x -> score_path x) leaves in
       Some(best)
 end

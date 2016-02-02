@@ -668,16 +668,69 @@ struct
 
 
 
-  (*score the passed in goal by complexity*)
+  (*score the passed in goal by complexity
   let score_goal_by_complexity (g:goal) : float =
     if GoalTableLib.is_trivial g then 0. else
       let r = GoalTableLib.unwrap_goal g in
       let cplx = (UnivLib.goal2complexity r) in
       let score = cplx in
       score
+  *)
+
+  (*uniform scoring*)
+  let score_path_uniform (sts:step set) (tbl:goal set) (past:float) : float = 0.
+  (*random scoring*)
+  let score_path_random (sts:step set) (tbl:goal set) (past:float) : float = RAND.rand_norm ()
+
+  (*select table with most trivial to non-trivial goals*)
+  let score_path_trivial_ratio (sts:step set) (tbl:goal set) (past:float) : float =
+    let ntrivial : float = SET.fold tbl (fun x r -> if GoalTableLib.is_trivial x then r+.1. else r) 0. in
+    let nnontrivial = (float_of_int (SET.size tbl)) -. ntrivial in
+    let nnontrivial = if nnontrivial = 0. then 0.0000001 else nnontrivial in
+    ntrivial/.nnontrivial
+
+  let score_path_ngoals (sts:step set) (tbl:goal set) (past:float) : float =
+    let ntrivial : float = SET.fold tbl (fun x r -> if GoalTableLib.is_trivial x then r+.1. else r) 0. in
+    let nontrivial = (float_of_int (SET.size tbl)) -. ntrivial in
+    -.nontrivial -. (ntrivial*.0.2)
+
+  let score_path_gcomplex (sts:step set) (tbl:goal set) (past:float) : float =
+    let score_goal g = if GoalTableLib.is_trivial g then 0. else
+      let r = GoalTableLib.unwrap_goal g in
+      let cplx = (UnivLib.goal2complexity r) in
+      let score = cplx in
+      score
+    in
+    let pscore = SET.fold tbl (fun x r -> r +. (score_goal x) ) 0. in
+    -.pscore
+
+  let score_path_pcomplex (sts:step set) (tbl:goal set) (past:float) : float =
+    let score_goal g = if GoalTableLib.is_trivial g then 0. else
+      let r = GoalTableLib.unwrap_goal g in
+      let cplx = (UnivLib.goal2complexity r) in
+      let score = cplx in
+      score
+    in
+    let score_node p = match p with
+      |SAddGoal(g) -> -.(score_goal g)
+      |SRemoveGoal(g) -> (score_goal g)
+      | _ -> 0.
+    in
+    let pscore = SET.fold sts (fun x r -> r +. (score_node x) ) past in
+    -.pscore
 
 
-
+  let best_path_function () =
+    let typ = get_glbl_string "path_search_selector_type" in
+    match typ with
+    | "uniform" -> score_path_uniform
+    | "random" -> score_path_random
+    | "trivial-ratio" -> score_path_trivial_ratio
+    | "ngoals" -> score_path_ngoals
+    | "goal-complexity" -> score_path_gcomplex
+    | "path-complexity" -> score_path_gcomplex
+    | _ ->
+      error "best_path_function" "path selector doesn't exist"
 
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
   let test_node_validity (s:slvr) (v:gltbl) (c:steps) =
@@ -711,9 +764,10 @@ struct
     let _ = SearchLib.move_cursor s v old_cursor in
     is_valid
 
+
   (*get the best valid node. If there is no valid node, return none *)
   let rec get_best_valid_node (s:slvr) (v:gltbl) (root:steps option)  : steps option =
-    match SearchLib.select_best_node v score_goal_by_complexity root with
+    match SearchLib.select_best_node v (best_path_function ()) root with
     | Some(newnode) ->
         if test_node_validity s v newnode then
           Some(newnode)
@@ -721,9 +775,32 @@ struct
           get_best_valid_node s v root
     | None -> None
 
-  let get_best_valid_goal (v:gltbl) =
-    let g = LIST.rand (GoalTableLib.get_actionable_goals v) in
-    g
+  let score_goal_uniform g = 0.
+  let score_goal_random g = RAND.rand_norm()
+
+  let score_goal_trivial_preferred g = match g with
+    | TrivialGoal(v) -> 1. +. RAND.rand_norm ()
+    | NonTrivialGoal(v) -> RAND.rand_norm()
+
+  let score_goal_nontrivial_preferred g = match g with
+    | TrivialGoal(v) -> RAND.rand_norm ()
+    | NonTrivialGoal(v) -> 1. +. RAND.rand_norm()
+
+  let best_goal_function () =
+    let typ = get_glbl_string "goal_search_selector_type" in
+    match typ with
+    | "uniform" -> score_goal_uniform
+    | "random" -> score_goal_random
+    | "trivial" -> score_goal_trivial_preferred
+    | "nontrivial" -> score_goal_nontrivial_preferred
+    | _ ->
+      error "best_goal_function" ("goal selector named <"^typ^"> doesn't exist")
+
+  let get_best_valid_goal (v:gltbl) : goal =
+    let goals = GoalTableLib.get_actionable_goals v in
+    let score_goal = best_goal_function() in
+    let _,targ_goal = LIST.max (fun x -> score_goal x) goals in
+    targ_goal
 
 
   let no_more_nodes (v:gltbl) (head:steps option) =
@@ -823,6 +900,17 @@ struct
       Some(sln)
     else
       None
+
+    let make_dependency_dag (prob:menv) = ()
+
+    let dag_to_ordering_and_ics (prob) = ()
+
+    let solve_multiple s v  =
+      (*make a dependency dag, along with dummy ports for circular things*)
+      let multsearch : (mvar,gltbl) map = MAP.make () in
+      let dag = make_dependency_dag s.prob in
+      let ord_ics = dag_to_ordering_and_ics in
+      ()
 
 
     let search2tbl s (rf) icurs (st) :gltbl =
@@ -938,7 +1026,6 @@ struct
 
 end
 
-let make_dependency_dag (prob:menv) = ()
 
 let canonicalize_sln (hw:hwenv) (s:sln) =
   let newlabels = MAP.make () in
@@ -957,7 +1044,7 @@ let canonicalize_sln (hw:hwenv) (s:sln) =
   in
   (*only keep assignments on one end of the input or output port*)
   let _ = MAP.iter s.labels (fun wire props -> proc_wire wire props) in
-  let _ = MAP.set s.labels newlabels in 
+  let _ = MAP.set s.labels newlabels in
   ()
 
 
