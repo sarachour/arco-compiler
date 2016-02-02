@@ -344,6 +344,9 @@ struct
   let size x =
     Hashtbl.length x
 
+  let clear x =
+    Hashtbl.clear x
+
 
   let fold (type a) (type b) (type c) (x:(a,b) map) (f: a -> b -> c -> c) (iv: c) : c =
     Hashtbl.fold f x iv
@@ -390,6 +393,11 @@ struct
     let mp = make() in
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
     mp
+
+  let set (type a) (type b) (x: (a,b) map) (y: (a,b) map) =
+    let _ = clear x in
+    let _ = iter y (fun a b -> let _ = put x a b in ()) in
+    ()
 
   let singleton (type a) (type b) (x:(a,b) map): (a*b) =
     if size x != 1 then

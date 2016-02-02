@@ -17,22 +17,17 @@ output.I | 0 = []
 copy.I | 0 = []
 
 Conns:
-input.I[0].O->mm[0].kr
+input.I[0].O->mm[0].kf
 output.V[0].X->mm[0].XY
-input.V[0].O->mm[0].Ytot
-input.V[2].O->mm[0].Xtot
-input.V[1].O->mm[0].XY0
-mm[0].kf->input.I[0].O
+input.V[0].O->mm[0].XY0
+input.V[2].O->mm[0].Ytot
+input.V[1].O->mm[0].Xtot
+mm[0].kr->input.I[0].O
 
 Labels:
-D(input.V[2].X): bind 0.11
-D(input.V[1].X): bind ES_0
-V(input.V[1].O): bind ES_0
+V(input.V[1].O): bind 0.15
 V(input.V[2].O): bind 0.11
-V(input.V[0].O): bind 0.15
-D(input.I[0].X): bind 1
+V(input.V[0].O): bind ES_0
 V(output.V[0].X): bind ES
-D(output.V[0].O): bind ES
-D(input.V[0].X): bind 0.15
 I(input.I[0].O): bind 1
 

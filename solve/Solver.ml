@@ -938,6 +938,27 @@ struct
 
 end
 
+let make_dependency_dag (prob:menv) = ()
+
+let canonicalize_sln (hw:hwenv) (s:sln) =
+  let newlabels = MAP.make () in
+  let mklbl wire propmap =
+    MAP.put newlabels wire propmap
+  in
+  let proc_wire wire propmap =
+    let c,i,p = wire in
+    let cname : string = UnivLib.unodeid2name c in
+    match c with
+    | UNoInput(prop) -> if HwLib.getkind hw cname p = HNInput then ()
+      else let _ = mklbl wire propmap in ()
+    | UNoOutput(prop) -> if HwLib.getkind hw cname p = HNOutput then ()
+      else let _ = mklbl wire propmap in ()
+    | _ -> let _ = mklbl wire propmap in ()
+  in
+  (*only keep assignments on one end of the input or output port*)
+  let _ = MAP.iter s.labels (fun wire props -> proc_wire wire props) in
+  let _ = MAP.set s.labels newlabels in 
+  ()
 
 
 let solve (hw:hwenv) (prob:menv) (out:string) =
@@ -948,7 +969,9 @@ let solve (hw:hwenv) (prob:menv) (out:string) =
   let spdoc = SolveLib.solve (REF.mk sl) (tbl) in
   match spdoc with
     | Some(s,tbl) ->
-    let _ = Printf.printf "===== Concretizing to Spice File ======\n" in
+      (*canonicalize the solution*)
+      let _ = canonicalize_sln hw tbl.sln in
+      let _ = Printf.printf "===== Concretizing to Spice File ======\n" in
       let _ = try
         let sp = SpiceLib.to_spice s tbl.sln in
         IO.save out (SpiceLib.to_str sp)

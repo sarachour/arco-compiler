@@ -1,53 +1,53 @@
 
-*@input S_0
-Vin_S_0_26		29	0	DC	1.
-*
-*@input ES_0
-Vin_ES_0_25		29	0	DC	1.
-*
-*constant value 25.25
-Icst24		29	0	DC	25.25
-*
 *constant value 23.15
-Icst23		29	0	DC	23.15
-*
-*@input P_0
-Vin_P_0_17		28	0	DC	1.
+Icst14		30	0	DC	23.15
 *
 *@output P
-Vout_P_14		28	0	DC	1.
+Vout_P_13		30	0	DC	1.
 *
 *constant value 2.1
-Icst13		28	0	DC	2.1
+Icst12		29	0	DC	2.1
 *
 *constant value 0
-Vcst12		28	0	DC	0.
+Vcst9		28	0	DC	0.
 *
-*@input E_0
-Vin_E_0_7		27	0	DC	1.
+*@input P_0
+Vin_P_0_8		28	0	DC	1.
 *
 *constant value 0.00126823081801
-Vcst2		24	0	DC	0.00126823081801
+Vcst7		28	0	DC	0.00126823081801
+*
+*@input S_0
+Vin_S_0_5		27	0	DC	1.
+*
+*constant value 25.25
+Vcst4		26	0	DC	25.25
+*
+*@input ES_0
+Vin_ES_0_3		25	0	DC	1.
+*
+*@input E_0
+Vin_E_0_1		24	0	DC	1.
 *
 *
 *
 * === Connectivity Schem ==== 
-Xvgain_31		0	22	0	22	vgain
-Xvgain_8		0	0	22	22	vgain
-XinputI_1		29	19	iin
-XinputI_1		29	19	iin
-XinputI_1		29	19	iin
-XoutputV_5		28	0	vout
-Xvadd_1		22	22	22	0	0	22	22	vadd
-Xvadd_1		22	22	22	0	0	22	22	vadd
-Xvadd_1		22	22	22	0	0	22	22	vadd
-Xvadd_1		22	22	22	0	0	22	22	vadd
-XinputV_25		29	22	vin
-XinputV_31		29	22	vin
-XinputV_1		29	22	vin
-XinputV_0		27	22	vin
-XinputV_30		29	22	vin
-XinputV_1		29	22	vin
-Xitov_0		19	0	22	itov
-Xitov_1		19	0	22	itov
-Xitov_8		19	0	22	itov
+Xvgain_2		0	0	23	23	vgain
+Xvgain_8		0	23	0	23	vgain
+XinputI_1		30	22	iin
+XinputI_1		30	22	iin
+XoutputV_16		30	0	vout
+Xvadd_1		23	23	23	23	0	20	23	vadd
+Xvadd_1		23	23	23	23	0	20	23	vadd
+Xvadd_1		23	23	23	23	0	20	23	vadd
+Xvadd_1		23	23	23	23	0	20	23	vadd
+XinputV_97		26	10	vin
+XinputV_3		24	23	vin
+XinputV_14		27	23	vin
+XinputV_8		28	23	vin
+XinputV_1		28	23	vin
+XinputV_1		28	23	vin
+XinputV_1		28	23	vin
+Xitov_12		0	10	23	itov
+Xitov_23		22	0	23	itov
+Xitov_10		22	0	23	itov
