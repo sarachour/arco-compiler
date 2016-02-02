@@ -286,6 +286,8 @@ struct
       match g with
       | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Decimal(_)) -> true
       | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Integer(_)) -> true
+      | UFunction(MathId(_),Decimal(_)) -> true
+      | UFunction(MathId(_),Integer(_)) -> true
       | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
           if prop1 = prop2 then true else false
       | UFunction(MathId(v),Term(HwId(_))) -> true
