@@ -40,7 +40,7 @@ module SolveLib =
 struct
 
   let mkmenu (s:slvr) (v:gltbl) (currgoal:goal option) =
-    let menu_desc = "t=search-tree, s=sol, x=goals, any-key=continue, q=quit" in
+    let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
         let _ = Printf.printf "\n%s\n\n" (SearchLib.buf2str v.search) in
@@ -49,22 +49,6 @@ struct
       else if STRING.startswith inp "s" then
         let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
         let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "x" then
-        let _ = Printf.printf "==== Goals ===" in
-        let _ = Printf.printf "%s\n" (GoalTableLib.goals2str v v.goals) in
-        let _ = Printf.printf "============\n" in
-        let _ = match currgoal with
-          | Some(currgoal) -> Printf.printf ">> Current Goal: %s\n" (GoalTableLib.goal2str currgoal)
-          | _ -> Printf.printf ">> CurrentGoal: (none)"
-        in
-        let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "c" then
-        let _ = match currgoal with
-          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n\n" (UnivLib.goal2str g)  in ()
-          | None -> Printf.printf "<no goal>\n\n\n"
-        in
         ()
       else if STRING.startswith inp "goto" then
         let _ = match STRING.split inp " " with
@@ -75,6 +59,21 @@ struct
         | _ -> ()
         in
         let _ = on_finished() in
+        ()
+      else if STRING.startswith inp "g" then
+        let _ = Printf.printf "==== Goals ===" in
+        let _ = Printf.printf "%s\n" (GoalTableLib.goals2str v v.goals) in
+        let _ = Printf.printf "============\n" in
+        let _ = match currgoal with
+          | Some(currgoal) -> Printf.printf ">> Current Goal: %s\n" (GoalTableLib.goal2str currgoal)
+          | _ -> Printf.printf ">> CurrentGoal: (none)"
+        in
+        ()
+      else if STRING.startswith inp "c" then
+        let _ = match currgoal with
+          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n\n" (UnivLib.goal2str g)  in ()
+          | None -> Printf.printf "<no goal>\n\n\n"
+        in
         ()
       else
         ()
@@ -291,6 +290,18 @@ struct
           if prop1 = prop2 then true else false
       | UFunction(MathId(v),Term(HwId(_))) -> true
       | UFunction(HwId(v),Term(MathId(_))) -> true
+      | _ -> false
+
+  let if_nontrivial_possible g =
+      match g with
+      | UFunction(MathId(MNTime(_)),Term(HwId(HNTime(_)))) -> false
+      | UFunction(HwId(HNTime(_)),Term(MathId(MNTime(_)))) -> false
+      | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Decimal(_)) -> true
+      | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Integer(_)) -> true
+      | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
+          if prop1 = prop2 then true else false
+      | UFunction(MathId(v),Term(HwId(_))) -> false
+      | UFunction(HwId(v),Term(MathId(_))) -> false
       | _ -> false
 
   let resolve_trivial_step (s:slvr) (t:gltbl) g : step list =
@@ -666,54 +677,44 @@ struct
 
 
 
-    (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
-    let test_node_validity (s:slvr) (v:gltbl) (c:steps) =
-      let old_cursor = SearchLib.cursor v.search in
-      let _ = SearchLib.move_cursor s v c in
-      let depth =  List.length (TREE.get_path v.search.paths c) in
-      let is_valid = if depth >= get_glbl_int "search_max_depth" then
-        let _ = print_debug "[test-node-valididty] hit max depth" in
+  (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
+  let test_node_validity (s:slvr) (v:gltbl) (c:steps) =
+    let old_cursor = SearchLib.cursor v.search in
+    let _ = SearchLib.move_cursor s v c in
+    let depth =  List.length (TREE.get_path v.search.paths c) in
+    let is_valid = if depth >= get_glbl_int "search_max_depth" then
+      let _ = print_debug "[test-node-valididty] hit max depth" in
+      let _ = SearchLib.deadend v.search c in
+      false
+    else
+      if SlnLib.usecomp_cons s v.sln  then
+      if SlnLib.mkconn_cons s v.sln then
+        (*determine if there are any goals left*)
+        if (GoalTableLib.num_actionable_goals v) = 0 then
+          (*found all goals*)
+          let _ = print_debug "[test-node-validity] found a valid solution" in
+          let _ = SearchLib.solution v.search c in
+          true
+        else
+          true
+      else
+        let _ = print_debug "[test-node-validity] impossible set of connections" in
         let _ = SearchLib.deadend v.search c in
         false
       else
-        if SearchLib.is_solution v.search c then
-          let _ = print_debug "[test-node-validity] already a valid solution" in
-          true
-        else
-          if SlnLib.usecomp_cons s v.sln  then
-          if SlnLib.mkconn_cons s v.sln then
-            let numgoals = (GoalTableLib.num_actionable_goals v) in
-            let _ = print_debug ("[test-node-validity] total of "^(string_of_int numgoals)^" goals left") in
-            (*determine if there are any goals left*)
-            if numgoals = 0 then
-              (*found all goals*)
-              let _ = print_debug "[test-node-validity] found a valid solution" in
-              let _ = SearchLib.solution v.search c in
-              true
-            else
-              true
-          else
-            let _ = print_debug "[test-node-validity] impossible set of connections" in
-            let _ = SearchLib.deadend v.search c in
-            false
-          else
-            let _ = print_debug "[test-node-validity] impossible set of component uses" in
-            let _ = SearchLib.deadend v.search c in
-            false
-      in
-      let _ = SearchLib.move_cursor s v old_cursor in
-      is_valid
+        let _ = print_debug "[test-node-validity] impossible set of component uses" in
+        let _ = SearchLib.deadend v.search c in
+        false
+    in
+    let _ = SearchLib.move_cursor s v old_cursor in
+    is_valid
 
   (*get the best valid node. If there is no valid node, return none *)
   let rec get_best_valid_node (s:slvr) (v:gltbl) (root:steps option)  : steps option =
     match SearchLib.select_best_node v score_goal_by_complexity root with
     | Some(newnode) ->
         if test_node_validity s v newnode then
-          (*if we found a solution node, keep looking*)
-          if SearchLib.is_solution v.search newnode then
-            get_best_valid_node s v root
-          else
-            Some(newnode)
+          Some(newnode)
         else
           get_best_valid_node s v root
     | None -> None
@@ -722,96 +723,77 @@ struct
     let g = LIST.rand (GoalTableLib.get_actionable_goals v) in
     g
 
-  let get_best_valid_goal_or_selected (v:gltbl) (g:goal option) =
-    match g with
-    | Some(q) -> if GoalTableLib.is_actionable v q then
-      q
-      else
-        error "get_best_valid_goal_or_selected" "chosen goal is not actionable"
-    | None -> get_best_valid_goal v
+
+  let no_more_nodes (v:gltbl) (head:steps option) =
+    (List.length (SearchLib.get_paths v.search head))
 
   (*solve a goal*)
 
   let solve_subtree (s:slvr) (v:gltbl) (root:steps) =
-    let ban_goals () =
-      let all_goals = GoalTableLib.get_actionable_goals v in
-      let deact_steps = List.map (fun x -> SMakeGoalPassive x) all_goals in
-      let act_steps = List.map (fun x -> SMakeGoalActive x) all_goals in
-      deact_steps
-    in
-    let trivial_goals () =
-      let all_goals = GoalTableLib.get_actionable_goals v in
-      let triv_goals = List.filter (fun x -> GoalTableLib.is_trivial x) all_goals in
-      triv_goals
-    in
-    let rec _solve_subtree (root:steps) (goal: goal option) =
-      let rec solve_goal (g:goal) =
-        let curr = SearchLib.cursor v.search in
-        let mint,musr = mkmenu s v (Some g) in
-        let _ = mint "x" in
-        let _ = musr () in
-        match g with
-        (*if we're solvinga nontrivial goal. Apply components and then redo*)
-        | NonTrivialGoal(_) ->
-          (*found a nontrivial goal -> applying components*)
-          let _ = apply_components s v g in
-          let triv = trivial_goals () in
-          (*solve trivial goals before going to next node*)
-          let _ = List.iter (fun x -> _solve_subtree root (Some x)) triv in
-          ()
-        (* if we're looking at a trivial goal, try to solve everything under the goal*)
-        | TrivialGoal(grel) ->
-          let steps = resolve_trivial_step s v g in
-          (* create trivial step *)
-          let _ = SearchLib.start v.search in
-          let _ = SearchLib.add_steps v.search (steps) in
-          let trivnode = SearchLib.commit v.search in
-          let _ = print_debug ("[solve_goal][trivial] comprehensively solving "^(GoalTableLib.goal2str g)) in
-          (*ban and unban goals*)
-          let exc_goals = ban_goals () in
-          let _ = SearchLib.apply_steps s v (SearchLib.wrap_steps exc_goals) in
-          let _ = _solve_subtree trivnode in
-          let _ = SearchLib.unapply_steps s v (SearchLib.wrap_steps exc_goals) in
-          (*remove existing solutions*)
-          let _ = SearchLib.recompute_solutions v.search in
-          (*undo the node *)
-          (*if we found a solution*)
-          if SearchLib.has_solution v.search (Some trivnode) then
-            let _ = print_debug "[solve_goal][trivial] trivial node has a valid solution" in
-            ()
-          else if SearchLib.is_exhausted v.search (Some trivnode) then
-            let _ = print_debug "[solve_goal][trivial] trivial node was exhausted. upgrading node to non-trivial" in
-            let upgradetriv = [SRemoveGoal(TrivialGoal(grel)); SAddGoal(NonTrivialGoal(grel))] in
-            (*remove the trivial goal solution*)
-            let _ = SearchLib.move_cursor s v curr in
-            let _ = SearchLib.rm v.search trivnode in
-            let _ = SearchLib.start v.search in
-            let _ = SearchLib.add_steps v.search upgradetriv in
-            let upgnode = SearchLib.commit v.search in
-            ()
+    let solve_goal (g:goal) =
+      let curr = SearchLib.cursor v.search in
+      let mint,musr = mkmenu s v (Some g) in
+      let _ = mint "g" in
+      let _ = musr () in
+      let mknode steps (cursor:steps) =
+        let _ = SearchLib.move_cursor s v cursor in
+        let _ = SearchLib.start v.search in
+        let _ = SearchLib.add_steps v.search steps in
+        let no = SearchLib.commit v.search in
+        no
       in
+      match g with
+      (*if we're solvinga nontrivial goal. Apply components and then redo*)
+      | NonTrivialGoal(_) ->
+        (*found a nontrivial goal -> applying components*)
+        let _ = apply_components s v g in
+        ()
+      (* if we're looking at a trivial goal, try to solve everything under the goal*)
+      | TrivialGoal(grel) ->
+        let mktrv = resolve_trivial_step s v g in
+        let triv = mknode ((SRemoveGoal g)::mktrv) curr in
+        if if_nontrivial_possible grel then
+          let upgradetriv = [SRemoveGoal(TrivialGoal(grel)); SAddGoal(NonTrivialGoal(grel))] in
+          let nontriv = mknode upgradetriv curr in
+          let _ = SearchLib.move_cursor s v curr in
+          ()
+        else
+          ()
+    in
+    let rec rec_solve_subtree (root:steps) =
       (*we've exhausted the subtree - there are no more paths to explore*)
       if SearchLib.is_exhausted v.search (Some root) then
         ()
       else
         (*get the next node*)
         let maybe_next_node = get_best_valid_node s v (Some root) in
-        match maybe_next_node with
-        | Some(next_node) ->
-          (*move to node*)
-          let _ = SearchLib.move_cursor s v next_node in
-          let goals = GoalTableLib.get_actionable_goals v in
-          let next_goal = get_best_valid_goal_or_selected v goal in
-          (*solves the goal*)
-          let _ = solve_goal next_goal in
-          _solve_subtree root None
-        (*No more subgoals*)
-        | None ->
-          ()
-    in
-    (*ban goals*)
-    _solve_subtree root None
-    (*unban goals*)
+        if SearchLib.has_solution v.search (Some root) then
+         let _ = print_debug "[search_tree] Found Solution" in
+         ()
+        else
+          match maybe_next_node with
+          | Some(next_node) ->
+            (*move to node*)
+            let _ = SearchLib.move_cursor s v next_node in
+            let next_goal = get_best_valid_goal v in
+            (*solves the goal*)
+            let _ = solve_goal next_goal in
+            rec_solve_subtree root
+          (*No more subgoals*)
+          | None ->
+            ()
+      in
+      if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
+        let _ = SearchLib.solution v.search root in
+        let _ = rec_solve_subtree root in
+        ()
+      else
+        let next_goal = get_best_valid_goal v in
+        let _ = solve_goal next_goal in
+        let _ = rec_solve_subtree root in
+        ()
+
+
 
   let rec solve_sim_eqn (_s:slvr ref) (v:gltbl) (target:mid) : steps option =
     let goal_has_mvar (gs:goal) (target:mid) : bool = match GoalTableLib.unwrap_goal gs with
@@ -820,19 +802,25 @@ struct
       | _ -> true
     in
     let s = REF.dr _s in
-    let _ = SearchLib.start v.search in
     (*ban directly solving goals that are not the mvar one*)
+    let root = SearchLib.cursor v.search in
     let goals = GoalTableLib.get_actionable_goals v in
-    let _ = List.iter (fun x ->
+    let passify_goals : step list = List.fold_right (fun (x:goal) (r:step list) ->
       if goal_has_mvar x target = false then
-        SearchLib.add_step v.search (SMakeGoalPassive x)
+        [SMakeGoalPassive x] @ r
       else
-        ()
-      ) goals in
-    let rootnode = SearchLib.commit v.search in
-    let _ = solve_subtree s v rootnode in
-    (*TODO: return solutions *)
-    None
+        r
+    ) goals [] in
+    let passify_goals = SearchLib.wrap_steps passify_goals in
+    let _ = SearchLib.apply_steps s v passify_goals in
+    let _ = solve_subtree s v root in
+    let _ = SearchLib.unapply_steps s v passify_goals in
+    if SearchLib.has_solution v.search (Some root) then
+      let slns = SearchLib.get_solutions v.search (Some root) in
+      let sln : steps = (List.nth slns 0) in
+      Some(sln)
+    else
+      None
 
 
     let search2tbl s (rf) icurs (st) :gltbl =

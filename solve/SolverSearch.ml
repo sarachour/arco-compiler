@@ -70,11 +70,11 @@ struct
   let has_solution b =
     MAP.fold b.tbl (fun x v c -> if v = GLStatSolution then true else c) true
 
-  let get_solutions b =
+  let get_solutions b : int list =
     let res = MAP.fold b.tbl (fun x v c -> if v = GLStatSolution then x::c else c) [] in
     res
 
-  let get_visited b =
+  let get_visited b : int list =
     let res = MAP.fold b.tbl (fun x v c -> if v = GLStatVisited then x::c else c) [] in
     res
 
@@ -186,15 +186,15 @@ struct
     let _ = StatusTableLib.clear_deadends b.st in
     ()
 
-  let deadend b n =
-    let _ = StatusTableLib.deadend b.st n in
+  let deadend b n : unit =
+    let _ : unit = StatusTableLib.deadend b.st n in
     ()
 
-  let solution b n =
-    let _ = StatusTableLib.solution b.st n in
+  let solution b n : unit =
+    let _ : unit = StatusTableLib.solution b.st n in
     ()
 
-  let has_solution b (root:steps option) =
+  let get_solutions b (root:steps option) : steps list=
     let test_sln x =
       let nd : steps = id2node b x in
       match root with
@@ -205,8 +205,11 @@ struct
     in
     let slns = StatusTableLib.get_solutions b.st in
     let fslns = List.filter (fun x -> test_sln x) slns in
-    (List.length fslns) > 0
+    let stslns : steps list = List.map (fun x -> id2node b x) fslns in
+    stslns
 
+  let has_solution b (root:steps option) =
+    (List.length (get_solutions b root)) > 0
 
 
   let buf2str b =
