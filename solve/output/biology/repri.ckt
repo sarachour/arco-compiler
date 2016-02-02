@@ -1,0 +1,102 @@
+
+*constant value 0.00132877123795
+Vcst51		48	0	DC	0.00132877123795
+*
+*constant value -0.4995
+Icst50		48	0	DC	-0.4995
+*
+*constant value 0
+Icst45		48	0	DC	0.
+*
+*constant value 0.0005
+Icst32		48	0	DC	0.0005
+*
+*constant value 1.5051499783
+Vcst31		48	0	DC	1.5051499783
+*
+*constant value 2
+Vcst30		48	0	DC	2.
+*
+*@input TetRp_0
+Vin_TetRp_0_25		46	0	DC	1.
+*
+*@input clm_0
+Vin_clm_0_24		45	0	DC	1.
+*
+*constant value 30.1029995664
+Icst22		45	0	DC	30.1029995664
+*
+*constant value 1
+Vcst18		45	0	DC	1.
+*
+*constant value 0.4995
+Icst16		44	0	DC	0.4995
+*
+*constant value 0.3010299956
+Vcst15		44	0	DC	0.3010299956
+*
+*@input LacLm_0
+Vin_LacLm_0_14		44	0	DC	1.
+*
+*constant value 752.57498916
+Vcst13		44	0	DC	752.57498916
+*
+*constant value 10
+Vcst12		44	0	DC	10.
+*
+*constant value 0
+Vcst11		44	0	DC	0.
+*
+*@input clp_0
+Vin_clp_0_10		43	0	DC	1.
+*
+*constant value 10
+Icst9		43	0	DC	10.
+*
+*@input TetRm_0
+Vin_TetRm_0_8		43	0	DC	1.
+*
+*@input LacLp_0
+Vin_LacLp_0_6		42	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xvgain_33		39	26	0	39	vgain
+Xvgain_1		26	39	0	39	vgain
+XinputI_1		48	39	iin
+XinputI_1		48	39	iin
+XinputI_1		48	39	iin
+XinputI_1		48	39	iin
+XinputI_1		48	39	iin
+XinputI_1		48	39	iin
+Xvadd_1		39	39	39	39	0	0	39	vadd
+Xvadd_1		39	39	39	39	0	0	39	vadd
+Xvadd_1		39	39	39	39	0	0	39	vadd
+Xvadd_1		39	39	39	39	0	0	39	vadd
+Xvadd_1		39	39	39	39	0	0	39	vadd
+Xvadd_1		39	39	39	39	0	0	39	vadd
+Xihill_2		39	0	39	0	0	39	ihill
+Xihill_6		39	0	39	0	0	39	ihill
+Xihill_2		39	0	39	0	0	39	ihill
+XinputV_1		48	39	vin
+XinputV_25		45	26	vin
+XinputV_6		47	39	vin
+XinputV_1		48	39	vin
+XinputV_51		44	39	vin
+XinputV_1		48	39	vin
+XinputV_1		48	39	vin
+XinputV_5		45	39	vin
+XinputV_24		48	39	vin
+XinputV_62		48	39	vin
+XinputV_1		48	39	vin
+XinputV_1		48	39	vin
+XinputV_67		47	39	vin
+XinputV_1		48	39	vin
+Xitov_24		39	0	39	itov
+Xitov_29		39	0	39	itov
+Xitov_25		0	39	39	itov
+Xitov_0		0	39	39	itov
+Xiadd_1		39	39	39	39	0	iadd
+Xiadd_1		39	39	39	39	0	iadd
+Xiadd_1		39	39	39	39	0	iadd

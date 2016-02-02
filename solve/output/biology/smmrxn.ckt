@@ -1,0 +1,25 @@
+
+*constant value 1
+Icst9		14	0	DC	1.
+*
+*@output ES
+Vout_ES_6		14	0	DC	1.
+*
+*constant value 0.15
+Vcst4		13	0	DC	0.15
+*
+*constant value 0.11
+Vcst3		13	0	DC	0.11
+*
+*@input ES_0
+Vin_ES_0_2		13	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+XinputI_1		14	10	iin
+XoutputV_53		14	0	vout
+Xmm_1		7	7	10	10	8	0	0	3	mm
+XinputV_1		14	7	vin
+XinputV_19		13	3	vin
+XinputV_1		14	7	vin

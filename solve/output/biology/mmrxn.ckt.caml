@@ -1,0 +1,68 @@
+comp vgain 1
+comp vgain 2
+comp input.I 2
+comp input.I 1
+comp input.I 0
+comp output.V 0
+comp vadd 3
+comp vadd 1
+comp vadd 0
+comp vadd 2
+comp input.V 12
+comp input.V 8
+comp input.V 0
+comp input.V 7
+comp input.V 9
+comp input.V 11
+comp itov 5
+comp itov 3
+comp itov 1
+conn vadd 3 B :: input.V 0 O
+conn vadd 1 C :: input.V 0 O
+conn input.V 11 O :: vgain 1 Y
+conn vadd 3 C :: input.V 0 O
+conn vadd 0 B :: itov 1 Y
+conn vgain 2 Z :: input.V 0 O
+conn vadd 2 A :: vgain 2 P
+conn vadd 2 C :: input.V 0 O
+conn input.V 7 O :: vadd 0 OUT2_0
+conn vadd 1 A :: input.V 0 O
+conn vadd 2 B :: vgain 1 P
+conn vadd 3 A :: itov 5 Y
+conn vadd 0 A :: input.V 0 O
+conn input.V 0 O :: vadd 0 C
+conn output.V 0 X :: vadd 3 OUT2
+conn input.I 2 O :: itov 5 X
+conn input.V 12 O :: vadd 3 OUT2_0
+conn input.I 1 O :: itov 3 X
+conn input.I 0 O :: itov 1 X
+conn input.V 9 O :: vadd 2 OUT2_0
+conn vadd 1 B :: itov 3 Y
+conn input.V 8 O :: vadd 1 OUT2_0
+bind value D of input.I 1 X :: 23.15
+bind var V of vgain 1 Z :: var S
+bind value V of input.V 11 O :: 0.00126823081801
+bind var V of itov 1 K :: var ES
+bind value D of input.V 8 X :: 0.256
+bind value D of input.V 7 X :: 0.124
+bind var V of vgain 1 X :: var E
+bind value V of input.V 7 O :: 0.124
+bind value D of input.V 11 X :: 0.00126823081801
+bind value D of input.V 9 X :: 0
+bind var V of vadd 1 D :: var S
+bind var V of itov 5 K :: var ES
+bind value V of input.V 0 O :: 0
+bind value I of input.I 2 O :: 2.1
+bind var V of output.V 0 X :: var P
+bind var D of output.V 0 O :: var P
+bind value D of input.I 0 X :: 25.25
+bind value V of input.V 12 O :: 0
+bind value D of input.V 0 X :: 0
+bind value D of input.I 2 X :: 2.1
+bind var V of itov 3 K :: var ES
+bind var V of vadd 2 D :: var ES
+bind value D of input.V 12 X :: 0
+bind value I of input.I 1 O :: 23.15
+bind value I of input.I 0 O :: 25.25
+bind value V of input.V 9 O :: 0
+bind value V of input.V 8 O :: 0.256

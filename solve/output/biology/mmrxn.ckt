@@ -1,0 +1,53 @@
+
+*@input S_0
+Vin_S_0_26		29	0	DC	1.
+*
+*@input ES_0
+Vin_ES_0_25		29	0	DC	1.
+*
+*constant value 25.25
+Icst24		29	0	DC	25.25
+*
+*constant value 23.15
+Icst23		29	0	DC	23.15
+*
+*@input P_0
+Vin_P_0_17		28	0	DC	1.
+*
+*@output P
+Vout_P_14		28	0	DC	1.
+*
+*constant value 2.1
+Icst13		28	0	DC	2.1
+*
+*constant value 0
+Vcst12		28	0	DC	0.
+*
+*@input E_0
+Vin_E_0_7		27	0	DC	1.
+*
+*constant value 0.00126823081801
+Vcst2		24	0	DC	0.00126823081801
+*
+*
+*
+* === Connectivity Schem ==== 
+Xvgain_31		0	22	0	22	vgain
+Xvgain_8		0	0	22	22	vgain
+XinputI_1		29	19	iin
+XinputI_1		29	19	iin
+XinputI_1		29	19	iin
+XoutputV_5		28	0	vout
+Xvadd_1		22	22	22	0	0	22	22	vadd
+Xvadd_1		22	22	22	0	0	22	22	vadd
+Xvadd_1		22	22	22	0	0	22	22	vadd
+Xvadd_1		22	22	22	0	0	22	22	vadd
+XinputV_25		29	22	vin
+XinputV_31		29	22	vin
+XinputV_1		29	22	vin
+XinputV_0		27	22	vin
+XinputV_30		29	22	vin
+XinputV_1		29	22	vin
+Xitov_0		19	0	22	itov
+Xitov_1		19	0	22	itov
+Xitov_8		19	0	22	itov

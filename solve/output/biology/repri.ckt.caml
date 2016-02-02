@@ -1,0 +1,144 @@
+comp vgain 1
+comp vgain 2
+comp input.I 6
+comp input.I 5
+comp input.I 1
+comp input.I 2
+comp input.I 3
+comp input.I 4
+comp vadd 2
+comp vadd 0
+comp vadd 1
+comp vadd 3
+comp vadd 4
+comp vadd 5
+comp ihill 5
+comp ihill 3
+comp ihill 1
+comp input.V 14
+comp input.V 7
+comp input.V 6
+comp input.V 3
+comp input.V 2
+comp input.V 1
+comp input.V 0
+comp input.V 11
+comp input.V 17
+comp input.V 19
+comp input.V 26
+comp input.V 27
+comp input.V 30
+comp input.V 32
+comp itov 3
+comp itov 1
+comp itov 5
+comp itov 7
+comp iadd 2
+comp iadd 1
+comp iadd 0
+conn itov 7 K :: input.V 26 O
+conn vgain 2 X :: input.V 7 O
+conn vadd 1 C :: input.V 3 O
+conn vadd 3 B :: vgain 2 P
+conn iadd 1 C :: input.I 1 O
+conn input.V 11 O :: vadd 1 OUT2_0
+conn vadd 0 B :: input.V 3 O
+conn vadd 3 C :: input.V 3 O
+conn vadd 3 D :: input.V 2 O
+conn input.V 27 O :: vadd 4 OUT2_0
+conn input.I 5 O :: itov 3 X
+conn input.V 3 O :: vadd 0 C
+conn input.V 6 O :: vadd 0 OUT2_0
+conn iadd 1 B :: ihill 3 REP
+conn input.V 26 O :: itov 5 K
+conn input.V 1 O :: vgain 1 X
+conn input.V 14 O :: vadd 2 OUT2_0
+conn input.V 2 O :: vadd 0 D
+conn ihill 5 n :: input.V 0 O
+conn input.I 6 O :: ihill 3 Vmax
+conn vadd 4 C :: input.V 3 O
+conn vadd 2 A :: input.V 3 O
+conn iadd 2 B :: ihill 5 REP
+conn iadd 2 A :: input.I 2 O
+conn vadd 2 C :: input.V 3 O
+conn ihill 5 Vmax :: input.I 6 O
+conn input.V 7 O :: vgain 1 Y
+conn ihill 3 n :: input.V 0 O
+conn iadd 1 A :: input.I 2 O
+conn iadd 0 C :: input.I 1 O
+conn input.I 4 O :: itov 1 X
+conn vadd 2 B :: itov 3 Y
+conn vadd 1 D :: input.V 2 O
+conn vadd 1 A :: itov 1 Y
+conn input.V 30 O :: vadd 5 OUT2_0
+conn vadd 5 B :: input.V 3 O
+conn vadd 0 A :: vgain 1 P
+conn vadd 3 A :: input.V 3 O
+conn input.V 17 O :: vadd 3 OUT2_0
+conn input.V 0 O :: ihill 1 n
+conn input.V 32 O :: vadd 5 D
+conn input.I 2 O :: iadd 0 B
+conn iadd 2 D :: input.I 1 O
+conn vadd 4 B :: itov 5 Y
+conn vadd 5 C :: input.V 3 O
+conn input.I 1 O :: iadd 0 A
+conn iadd 0 D :: ihill 1 REP
+conn vadd 5 A :: itov 7 Y
+conn iadd 2 C :: input.I 1 O
+conn iadd 1 D :: input.I 1 O
+conn input.I 3 O :: ihill 1 Vmax
+conn vadd 1 B :: input.V 3 O
+conn input.V 19 O :: vgain 2 Y
+conn vadd 4 A :: input.V 3 O
+bind var I of ihill 3 Km :: var KM
+bind value D of input.I 1 X :: 0
+bind var I of ihill 5 Km :: var KM
+bind value D of input.V 2 X :: 0.3010299956
+bind var V of vgain 1 Z :: var clm
+bind value D of input.V 1 X :: 752.57498916
+bind value V of input.V 11 O :: 0
+bind var V of vgain 2 Z :: var TetRm
+bind value V of input.V 27 O :: 0
+bind value I of input.I 5 O :: 10
+bind value V of input.V 6 O :: 0
+bind value V of input.V 3 O :: 0
+bind value V of input.V 26 O :: 10
+bind value V of input.V 1 O :: 752.57498916
+bind value V of input.V 14 O :: 0
+bind value V of input.V 2 O :: 0.3010299956
+bind value I of input.I 6 O :: 0.4995
+bind value D of input.V 7 X :: 1
+bind value V of input.V 7 O :: 1
+bind value D of input.V 11 X :: 0
+bind value D of input.V 26 X :: 10
+bind var I of ihill 3 S :: var TetRp
+bind value I of input.I 4 O :: 30.1029995664
+bind var I of ihill 1 Km :: var KM
+bind value V of input.V 30 O :: 0
+bind value V of input.V 17 O :: 0
+bind value D of input.V 30 X :: 0
+bind value D of input.V 6 X :: 0
+bind value D of input.V 19 X :: 0.00132877123795
+bind value D of input.I 6 X :: 0.4995
+bind value V of input.V 0 O :: 2
+bind value V of input.V 32 O :: 1.5051499783
+bind value I of input.I 2 O :: 0.0005
+bind value D of input.I 4 X :: 30.1029995664
+bind value D of input.V 32 X :: 1.5051499783
+bind var I of ihill 1 S :: var LacLp
+bind value D of input.I 3 X :: -0.4995
+bind value D of input.V 0 X :: 2
+bind value D of input.V 27 X :: 0
+bind value D of input.V 14 X :: 0
+bind var V of itov 3 K :: var TRLacL
+bind var V of vadd 2 D :: var LacLm
+bind value D of input.I 5 X :: 10
+bind value D of input.I 2 X :: 0.0005
+bind var I of itov 5 X :: var TRTetR
+bind value I of input.I 1 O :: 0
+bind var I of ihill 5 S :: var clp
+bind value D of input.V 3 X :: 0
+bind value D of input.V 17 X :: 0
+bind var V of vadd 4 D :: var TetRm
+bind value I of input.I 3 O :: -0.4995
+bind value V of input.V 19 O :: 0.00132877123795

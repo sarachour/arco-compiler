@@ -1,0 +1,70 @@
+comp vgain 2
+comp vgain 1
+comp switch 0
+comp input.I 3
+comp input.I 0
+comp input.I 1
+comp input.I 2
+comp vadd 1
+comp vadd 0
+comp ihill 1
+comp ihill 0
+comp input.V 7
+comp input.V 6
+comp input.V 1
+comp input.V 2
+comp input.V 3
+comp input.V 4
+comp input.V 8
+comp input.V 9
+conn vgain 2 X :: input.V 4 O
+conn vadd 1 C :: input.V 2 O
+conn vadd 0 C :: input.V 2 O
+conn ihill 1 n :: input.V 4 O
+conn input.V 6 O :: vgain 2 Y
+conn input.V 3 O :: vgain 1 X
+conn input.V 1 O :: vadd 0 OUT2_0
+conn input.V 2 O :: vadd 0 B
+conn input.V 7 O :: vadd 1 OUT2_0
+conn vadd 1 A :: input.V 2 O
+conn input.V 4 O :: vgain 1 Y
+conn vadd 0 A :: vgain 1 P
+conn input.I 2 O :: ihill 0 Vmax
+conn input.I 1 O :: switch 0 SUB
+conn input.I 0 O :: switch 0 Kmod
+conn input.V 9 O :: ihill 0 n
+conn input.I 3 O :: ihill 1 Vmax
+conn vadd 1 B :: vgain 2 P
+conn input.V 8 O :: switch 0 n
+bind var D of input.I 1 X :: var IPTG
+bind value D of input.V 2 X :: 0
+bind value D of input.V 1 X :: 0.35
+bind var V of vgain 1 Z :: var UTF
+bind value D of input.V 4 X :: 1
+bind value V of input.V 6 O :: 0.004
+bind value V of input.V 3 O :: 250
+bind value V of input.V 1 O :: 0.35
+bind value V of input.V 2 O :: 0
+bind value D of input.V 7 X :: 0.5
+bind value D of input.V 8 X :: 2.0015
+bind value V of input.V 7 O :: 0.5
+bind var V of vadd 0 D :: var U
+bind value D of input.V 9 X :: 2.5
+bind var I of ihill 1 Km :: var Km
+bind var V of vadd 1 D :: var V
+bind value V of input.V 4 O :: 1
+bind value D of input.V 6 X :: 0.004
+bind value D of input.I 0 X :: 2.9618e-05
+bind value I of input.I 2 O :: 156.25
+bind value D of input.I 3 X :: 15.6
+bind var I of ihill 1 S :: var umodif
+bind value D of input.I 2 X :: 156.25
+bind var I of input.I 1 O :: var IPTG
+bind var I of switch 0 Vmax :: var U
+bind value D of input.V 3 X :: 250
+bind value I of input.I 0 O :: 2.9618e-05
+bind value V of input.V 9 O :: 2.5
+bind value I of input.I 3 O :: 15.6
+bind var I of ihill 0 S :: var V
+bind value V of input.V 8 O :: 2.0015
+bind var I of ihill 0 Km :: var Km
