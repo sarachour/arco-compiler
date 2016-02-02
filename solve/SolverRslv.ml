@@ -228,11 +228,11 @@ struct
       if is_succ = false then
         false
       else
-        let _ = Printf.printf "== Passed Shallow Test\n" in
+        let _ = print_debug "== Passed Shallow Test\n" in
         let _  = flush_all() in
         let _,decls,_ = to_smt_prob cfg sln in
-        let _ = Printf.printf "== Generated Constraints\n" in
-        let _ = Printf.printf "== Created Z3 Instance\n" in
+        let _ = print_debug "== Generated Constraints\n" in
+        let _ = print_debug "== Created Z3 Instance\n" in
         let _  = flush_all() in
         let z = Z3Lib.exec decls in
         z.sat
