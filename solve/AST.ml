@@ -325,14 +325,19 @@ struct
     let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl) (n:int) =
       let match_trivial e1 e2 =
         match (compute e1,compute e2) with
-        | (Some(x),Some(y)) ->if x = y then Some(Some([])) else Some(None)
+        | (Some(x),Some(y)) ->
+          if x = y then
+            (*make a single solution of empty assignments*)
+            let empty = MAP.make () in
+            Some(Some([empty]))
+          else Some(None)
         | (_,Some(x)) -> Some(None)
         | _ -> None
       in
       let triv_sln = match_trivial e1 e2  in
       if triv_sln <> None then OPTION.force_conc triv_sln else
-      let max_depth = __ast_pattern_depth in
-      let max_breadth = __ast_pattern_breadth in
+      let max_depth = get_glbl_int "ast_pattern_depth" in
+      let max_breadth = get_glbl_int "ast_pattern_breadth" in
       let decl_tmpl_or_pat i x cnv =  if i = 0 then decl x false cnv else decl x true cnv in
       let env,iwcs,syms = mkenv [e1;e2] cnv decl_tmpl_or_pat in
       let cand = to_symcaml e1 cnv in
@@ -346,7 +351,7 @@ struct
       in
       let sols : (symvar,symexpr) map set = SET.make (fun x y -> x = y) in
       let rec solve wcs depth fracbans =
-        if (SET.size sols) = n || depth == max_depth then () else
+        if (SET.size sols) = n || depth = max_depth then () else
         let res = SymCaml.pattern env templ cand in
         match res with
         | Some(r) ->
@@ -370,7 +375,7 @@ struct
 
         | None -> ()
       in
-      let _ = solve iwcs 0  __ast_pattern_frac_ban in
+      let _ = solve iwcs 0 (get_glbl_float "ast_pattern_frac_ban") in
       let nlst : (a,a ast) map list = SET.map sols mmap in
       match nlst with
       | [] -> None

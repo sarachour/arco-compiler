@@ -80,7 +80,8 @@ struct
       HNParam(HCMGlobal(c.name,i),v.name,f,u)
     | _ -> error "cv2hwid" "unexpected arguments"
 
-  let print e =
+  let to_buf e fb =
+    let os x = output_string fb x in
     let pkind2str v =
       match v with
       | HNInput -> "input"
@@ -92,21 +93,21 @@ struct
       | HParamType(v,t) -> "param : "^(UnitLib.unit2str t)^" = "^(string_of_number v)
     in
     let print_var (x:hwvar) =
-      let _ = Printf.printf "   %s of %s" x.name (type2str x.typ) in
-      let _ = Printf.printf " : %s " (rel2str x.rel) in
-      let _ = Printf.printf "\n" in
+      let _ =os ("   "^x.name^" of "^(type2str x.typ)) in
+      let _ = os (" : "^(rel2str x.rel)) in
+      let _ = os "\n" in
       ()
     in
     let print_comp c =
-      let _ = Printf.printf "==> component %s \n" c.name in
+      let _ = os ("==> component "^c.name^" \n") in
       let _ = MAP.iter c.vars  (fun k v -> print_var v) in
-      let _ = Printf.printf "   time t = %s\n" (UnitLib.unit2str c.time) in
+      let _ = os ("   time t = "^(UnitLib.unit2str c.time)^"\n") in
       ()
     in
     let print_prop k v =
       let print_units x r = r^" "^x in
       let units= SET.fold v print_units "" in
-      Printf.printf "%s : %s\n" k units
+      os (k^" : "^units^"\n")
     in
    let print_props () =
     MAP.iter (e.props) (fun k v -> print_prop k v)
@@ -114,19 +115,25 @@ struct
    let print_time () =
     match (e.time) with
     | Some(x,v) -> print_prop x v
-    | None -> Printf.printf "(no time variable defined)\n"
+    | None -> os"(no time variable defined)\n"
   in
-   let _ = Printf.printf "==== Units ====\n" in
-   let _ = UnitLib.print (e.units) in
-   let _ = Printf.printf "==== Props ====\n" in
+   let _ = os "==== Units ====\n" in
+   let _ = UnitLib.to_buf (e.units) fb in
+   let _ = os"==== Props ====\n" in
    let _ = print_props () in
-   let _ = Printf.printf "==== Time =====\n" in
+   let _ = os "==== Time =====\n" in
    let _ = print_time () in
-   let _ = Printf.printf "==== Components =====\n" in
+   let _ = os "==== Components =====\n" in
    let _ = MAP.iter e.comps (fun k v -> print_comp v) in
-   let _ = Printf.printf "==== Constraints =====\n" in
-   let _ = HwCstrLib.print e.cstr in
+   let _ = os "==== Constraints =====\n" in
+   let _ = HwCstrLib.to_buf e.cstr fb in
    ()
+
+  let to_file e file =
+    let oc = open_out file in
+    let _ = to_buf e oc in
+    let _ = close_out oc in
+    ()
 
   let hastime e =
     match (e.time) with Some(_) -> true | None -> false

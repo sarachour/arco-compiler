@@ -1,0 +1,56 @@
+comp switch 0
+comp input.I 1
+comp input.I 0
+comp input.I 2
+comp input.I 3
+comp vadd 1
+comp vadd 0
+comp ihill 0
+comp ihill 1
+comp vtoi 1
+comp input.V 6
+comp input.V 3
+comp input.V 0
+comp input.V 1
+comp input.V 2
+comp input.V 4
+comp input.V 5
+comp itov 3
+comp itov 1
+conn vadd 1 C :: input.V 4 O
+conn vadd 0 C :: input.V 4 O
+conn vadd 0 B :: itov 1 Y
+conn input.V 6 O :: vadd 1 OUT2_0
+conn input.V 3 O :: ihill 0 n
+conn ihill 1 n :: input.V 0 O
+conn input.V 1 O :: vtoi 1 K
+conn input.V 2 O :: switch 0 n
+conn itov 3 X :: input.I 3 O
+conn vadd 1 A :: itov 3 Y
+conn input.V 4 O :: vadd 0 A
+conn input.V 0 O :: vtoi 1 X
+conn input.I 2 O :: ihill 1 Vmax
+conn input.I 1 O :: ihill 0 Vmax
+conn switch 0 Kmod :: vtoi 1 Y
+conn input.V 5 O :: vadd 0 OUT2_0
+conn input.I 0 O :: switch 0 SUB
+conn vadd 1 B :: input.V 4 O
+conn input.I 3 O :: itov 1 X
+bind value V of input.V 6 O :: 0.35
+bind value V of input.V 3 O :: 2.5
+bind var V of input.V 1 O :: var IPTG
+bind var V of itov 1 K :: var VTF
+bind value V of input.V 2 O :: 2.0015
+bind var V of vadd 0 D :: var V
+bind var I of ihill 1 Km :: var Km
+bind value V of input.V 4 O :: 0
+bind value V of input.V 0 O :: 1
+bind value I of input.I 2 O :: 15.6
+bind var I of ihill 1 S :: var umodif
+bind var V of itov 3 K :: var UTF
+bind value I of input.I 1 O :: 156.25
+bind value V of input.V 5 O :: 0.5
+bind value I of input.I 0 O :: 33763.2520764
+bind var I of ihill 0 S :: var V
+bind value I of input.I 3 O :: 10
+bind var I of ihill 0 Km :: var Km

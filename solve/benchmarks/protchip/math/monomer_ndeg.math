@@ -1,0 +1,15 @@
+
+output Adimer : none
+output Amonomer : none
+
+param kr1 : none = 10
+param kr2 : none = 10
+param KDrv : none = 10
+
+time t : none
+
+%monomer, this should map to AFREE
+rel deriv(Adimer,t) = (-1*kr1*Adimer) + (kr1/KDrv)*Amonomer*Amonomer with Adimer(0) = 0
+
+%dimer, this should map to CFREE
+%rel deriv(Amonomer,t) = kr1*Adimer*2 - (kr1/KDrv)*Amonomer*Amonomer*2 with Amonomer(0) = 0

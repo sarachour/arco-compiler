@@ -1,6 +1,7 @@
 type z3expr =
   | Z3And of z3expr*z3expr
   | Z3Or of z3expr*z3expr
+  | Z3Mult of z3expr*z3expr
   | Z3Var of string
   | Z3Int of int
   | Z3Not of z3expr
@@ -13,9 +14,11 @@ type z3expr =
   | Z3IfThenElse of z3expr*z3expr*z3expr
   | Z3Eq of z3expr*z3expr
 
+
 type z3vartyp =
   | Z3Bool
   | Z3Int
+  | Z3Real
 
 type z3st =
   | Z3ConstDecl of string*z3vartyp

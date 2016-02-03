@@ -58,15 +58,15 @@ struct
       HwId(HNTime(HCMGlobal(c,iid),u))
     | _ -> x
 
-    let glblid2lclid x =
-      match x with
-      | HwId(HNPort(k,HCMGlobal(c,i),p,prop,un)) ->
-        HwId(HNPort(k,HCMLocal(c),p,prop,un))
-      | HwId(HNParam(HCMGlobal(c,i), name, vl, u)) ->
-        HwId(HNParam(HCMLocal(c),name,vl,u))
-      | HwId(HNTime(HCMGlobal(c,i),u)) ->
-        HwId(HNTime(HCMLocal(c),u))
-      | _ -> x
+  let glblid2lclid x =
+    match x with
+    | HwId(HNPort(k,HCMGlobal(c,i),p,prop,un)) ->
+      HwId(HNPort(k,HCMLocal(c),p,prop,un))
+    | HwId(HNParam(HCMGlobal(c,i), name, vl, u)) ->
+      HwId(HNParam(HCMLocal(c),name,vl,u))
+    | HwId(HNTime(HCMGlobal(c,i),u)) ->
+      HwId(HNTime(HCMLocal(c),u))
+    | _ -> x
 
 
   let  lcl2glbl iid (a:unid ast) : unid ast =
@@ -232,6 +232,10 @@ struct
   | UFunction(l,r) -> (unid2str l)^"="^(ASTLib.ast2str r unid2str)
   | UState(l,r,i,t) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)
 
+  let goal2str n = match n with
+  | NonTrivialGoal(g) -> ""^(urel2str g)
+  | TrivialGoal(g) -> "@"^(urel2str g)
+
   let uast2str uast : string=
     let conv (x:unid) : string = unid2str x in
     ASTLib.ast2str uast conv
@@ -254,6 +258,30 @@ struct
   node
 
 
-  let goal2str = urel2str
+
+
+
+end
+
+module GoalStubLib =
+struct
+
+  let add_goal (t:gltbl) (g:goal) =
+    SET.add t.goals g
+
+  let remove_goal (t:gltbl) (g:goal) =
+    SET.rm t.goals g
+
+  let deactivate_goal (t:gltbl) (g:goal) =
+    SET.add t.blacklist g
+
+  let activate_goal (t:gltbl) (g:goal) =
+    SET.rm t.blacklist g
+
+  let add_partial_comp (t:gltbl) (id:unodeid) (i:int) (cmp:unode) =
+    MAP.put t.dngl (id,i) cmp
+
+  let remove_partial_comp (t:gltbl) (id:unodeid) (i:int)  =
+    MAP.rm t.dngl (id,i)
 
 end

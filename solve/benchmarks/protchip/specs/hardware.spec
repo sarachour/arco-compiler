@@ -168,8 +168,8 @@ schematic
   conn input(I)[1:160] -> emmblock.KDfw
   conn input(I)[1:160]  -> emmblock.KDrv
   conn input(I)[1:160]  -> emmblock.ratC
-  conn input(I)[1:160]  -> emmblock.k1
-  conn input(I)[1:160]  -> emmblock.k2
+  conn input(I)[1:160]  -> emmblock.kr1
+  conn input(I)[1:160]  -> emmblock.kr2
   conn input(D) -> emmblock.n
 
   conn emmblock.Ctot -> addi

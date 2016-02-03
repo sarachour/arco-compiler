@@ -37,7 +37,8 @@ type menv = {
 module MathLib:
 sig
   val mkenv : unit -> menv
-  val print : menv -> unit
+  val to_buf : menv -> out_channel -> unit
+  val to_file : menv -> string -> unit
   val cstrs : menv -> mcstrs
   val mid2str : mid -> string
   val mid2name : mid -> string
@@ -93,18 +94,28 @@ struct
 
   let typ2str (v:mtype) : string = mid2str v
 
-  let print_var (v:mvar) : unit=
-    Printf.printf "%s : %s = %s\n" (v.name) (typ2str v.typ) (rel2str v.rel)
 
 
-  let print m =
-   Printf.printf "==== Units ====\n";
-   UnitLib.print (m.units);
-   Printf.printf "==== Vars =====\n";
-   MAP.iter (m.vars) (fun k v -> print_var v);
-   Printf.printf "==== Cstrs ======\n";
-   MathCstrLib.print m.cstr
+  let to_buf m fb =
+    let os x = output_string fb x in
+    let var_to_buf (v:mvar) : unit=
+      let _ =
+        os ((v.name)^":"^(typ2str v.typ)^" = "^(rel2str v.rel)^"\n")
+      in
+      ()
+    in
+    Printf.printf "==== Units ====\n";
+    UnitLib.to_buf (m.units) fb;
+    Printf.printf "==== Vars =====\n";
+    MAP.iter (m.vars) (fun k v -> var_to_buf v);
+    Printf.printf "==== Cstrs ======\n";
+    MathCstrLib.print m.cstr
 
+  let to_file m file =
+    let oc = open_out file in
+    let _ = to_buf m oc in
+    let _ = close_out oc in
+    ()
 
   let gettime e =
    e.time

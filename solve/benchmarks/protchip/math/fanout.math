@@ -1,0 +1,32 @@
+
+
+param krv1 : none = 10
+param KDrv : none = 10
+param KDfw : none = 10
+
+param KDfw01 : none = 5
+param KDfw02 : none = 10
+param KDfw03 : none = 30
+
+param KDrv01 : none = 5
+param KDrv02 : none = 5
+param KDrv03 : none = 10
+
+
+time t : none
+
+local A : none % x(1)
+local B : none %x(2)
+local C : none %x(3)
+local B2 : none %x(4)
+local C2 : none % x(5)
+output B3 : none %x(6)
+output C3 : none %x(7)
+
+rel deriv(A,t) =  ((((((-(krv1/KDfw01))*A*B) + (10*(krv1/KDrv01))*C) - (krv1/KDfw02)*A*B2) + (10*(krv1/KDrv02))*C2) - (krv1/KDfw03)*A*B3) +(10*(krv1/KDrv03))*C3 with A(0) = 0
+rel deriv(B,t) = ((-(krv1/KDfw01))*A*B) + (10*(krv1/KDrv01))*C with B(0) = 0
+rel deriv(C,t) = (krv1/KDfw01)*A*B - (10*(krv1/KDrv01))*C with C(0) = 0
+rel deriv(B2,t) = (-(krv1/KDfw02))*A*B2 + (10*(krv1/KDrv02))*C2 with B2(0) = 0
+rel deriv(C2,t) = (krv1/KDfw02)*A*B2 - (10*(krv1/KDrv02))*C2 with C2(0) = 0
+rel deriv(B3,t) = (-(krv1/KDfw03))*A*B3 + (10*(krv1/KDrv03))*C3 with B3(0) = 0
+rel deriv(C3,t) = (krv1/KDfw03)*A*B - (10*(krv1/KDrv03))*C3 with C3(0) = 0

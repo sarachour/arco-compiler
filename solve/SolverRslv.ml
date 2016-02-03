@@ -6,7 +6,7 @@ open SolverUtil
 open Z3Lib
 open Z3Data
 open HWCstr
-
+open Interactive
 
 exception HwConnRslvrException of string
 
@@ -28,9 +28,9 @@ struct
     {id=n; cinsts = SET.make (fun x y -> x =y ); sinsts = SET.make (fun x y -> x = y)}
 
 
-  let to_id id = id + 1
+  let to_id id = id
 
-  let from_id id = id - 1
+  let from_id id = id
 
   let fromvar mk (name:string) =
     match STRING.split name "[_v]" with
@@ -69,7 +69,14 @@ struct
 
 
   let report_noconns msg sc si sp dc di dp =
-    let _ = Printf.printf "[Resolver]: no connections between %s[%d].%s -> %s[%d].%s (%s)\n" sc si sp dc di dp msg in
+    let _ =
+      exec_debug (fun () ->
+        let _ = Printf.printf
+          "[Resolver]: no connections between %s[%d].%s -> %s[%d].%s (%s)\n"
+          sc si sp dc di dp msg
+        in
+        ()
+        ) in
     ()
 
   let valid_smt_prob cfg sol : bool =
@@ -221,11 +228,11 @@ struct
       if is_succ = false then
         false
       else
-        let _ = Printf.printf "== Passed Shallow Test\n" in
+        let _ = print_debug "== Passed Shallow Test\n" in
         let _  = flush_all() in
         let _,decls,_ = to_smt_prob cfg sln in
-        let _ = Printf.printf "== Generated Constraints\n" in
-        let _ = Printf.printf "== Created Z3 Instance\n" in
+        let _ = print_debug "== Generated Constraints\n" in
+        let _ = print_debug "== Created Z3 Instance\n" in
         let _  = flush_all() in
         let z = Z3Lib.exec decls in
         z.sat

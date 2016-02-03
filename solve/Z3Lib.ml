@@ -1,6 +1,7 @@
 open Z3Data
 open Compile
 open Util
+open Interactive
 exception Z3Error of string
 
 let error n m = raise (Z3Error (n^":"^m))
@@ -209,11 +210,11 @@ struct
     let x = List.sort sortsts (LIST.uniq x) in
     let _ = z3stmts2buf oc x in
     let _ = close_out oc in
-    let res = "__res__.z3" in
-    let _ = Printf.printf "---> Executing SMT Solver\n" in
+    let _ = print_debug "---> Executing SMT Solver\n" in
     let _ = flush_all () in
+    let res = "__res__.z3" in
     let _ = Sys.command ("z3 -smt2 "^fname^" > "^res) in
-    let _ = Printf.printf "---> Finished Search\n" in
+    let _ = print_debug "---> Finished Search\n" in
     let _ = flush_all () in
     let z = ParserGenerator.file_to_z3sln res in
     z

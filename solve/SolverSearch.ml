@@ -7,67 +7,104 @@ open SolverData
 
 module StatusTableLib =
 struct
-let mk () =
-  {tbl=MAP.make()}
+  let mk () =
+    {tbl=MAP.make()}
 
-let is_deadend b n =
-  if MAP.has b.tbl n.id = false then
-    false
-  else
-    match MAP.get b.tbl n.id with
-    | DeadEnd -> true
-    | _ -> false
+  let is_deadend b n =
+    if MAP.has b.tbl n.id = false then
+      false
+    else
+      match MAP.get b.tbl n.id with
+      | GLStatDeadEnd -> true
+      | _ -> false
 
-let get_deadends b =
-  let flt = MAP.fold b.tbl (fun k v r -> if v = DeadEnd then k::r else r ) [] in
-  flt
+  let is_solution b n =
+    if MAP.has b.tbl n.id = false then
+      false
+    else
+      match MAP.get b.tbl n.id with
+      | GLStatSolution -> true
+      | _ -> false
 
-let clear_deadends b =
-  let _ = MAP.iter b.tbl (fun k v -> if v = DeadEnd then let _ = MAP.rm b.tbl k in () ) in
-  ()
+  let is_visited b n =
+    if MAP.has b.tbl n.id = false then
+      false
+    else
+      match MAP.get b.tbl n.id with
+        | GLStatVisited -> true
+        | _ -> false
 
-let is_visited b n =
-  if MAP.has b.tbl n.id = false then
-    false
-  else
-    match MAP.get b.tbl n.id with
-    | Visited -> true
-    | _ -> false
+  let get_deadends b =
+    let flt = MAP.fold b.tbl (fun k v r -> if v = GLStatDeadEnd then k::r else r ) [] in
+    flt
 
-let deadend b n =
-  let _ = MAP.put b.tbl n.id DeadEnd in
-  ()
+  let clear_deadends b =
+    let _ = MAP.iter b.tbl (fun k v -> if v = GLStatDeadEnd then let _ = MAP.rm b.tbl k in () ) in
+    ()
+
+  let is_visited b n =
+    if MAP.has b.tbl n.id = false then
+      false
+    else
+      match MAP.get b.tbl n.id with
+      | GLStatVisited -> true
+      | _ -> false
+
+  let deadend b n =
+    let _ = MAP.put b.tbl n.id GLStatDeadEnd in
+    ()
+
+  let solution b n =
+    let _ = MAP.put b.tbl n.id GLStatSolution in
+    ()
 
 
-let visited b n =
-  let _ = MAP.put b.tbl n.id Visited in
-  ()
+  let visited b n =
+    let _ = MAP.put b.tbl n.id GLStatVisited in
+    ()
 
-let rm b n =
-  let _ = MAP.rm b.tbl n.id in
-  ()
+  let rm b n =
+    let _ = MAP.rm b.tbl n.id in
+    ()
 
+  let has_solution b =
+    MAP.fold b.tbl (fun x v c -> if v = GLStatSolution then true else c) true
+
+  let get_solutions b : int list =
+    let res = MAP.fold b.tbl (fun x v c -> if v = GLStatSolution then x::c else c) [] in
+    res
+
+  let get_visited b : int list =
+    let res = MAP.fold b.tbl (fun x v c -> if v = GLStatVisited then x::c else c) [] in
+    res
 
 end
 
 module SearchLib =
 struct
+
   let step2str n = match n with
-  | SAddGoal(v) -> "add "^(UnivLib.urel2str v)
-  | SRemoveGoal(v) -> "rm "^(UnivLib.urel2str v)
-  | SAddNode(id,i,rels) -> "SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")
-  | SSolUseNode(id,i) -> "SLN use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
-  | SSolAddConn(src,snk) -> "SLN mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
-  | SSolAddLabel(w,p,l) -> "SLN mklbl "^(SlnLib.wire2str w)^"."^p^(SlnLib.label2str l)
-  | _ -> "?"
+  | SAddGoal(v) -> "add "^(UnivLib.goal2str v)
+  | SRemoveGoal(v) -> "rm "^(UnivLib.goal2str v)
+  | SAddNode(id,i,rels) ->
+    (*)"SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")*)
+    "SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
+  | SSolUseNode(id,i) -> "s.use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
+  | SSolAddConn(src,snk) -> "s.mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
+  | SSolAddLabel(w,p,l) -> "s.mklbl "^(SlnLib.wire2str w)^"."^p^(SlnLib.label2str l)
+  | SSolRemoveLabel(w,p,l) -> "s.rmlbl "^(SlnLib.wire2str w)^"."^p^(SlnLib.label2str l)
+  | SMakeGoalActive(v) -> "activate "^(UnivLib.goal2str v)
+  | SMakeGoalPassive(v) -> "inactive "^(UnivLib.goal2str v)
 
 
   let is_deadend b n =
     StatusTableLib.is_deadend b.st n
 
+  let is_solution b n =
+    StatusTableLib.is_solution b.st n
 
-  let visited b n =
-    ()
+  let visited b n  =
+    StatusTableLib.visited b.st n
 
   let _steps2str (indent: int) (b:buffer) (n:steps) =
     let spcs = STRING.repeat "  " indent  in
@@ -117,6 +154,10 @@ struct
     | Some(b) -> b.s <- s::b.s
     | None -> ()
 
+  let add_steps b st =
+    let _ = List.iter (fun x -> add_step b x) st in
+    ()
+
   let commit b : steps=
     match b.step_buf, b.curs with
     | Some(q), Some(c) ->
@@ -145,9 +186,30 @@ struct
     let _ = StatusTableLib.clear_deadends b.st in
     ()
 
-  let deadend b n =
-    let _ = StatusTableLib.deadend b.st n in
+  let deadend b n : unit =
+    let _ : unit = StatusTableLib.deadend b.st n in
     ()
+
+  let solution b n : unit =
+    let _ : unit = StatusTableLib.solution b.st n in
+    ()
+
+  let get_solutions b (root:steps option) : steps list=
+    let test_sln x =
+      let nd : steps = id2node b x in
+      match root with
+      | Some(anc) ->
+        let in_subtree : bool = TREE.has_ancestor b.paths nd anc in
+        in_subtree
+      | None -> true
+    in
+    let slns = StatusTableLib.get_solutions b.st in
+    let fslns = List.filter (fun x -> test_sln x) slns in
+    let stslns : steps list = List.map (fun x -> id2node b x) fslns in
+    stslns
+
+  let has_solution b (root:steps option) =
+    (List.length (get_solutions b root)) > 0
 
 
   let buf2str b =
@@ -164,14 +226,18 @@ struct
     (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)
     match s with
     | SAddGoal(g) ->
-      let _ = SET.add tbl.goals g in ()
+      let _ = GoalStubLib.add_goal tbl g in ()
     | SRemoveGoal(g) ->
-      let _ = SET.rm tbl.goals g in ()
-    | SAddNode(id,i,u) -> let _ = MAP.put tbl.dngl (id,i) {name=(UnivLib.unodeid2name id);rels=SET.to_set u (fun x y -> x = y)} in ()
+      let _ = GoalStubLib.remove_goal tbl g in ()
+    | SAddNode(id,i,u) ->
+      let partial_comp = {name=(UnivLib.unodeid2name id);rels=SET.to_set u (fun x y -> x = y)} in
+      let _ = GoalStubLib.add_partial_comp tbl id i partial_comp in ()
     | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
     | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
     | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
     | SSolRemoveLabel(wid,prop,lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()
+    | SMakeGoalActive(g) -> let _ = GoalStubLib.activate_goal tbl g in ()
+    | SMakeGoalPassive(g) -> let _ = GoalStubLib.deactivate_goal tbl g in ()
 
   let apply_steps (slvenv:slvr) (tbl:gltbl) (s:steps) =
     let sort_steps x y = match (x,y) with
@@ -188,14 +254,25 @@ struct
   (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
   match s with
   | SAddGoal(g) ->
-    let _ = SET.rm tbl.goals g in ()
+    let _ = GoalStubLib.remove_goal tbl g in ()
   | SRemoveGoal(g) ->
-    let _ = SET.add tbl.goals g in ()
-  | SAddNode(id,i,rels) -> let _ = MAP.rm tbl.dngl (id,i) in ()
+    let _ = GoalStubLib.add_goal tbl g in ()
+  | SAddNode(id,i,rels) ->
+    let _ = GoalStubLib.remove_partial_comp tbl id i  in ()
   | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
   | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
   | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()
   | SSolRemoveLabel(wid,prop,lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
+  | SMakeGoalActive(g) -> let _ = GoalStubLib.deactivate_goal tbl g in ()
+  | SMakeGoalPassive(g) -> let _ = GoalStubLib.activate_goal tbl g in ()
+
+  let recompute_solutions (tbl:buffer) =
+    let slns : int list = StatusTableLib.get_solutions tbl.st in
+    let _ = List.iter (fun (x:int) -> StatusTableLib.rm tbl.st (id2node tbl x)) slns in
+    ()
+
+  let wrap_steps (s:step list) : steps =
+    {id=(-1); s=s}
 
   let unapply_steps (slvenv) (tbl:gltbl) (s:steps) =
       let sort_steps x y = match (x,y) with
@@ -223,6 +300,7 @@ struct
       let _ = List.iter (fun x -> let _ = apply_steps s tbl x in ()) to_node in
       let _ = (b.curs <- Some next) in
       tbl
+
 
 
   let mkbuf goals =
@@ -258,15 +336,77 @@ struct
       false
   *)
 
-  let get_paths (b:buffer) =
+  let get_paths (b:buffer) (root:steps option) : steps list=
     let p = TREE.leaves b.paths in
-    let p = List.filter (fun x -> is_deadend b x = false) p in
+    let test_path x =
+      let in_subtree = match root with
+        | Some(r) -> TREE.has_ancestor b.paths x r
+        | None -> true
+      in
+        in_subtree && (is_deadend b x = false) && (is_solution b x = false)
+    in
+    let p = List.filter (fun x -> test_path x) p in
     p
 
-  let random_path (b:buffer) =
-    let choices = get_paths b in
+  let random_path (b:buffer) (root:steps option) =
+    let choices = get_paths b root in
     if List.length choices > 0 then
       Some (List.nth choices 0 )
     else
       None
+
+  let is_exhausted b (root:steps option) =
+    if List.length (get_paths b root) == 0 then
+      true
+    else
+      false
+
+
+  (*select best node, given a criteria*)
+  let select_best_node (v:gltbl) (grade_goals:step set->goal set->float->float) (root:steps option) : steps option =
+    let currnode = cursor v.search in
+    let build_tbl_and_steps (s:steps) (tbl:goal set) : (step set)*(goal set) =
+      let stps = SET.make_dflt () in
+      let score = fold_path v.search s (fun x r ->
+        match x with
+        | SAddGoal(g) ->
+          let _ = SET.add tbl g in
+          let _ = SET.add stps (SAddGoal (g)) in
+          ()
+        | SRemoveGoal(g) ->
+          let _ = SET.rm tbl g in
+          let _ = SET.add stps (SRemoveGoal (g)) in
+          ()
+        | _ -> ()
+        ) ()
+      in
+        stps,tbl
+    in
+    let score_node (s:steps) (tbl:goal set) (last:float) : (goal set)*float =
+      let stps,tbl = build_tbl_and_steps s tbl in
+      let score = grade_goals stps tbl last in
+      tbl,score
+    in
+    let score_path (endnode:steps) : float =
+      let init_score : float = 0. in
+      let path : steps list= TREE.get_path v.search.paths endnode in
+      let gltbl = SET.make_dflt () in
+      let _,score = List.fold_right (fun nd (gls,score)->
+          let ngls,nscore = score_node nd gls score in (ngls,nscore)
+        ) path (gltbl,init_score)
+      in
+      score
+    in
+    (*get all the paths for teh root node*)
+    let leaves = if root = None
+      then get_paths v.search None
+      else get_paths v.search (root)
+    in
+    match leaves with
+    | [] -> None
+    | h::t ->
+      (*look at everything but the current node*)
+      let leaves = LIST.filter (fun x -> x <> currnode) leaves in
+      let _,best = LIST.max (fun x -> score_path x) leaves in
+      Some(best)
 end

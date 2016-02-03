@@ -177,7 +177,8 @@ struct
   | HCCIndiv(i) -> string_of_int i
   | HCCRange((s,e)) -> (string_of_int s)^":"^(string_of_int e)
 
-  let print e =
+  let to_buf e fb =
+    let oc x = output_string fb x in
     let pr_inst k v = k^" has "^(string_of_int v)^" instances"
     in
     let pr_mag (c,port,prop) v =
@@ -216,7 +217,11 @@ struct
     let estr = MAP.fold e.errs (apply pr_err) "" in
     let tcstr = MAP.fold e.tcs (apply pr_tc) "" in
     let cnstr = MAP.fold e.conns (apply pr_conns) "" in
-    let _ = Printf.printf "%s\n%s\n%s\n%s\n%s\n" istr mstr estr tcstr cnstr in
+    let _ = oc (istr^"\n") in
+    let _ = oc (mstr^"\n") in
+    let _ = oc (estr^"\n") in
+    let _ = oc (tcstr^"\n") in
+    let _ = oc (cnstr^"\n") in
     ()
 
 end

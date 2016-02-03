@@ -2,8 +2,9 @@
 
 #default is min and simple
 CMD=$1
-NAME=$2
-HWSPEC=$3
+HWSPEC=$2
+CFG=$3
+NAME=$4
 
 SOLVER=./solver.debug
 
@@ -20,19 +21,23 @@ if [ "$CMD" = "test-slv" ]; then
 fi
 
 if [ "$CMD" = "run" ]; then
-  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -output "$NAME-$HWSPEC".ckt -interactive
-fi
-
-if [ "$CMD" = "run-auto" ]; then
-  make && time ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -output "$NAME-$HWSPEC".ckt > .tmp/log.txt
+  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "$NAME".ckt
 fi
 
 
+if [ "$CMD" = "config" ]; then
+  make && time ${SOLVER} -print-config -output "$NAME".cfg > .tmp/log.txt
+fi
 
-mkdir -p output
-mkdir -p .tmp
 
-mv *.ckt output/
-mv *.ckt.caml output/
-mv *.summary output/
-mv *.z3 .tmp/
+OUTDIR=output/$HWSPEC
+TMPDIR=.tmp
+
+mkdir -p $OUTDIR
+mkdir -p $TMPDIR
+
+mv *.ckt $OUTDIR/
+mv *.ckt.caml $OUTDIR/
+mv *.summary $OUTDIR/
+mv *.z3 $TMPDIR/
+mv *.debug.txt $TMPDIR

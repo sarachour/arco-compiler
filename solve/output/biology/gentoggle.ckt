@@ -1,0 +1,56 @@
+
+*constant value 10
+Icst16		39	0	DC	10.
+*
+*constant value 33763.2520764
+Icst14		38	0	DC	33763.2520764
+*
+*@input V_0
+Vin_V_0_13		38	0	DC	1.
+*
+*constant value 156.25
+Icst12		37	0	DC	156.25
+*
+*constant value 15.6
+Icst9		36	0	DC	15.6
+*
+*constant value 1
+Vcst8		35	0	DC	1.
+*
+*constant value 0
+Vcst7		34	0	DC	0.
+*
+*constant value 2.0015
+Vcst4		33	0	DC	2.0015
+*
+*@input IPTG
+Vin_IPTG_2		32	0	DC	1.
+*
+*constant value 2.5
+Vcst1		32	0	DC	2.5
+*
+*@input U_0
+Vin_U_0_0		31	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xswitch_12		30	13	25	0	switch
+XinputI_48		37	23	iin
+XinputI_1		39	30	iin
+XinputI_32		36	21	iin
+XinputI_1		39	30	iin
+Xvadd_1		17	29	29	0	0	0	27	vadd
+Xvadd_7		29	4	29	0	0	0	27	vadd
+Xihill_1		23	0	27	0	0	0	ihill
+Xihill_7		21	0	20	0	0	0	ihill
+Xvtoi_28		20	11	25	vtoi
+XinputV_1		38	27	vin
+XinputV_1		38	27	vin
+XinputV_15		35	20	vin
+XinputV_25		32	11	vin
+XinputV_100		33	13	vin
+XinputV_0		34	29	vin
+XinputV_1		38	27	vin
+Xitov_4		30	0	17	itov
+Xitov_19		30	0	4	itov
