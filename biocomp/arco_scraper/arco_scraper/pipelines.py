@@ -16,7 +16,7 @@ class MyFilesPipeline(FilesPipeline):
 
 def write_to_csv(item):
     outputfilename = 'Downloads/'+item['BIO_ID'] + '/meta.txt'
-    desired_stats = sorted(['Submission_Date', 'BIO_ID', 'Publication_ID', 'URL'])
+    desired_stats = sorted(['Submission_Date', 'BIO_ID', 'Publication_ID', 'URL', 'Next_URL', 'Test_Attribute'])
     f = open(outputfilename, 'wb')
     for i in desired_stats:
         f.write(i +' : '+ item[i] + '\n')
