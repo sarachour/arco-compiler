@@ -27,24 +27,15 @@ open SolverSearch
 module GoalTableLib =
 struct
 
-  let wrap_goal (v:gltbl) (u:urel) : goal =
-    if v.is_trivial u then
-      TrivialGoal(u)
-    else
-      NonTrivialGoal(u)
-
-  let unwrap_goal (g:goal) : urel = match g with
-  | TrivialGoal(v) -> v
-  | NonTrivialGoal(v) -> v
 
 
   let is_trivial g = match g with TrivialGoal(g) -> true | _ -> false
 
-  let add_goal (t:gltbl) (g:goal) = GoalStubLib.add_goal t g
-
-  let deactivate_goal (t:gltbl) (g:goal) = GoalStubLib.deactivate_goal t g
-
-  let activate_goal (t:gltbl) (g:goal) = GoalStubLib.activate_goal t g
+  let wrap_goal = GoalStubLib.wrap_goal
+  let unwrap_goal = GoalStubLib.unwrap_goal
+  let add_goal = GoalStubLib.add_goal
+  let deactivate_goal = GoalStubLib.deactivate_goal
+  let activate_goal = GoalStubLib.activate_goal
 
 
   let add_partial_comp (t:gltbl) (id:unodeid) (i:int) (cmp:unode) = GoalStubLib.add_partial_comp t id i cmp

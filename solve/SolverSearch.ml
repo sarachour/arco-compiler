@@ -6,83 +6,67 @@ open SolverData
 open Search
 open SearchData
 
+open Globals
 
 module SlvrSearchLib =
 struct
 
 
   (*select table with most trivial to non-trivial goals*)
-  (*
-  let score_path_trivial_ratio (sts:sstep set) (tbl:goal set) (past:float) : float =
-    let ntrivial : float = SET.fold tbl (fun x r -> if GoalTableLib.is_trivial x then r+.1. else r) 0. in
-    let nnontrivial = (float_of_int (SET.size tbl)) -. ntrivial in
-    let nnontrivial = if nnontrivial = 0. then 0.0000001 else nnontrivial in
-    ntrivial/.nnontrivial
 
-  let score_path_ngoals (sts:sstep set) (tbl:goal set) (past:float) : float =
-    let ntrivial : float = SET.fold tbl (fun x r -> if GoalTableLib.is_trivial x then r+.1. else r) 0. in
-    let nontrivial = (float_of_int (SET.size tbl)) -. ntrivial in
-    -.nontrivial -. (ntrivial*.0.2)
-
-  let score_path_gcomplex (sts:sstep set) (tbl:goal set) (past:float) : float =
-    let score_goal g = if GoalTableLib.is_trivial g then 0. else
-      let r = GoalTableLib.unwrap_goal g in
-      let cplx = (UnivLib.goal2complexity r) in
-      let score = cplx in
-      score
+  let score_goal_complexity ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+    let score_goal (g:goal) =
+      let r : urel = GoalStubLib.unwrap_goal g in
+      if GoalStubLib.is_trivial tbl r then 0. else
+        let cplx = (UnivLib.goal2complexity r) in
+        let score = cplx in
+        score
     in
-    let pscore = SET.fold tbl (fun x r -> r +. (score_goal x) ) 0. in
-    -.pscore
-
-  let score_path_pcomplex (sts:sstep set) (tbl:goal set) (past:float) : float =
-    let score_goal g = if GoalTableLib.is_trivial g then 0. else
-      let r = GoalTableLib.unwrap_goal g in
-      let cplx = (UnivLib.goal2complexity r) in
-      let score = cplx in
-      score
-    in
-    let score_node p = match p with
-      |SAddGoal(g) -> -.(score_goal g)
-      |SRemoveGoal(g) -> (score_goal g)
-      | _ -> 0.
-    in
-    let pscore = SET.fold sts (fun x r -> r +. (score_node x) ) past in
-    -.pscore
-    *)
-
-  let best_path_function () =
-    let typ = get_glbl_string "path_search_selector_type" in
-    match typ with
-    | "uniform" -> score_path_uniform
-    | "random" -> score_path_random
-    | "trivial-ratio" -> score_path_trivial_ratio
-    | "ngoals" -> score_path_ngoals
-    | "goal-complexity" -> score_path_gcomplex
-    | "path-complexity" -> score_path_gcomplex
-    | _ ->
-      error "best_path_function" "path selector doesn't exist"
-      *)
-
-  let score_step_triv ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
-    let ntrivial : float = SET.fold tbl.goals (fun x r -> if GoalStubLib.is_trivial x then r+.1. else r) 0. in
-    let nnontrivial = (float_of_int (SET.size tbl.goals)) -. ntrivial in
-    let nnontrivial = if nnontrivial = 0. then 0.0000001 else nnontrivial in
-    let state = ntrivial/.nnontrivial in
-    let delta = 0 in
+    let goals : goal set = tbl.goals in
+    let pscore = SET.fold goals (fun x r -> r +. (score_goal x) ) 0. in
+    let state = -.pscore in
+    let delta = 0. in
     SearchLib.mkscore state delta
 
-  let score_step_rand ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
-    let state = RAND.rand_norm in
-    let delta = RAND.rand_norm in
+
+  let score_ngoals ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+    let goals : goal set = tbl.goals in
+    let trivial : float = SET.fold goals (fun x r -> if GoalStubLib.is_trivial tbl (GoalStubLib.unwrap_goal x) then r+.1. else r) 0. in
+    let nontrivial = (float_of_int (SET.size tbl.goals)) -. trivial in
+    let state = -.nontrivial -. (trivial*.0.2) in
+    let delta = 0. in
     SearchLib.mkscore state delta
 
-  let score_step_uniform ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+  let score_triv_goals ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+    let goals : goal set = tbl.goals in
+    let trivial : float = SET.fold goals (fun x r -> if GoalStubLib.is_trivial tbl (GoalStubLib.unwrap_goal x) then r+.1. else r) 0. in
+    let nontrivial = (float_of_int (SET.size tbl.goals)) -. trivial in
+    let nontrivial = if nontrivial = 0. then 0.0000001 else nontrivial in
+    let state = trivial/.nontrivial in
+    let delta = 0. in
+    SearchLib.mkscore state delta
+
+  let score_random ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+    let state = RAND.rand_norm () in
+    let delta = 0. in
+    SearchLib.mkscore state delta
+
+  let score_uniform ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let state = 0. in
     let delta = 0. in
     SearchLib.mkscore state delta
 
   let score_step () =
-    score_step_uniform
+    let typ = get_glbl_string "path_search_selector_type" in
+    match typ with
+    | "uniform" -> score_uniform
+    | "random" -> score_random
+    | "trivial-ratio" -> score_triv_goals
+    | "ngoals" -> score_ngoals
+    | "goal-complexity" -> score_goal_complexity
+    | _ ->
+      error "best_path_function" "path selector doesn't exist"
+
 
   let step2str (n:sstep) = match n with
   | SAddGoal(v) -> "add "^(UnivLib.goal2str v)
