@@ -15,6 +15,8 @@ open Unit
 
 open SymCamlData
 
+open SearchData
+open Search
 
 open SolverData
 open SolverUtil
@@ -56,7 +58,7 @@ struct
 
   let is_actionable (t:gltbl) (x:goal) =
     (SET.has t.blacklist x) = false
-    
+
   let goal2str g = UnivLib.goal2str g
 
   let goals2str (tbl:gltbl) (gset:goal set) =
@@ -69,7 +71,31 @@ struct
     in
     SET.fold gset proc_goal ""
 
-
+  let newtbl (s:slvr) (rf:gltbl) (gls:goal list) (triv:urel->bool):gltbl =
+    let st =  SlvrSearchLib.mksearch () in 
+    let sln = SlnLib.mksln () in
+    let nodetbl : (unodeid,unode) map = MAP.make () in
+    let handle_component (x) =
+       let nid = UnivLib.name2unodeid x.name in
+       let _ = MAP.put nodetbl nid x in
+       let _ = SlnLib.mkcomp sln nid in
+       ()
+    in
+    let _ = List.iter (fun x -> handle_component x) (MAP.to_values rf.nodes) in
+    let v =  {
+       goals = SET.make_dflt ();
+       nodes = nodetbl;
+       dngl = MAP.make();
+       is_trivial = triv;
+       blacklist = SET.make_dflt ();
+       search= st;
+       sln= sln;
+    } in
+    let _ = SearchLib.start st in
+    let _ = List.iter (fun x -> SearchLib.add_step st (SAddGoal x)) gls in
+    let init_cursor = SearchLib.commit st (s,v) in
+    let _,tbl = SearchLib.move_cursor st (s,v) init_cursor in
+    (v)
 
   let mktbl s (is_trivial:urel->bool) : gltbl =
     (* add all relations to the tableau of goals. *)
@@ -123,7 +149,7 @@ struct
        ()
     in
     let _ = List.iter (fun x -> handle_node x) nodes in
-    let init_cursor,search= SearchLib.mkbuf (goals) in
+    let search= SlvrSearchLib.mksearch () in
     let tbl = {
         goals=SET.make_dflt ();
         is_trivial=is_trivial;
@@ -131,8 +157,12 @@ struct
         sln=sln;
         search=search;
         dngl = MAP.make ();
-        blacklist = SET.make_dflt ()} in
-    let tbl = SearchLib.move_cursor s tbl init_cursor in
+        blacklist = SET.make_dflt ()
+      } in
+    let _ = SearchLib.start search in
+    let _ = List.iter (fun x -> SearchLib.add_step search (SAddGoal x)) goals in
+    let init_cursor = SearchLib.commit search (s,tbl) in
+    let _,tbl = SearchLib.move_cursor search (s,tbl) init_cursor in
     tbl
 
 end

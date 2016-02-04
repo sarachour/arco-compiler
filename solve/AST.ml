@@ -161,14 +161,15 @@ struct
       in
         _fold a b0
 
-    let get_vars (type a) (e:a ast) =
+    let get_vars (type a) (e:a ast) : a list =
       let vset : a set = fold e (fun xast st ->
           match xast with
           | Term(l) -> SET.add st l
           | _ -> st
-          ) (SET.make (fun x y -> x = y))
+          ) (SET.make_dflt () )
       in
       SET.to_list vset
+
     let compute (type x) (a:x ast) : float option =
       let conv (lst: x ast list) fn =
         let fnlst = List.fold_right (fun x r ->
@@ -285,6 +286,7 @@ struct
       let wcs = List.fold_right define_wc x [] in
       syms,wcs
 
+
     let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl:  int -> a -> (a->symvar) -> symdecl) : symcaml*(symdecl list)*(symdecl list) =
       let env = SymCaml.init() in
       (*let _ = SymCaml.set_debug env true in *)
@@ -387,4 +389,22 @@ struct
     | _ -> None
     in
     trans expr tf
+
+  let add_deps (type a) (g:(a,unit) graph) (l:a) (e:a ast) =
+    let _ = if GRAPH.hasnode g l = false then
+      let _ = GRAPH.mknode g l in ()
+    else () in
+    let vars = get_vars e in
+    let _ = List.iter (fun inp -> let _ = GRAPH.mkedge g inp l () in ()) vars in
+    ()
+
+
+  let mk_dep_graph (type a) (es:(a*(a ast)) list) (tostr:a -> string) : (a,unit) graph =
+    let g = GRAPH.make (fun x y -> x = y) (fun x -> tostr x) (fun y -> "()") in
+    let _ = List.iter (fun (l,r) -> add_deps g l r) es in
+    g
+
+
+
+
 end

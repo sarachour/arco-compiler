@@ -5,6 +5,7 @@ open AST
 open Unit
 open Common
 open HWData
+open SearchData
 
 type slvr =  {
   hw: hwenv;
@@ -57,7 +58,7 @@ type sln = {
 }
 
 
-type step =
+type sstep =
   | SSolUseNode of unodeid*int
   | SSolAddConn of wireid*wireid
   | SSolAddLabel of wireid*propid*label
@@ -68,43 +69,6 @@ type step =
   | SMakeGoalActive of goal
   | SAddNode of unodeid*int*(urel list)
 
-type steps = {
-  mutable s :step list;
-  id : int;
-}
-type score = unit
-
-
-(*
-the status of the node.
-If the node is a dead end, there is no solution
-If the node
-
-*)
-type status =
-  (*A node that's a dead end. *)
-  | GLStatDeadEnd
-  | GLStatVisited
-  | GLStatSolution
-  (*A node that's blocking on some other node*)
-  (*| Active of int*)
-
-type status_table = {
-  (*stalled, waiting for another subtree to finish*)
-  mutable tbl: (int,status) map;
-  (*store variable bindings *)
-}
-
-type buffer = {
-  (*search tree*)
-  paths: (steps, score) tree;
-  mutable step_buf: steps option;
-  (*the total number of step bundles*)
-  mutable curs: (steps,score) cursor option;
-  mutable st: status_table;
-  mutable cnt: int;
-}
-
 
 type gltbl = {
   mutable goals : goal set;
@@ -112,6 +76,6 @@ type gltbl = {
   mutable nodes : (unodeid, unode) map;
   mutable dngl : (unodeid*int,unode) map;
   is_trivial: urel->bool;
-  mutable search: buffer;
+  mutable search: (sstep,slvr*gltbl) ssearch;
   mutable sln: sln;
 }

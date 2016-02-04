@@ -16,6 +16,9 @@ open SymCamlData
 
 open Interactive
 
+open SearchData
+open Search
+
 open SolverData
 open SolverUtil
 open SolverSln
@@ -43,7 +46,7 @@ struct
     let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
-        let _ = Printf.printf "\n%s\n\n" (SearchLib.buf2str v.search) in
+        let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str v.search) in
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "s" then
@@ -54,7 +57,7 @@ struct
         let _ = match STRING.split inp " " with
         | [_;id] ->
           let nid = int_of_string id in
-          let _ = SearchLib.move_cursor s v (SearchLib.id2node v.search nid) in
+          let _ = SearchLib.move_cursor v.search (s,v) (SearchLib.id2node v.search nid) in
           ()
         | _ -> ()
         in
@@ -143,7 +146,7 @@ struct
       let bindlbl2 = SSolAddLabel(iwire, iprop, lbl) in
       [usenode;connport;bindlbl;bindlbl2]
 
-  let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (name:mid) (knd:hwvkind) : step list =
+  let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (name:mid) (knd:hwvkind) : sstep list =
     (*find all pending input connections with same label*)
     let conn_inputs nwire nprop (nm:mid) =
       let conv w p l =
@@ -156,7 +159,7 @@ struct
       let lbls : (wireid*propid*label) list = SlnLib.get_labels sln
         (fun w p x -> match x with LBindVar(_,v) -> v = nm | _ -> false)
       in
-      let steps : step list = List.fold_right (fun (w,p,l) r -> r @ (conv w p l)) lbls [] in
+      let steps : sstep list = List.fold_right (fun (w,p,l) r -> r @ (conv w p l)) lbls [] in
       steps
     in
     (*find all existing inputs with same label*)
@@ -306,7 +309,7 @@ struct
       | UFunction(HwId(v),Term(MathId(_))) -> false
       | _ -> false
 
-  let resolve_trivial_step (s:slvr) (t:gltbl) g : step list =
+  let resolve_trivial_step (s:slvr) (t:gltbl) g : sstep list =
     match GoalTableLib.unwrap_goal g with
       (*check for duplicates*)
     | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
@@ -418,7 +421,7 @@ struct
       None
 
 
-  let resolve_assigns  (s:slvr) (gltbl:gltbl) (name:string) (iid:int) (rel:urel) (g:goal) (all_rels:urel set) (all_goals:goal set) (assigns: (unid,unid ast) map) : (step list) option=
+  let resolve_assigns  (s:slvr) (gltbl:gltbl) (name:string) (iid:int) (rel:urel) (g:goal) (all_rels:urel set) (all_goals:goal set) (assigns: (unid,unid ast) map) : (sstep list) option=
     (*get an id, given a goal*)
     let get_id urel =
       match urel with
@@ -498,7 +501,7 @@ struct
     in
     (*determine if the assignment is ever on the left hand side of a relation*)
     (*take a mapping*)
-    let rec solve_assign id expr assigns (other_rels:urel list) (other_goals:goal list) : (step list) option =
+    let rec solve_assign id expr assigns (other_rels:urel list) (other_goals:goal list) : (sstep list) option =
       let goal : goal = GoalTableLib.wrap_goal gltbl (UFunction(id,expr)) in
       match get_rel id other_rels with
       | Some(orel) ->
@@ -603,9 +606,9 @@ struct
     (*the cursor associated with the goal*)
     let goal_cursor = SearchLib.cursor gtbl.search in
     (*the cursor associated with the component*)
-    let comp_cursor : steps = SearchLib.commit gtbl.search in
+    let comp_cursor : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
     (*use node*)
-    let _ = SearchLib.move_cursor s gtbl comp_cursor in
+    let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
     (*
       this tries to find a set of solutions for the particular node. Each of these solutions is a branch.
     *)
@@ -615,11 +618,11 @@ struct
       let ngoals = resolve_assigns s gtbl (node.name) inst_id r gl rls gtbl.goals assigns in
       match ngoals with
       | Some(sts) ->
-        let _ = SearchLib.move_cursor s gtbl comp_cursor in
+        let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
         let _ = SearchLib.add_step gtbl.search (SRemoveGoal gl) in
         let _ = SearchLib.add_steps gtbl.search sts in
-        let sol_cursor = SearchLib.commit gtbl.search in
-        let _ = SearchLib.move_cursor s gtbl sol_cursor in
+        let sol_cursor = SearchLib.commit gtbl.search  (s,gtbl) in
+        let _ = SearchLib.move_cursor gtbl.search (s,gtbl) sol_cursor in
         true
 
       | None ->
@@ -634,7 +637,7 @@ struct
       | None -> amt
     in
     let cnt = SET.fold node.rels apply_rel 0 in
-    let _ = SearchLib.move_cursor s gtbl goal_cursor in
+    let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
     let _ = Printf.printf "comp %s: %d\n" node.name cnt in
     if cnt = 0 then
         let _ = SearchLib.rm gtbl.search comp_cursor in
@@ -677,66 +680,14 @@ struct
       score
   *)
 
-  (*uniform scoring*)
-  let score_path_uniform (sts:step set) (tbl:goal set) (past:float) : float = 0.
-  (*random scoring*)
-  let score_path_random (sts:step set) (tbl:goal set) (past:float) : float = RAND.rand_norm ()
-
-  (*select table with most trivial to non-trivial goals*)
-  let score_path_trivial_ratio (sts:step set) (tbl:goal set) (past:float) : float =
-    let ntrivial : float = SET.fold tbl (fun x r -> if GoalTableLib.is_trivial x then r+.1. else r) 0. in
-    let nnontrivial = (float_of_int (SET.size tbl)) -. ntrivial in
-    let nnontrivial = if nnontrivial = 0. then 0.0000001 else nnontrivial in
-    ntrivial/.nnontrivial
-
-  let score_path_ngoals (sts:step set) (tbl:goal set) (past:float) : float =
-    let ntrivial : float = SET.fold tbl (fun x r -> if GoalTableLib.is_trivial x then r+.1. else r) 0. in
-    let nontrivial = (float_of_int (SET.size tbl)) -. ntrivial in
-    -.nontrivial -. (ntrivial*.0.2)
-
-  let score_path_gcomplex (sts:step set) (tbl:goal set) (past:float) : float =
-    let score_goal g = if GoalTableLib.is_trivial g then 0. else
-      let r = GoalTableLib.unwrap_goal g in
-      let cplx = (UnivLib.goal2complexity r) in
-      let score = cplx in
-      score
-    in
-    let pscore = SET.fold tbl (fun x r -> r +. (score_goal x) ) 0. in
-    -.pscore
-
-  let score_path_pcomplex (sts:step set) (tbl:goal set) (past:float) : float =
-    let score_goal g = if GoalTableLib.is_trivial g then 0. else
-      let r = GoalTableLib.unwrap_goal g in
-      let cplx = (UnivLib.goal2complexity r) in
-      let score = cplx in
-      score
-    in
-    let score_node p = match p with
-      |SAddGoal(g) -> -.(score_goal g)
-      |SRemoveGoal(g) -> (score_goal g)
-      | _ -> 0.
-    in
-    let pscore = SET.fold sts (fun x r -> r +. (score_node x) ) past in
-    -.pscore
 
 
-  let best_path_function () =
-    let typ = get_glbl_string "path_search_selector_type" in
-    match typ with
-    | "uniform" -> score_path_uniform
-    | "random" -> score_path_random
-    | "trivial-ratio" -> score_path_trivial_ratio
-    | "ngoals" -> score_path_ngoals
-    | "goal-complexity" -> score_path_gcomplex
-    | "path-complexity" -> score_path_gcomplex
-    | _ ->
-      error "best_path_function" "path selector doesn't exist"
 
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
-  let test_node_validity (s:slvr) (v:gltbl) (c:steps) =
+  let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) =
     let old_cursor = SearchLib.cursor v.search in
-    let _ = SearchLib.move_cursor s v c in
-    let depth =  List.length (TREE.get_path v.search.paths c) in
+    let _ = SearchLib.move_cursor v.search (s,v) c in
+    let depth =  List.length (TREE.get_path v.search.tree c) in
     let is_valid = if depth >= get_glbl_int "search_max_depth" then
       let _ = print_debug "[test-node-valididty] hit max depth" in
       let _ = SearchLib.deadend v.search c in
@@ -761,13 +712,16 @@ struct
         let _ = SearchLib.deadend v.search c in
         false
     in
-    let _ = SearchLib.move_cursor s v old_cursor in
+    let _ = SearchLib.move_cursor v.search (s,v) old_cursor in
     is_valid
 
 
   (*get the best valid node. If there is no valid node, return none *)
-  let rec get_best_valid_node (s:slvr) (v:gltbl) (root:steps option)  : steps option =
-    match SearchLib.select_best_node v (best_path_function ()) root with
+  let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option)  : (sstep snode) option =
+    let collate_score old_score score : float =
+      old_score +. score.state +. score.delta
+    in
+    match SearchLib.select_best_node v.search collate_score root with
     | Some(newnode) ->
         if test_node_validity s v newnode then
           Some(newnode)
@@ -803,22 +757,22 @@ struct
     targ_goal
 
 
-  let no_more_nodes (v:gltbl) (head:steps option) =
+  let no_more_nodes (v:gltbl) (head:(sstep snode) option) =
     (List.length (SearchLib.get_paths v.search head))
 
   (*solve a goal*)
 
-  let solve_subtree (s:slvr) (v:gltbl) (root:steps) =
+  let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) =
     let solve_goal (g:goal) =
       let curr = SearchLib.cursor v.search in
       let mint,musr = mkmenu s v (Some g) in
       let _ = mint "g" in
       let _ = musr () in
-      let mknode steps (cursor:steps) =
-        let _ = SearchLib.move_cursor s v cursor in
+      let mknode steps (cursor:(sstep snode)) =
+        let _ = SearchLib.move_cursor v.search (s,v) cursor in
         let _ = SearchLib.start v.search in
         let _ = SearchLib.add_steps v.search steps in
-        let no = SearchLib.commit v.search in
+        let no = SearchLib.commit v.search (s,v) in
         no
       in
       match g with
@@ -834,12 +788,12 @@ struct
         if if_nontrivial_possible grel then
           let upgradetriv = [SRemoveGoal(TrivialGoal(grel)); SAddGoal(NonTrivialGoal(grel))] in
           let nontriv = mknode upgradetriv curr in
-          let _ = SearchLib.move_cursor s v curr in
+          let _ = SearchLib.move_cursor v.search (s,v) curr in
           ()
         else
           ()
     in
-    let rec rec_solve_subtree (root:steps) =
+    let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
       if SearchLib.is_exhausted v.search (Some root) then
         ()
@@ -853,7 +807,7 @@ struct
           match maybe_next_node with
           | Some(next_node) ->
             (*move to node*)
-            let _ = SearchLib.move_cursor s v next_node in
+            let _ = SearchLib.move_cursor v.search (s,v) next_node in
             let next_goal = get_best_valid_goal v in
             (*solves the goal*)
             let _ = solve_goal next_goal in
@@ -874,7 +828,7 @@ struct
 
 
 
-  let rec solve_sim_eqn (_s:slvr ref) (v:gltbl) (target:mid) : steps option =
+  let rec solve_sim_eqn (_s:slvr ref) (v:gltbl) (target:mid) : (sstep snode) option =
     let goal_has_mvar (gs:goal) (target:mid) : bool = match GoalTableLib.unwrap_goal gs with
       | UState(MathId(q),_,_,_) -> q = target
       | UFunction(MathId(q),_) -> q = target
@@ -884,19 +838,19 @@ struct
     (*ban directly solving goals that are not the mvar one*)
     let root = SearchLib.cursor v.search in
     let goals = GoalTableLib.get_actionable_goals v in
-    let passify_goals : step list = List.fold_right (fun (x:goal) (r:step list) ->
+    let passify_goals : sstep list = List.fold_right (fun (x:goal) (r:sstep list) ->
       if goal_has_mvar x target = false then
         [SMakeGoalPassive x] @ r
       else
         r
     ) goals [] in
-    let passify_goals = SearchLib.wrap_steps passify_goals in
-    let _ = SearchLib.apply_steps s v passify_goals in
+    let passify_goals = SearchLib.wrap_node passify_goals in
+    let _ = SearchLib.apply_node v.search (s,v) passify_goals in
     let _ = solve_subtree s v root in
-    let _ = SearchLib.unapply_steps s v passify_goals in
+    let _ = SearchLib.unapply_node v.search (s,v) passify_goals in
     if SearchLib.has_solution v.search (Some root) then
       let slns = SearchLib.get_solutions v.search (Some root) in
-      let sln : steps = (List.nth slns 0) in
+      let sln : (sstep snode) = (List.nth slns 0) in
       Some(sln)
     else
       None
@@ -912,29 +866,6 @@ struct
       let ord_ics = dag_to_ordering_and_ics in
       ()
 
-
-    let search2tbl s (rf) icurs (st) :gltbl =
-      let sln = SlnLib.mksln () in
-      let nodetbl : (unodeid,unode) map = MAP.make () in
-      let handle_component (x) =
-         let nid = UnivLib.name2unodeid x.name in
-         let _ = MAP.put nodetbl nid x in
-         let _ = SlnLib.mkcomp sln nid in
-         ()
-      in
-      let _ = List.iter (fun x -> handle_component x) (MAP.to_values rf.nodes) in
-      let v =  {
-         goals = SET.make_dflt ();
-         nodes = nodetbl;
-         dngl = MAP.make();
-         is_trivial = is_trivial;
-         blacklist = SET.make_dflt ();
-         search= st;
-         sln= sln;
-      } in
-      let v = SearchLib.move_cursor s v icurs in
-      v
-
     (*
     Continue working on this.
     *)
@@ -943,15 +874,14 @@ struct
       let init_goals = LIST.shuffle (SET.to_list v.goals) in
       let _ = Printf.printf "====Solving===\n" in
       (*makes a new table, where the node immediately following the goalnode is a sequence of steps.*)
-      let mknewtbl (steps: step list)  (gls:goal list)=
+      let mknewtbl (steps: sstep list)  (gls:goal list) : gltbl =
         (*new buffer*)
-        let start,stree = SearchLib.mkbuf gls in
-        let tbl = search2tbl s v start stree in
-        let _ = SearchLib.start stree in
+        let tbl : gltbl = GoalTableLib.newtbl s v gls is_trivial in
+        let _ = SearchLib.start tbl.search in
         (*new initial node*)
-        let _ = List.iter (fun x -> SearchLib.add_step stree x) steps in
-        let p = SearchLib.commit stree in
-        let _ = SearchLib.move_cursor s tbl p in
+        let _ = List.iter (fun x -> SearchLib.add_step tbl.search x) steps in
+        let p = SearchLib.commit tbl.search (s,tbl) in
+        let _ = SearchLib.move_cursor tbl.search (s,tbl) p in
         tbl
       in
       (*get the steps from a particular node*)
@@ -965,8 +895,8 @@ struct
       | UFunction(MathId(m),_) -> m
       | _ -> error "get_mid" "expected goal with mid on the other end."
       in
-      let rec try_solve (ctx:step list) goals =
-        let rec attempt (new_tbl:gltbl) (g:goal) (rest:goal list) : step list option =
+      let rec try_solve (ctx:sstep list) goals =
+        let rec attempt (new_tbl:gltbl) (g:goal) (rest:goal list) : sstep list option =
           let _ = Printf.printf "Attempt To Solve: %s\n" (UnivLib.goal2str g) in
           let ur = GoalTableLib.unwrap_goal g in
           (*solve a nontrivial relation*)
