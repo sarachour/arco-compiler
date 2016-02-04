@@ -243,6 +243,19 @@ struct
       let _ = (sr.curs <- Some next) in
       env
 
+  let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
+  let _ = start sr in
+  let _ = add_steps sr sts in
+  match sr.scratch with
+  |Some(sb) ->
+    let _ = TREE.mknode sr.tree (sb) in
+    let _ = TREE.setroot sr.tree (sb) in
+    let _ = (sr.scratch <- None) in
+    let tbl = move_cursor sr env sb in
+    sb,sr
+  |None -> error "mkbuf" "impossible to not have initial step"
+
+
   let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b) (order:a->a->int) (score:b->a list->sscore) (tostr:a->string) =
     let g = TREE.make (fun x y -> x.id=y.id) (fun x y -> x = y) in
     let srch = {
@@ -258,15 +271,7 @@ struct
         score=score;
     } in
     srch
-    (* DELETE ME WHEN IT WORKS
-    match srch.scratch with
-    |Some(sb) ->
-      let _ = TREE.mknode buf.paths (sb) in
-      let _ = TREE.setroot buf.paths (sb) in
-      let _ = (buf.step_buf <- None) in
-      sb,buf
-    |None -> error "mkbuf" "impossible to not have initial step"
-    *)
+
 
 
   let get_paths  (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : (a snode) list=

@@ -72,7 +72,7 @@ struct
     SET.fold gset proc_goal ""
 
   let newtbl (s:slvr) (rf:gltbl) (gls:goal list) (triv:urel->bool):gltbl =
-    let st =  SlvrSearchLib.mksearch () in 
+    let st =  SlvrSearchLib.mksearch () in
     let sln = SlnLib.mksln () in
     let nodetbl : (unodeid,unode) map = MAP.make () in
     let handle_component (x) =
@@ -91,10 +91,8 @@ struct
        search= st;
        sln= sln;
     } in
-    let _ = SearchLib.start st in
-    let _ = List.iter (fun x -> SearchLib.add_step st (SAddGoal x)) gls in
-    let init_cursor = SearchLib.commit st (s,v) in
-    let _,tbl = SearchLib.move_cursor st (s,v) init_cursor in
+    let steps = List.map (fun x -> SAddGoal x) gls in
+    let _ = SearchLib.setroot st (s,v) steps in
     (v)
 
   let mktbl s (is_trivial:urel->bool) : gltbl =
@@ -159,10 +157,8 @@ struct
         dngl = MAP.make ();
         blacklist = SET.make_dflt ()
       } in
-    let _ = SearchLib.start search in
-    let _ = List.iter (fun x -> SearchLib.add_step search (SAddGoal x)) goals in
-    let init_cursor = SearchLib.commit search (s,tbl) in
-    let _,tbl = SearchLib.move_cursor search (s,tbl) init_cursor in
+    let steps = List.map (fun x -> SAddGoal x) goals in
+    let _ = SearchLib.setroot search (s,tbl) steps in
     tbl
 
 end
