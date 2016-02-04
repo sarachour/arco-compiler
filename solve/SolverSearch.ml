@@ -9,14 +9,10 @@ open SearchData
 
 module SlvrSearchLib =
 struct
-  (*)
-  (*uniform scoring*)
-  let score_path_uniform (sts:sstep set) (tbl:goal set) (past:float) : float = 0.
-  (*random scoring*)
-  let score_path_random (sts:sstep set) (tbl:goal set) (past:float) : float = RAND.rand_norm ()
+
 
   (*select table with most trivial to non-trivial goals*)
-
+  (*
   let score_path_trivial_ratio (sts:sstep set) (tbl:goal set) (past:float) : float =
     let ntrivial : float = SET.fold tbl (fun x r -> if GoalTableLib.is_trivial x then r+.1. else r) 0. in
     let nnontrivial = (float_of_int (SET.size tbl)) -. ntrivial in
@@ -52,7 +48,7 @@ struct
     in
     let pscore = SET.fold sts (fun x r -> r +. (score_node x) ) past in
     -.pscore
-
+    *)
 
   let best_path_function () =
     let typ = get_glbl_string "path_search_selector_type" in
@@ -67,11 +63,23 @@ struct
       error "best_path_function" "path selector doesn't exist"
       *)
 
+  let score_step_triv ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+    let ntrivial : float = SET.fold tbl.goals (fun x r -> if GoalStubLib.is_trivial x then r+.1. else r) 0. in
+    let nnontrivial = (float_of_int (SET.size tbl.goals)) -. ntrivial in
+    let nnontrivial = if nnontrivial = 0. then 0.0000001 else nnontrivial in
+    let state = ntrivial/.nnontrivial in
+    let delta = 0 in
+    SearchLib.mkscore state delta
+
+  let score_step_rand ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+    let state = RAND.rand_norm in
+    let delta = RAND.rand_norm in
+    SearchLib.mkscore state delta
+
   let score_step_uniform ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let state = 0. in
     let delta = 0. in
     SearchLib.mkscore state delta
-
 
   let score_step () =
     score_step_uniform
