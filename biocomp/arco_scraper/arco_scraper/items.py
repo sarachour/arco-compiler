@@ -13,6 +13,8 @@ class ArcoScraperItem(scrapy.Item):
     BIO_ID = scrapy.Field() # DONE
     URL = scrapy.Field() # DONE
     Submission_Date = scrapy.Field() # DONE
+    Next_URL = scrapy.Field()
+    Test_Attribute = scrapy.Field() # DELETE ONCE YOU KNOW IT WORKS
     problem_size = scrapy.Field() #MIGHT HAVE TO DO SOME POST PROCESSING FOR THIS PART
     number_of_citations = scrapy.Field() # SECOND SPIDER NEEDED
     bibtex_citation = scrapy.Field() # SECOND SPIDER NEEDED
