@@ -642,6 +642,16 @@ struct
       let chld,_ = MAP.get (g.adj) s in
       SET.has chld (e,v)
 
+  let getconn (type a) (type b) g s e : (a*b) option =
+    if hasnode g s = false || hasnode g e = false then
+      None
+    else
+      let chld,_ = MAP.get (g.adj) s in
+      match SET.filter chld (fun (x,_) -> x = e) with
+      | [h] -> Some(h)
+      | [] -> None
+      | _ -> error "updedge" "no edge exists"
+
 
 
   let mknode (type a) (type b) (g) (n:a) : (a,b) tree =
@@ -653,12 +663,29 @@ struct
       g
 
   let mkedge (type a) (type b) (g) (src:a) (snk:a) (v:b) : (a,b) tree =
-    let chld,_ = MAP.get g.adj src in
-    let _ = SET.add chld (snk,v) in
-    let chld,_ = MAP.get g.adj snk in
-    let _ = MAP.put g.adj snk (chld,Some src) in
-    g
+    if hasnode g src = false || hasnode g snk = false then
+      error "mkedge" "source or sink node doesn't exist"
+    else
+    (* edges *)
+    let edges,_ = MAP.get g.adj src in
+    let _ = SET.add edges (snk,v) in
+    let edges,old = MAP.get g.adj snk in
+    match old with
+    | Some(q) ->
+      if q = src then g
+      else error "mkedge" "node already has a parent."
+    | None ->
+      let _ = MAP.put g.adj snk (edges,Some src) in
+      g
 
+  let updedge (type a) (type b) g (src:a) (snk:a) (v:b) : (a,b) tree =
+    let edges,back = MAP.get g.adj src in
+    let _ = match getconn g src snk with
+      | Some(conn) -> let _ = SET.rm edges conn in ()
+      | None -> ()
+    in
+    let _ = mkedge g src snk v in
+    g
 
   let rmnode (type a) (type b) (g) (n:a) : (a,b) tree =
     let rec _rmnode (n:a) =
@@ -735,8 +762,8 @@ struct
         let res = nfx src res in
         let chldrn,_  = MAP.get (g.adj) (src) in
         let proc_chld (snk,e) x =
-          let x = _traverse snk x in
           let x = efx src snk e x in
+          let x = _traverse snk x in
           x
         in
         SET.fold chldrn proc_chld res
@@ -746,12 +773,14 @@ struct
       |None -> ic
 
 
-  let tostr (type a) (type b) (g:(a,b) tree) (a2str:int->a->string) =
+  let tostr (type a) (type b) (g:(a,b) tree) (a2str:int->a->string) (b2str:int->b->string) =
     let fold_node n str =
-      str^(a2str (depth g n) n)^"\n"
+      let nstr = (a2str (depth g n) n) in
+      str^nstr^"\n"
     in
     let fold_edge src snk v str =
-      str
+      let estr = (b2str (depth g snk) v) in
+      str^estr^"\n"
     in
     let v = fold_tree fold_node fold_edge g "" in
     v

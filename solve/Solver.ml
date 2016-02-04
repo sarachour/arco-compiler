@@ -671,25 +671,13 @@ struct
 
 
 
-  (*score the passed in goal by complexity
-  let score_goal_by_complexity (g:goal) : float =
-    if GoalTableLib.is_trivial g then 0. else
-      let r = GoalTableLib.unwrap_goal g in
-      let cplx = (UnivLib.goal2complexity r) in
-      let score = cplx in
-      score
-  *)
-
-
-
-
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
   let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) =
     let old_cursor = SearchLib.cursor v.search in
     let _ = SearchLib.move_cursor v.search (s,v) c in
     let depth =  List.length (TREE.get_path v.search.tree c) in
     let is_valid = if depth >= get_glbl_int "search_max_depth" then
-      let _ = print_debug "[test-node-valididty] hit max depth" in
+      let _ = print_debug "[test-node-validity] hit max depth" in
       let _ = SearchLib.deadend v.search c in
       false
     else
@@ -719,7 +707,7 @@ struct
   (*get the best valid node. If there is no valid node, return none *)
   let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option)  : (sstep snode) option =
     let collate_score old_score score : float =
-      old_score +. score.state +. score.delta
+      score.state
     in
     match SearchLib.select_best_node v.search collate_score root with
     | Some(newnode) ->

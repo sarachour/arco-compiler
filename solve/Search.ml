@@ -108,10 +108,14 @@ struct
     _steps2str 0 sr n
 
   let score2str (e:sscore) =
-    (string_of_float e.state )^":"^(string_of_float e.delta)
+    "state="^(string_of_float e.state )^",delta="^(string_of_float e.delta)
 
   let search2str (type a) (type b) (sr:(a,b) ssearch) : string  =
-    TREE.tostr sr.tree (fun i x -> (_steps2str i sr x))
+    let _score2str indent v =
+      let spcs = STRING.repeat "  " indent in
+      spcs^"<score>:"^(score2str v)
+    in
+    TREE.tostr sr.tree (fun i x -> (_steps2str i sr x)) (fun i y -> _score2str i y)
 
 
   let mknode (type a) (type b) (sr:(a,b) ssearch)=
@@ -213,10 +217,22 @@ struct
     | Some(c) -> c
     | None -> error "cursor" "expected cursor."
 
+  let upd_score (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
+    if TREE.hasnode sr.tree node = false then () else
+    let score : sscore = sr.score env node.s in
+    let par : (a snode) option = TREE.parent sr.tree node in
+    let _ = if par <> None then
+      let par = OPTION.force_conc par in
+      let _ = TREE.updedge sr.tree par node score in ()
+      else ()
+    in
+    ()
 
   let apply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
     let steps = List.sort (sr.order) node.s in
     let nenv = List.fold_right (fun x b -> let nb = sr.apply b x in nb) steps env in
+    let _ = upd_score sr env node in
+    (*recompute score*)
     nenv
 
 
@@ -224,12 +240,13 @@ struct
     {id=(-1); s=s}
 
   let unapply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
+      let _ = upd_score sr env node in
       let steps = List.sort (sr.order) node.s in
       let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) steps env in
       nenv
 
   let move_cursor (type a) (type b) (sr:(a,b) ssearch) (env:b) (next:a snode)  =
-    match sr.curs with
+    let nenv = match sr.curs with
     | Some(old) ->
       let anc = TREE.ancestor sr.tree next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path sr.tree old)) old anc in
@@ -242,18 +259,21 @@ struct
       let env = List.fold_right (fun x nenv -> let nenv = apply_node sr nenv x in nenv) to_node env in
       let _ = (sr.curs <- Some next) in
       env
+    in
+
+    env
 
   let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
-  let _ = start sr in
-  let _ = add_steps sr sts in
-  match sr.scratch with
-  |Some(sb) ->
-    let _ = TREE.mknode sr.tree (sb) in
-    let _ = TREE.setroot sr.tree (sb) in
-    let _ = (sr.scratch <- None) in
-    let tbl = move_cursor sr env sb in
-    sb,sr
-  |None -> error "mkbuf" "impossible to not have initial step"
+    let _ = start sr in
+    let _ = add_steps sr sts in
+    match sr.scratch with
+    |Some(sb) ->
+      let _ = TREE.mknode sr.tree (sb) in
+      let _ = TREE.setroot sr.tree (sb) in
+      let _ = (sr.scratch <- None) in
+      let tbl = move_cursor sr env sb in
+      sb,sr
+    |None -> error "mkbuf" "impossible to not have initial step"
 
 
   let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b) (order:a->a->int) (score:b->a list->sscore) (tostr:a->string) =
