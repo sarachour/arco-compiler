@@ -37,8 +37,7 @@ struct
     let rec user_menu_handle () = menu "ast-unify" (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
-  let step2str (type a) (st: a rstep) = match st with
-  | _ -> "unimplemented"
+
 
   let g_bans s = s.st.bans
   let g_assigns s = s.st.assigns
@@ -114,7 +113,18 @@ struct
     let state = 0. in
     {delta=delta; state=state}
 
-  let step2str a = ""
+  let unifytype2str u = match u with
+  | UTypTempl -> "templ"
+  | UTypTarg -> "targ"
+
+  let step2str tostr a = match a with
+  | RAddAssign(lhs,rhs) -> "+asgn "^(tostr lhs)^":="^(ASTLib.ast2str rhs tostr)
+  | RBanAssign(lhs,rhs) -> "-asgn"^(tostr lhs)^":="^(ASTLib.ast2str rhs tostr)
+  | RConcAssign(lhs,rhs) -> "*asgn"^(tostr lhs)^":="^(ASTLib.ast2str rhs tostr)
+  | RVarRemove(v,ty) -> "-var <"^(tostr v)^"> of kind "^(unifytype2str ty)
+  | RVarFill(v,ty) -> "#var <"^(tostr v)^"> of kind "^(unifytype2str ty)
+  | RVarFocus(v,ty) -> "@var <"^(tostr v)^"> of kind "^(unifytype2str ty)
+
 
   let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)  (cnv:a->symvar) (icnv:symvar -> a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
     (*make the data for each variable*)
@@ -165,7 +175,7 @@ struct
     } in
     (*make search object*)
     let search : (a rstep, a rtbl) ssearch =
-      SearchLib.mksearch apply_step unapply_step order_steps score_steps step2str
+      SearchLib.mksearch apply_step unapply_step order_steps score_steps (step2str tostr)
     in
     let strct: a runify = {
         search=search;
@@ -391,9 +401,34 @@ struct
 
 
   *)
-  let build_tree (type a) (s:a runify) (root: (a rstep) snode) : unit =
+  type 'a rnode = ('a rstep) snode
+  let build_tree (type a) (s:a runify) (root: a rnode) : unit =
     let sysmenu,usrmenu = mkmenu s in
     let _ = usrmenu () in
+    let focus_goal x data =
+      let _ = SearchLib.start s.search in
+      let _ = SearchLib.add_step s.search (RVarFocus(x,UTypTarg)) in
+      let node = SearchLib.commit s.search s.tbl in
+      node
+    in
+    let focus_comp (gnode:a rnode) (cmpvar:a) (cmpdata:a rdata) =
+      let _ = SearchLib.move_cursor s.search s.tbl gnode in
+      let focv : a = OPTION.force_conc (g_targ_st s.tbl).focus in
+      let focvdata : a rdata = MAP.get (g_targ_i s.tbl).info focv in
+      if cmpdata.kind = focvdata.kind then
+        let _ = SearchLib.start s.search in
+        let _ = SearchLib.add_step s.search (RVarFocus(cmpvar,UTypTempl)) in
+        let node = SearchLib.commit s.search s.tbl in
+        ()
+    in
+    let focus_comps gnode =
+      MAP.iter (g_templ_i s.tbl).info (fun v data -> focus_comp gnode v data)
+    in
+    (*focus on each of the templs, and rels - where they're compatible*)
+    let nodes : (a rnode) list = MAP.map (g_targ_i s.tbl).info (fun v data -> focus_goal v data) in
+    let _ = usrmenu() in
+    let _ = List.iter (fun goal -> focus_comps goal) nodes in
+    let _ = usrmenu() in
     ()
 
   let get_slns (type a) (s:a runify) : a fusion set =
