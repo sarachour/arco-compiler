@@ -50,7 +50,8 @@ let error n msg = raise (ASTException(n^": "^msg))
 
 type 'a symassign = ('a,'a ast) map
 
-module ASTLib : sig
+module ASTLib
+(*): sig
     val ast2str : ('a ast) -> ('a -> string) -> string
     val trans : ('b ast) -> ('b ast ->  ('b ast) option)  -> ('b ast)
     val map : ('a ast)  -> ('a -> 'b)  -> ('b ast)
@@ -63,8 +64,9 @@ module ASTLib : sig
     val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> bool-> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
     val simpl : ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a-> ('a -> symvar)-> symdecl) -> 'a ast
     val sub : ('a ast) -> (('a,'a ast) map) -> 'a ast
-end =
-struct
+end*)
+ 
+= struct
 
     let rec ast2str a fn : string =
       let list2str lst delim =

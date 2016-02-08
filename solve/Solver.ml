@@ -385,14 +385,18 @@ struct
  *)
  (*TODO Fix*)
   let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : int option =
-    let rel2info (rel:urel) =
+    let rel2info (rel:urel) : unid rarg =
       match rel with
-      | State(lhs,rhs,t) -> (lhs,rhs,RTFlatten)
-      | Function(lhs,rhs) -> (lhs,rhs,RTPreserve)
+      | UState(lhs,rhs,t,ic) -> (lhs,rhs,RKDeriv)
+      | UFunction(lhs,rhs) -> (lhs,rhs,RKFunction)
     in
-    let goal2unfo (g:goal) =
+    let goal2info (g:goal) =
       let rel = GoalTableLib.unwrap_goal g in
       rel2info rel
+    in
+    let add_unification (u:unid fusion) =
+      let _ = print_debug "TODO: Implement add unification" in
+      ()
     in
     (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
     if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
@@ -407,51 +411,25 @@ struct
     let comp_cursor : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
     (*use node*)
     let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
-    let rels = List.map (fun x -> rel2info node.rels) in
-    let goals = List.map (fun x -> goal2info gtbl.goals) in
-    let _ = ASTLib.multipattern rels goals
-      (UnivLib.unid2var) (UnivLib.var2unid (s)) (Shim.unid2wcsym name inst_id )
+    let templ : (unid rarg) list = SET.map node.rels (fun x -> rel2info x)  in
+    let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
+    let slns : (unid fusion) set =
+      ASTUnifier.multipattern templ targ
+      (UnivLib.unid2var)
+      (UnivLib.var2unid (s))
+      (UnivLib.unid2var)
     in
-    None
+    let nslns = SET.size slns in
+    if nslns = 0 then
+      let _ = SearchLib.rm gtbl.search comp_cursor in
+      let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
+      None
+    else
+      let _ = SearchLib.visited gtbl.search comp_cursor in
+      let _ = SET.iter slns (fun x -> add_unification x)  in
+      Some(nslns)
 
-    (*
-      this tries to find a set of solutions for the particular node. Each of these solutions is a branch.
 
-    let add_sln (rls:urel set) (gl:goal) (r:urel) (assigns: (unid,unid ast) map)  =
-      let _ = SearchLib.start gtbl.search in
-      (*say you have attained the goal*)
-      let ngoals = ASTUnify.solve s gtbl (node.name) inst_id r gl rls gtbl.goals assigns in
-      match ngoals with
-      | Some(sts) ->
-        let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
-        let _ = SearchLib.add_step gtbl.search (SRemoveGoal gl) in
-        let _ = SearchLib.add_steps gtbl.search sts in
-        let sol_cursor = SearchLib.commit gtbl.search  (s,gtbl) in
-        let _ = SearchLib.move_cursor gtbl.search (s,gtbl) sol_cursor in
-        true
-
-      | None ->
-        false
-    in
-    let apply_rel rel amt =
-      let res : (unid,unid ast) map list option = unify_rels s node.name inst_id g rel in
-      match res with
-      | Some(assigns) ->
-        let cnt = List.fold_right (fun asn cnt -> if add_sln node.rels g rel asn then cnt + 1 else cnt) assigns 0 in
-        cnt+amt
-      | None -> amt
-    in
-    let cnt = SET.fold node.rels apply_rel 0 in
-    let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
-    let _ = Printf.printf "comp %s: %d\n" node.name cnt in
-    if cnt = 0 then
-        let _ = SearchLib.rm gtbl.search comp_cursor in
-        let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
-        None
-      else
-        let _ = SearchLib.visited gtbl.search comp_cursor in
-        Some(cnt)
-  *)
 
   let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in

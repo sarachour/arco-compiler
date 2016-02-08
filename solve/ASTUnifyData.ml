@@ -8,10 +8,15 @@ type rkind =
 | RKDeriv
 | RKFunction
 
-(*whether you can flatten or preserve the variable*)
-type rtype =
-| RTFlatten
-| RTPreserve
+type 'a fuse =
+  | USAssign of 'a*('a ast)
+  (*remove solved targets*)
+  | USRmTarg of 'a*('a ast)
+  | USAddTarg of 'a*('a ast)
+  (*add partially resolved*)
+  | USAddTempl of 'a*('a ast)
+
+type 'a fusion = 'a fuse list
 
 (*
 You can use up a template rel, remove a target rel
@@ -23,29 +28,31 @@ fill in target var: fill in a target variable
 fill in a templ var: fill in a template variable
 
 *)
+type unifytype = UTypTempl| UTypTarg
 type 'a rstep =
+  (*solution assign*)
   | RAddAssign of 'a*('a ast)
+  (*ban an assignment*)
   | RBanAssign of 'a*('a ast)
-  | RFocusTemplVar of 'a
-  | RFocusTargetVar of 'a
-  | RRemoveTemplRel of 'a
-  | RRemoveTargetRel of 'a
-  (*plug in any instances of a particular variable*)
-  | RFillInTargetVar of 'a
-  (*plug in any instances of a particular variable*)
-  | RFillInTemplVar of 'a
+  (*concretize assignment for child nodes*)
+  | RConcAssign of 'a*('a ast)
+  (*focus on a variable*)
+  | RVarFocus of 'a*unifytype
+  (*Remove a relation after it's solved*)
+  | RVarRemove of 'a*unifytype
+  (*Fill a relation*)
+  | RVarFill of 'a*unifytype
 
 (*the data for each variable*)
 type 'a rdata = {
   rhs : 'a ast;
   kind: rkind;
-  typ: rtype;
 }
 (*the variables that are filled and removed*)
 type 'a rvstate = {
   fill: 'a set;
   rm: 'a set;
-  focus: 'a;
+  focus: 'a option;
 }
 (*the stateful part of teh tableau*)
 type 'a rstate = {
@@ -57,15 +64,10 @@ type 'a rstate = {
   templ: 'a rvstate;
   targ: 'a rvstate;
 }
-(*the tableau, which is comprised of the original statements  *)
-type 'a rtbl = {
-  templs: ('a,'a rdata) map;
-  rels: ('a,'a rdata) map;
-  (*dependency*)
-  templ_deps: ('a,unit) graph;
-  targ_deps: ('a, unit) graph;
-  (*template to rel assignments*)
-  st: 'a rstate;
+type 'a rinfo = {
+  deps: ('a,unit) graph;
+  info: ('a,'a rdata) map;
+
 }
 
 (*the symcaml environment*)
@@ -74,12 +76,21 @@ type 'a renv = {
   cnv: 'a->symvar;
   icnv: symvar->'a;
 }
-(*the search tree to build*)
-type 'a runify = {
-  search : ('a rtbl, 'a rstep) ssearch;
-  tbl: 'a rtbl;
+
+(*the tableau, which is comprised of the original statements  *)
+type 'a rtbl = {
+  templs: 'a rinfo;
+  targs: 'a rinfo;
+  (*template to rel assignments*)
+  st: 'a rstate;
   env: 'a renv;
 }
 
+(*the search tree to build*)
+type 'a runify = {
+  search : ('a rstep, 'a rtbl) ssearch;
+  tbl: 'a rtbl;
+}
+
 (*the data necessary for *)
-type 'a relinfo = 'a*('a ast)*rtype*rkind
+type 'a rarg = 'a*('a ast)*rkind

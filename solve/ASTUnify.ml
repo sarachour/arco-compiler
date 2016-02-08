@@ -1,11 +1,14 @@
+open SymCamlData
+open SymCaml
 
 open Util
-open SymCaml
 open Globals
 open Interactive
 
+open SearchData
 open Search
 
+open AST
 open ASTUnifyData
 
 open SolverData
@@ -61,89 +64,149 @@ struct
   let step2str (type a) (st: a rstep) = match st with
   | _ -> "unimplemented"
 
-  let apply_step (type a) (s:a rsearch) (st:a rstep) = match st with
-  | RAddAssign(lhs,rhs) -> MAP.put s.tbl.st.assigns lhs rhs
-  | RBanAssign(lhs,rhs) -> MAP.put s.tbl.st.bans lhs rhs
-  | RRemoveTemplRel(v) -> SET.add s.tbl.st.templ.rm v
-  | RRemoveTargetRel(v) -> SET.add s.tbl.st.targ.rm v
-  | RFillInTargetVar(v) ->  SET.add s.tbl.st.targ.fill v
-  | RFillInTemplVar(v) -> SET.add s.tbl.st.templ.fill v
+  let g_bans s = s.st.bans
+  let g_assigns s = s.st.assigns
+  let g_templ_st s = s.st.templ
+  let g_targ_st s = s.st.targ
+  let g_templ_i s = s.templs
+  let g_targ_i s = s.targs
+  let g_state s ty =
+    if UTypTempl = ty then (g_templ_st s) else (g_targ_st s)
 
-  let unapply_step (type a) (s:a rsearch) (st:a rstep) = match st with
-  | RAddAssign(lhs,rhs) -> MAP.rm s.tbl.st.assigns lhs
-  | RBanAssign(lhs,rhs) -> if MAP.has s.tbl.st.bans lhs then
-    SET.rm (MAP.get s.tbl.st.bans lhs) rhs
-    else
+  let g_info s ty =
+    if UTypTempl = ty then (g_templ_i s) else (g_targ_i s)
+
+  let g_sym s = s.env.s
+  let g_conv s = s.env.cnv
+  let g_iconv s = s.env.icnv
+  let g_search s = s.search
+
+  let ret x r = let _ = x in r
+
+  let add_ban (type a) (s:a rtbl) (lhs:a) (rhs:a ast) =
+    let bans = (g_bans s) in
+    let _ = if MAP.has bans lhs = false then
+      let _ = MAP.put bans lhs (SET.make_dflt ()) in () else ()
+    in
+    let bans = MAP.get bans lhs in
+    let _ = SET.add bans rhs in
+    ()
+
+  let rm_ban (type a) (s:a rtbl) (lhs:a) (rhs:a ast) =
+    let bans = (g_bans s) in
+    if MAP.has bans lhs = false then
       error "unapply_step" "cannot remove a non-existent ban"
-  | RRemoveTemplRel(v) -> SET.rm s.tbl.st.templ.rm v
-  | RRemoveTargetRel(v) -> SET.rm s.tbl.st.targ.rm v
-  | RFillInTargetVar(v) ->  SET.rm s.tbl.st.targ.fill v
-  | RFillInTemplVar(v) -> SET.rm s.tbl.st.templ.fill v
+    else
+      let bans = MAP.get bans lhs in
+      let _ = SET.rm bans rhs in
+      ()
+
+  let apply_step (type a) (s:a rtbl) (st:a rstep) =
+  let _ = match st with
+  | RAddAssign(lhs,rhs) -> ()
+  | RBanAssign(lhs,rhs) -> ret (add_ban s lhs rhs) ()
+  | RConcAssign(lhs,rhs) -> ret (MAP.rm (g_assigns s) lhs) ()
+  | RVarRemove(v,ty) -> let st = g_state s ty in
+    ret (SET.add st.rm v) ()
+  | RVarFill(v,ty) -> let st = g_state s ty in
+    ret (SET.add st.fill v) ()
+  | RVarFocus(v,ty) -> let st = g_state s ty in
+    let _ = (st.focus <= Some v) in
+    ()
+  in
+  s
+
+  let unapply_step (type a) (s:a rtbl) (st:a rstep) =
+  let _ = match st with
+    | RAddAssign(lhs,rhs) -> ()
+    | RBanAssign(lhs,rhs) -> ret (rm_ban s lhs rhs) ()
+    | RConcAssign(lhs,rhs) -> ret (MAP.rm (g_assigns s) lhs) ()
+    | RVarRemove(v,ty) -> let st = g_state s ty in
+      ret (SET.rm st.rm v) ()
+    | RVarFill(v,ty) -> let st = g_state s ty in
+      ret (SET.rm st.fill v) ()
+    | RVarFocus(v,ty) -> let st = g_state s ty in
+      let _ = (st.focus <= None) in
+      ()
+  in
+  s
 
   let order_steps a b = 0
 
+  let score_steps env steps : sscore =
+    let delta = 0. in
+    let state = 0. in
+    {delta=delta; state=state}
+
   let step2str a = ""
 
-  let mksearch (type a) (templs_e: (relinfo) list) (targ_e: (relinfo) list)  (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl)  (tostr:a->string) =
+  let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)  (cnv:a->symvar) (icnv:symvar -> a) (tostr:a->string) : a runify =
     (*make the data for each variable*)
-    let mkdata dps dct v relinfo =
-      let rhs,lhs,typ,knd = relinfo in
-      let  _ = add_deps dps lhs rhs in
+    let mkdata ifo relinfo =
+      let lhs,rhs,knd = relinfo in
+      let  _ = ASTLib.add_deps ifo.deps lhs rhs in
       let data = {
         rhs = rhs;
         kind = knd;
-        typ = typ;
       } in
-      MAP.put dct lhs data
+      let _ = MAP.put ifo.info lhs data in
+      ()
+    in
+    let mkstate () : a rvstate =
+      {fill=SET.make_dflt(); rm=SET.make_dflt(); focus=None}
+    in
+    let mkinfo () : a rinfo =
+      {deps=ASTLib.mk_dep_graph [] tostr; info=MAP.make ()}
     in
     (*create environment*)
     let state = {
       assigns = MAP.make ();
       bans = MAP.make ();
       (*fill in target and templ*)
-      targ_fill = SET.make_dflt ();
-      templ_fill = SET.make_dflt ();
-      targ_rm = SET.make_dflt ();
-      templ_rm = SET.make_dflt ();
+      targ =mkstate ();
+      templ = mkstate ();
     } in
     (*make the environment*)
-    let env = SymCaml.init() in
-    let _ = SymCaml.clear env in
+    let s = SymCaml.init() in
+    let _ = SymCaml.clear s in
     let env = {
-      s= env;
-      cnv= cnv
+      s=s;
+      cnv= cnv;
       icnv= icnv;
     } in
     (*make the dependency tree*)
-    let tmpldeps = mk_dep_graph [] tostr in
-    let targdeps = mk_dep_graph [] tostr in
-    let tmpls = MAP.make () in
-    let targs = MAP.make () in
-    let _ = List.iter (fun x -> mkdata templdeps tmpls x) templs_e in
-    let _ = List.iter (fun x -> mkdata targdeps targs x) targs_e in
+    let tmpl_info =  mkinfo() in
+    let targ_info = mkinfo() in
+    let _ = List.iter  (fun x -> mkdata tmpl_info x) templs_e in
+    let _ = List.iter  (fun x -> mkdata targ_info x) targs_e in
     (*make the search tree*)
-    let tree = GRAPH.make () in
+    let tree = GRAPH.make (fun x y -> x = y) in
     let tbl = {
-      templs= templs;
-      targs= targs;
-      templ_deps= templdeps;
-      targ_deps = targdeps;
-      (*template to rel assignments*)
+      templs= tmpl_info;
+      targs= targ_info;
       st = state;
+      env = env;
     } in
     (*make search object*)
-    let search = SearchLib.mksearch apply_step unapply_step order_step step2str in
-    (**)
-    search
+    let search : (a rstep, a rtbl) ssearch =
+      SearchLib.mksearch apply_step unapply_step order_steps score_steps step2str
+    in
+    let strct: a runify = {
+        search=search;
+        tbl=tbl;
+      }
+    in
+    strct
 
   (*apply the existing state to python, that is transform the expressions*)
-  let apply_state (type a) (s: a rsearch) : (a, a ast) map=
+  (*)
+  let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
     let scratch_targ = MAP.make () in
     let scratch_templ = MAP.make () in
     (*process the expression to be properly concretized*)
-    let proc_expr (rels: (a,a rdata) map) (st:rvstate) (v:a) (x:a ast) : a*(a ast) =
+    let proc_expr (rels: (a,a rdata) map) (st:a rvstate) (v:a) (x:a ast) : a*(a ast) =
       (*make the replacement thing *)
-      let repls = MAP.copy s.assigns in
+      let repls = MAP.copy (g_assigns s) in
       (*fill in any relations *)
       let _ = MAP.iter rels (fun v dat ->
         if SET.has st.fill v then
@@ -152,40 +215,36 @@ struct
       ) in
       (*substitute any already defined expressions*)
       let _ = MAP.rm repls v in
-      let x = sub x repls in
+      let x = ASTLib.sub x repls in
       (v,x)
     in
 
-    let cexpr x : symexpr = to_symcaml x s.env.conv in
-    let cvar x : symvar = s.env.cnv x in
+    let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s) in
+    let var2symvar x : symvar = s.env.cnv x in
     let decl_wild v =
-      let bans = if MAP.has s.tbl.st.bans v then
-        SET.map (MAP.get s.tbl.st.bans v) (fun x -> cexpr (proc_expr s.tbl.templs s.tbl.st.templ x))
+      let bans = if MAP.has (g_bans s) v then
+        let bans : (a ast) set = MAP.get (g_bans s) v in
+        let bans : (a ast) list =
+          SET.map bans (fun x ->
+            let lhs,rhs = proc_expr (g_templ_i s).info (g_templ_st s) v x in
+            rhs
+          )
+        in
+          bans
         else []
       in
-      let _ = SymCaml.define_wildcard env (cvar v) bans in
+      let symbans : symexpr list = List.map (fun x -> expr2symexpr x) bans in
+      let _ = SymCaml.define_wildcard (g_sym s) (var2symvar v) symbans in
       ()
     in
     let decl_sym v =
-      let _ = SymCaml.define_symbol env (cvar v) in
+      let _ = SymCaml.define_symbol (g_sym s) (var2symvar v) in
       ()
     in
-    scratch
-  (*)
-    let match_trivial e1 e2 =
-      match (compute e1,compute e2) with
-      | (Some(x),Some(y)) ->
-        if x = y then
-          (*make a single solution of empty assignments*)
-          let empty = MAP.make () in
-          Some(Some([empty]))
-        else Some(None)
-      | (_,Some(x)) -> Some(None)
-      | _ -> None
-    in
-  *)
+    (scratch_targ,scratch_templ)
+
   (*whether the unification is a value unification*)
-  let unify_value (type a) (s:rsearch) (ltempl:a) (rtempl:a a st) (ltarg: a) (rtarg: a ast)
+  let unify_value (type a) (s:runify) (ltempl:a) (rtempl:a a st) (ltarg: a) (rtarg: a ast)
   : (((a,ast) map) option) option =
     let vtempl = AST.compute rtempl in
     let vtarg = AST.compute rtarg in
@@ -199,7 +258,7 @@ struct
     | _ -> None
 
   (*unify one expression with one target*)
-  let unify_one (type a) (s:rsearch) (ltempl:a) (rtempl:a ast) (ltarg: a) (rtarg:a ast) =
+  let unify_one (type a) (s:runify) (ltempl:a) (rtempl:a ast) (ltarg: a) (rtarg:a ast) =
     let vl = unify_value s ltempl rtempl ltarg rtarg in
     (*determine if unification by value is something*)
     if vl <> None then
@@ -227,7 +286,7 @@ struct
 
   (*given the state, determine if it is consistent. If it's consistent, return the set of
   steps required *)
-  let add_constraints (type a) (s:rsearch) (exprs:(a,a ast) map) (assigns:(a,a ast) map)=
+  let add_constraints (type a) (s:runify) (exprs:(a,a ast) map) (assigns:(a,a ast) map)=
     (*ensure the solutions are consistent*)
     let proc_assign (hlhs:a) (arhs:a ast) =
       if MAP.has exprs hlhs then
@@ -247,7 +306,7 @@ struct
 
 
   (*given the current context, find a mapping and add the enforcement rules.*)
-  let solve_one (type a) (s:rsearch)  (exprs:(a,ast) map) (vtempl:a) (rtempl:a ast) (vtarg:a) (rtarg:a ast) =
+  let solve_one (type a) (s:runify)  (exprs:(a,ast) map) (vtempl:a) (rtempl:a ast) (vtarg:a) (rtarg:a ast) =
     let maybe_assigns = unify_one s vtarg rtempl vtempl rtarg in
     let result = match maybe_assigns with
     | Some(assigns) ->
@@ -305,7 +364,7 @@ struct
   let select_bans (type a) (s:search) (n:rstep node) (assigns:(a,ast) map) =
     ()
 
-  let solve_node (type a) (s:rsearch) (templvar:a) =
+  let solve_node (type a) (s:runify) (templvar:a) =
     let templs,targs = apply_state s in
     let vtempl,vtarg = select_vars s templs targs templvar in
     let curs = SearchLib.cursor s.search in
@@ -329,7 +388,7 @@ struct
 
 
   (*select the next node to solve*)
-  let rec solve (type a) (sr:rsearch) (n:node)=
+  let rec solve (type a) (sr:runify) (n:node)=
     if SearchLib.is_exhausted sr.search (Some root) then
       ()
     else
@@ -354,11 +413,32 @@ struct
 
 
 
+  *)
+  let get_slns (type a) (s:a runify) : a fusion set =
+    let env2fuses (s:a runify) : (a fuse) list = []
+    in
+    let step2fuse (s: a rstep) : (a fuse) list = []
+    in
+    let steps2fuses (s:(a rstep) list) : (a fuse) list = []
+    in
+    let node2fusion (node: (a rstep) snode) : a fusion =
+        let _ = SearchLib.move_cursor s.search s.tbl node in
+        let fsn = SET.make_dflt () in
+        let _ = SET.add_all fsn (env2fuses s) in
+        let _ = SET.add_all fsn (steps2fuses node.s) in
+        let fsns : a fusion = SET.to_list fsn in
+        fsns
+
+    in
+    let slns  = SearchLib.get_solutions s.search None in
+    let allslns = List.map (fun n -> node2fusion n) slns in
+    SET.from_list allslns
 
   (*given colored set of equations, match them*)
-  let multipattern (type a) (tmpl: (relinfo) list) (targ: (relinfo) list)  (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl)  (tostr:a->string) =
+  let multipattern (type a) (tmpl: (a rarg) list) (targ: (a rarg) list)  (cnv:a->symvar) (icnv:symvar -> a)  (tostr:a->string) =
     (*make the search tree*)
-    let _ = mksearch tmpl targ cnv icnv decl tostr in
-    ()
+    let smeta = mksearch tmpl targ cnv icnv tostr in
+    let slns = get_slns smeta in
+    slns
 
 end
