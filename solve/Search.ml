@@ -103,7 +103,7 @@ struct
     let spcs = STRING.repeat "  " indent  in
     let id = (if is_deadend sr n then "[x]" else "[?]")^(string_of_int n.id) in
     let prefix = match sr.curs with
-    | Some(c) -> if c = n then "||[C]"^id else id
+    | Some(c) -> if c = n then "{{C}}"^id else id
     | None -> id
     in
     spcs^prefix^":\n"^(List.fold_right (fun x r -> r^spcs^" "^(sr.tostr x)^"\n") n.s "")

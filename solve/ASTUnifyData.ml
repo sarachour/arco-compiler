@@ -36,6 +36,8 @@ type 'a rstep =
   | RBanAssign of 'a*('a ast)
   (*concretize assignment for child nodes*)
   | RConcAssign of 'a*('a ast)
+  (*concretize assignment*)
+  | RForceAssign of 'a*('a ast)
   (*focus on a variable*)
   | RVarFocus of 'a*unifytype
   (*Remove a relation after it's solved*)
@@ -43,16 +45,12 @@ type 'a rstep =
   (*Fill a relation*)
   | RVarFill of 'a*unifytype
 
-(*the data for each variable*)
-type 'a rdata = {
-  rhs : 'a ast;
-  kind: rkind;
-}
+
 (*the variables that are filled and removed*)
 type 'a rvstate = {
   fill: 'a set;
   rm: 'a set;
-  focus: 'a option;
+  mutable focus: 'a option;
 }
 (*the stateful part of teh tableau*)
 type 'a rstate = {
@@ -64,6 +62,13 @@ type 'a rstate = {
   templ: 'a rvstate;
   targ: 'a rvstate;
 }
+
+(*the data for each variable*)
+type 'a rdata = {
+  rhs : 'a ast;
+  kind: rkind;
+}
+
 type 'a rinfo = {
   deps: ('a,unit) graph;
   info: ('a,'a rdata) map;
@@ -79,8 +84,8 @@ type 'a renv = {
 
 (*the tableau, which is comprised of the original statements  *)
 type 'a rtbl = {
-  templs: 'a rinfo;
-  targs: 'a rinfo;
+  templ: 'a rinfo;
+  targ: 'a rinfo;
   (*template to rel assignments*)
   st: 'a rstate;
   env: 'a renv;
@@ -90,6 +95,7 @@ type 'a rtbl = {
 type 'a runify = {
   search : ('a rstep, 'a rtbl) ssearch;
   tbl: 'a rtbl;
+  tostr: 'a -> string;
 }
 
 (*the data necessary for *)

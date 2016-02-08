@@ -344,6 +344,9 @@ struct
   let size x =
     Hashtbl.length x
 
+  let empty x =
+    size x = 0
+
   let clear x =
     Hashtbl.clear x
 
