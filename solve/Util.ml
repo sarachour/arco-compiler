@@ -663,8 +663,10 @@ struct
       g
 
   let mkedge (type a) (type b) (g) (src:a) (snk:a) (v:b) : (a,b) tree =
-    if hasnode g src = false || hasnode g snk = false then
-      error "mkedge" "source or sink node doesn't exist"
+    if hasnode g src = false then
+      error "mkedge" "source node doesn't exist"
+    else if hasnode g snk = false then
+      error "mkedge" "sink node doesn't exist"
     else
     (* edges *)
     let edges,_ = MAP.get g.adj src in

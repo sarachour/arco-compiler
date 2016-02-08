@@ -85,7 +85,7 @@ struct
         ()
     in
     let internal_menu_handle x = menu_handle x (fun () -> ()) in
-    let rec user_menu_handle () = menu (fun x -> menu_handle x user_menu_handle) menu_desc in
+    let rec user_menu_handle () = menu "goal-solver" (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
 
@@ -402,11 +402,11 @@ struct
     if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
     (*let comp = HwLib.getcomp s.hw node.name in*)
     let inst_id = SlnLib.usecomp gtbl.sln node_id in
+    (*the cursor associated with the goal*)
+    let goal_cursor = SearchLib.cursor gtbl.search in
     (*update search algorithm to include the usage*)
     let _ = SearchLib.start gtbl.search in
     let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
-    (*the cursor associated with the goal*)
-    let goal_cursor = SearchLib.cursor gtbl.search in
     (*the cursor associated with the component*)
     let comp_cursor : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
     (*use node*)

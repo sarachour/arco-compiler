@@ -8,6 +8,10 @@ open SolverSln
 open SolverData
 
 
+exception SearchException of (string)
+let error n msg = raise (SearchException(n^": "^msg))
+
+
 module SStatLib =
 struct
   let mk () =

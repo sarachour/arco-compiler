@@ -65,7 +65,7 @@ module ASTLib
     val simpl : ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a-> ('a -> symvar)-> symdecl) -> 'a ast
     val sub : ('a ast) -> (('a,'a ast) map) -> 'a ast
 end*)
- 
+
 = struct
 
     let rec ast2str a fn : string =
@@ -390,11 +390,16 @@ end*)
     trans expr tf
 
   let add_deps (type a) (g:(a,unit) graph) (l:a) (e:a ast) =
-    let _ = if GRAPH.hasnode g l = false then
+    let add_node_if_dne l = if GRAPH.hasnode g l = false then
       let _ = GRAPH.mknode g l in ()
-    else () in
+      else ()
+    in
     let vars = get_vars e in
-    let _ = List.iter (fun inp -> let _ = GRAPH.mkedge g inp l () in ()) vars in
+    let _ = add_node_if_dne l in
+    let _ = List.iter (fun inp ->
+        let _ = add_node_if_dne inp in
+        let _ = GRAPH.mkedge g inp l ()
+        in ()) vars in
     ()
 
 

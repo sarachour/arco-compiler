@@ -16,49 +16,25 @@ open SolverSln
 open SolverGoalTable
 open SolverUtil
 
+
+exception ASTUnifierException of (string)
+let error n msg = raise (ASTUnifierException(n^": "^msg))
+
+
 module ASTUnifier =
 struct
-  let mkmenu (s:slvr) (v:gltbl) (currgoal:goal option) =
-    let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
+  let mkmenu (type a) (sr:a runify) =
+    let menu_desc = "t=search-tree" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
-        let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str v.search) in
+        let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str sr.search) in
         let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "s" then
-        let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
-        let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "goto" then
-        let _ = match STRING.split inp " " with
-        | [_;id] ->
-          let nid = int_of_string id in
-          let _ = SearchLib.move_cursor v.search (s,v) (SearchLib.id2node v.search nid) in
-          ()
-        | _ -> ()
-        in
-        let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "g" then
-        let _ = Printf.printf "==== Goals ===" in
-        let _ = Printf.printf "%s\n" (GoalTableLib.goals2str v v.goals) in
-        let _ = Printf.printf "============\n" in
-        let _ = match currgoal with
-          | Some(currgoal) -> Printf.printf ">> Current Goal: %s\n" (GoalTableLib.goal2str currgoal)
-          | _ -> Printf.printf ">> CurrentGoal: (none)"
-        in
-        ()
-      else if STRING.startswith inp "c" then
-        let _ = match currgoal with
-          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n\n" (UnivLib.goal2str g)  in ()
-          | None -> Printf.printf "<no goal>\n\n\n"
-        in
         ()
       else
         ()
     in
     let internal_menu_handle x = menu_handle x (fun () -> ()) in
-    let rec user_menu_handle () = menu (fun x -> menu_handle x user_menu_handle) menu_desc in
+    let rec user_menu_handle () = menu "ast-unify" (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
   let step2str (type a) (st: a rstep) = match st with
@@ -140,7 +116,7 @@ struct
 
   let step2str a = ""
 
-  let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)  (cnv:a->symvar) (icnv:symvar -> a) (tostr:a->string) : a runify =
+  let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)  (cnv:a->symvar) (icnv:symvar -> a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
     (*make the data for each variable*)
     let mkdata ifo relinfo =
       let lhs,rhs,knd = relinfo in
@@ -196,7 +172,8 @@ struct
         tbl=tbl;
       }
     in
-    strct
+    let root, _ = SearchLib.setroot search tbl [] in
+    (root,strct)
 
   (*apply the existing state to python, that is transform the expressions*)
   (*)
@@ -414,6 +391,11 @@ struct
 
 
   *)
+  let build_tree (type a) (s:a runify) (root: (a rstep) snode) : unit =
+    let sysmenu,usrmenu = mkmenu s in
+    let _ = usrmenu () in
+    ()
+
   let get_slns (type a) (s:a runify) : a fusion set =
     let env2fuses (s:a runify) : (a fuse) list = []
     in
@@ -437,7 +419,8 @@ struct
   (*given colored set of equations, match them*)
   let multipattern (type a) (tmpl: (a rarg) list) (targ: (a rarg) list)  (cnv:a->symvar) (icnv:symvar -> a)  (tostr:a->string) =
     (*make the search tree*)
-    let smeta = mksearch tmpl targ cnv icnv tostr in
+    let root,smeta = mksearch tmpl targ cnv icnv tostr in
+    let _ = build_tree smeta root in
     let slns = get_slns smeta in
     slns
 
