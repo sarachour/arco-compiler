@@ -9,6 +9,9 @@ open Math
 open MathCstr
 
 open AST
+open ASTUnifyData
+open ASTUnify
+
 open Util
 open Unit
 
@@ -372,230 +375,25 @@ struct
       end
     | _ -> Some(lhs,rhs)
 
+  (*
   let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
     (*declare event*)
     let declwcunid = Shim.unid2wcsym name inst_id in
     let n_tries = get_glbl_int "search_n_patterns_found" in
     let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid n_tries in
     res
-
-  let unify_rels (s:slvr) (name:string) (inst_id:int) (g:goal) (v:urel) : (unid,unid ast) map list option=
-    let gr = GoalTableLib.unwrap_goal g in
-    match (Shim.rel_lcl2glbl inst_id gr),(Shim.rel_lcl2glbl inst_id v) with
-    | (UFunction(gl,gr), UFunction(nl,nr))->
-      let res = unify_exprs s name inst_id gl gr nl nr in
-      let ret = match res with
-          | Some(res) ->
-            let lhs = canon_hw_assign (nl) (Term gl) in
-            begin
-            match lhs with
-            | Some(gllhs,glrhs) ->
-              let _ = List.iter (fun mp -> let _ = MAP.put mp gllhs glrhs in () ) res in
-              Some(res)
-            | _ -> None
-            end
-          | None -> None
-      in
-        ret
-
-    | (UState(gl,gr,gic,gt), UState(nl,nr,nic,nt))->
-      let res = unify_exprs s name inst_id gl gr nl nr in
-      let ret = match res with
-        | Some(res) ->
-            let lhs = canon_hw_assign (nl) (Term gl) in
-            let ic = canon_hw_assign (nic) (Term gic) in
-            let t = canon_hw_assign (nt) (Term gt) in
-            begin
-            match lhs,ic,t with
-            | (Some(glhs,nlhs),Some(gic,nic),Some(gt,nt)) ->
-              let _ = List.iter (fun mp -> let _ = MAP.put mp glhs nlhs in () ) res in
-              let _ = List.iter (fun mp -> let _ = MAP.put mp gic nic in () ) res in
-              let _ = List.iter (fun mp -> let _ = MAP.put mp gt nt in () ) res in
-              Some(res)
-            | (_) -> None
-            end
-        | None -> None
-      in
-        ret
-    | _ ->
-      None
-
-
-  let resolve_assigns  (s:slvr) (gltbl:gltbl) (name:string) (iid:int) (rel:urel) (g:goal) (all_rels:urel set) (all_goals:goal set) (assigns: (unid,unid ast) map) : (sstep list) option=
-    (*get an id, given a goal*)
-    let get_id urel =
-      match urel with
-      | UFunction(l,_) -> l
-      | UState(l,_,_,_) -> l
-    in
-    let get_goal (id:unid) (lst:goal list) =
-      List.fold_right
-        (fun q r -> if (get_id (GoalTableLib.unwrap_goal q)) = id then Some(q) else r)
-        lst None
-    in
-
-    let get_rel (id:unid) (lst:urel list) =
-      List.fold_right
-        (fun q r -> if (get_id q) = id then Some(q) else r)
-        lst None
-    in
-    (*substitute expression with concretized goals*)
-    let sub_rel (rel:urel) assigns : urel =
-      let mksubs (repls: (unid*unid ast) list) =
-        let nassigns = MAP.map assigns (
-            fun k v ->
-              let ll = List.filter (fun (q,v) -> q = k) repls
-              in
-              if (List.length ll) > 0
-              then let k2,v2 = List.nth ll 0 in v2
-              else v
-            )
-        in
-        nassigns
-      in
-      let repl_var (n)  : unid =
-        if MAP.has assigns n then
-          let res =
-            match MAP.get assigns n with
-            | Term(v) -> v
-            | _ -> n
-          in
-            res
-        else n
-      in
-      match rel with
-      | UFunction(nl,nr) ->
-        let snl = repl_var nl in
-        (*let asgn = mksubs [(nl,Term(snl))] in*)
-        let asgn = assigns in
-        let snr = ASTLib.sub nr asgn in
-        UFunction(nl,snr)
-
-      | UState(nl,nr,nic,nt) ->
-        let snl = repl_var nl in
-        let snic = repl_var nic in
-        let snt = repl_var nt in
-        let asgn = assigns in
-        let snr = ASTLib.sub nr asgn in
-        UState(nl,snr,snic,snt)
-
-    in
-    let resolve_goal (curr_goal:goal) (other_goals: goal list) =
-      match GoalTableLib.unwrap_goal curr_goal with
-      | UFunction(HwId(q),Term(MathId(z))) ->
-        let res = match get_goal (MathId z) other_goals with
-        | Some(new_goal) -> new_goal
-        | None -> curr_goal
-        in
-        res
-      | _ -> curr_goal
-    in
-    (*
-    ========
-    MAIN ROUTINE
-    ========
-    *)
-    let other_goals : goal list = SET.filter all_goals (fun x -> x <> g)  in
-    let other_rels : urel list = List.map
-      (fun q -> Shim.rel_lcl2glbl iid q) (SET.filter all_rels (fun x -> x <> rel))
-    in
-    (*determine if the assignment is ever on the left hand side of a relation*)
-    (*take a mapping*)
-    let rec solve_assign id expr assigns (other_rels:urel list) (other_goals:goal list) : (sstep list) option =
-      let goal : goal = GoalTableLib.wrap_goal gltbl (UFunction(id,expr)) in
-      match get_rel id other_rels with
-      | Some(orel) ->
-        (* this is the concretized version of the relation
-          if this fails  *)
-        let orelconc : urel = sub_rel orel assigns in
-        let ngoal : goal = resolve_goal goal other_goals in
-        (*force unification between the expression and goal *)
-        let un = unify_rels s name iid ngoal orelconc in
-        (*id this works, we have resolved the goal of interest successfully by applying another node.*)
-        let psteps = [SRemoveGoal(ngoal)] in
-        let res = match un with
-          | Some(sols) ->
-            let other_rels = List.filter (fun x -> x <> orel) other_rels in
-            let other_goals = List.filter (fun x -> x <> ngoal) other_goals in
-            let try_sln sln =
-              (*create a new map containg the new bindings and old bindings*)
-              let cassigns = MAP.copy assigns in
-              let _ = MAP.iter sln (fun k v -> let _ = MAP.put cassigns k v in ())  in
-              (*ensure each assignment is acceptable*)
-              let result = MAP.fold sln (fun id expr lst ->
-                let res = solve_assign id expr cassigns other_rels other_goals in
-                match res,lst with
-                | (Some(goals),Some(rest)) -> Some(goals@rest)
-                | (None,_) -> None
-                | (_,None) -> None
-              ) (Some psteps)
-              in
-              result
-            in
-            (*find one valid solution out of all possible solutions*)
-            let result = List.fold_right ( fun sln curr ->
-                let psln = try_sln sln in
-                match psln with
-                | (Some(s)) ->  psln
-                | None -> curr
-              ) sols None
-            in
-            result
-          (*no solution: this entire solution doesn't apply*)
-          | None ->
-            None
-        in
-          res
-      | None ->
-        (*not bound locally.*)
-        Some([SAddGoal(GoalTableLib.wrap_goal gltbl (UFunction(id,expr)))])
-    in
-    let proc k v rest =
-      let res = solve_assign k v assigns other_rels other_goals in
-      match res,rest with
-      | (None,_) ->
-        None
-      | (Some(lst),Some(rest)) ->
-        Some(lst @ rest)
-      | _ -> None
-    in
-    (*
-    All the add goals are new assignments. THerefore, let's weed out all the rels
-    that exist in the goal list.
-    *)
-    let leftovers gls  =
-      let asg = MAP.make () in
-      let _ = List.iter (fun x ->
-        match x with
-          | SAddGoal(TrivialGoal(UFunction(id,expr))) ->
-            let _ = MAP.put asg id expr in ()
-          | SAddGoal(NonTrivialGoal(UFunction(id,expr))) ->
-            let _ = MAP.put asg id expr in ()
-          | _ -> ()
-      ) gls
-      in
-      let rrels = List.filter (fun x -> (MAP.has asg (get_id x)) = false ) other_rels in
-      let srrels = List.map (fun x ->  sub_rel x asg) rrels in
-      if List.length srrels > 0 then
-        [SAddNode(UnivLib.name2unodeid name,iid,srrels)]
-      else
-        []
-    in
-    let final = MAP.fold assigns (fun k v r -> proc k v r ) (Some [])  in
-    let res = match final with
-    | Some(q) ->
-      let l = leftovers q in
-      let q = l @ q in
-      (*this means that all mappings that are outputs have been resolved. We should compute the rest*)
-      Some(q)
-    | None ->  None
-    in
-    res
-
-
-
-
+ *)
+ (*TODO Fix*)
   let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : int option =
+    let rel2info (rel:urel) =
+      match rel with
+      | State(lhs,rhs,t) -> (lhs,rhs,RTFlatten)
+      | Function(lhs,rhs) -> (lhs,rhs,RTPreserve)
+    in
+    let goal2unfo (g:goal) =
+      let rel = GoalTableLib.unwrap_goal g in
+      rel2info rel
+    in
     (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
     if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
     (*let comp = HwLib.getcomp s.hw node.name in*)
@@ -609,13 +407,20 @@ struct
     let comp_cursor : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
     (*use node*)
     let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
+    let rels = List.map (fun x -> rel2info node.rels) in
+    let goals = List.map (fun x -> goal2info gtbl.goals) in
+    let _ = ASTLib.multipattern rels goals
+      (UnivLib.unid2var) (UnivLib.var2unid (s)) (Shim.unid2wcsym name inst_id )
+    in
+    None
+
     (*
       this tries to find a set of solutions for the particular node. Each of these solutions is a branch.
-    *)
+
     let add_sln (rls:urel set) (gl:goal) (r:urel) (assigns: (unid,unid ast) map)  =
       let _ = SearchLib.start gtbl.search in
       (*say you have attained the goal*)
-      let ngoals = resolve_assigns s gtbl (node.name) inst_id r gl rls gtbl.goals assigns in
+      let ngoals = ASTUnify.solve s gtbl (node.name) inst_id r gl rls gtbl.goals assigns in
       match ngoals with
       | Some(sts) ->
         let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
@@ -646,8 +451,7 @@ struct
       else
         let _ = SearchLib.visited gtbl.search comp_cursor in
         Some(cnt)
-
-
+  *)
 
   let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in

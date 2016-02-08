@@ -210,7 +210,6 @@ struct
       let fld x r = let _ = fn x in r in
       fold a fld ()
 
-    type symcaml = SymCaml.symcaml
 
     let to_symcaml (type a) (x:a ast)  (fn:a -> symvar) : symexpr =
       let op1_ast2sym x : SymCamlData.op1 = match x with
@@ -308,8 +307,6 @@ struct
       let syms,wcs = defsyms env (SET.to_list allvars) cnv in
       (env,wcs,syms)
 
-
-    let simpl (type a) (ast: symexpr ast) : symexpr ast = error "simpl" "unimplemented"
 
     let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->(a->symvar)->symdecl) : bool =
       let env,_,_ = mkenv [e1;e2] cnv (fun i x c -> decl x c) in
