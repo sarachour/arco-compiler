@@ -238,11 +238,7 @@ struct
       let bans = if MAP.has (g_bans s.tbl) v then
         let bans : (a ast) set = MAP.get (g_bans s.tbl) v in
           let scratch  = MAP.make () in
-          let nbans = SET.map bans (fun x ->
-            let _ = MAP.put scratch v x in
-            let lhs,rhs = fill_expr scratch templ_repls v in
-            rhs
-          ) in
+          let nbans = SET.map bans (fun x -> ASTLib.sub x templ_repls) in
           nbans
         else []
       in
@@ -257,12 +253,17 @@ struct
       let _ = SymCaml.define_symbol (g_sym s.tbl) (var2symvar v) in
       ()
     in
+    let decl_vars fn lhs rhs =
+      let _ = fn lhs in
+      let _ = List.iter (fun q -> fn q) (ASTLib.get_vars rhs) in
+      ()
+    in
     let scratch_targ = MAP.make () in
     let scratch_templ = MAP.make () in
     let _ = MAP.iter (g_targ_i s.tbl).info
-      (fun v data -> let _ = decl_sym v in let _ = MAP.put scratch_targ v (data.rhs) in ()) in
+      (fun v data -> let _ = decl_vars decl_sym v data.rhs in let _ = MAP.put scratch_targ v (data.rhs) in ()) in
     let _ = MAP.iter (g_templ_i s.tbl).info
-      (fun v data -> let _ = decl_wild v in let _ = MAP.put scratch_templ v (data.rhs) in ()) in
+      (fun v data -> let _ = decl_vars decl_wild v data.rhs in let _ = MAP.put scratch_templ v (data.rhs) in ()) in
     (*next process removals*)
     let _ = SET.iter (g_targ_st s.tbl).rm (fun v -> let _ = MAP.rm scratch_targ v in ()) in
     let _ = SET.iter (g_templ_st s.tbl).rm (fun v -> let _ = MAP.rm scratch_templ v in ()) in
@@ -303,6 +304,7 @@ struct
       let maybe_assigns = SymCaml.pattern (g_sym s.tbl) symtempl symtarg in
       match maybe_assigns with
       | Some(assigns) ->
+        let _ = print_debug "found assigns" in
         let mp = MAP.make () in
         let _ = MAP.put mp ltempl (Term ltarg) in
         let _ = List.iter (fun ((l,r):symvar*symexpr) ->
@@ -314,6 +316,7 @@ struct
         in
         Some(mp)
       | None ->
+        let _ = print_debug "no assigns found" in
         None
 
 
@@ -422,7 +425,7 @@ struct
 
 
 
-  let build_tree (type a) (s:a runify) (root: a rnode) : unit =
+  let build_tree (type a) (s:a runify) (root: a rnode) (gl: a option): unit =
     let sysmenu,usrmenu = mkmenu s in
     let _ = usrmenu () in
     let focus_goal x data =
@@ -445,7 +448,11 @@ struct
       MAP.iter (g_templ_i s.tbl).info (fun v data -> focus_comp gnode v data)
     in
     (*focus on each of the templs, and rels - where they're compatible*)
-    let nodes : (a rnode) list = MAP.map (g_targ_i s.tbl).info (fun v data -> focus_goal v data) in
+    let nodes : (a rnode) list =
+      match gl with
+      | Some(varb) -> [focus_goal varb (MAP.get (g_targ_i s.tbl).info varb)]
+      | None -> MAP.map (g_targ_i s.tbl).info (fun v data -> focus_goal v data)
+    in
     let _ = usrmenu() in
     let _ = List.iter (fun goal -> focus_comps goal) nodes in
     let _ = usrmenu() in
@@ -472,11 +479,12 @@ struct
     SET.from_list allslns
 
   (*given colored set of equations, match them*)
-  let multipattern (type a) (tmpl: (a rarg) list) (targ: (a rarg) list)  (cnv:a->symvar) (icnv:symvar -> a)  (tostr:a->string) =
+  let multipattern (type a) (tmpl: (a rarg) list) (targ: (a rarg) list) (targvar:a) (cnv:a->symvar) (icnv:symvar -> a)  (tostr:a->string) =
     (*make the search tree*)
     let root,smeta = mksearch tmpl targ cnv icnv tostr in
     (*build a tree for the particular set of goals*)
-    let _ = build_tree smeta root in
+    (*let _ = build_tree smeta root (Some targvar) in*)
+    let _ = build_tree smeta root (None) in
     (*solve a thing*)
     let _ = solve smeta root in
     let slns = get_slns smeta in

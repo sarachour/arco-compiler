@@ -413,8 +413,9 @@ struct
     let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
     let templ : (unid rarg) list = SET.map node.rels (fun x -> rel2info x)  in
     let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
+    let vgl,_,_ = goal2info g in
     let slns : (unid fusion) set =
-      ASTUnifier.multipattern templ targ
+      ASTUnifier.multipattern templ targ vgl
       (UnivLib.unid2var)
       (UnivLib.var2unid (s))
       (UnivLib.unid2var)
