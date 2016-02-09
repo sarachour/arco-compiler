@@ -389,6 +389,11 @@ end*)
     in
     trans expr tf
 
+  let sub_one (type a) (expr:a ast) (lhs:a) (rhs:a ast) : a ast =
+    let v = MAP.make () in
+    let _ = MAP.put v lhs rhs in
+    sub expr v 
+
   let add_deps (type a) (g:(a,unit) graph) (l:a) (e:a ast) =
     let add_node_if_dne l = if GRAPH.hasnode g l = false then
       let _ = GRAPH.mknode g l in ()

@@ -222,13 +222,16 @@ struct
 
   let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
     let _ = print_debug "applied state." in
+    let _ = SymCaml.clear (g_sym s.tbl) in
     let _ = SymCaml.set_debug (g_sym s.tbl) true in
     let targ_repls : (a,a ast) map = MAP.make () in
     let templ_repls : (a,a ast) map = MAP.make () in
-    let _ = SET.iter (g_targ_st s.tbl).fill (
-      fun x -> let _ = MAP.put targ_repls x (MAP.get (g_targ_i s.tbl).info x).rhs in () ) in
-    let _ = SET.iter (g_templ_st s.tbl).fill (
-      fun x -> let _ = MAP.put templ_repls x (MAP.get (g_templ_i s.tbl).info x).rhs in ()) in
+    let _ = SET.iter (g_targ_st s.tbl).fill ( fun x ->
+      let _ = MAP.put targ_repls x (MAP.get (g_targ_i s.tbl).info x).rhs in ()
+    ) in
+    let _ = SET.iter (g_templ_st s.tbl).fill ( fun x ->
+      let _ = MAP.put templ_repls x (MAP.get (g_templ_i s.tbl).info x).rhs in ()
+    ) in
     let _ = MAP.iter (s.tbl.st.assigns) (fun v rhs -> let _ = MAP.put templ_repls v rhs in () ) in
     let fill_expr scr repls v =
       let rhs = MAP.get scr v in
@@ -309,18 +312,20 @@ struct
     else
       let sym2a : symvar -> a = g_iconv s.tbl in
       let a2sym : a -> symvar = g_conv s.tbl in
+      let rtempl = ASTLib.sub_one rtempl ltempl (Term ltarg) in (*bind any circular dependencies*)
       let _ = print_debug ("unify: "^(ASTLib.ast2str rtempl s.tostr)^" with "^(ASTLib.ast2str rtarg s.tostr)) in
       let symtempl : symexpr = ASTLib.to_symcaml rtempl a2sym in
       let symtarg : symexpr = ASTLib.to_symcaml rtarg a2sym in
       let maybe_assigns = SymCaml.pattern (g_sym s.tbl) symtempl symtarg in
       match maybe_assigns with
       | Some(assigns) ->
-        let _ = print_debug "found assigns" in
+        let _ = print_debug "<!> found assigns" in
         let mp = MAP.make () in
         let _ = MAP.put mp ltempl (Term ltarg) in
         let _ = List.iter (fun ((l,r):symvar*symexpr) ->
           let al : a = sym2a l in
           let ar : a ast = ASTLib.from_symcaml r sym2a in
+          let _ = print_debug (" assign: "^(s.tostr al)^"="^(ASTLib.ast2str ar s.tostr)) in
           let _ = MAP.put mp al ar in
           ()
         ) assigns
@@ -438,7 +443,6 @@ struct
 
   let build_tree (type a) (s:a runify) (root: a rnode) (gl: a option): unit =
     let sysmenu,usrmenu = mkmenu s in
-    let _ = usrmenu () in
     let focus_goal x data =
       let _ = SearchLib.start s.search in
       let _ = SearchLib.add_step s.search (RVarFocus(x,UTypTarg)) in
@@ -464,9 +468,7 @@ struct
       | Some(varb) -> [focus_goal varb (MAP.get (g_targ_i s.tbl).info varb)]
       | None -> MAP.map (g_targ_i s.tbl).info (fun v data -> focus_goal v data)
     in
-    let _ = usrmenu() in
     let _ = List.iter (fun goal -> focus_comps goal) nodes in
-    let _ = usrmenu() in
     ()
 
   let get_slns (type a) (s:a runify) : a fusion set =
