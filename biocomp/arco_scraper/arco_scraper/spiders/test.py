@@ -3,9 +3,11 @@ from scrapy.selector import Selector
 from arco_scraper.items import ArcoScraperItem
 from scrapy.http import Request
 
+
+items = []
 class MySpider(BaseSpider):
     name = 'arco_pls'
-    allowed_domains = ['https://www.ebi.ac.uk/biomodels-main/', 'https://europepmc.org/']
+    allowed_domains = ['https://www.ebi.ac.uk/biomodels-main/', 'europepmc.org/']
     start_urls = []
     for i in range(5):
         if i < 9:
@@ -19,7 +21,7 @@ class MySpider(BaseSpider):
 
     def parse(self, response):
         item = ArcoScraperItem()
-        # items = []
+        items = []
         hxs = Selector(response)
         item['Publication_ID'] = hxs.xpath('//td[b[text()="Publication ID:"]]/a/text()').extract()[0]
         item['BIO_ID'] = response.url[-15:]
@@ -29,12 +31,12 @@ class MySpider(BaseSpider):
         item['Submission_Date'] = ' '.join(sub_date)
         item['file_urls'] = [response.url[:37] + 'download?mid=' + response.url[37:] + '&format=m-file']
         item['Next_URL'] = hxs.xpath('//td[b[text()="Publication ID:"]]/a/@href').extract()[0]
-        request = Request(item['Next_URL'], callback=self.parse_2)
+        request = Request(item['Next_URL'], callback=self.parse_2, dont_filter=True)
         request.meta['item'] = item
-        # item['Test_Attribute'] = request
-        # items.append(item)
-        # return items
-        yield request
+        items.append(item)
+        return items
+        # yield request
+        # yield items
         # for url in response.xpath('//*[@id="tbl_model"]/tbody/tr[2]/td[1]/table/tbody/tr/td/a/@href').extract():
         
 
@@ -42,13 +44,16 @@ class MySpider(BaseSpider):
         # return items
 
     def parse_2(self, response2):
-        print '-------'
-        print "response2 meta\nresponse2.meta['item']"
-        print '-------\n'
-        items = []
+        # items = []
+
         hxsn = Selector(response2)
-        item = response.meta['item']
-        item['Test_Attribute'] = hxsn.xpath('//div[class="abs_affiliation resultsGrey"]/text()')
-        items.append(item)
-        return items
+        item = response2.meta['item']
+        print '-----------------123'
+        print item
+        print '-----------------456'
+        # item['Test_Attribute'] = hxsn.xpath('//div[class="abs_affiliation resultsGrey"]/text()').extract()
+        
+        # items.append(item)
+        next(parse)
+        # return items
 
