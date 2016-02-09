@@ -284,4 +284,17 @@ struct
   let remove_partial_comp (t:gltbl) (id:unodeid) (i:int)  =
     MAP.rm t.dngl (id,i)
 
+  let is_trivial (t:gltbl) (r:urel) =
+    t.is_trivial r
+
+  let wrap_goal (v:gltbl) (u:urel) : goal =
+    if v.is_trivial u then
+      TrivialGoal(u)
+    else
+      NonTrivialGoal(u)
+
+  let unwrap_goal (g:goal) : urel = match g with
+  | TrivialGoal(v) -> v
+  | NonTrivialGoal(v) -> v
+
 end

@@ -28,9 +28,9 @@ let exec_inter (v:unit->unit) =
     in
     _if_interactive fxn
 
-let menu (handle:string->unit) (menu:string) =
+let menu (label:string) (handle:string->unit) (menu:string) =
 let fxn () =
-  let _ = Printf.printf "select an action (%s):" menu in
+  let _ = Printf.printf "%s: (%s):" label menu in
   let _ = flush_all() in
   let inp = input_line stdin in
   let _ = Printf.printf "\n" in

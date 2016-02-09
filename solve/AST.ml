@@ -50,7 +50,8 @@ let error n msg = raise (ASTException(n^": "^msg))
 
 type 'a symassign = ('a,'a ast) map
 
-module ASTLib : sig
+module ASTLib
+(*): sig
     val ast2str : ('a ast) -> ('a -> string) -> string
     val trans : ('b ast) -> ('b ast ->  ('b ast) option)  -> ('b ast)
     val map : ('a ast)  -> ('a -> 'b)  -> ('b ast)
@@ -63,8 +64,9 @@ module ASTLib : sig
     val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> bool-> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
     val simpl : ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a-> ('a -> symvar)-> symdecl) -> 'a ast
     val sub : ('a ast) -> (('a,'a ast) map) -> 'a ast
-end =
-struct
+end*)
+
+= struct
 
     let rec ast2str a fn : string =
       let list2str lst delim =
@@ -161,14 +163,15 @@ struct
       in
         _fold a b0
 
-    let get_vars (type a) (e:a ast) =
+    let get_vars (type a) (e:a ast) : a list =
       let vset : a set = fold e (fun xast st ->
           match xast with
           | Term(l) -> SET.add st l
           | _ -> st
-          ) (SET.make (fun x y -> x = y))
+          ) (SET.make_dflt () )
       in
       SET.to_list vset
+
     let compute (type x) (a:x ast) : float option =
       let conv (lst: x ast list) fn =
         let fnlst = List.fold_right (fun x r ->
@@ -209,7 +212,6 @@ struct
       let fld x r = let _ = fn x in r in
       fold a fld ()
 
-    type symcaml = SymCaml.symcaml
 
     let to_symcaml (type a) (x:a ast)  (fn:a -> symvar) : symexpr =
       let op1_ast2sym x : SymCamlData.op1 = match x with
@@ -285,6 +287,7 @@ struct
       let wcs = List.fold_right define_wc x [] in
       syms,wcs
 
+
     let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl:  int -> a -> (a->symvar) -> symdecl) : symcaml*(symdecl list)*(symdecl list) =
       let env = SymCaml.init() in
       (*let _ = SymCaml.set_debug env true in *)
@@ -306,8 +309,6 @@ struct
       let syms,wcs = defsyms env (SET.to_list allvars) cnv in
       (env,wcs,syms)
 
-
-    let simpl (type a) (ast: symexpr ast) : symexpr ast = error "simpl" "unimplemented"
 
     let eq (type a) (e1:a ast) (e2:a ast) (cnv:a->symvar) (decl:a->(a->symvar)->symdecl) : bool =
       let env,_,_ = mkenv [e1;e2] cnv (fun i x c -> decl x c) in
@@ -387,4 +388,27 @@ struct
     | _ -> None
     in
     trans expr tf
+
+  let add_deps (type a) (g:(a,unit) graph) (l:a) (e:a ast) =
+    let add_node_if_dne l = if GRAPH.hasnode g l = false then
+      let _ = GRAPH.mknode g l in ()
+      else ()
+    in
+    let vars = get_vars e in
+    let _ = add_node_if_dne l in
+    let _ = List.iter (fun inp ->
+        let _ = add_node_if_dne inp in
+        let _ = GRAPH.mkedge g inp l ()
+        in ()) vars in
+    ()
+
+
+  let mk_dep_graph (type a) (es:(a*(a ast)) list) (tostr:a -> string) : (a,unit) graph =
+    let g = GRAPH.make (fun x y -> x = y) (fun x -> tostr x) (fun y -> "()") in
+    let _ = List.iter (fun (l,r) -> add_deps g l r) es in
+    g
+
+
+
+
 end
