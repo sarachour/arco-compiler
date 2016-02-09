@@ -8,13 +8,14 @@ type rkind =
 | RKDeriv
 | RKFunction
 
+type unifytype = UTypTempl| UTypTarg
+
 type 'a fuse =
   | USAssign of 'a*('a ast)
   (*remove solved targets*)
-  | USRmTarg of 'a*('a ast)
-  | USAddTarg of 'a*('a ast)
+  | USRm of 'a*('a ast)*unifytype
   (*add partially resolved*)
-  | USAddTempl of 'a*('a ast)
+  | USAdd of 'a*('a ast)*unifytype
 
 type 'a fusion = 'a fuse list
 
@@ -28,32 +29,39 @@ fill in target var: fill in a target variable
 fill in a templ var: fill in a template variable
 
 *)
-type unifytype = UTypTempl| UTypTarg
 type 'a rstep =
   (*solution assign*)
   | RAddAssign of 'a*('a ast)
   (*ban an assignment*)
   | RBanAssign of 'a*('a ast)
-  (*concretize assignment for child nodes*)
-  | RConcAssign of 'a*('a ast)
   (*concretize assignment*)
-  | RForceAssign of 'a*('a ast)
+  | RForceAssign of 'a*'a
+  | RResolveAssign of 'a*'a
   (*focus on a variable*)
   | RVarFocus of 'a*unifytype
   (*Remove a relation after it's solved*)
   | RVarRemove of 'a*unifytype
+  (*add an expression to a type*)
+  | RVarAdd of 'a*('a ast)*unifytype
   (*Fill a relation*)
   | RVarFill of 'a*unifytype
 
 
 (*the variables that are filled and removed*)
 type 'a rvstate = {
+  (*fill these variables in*)
   fill: 'a set;
+  (*remove these variables*)
   rm: 'a set;
+  (*add these temporary relations*)
+  add: ('a,'a ast) map;
+  (*the focus for the state*)
   mutable focus: 'a option;
 }
 (*the stateful part of teh tableau*)
 type 'a rstate = {
+  (*constraints that must be fulfilled for the solution to work*)
+  constraints: ('a, 'a) map;
   (*templ to targ assigns *)
   assigns: ('a, 'a ast) map;
   (*targ bans for templ*)
@@ -80,6 +88,8 @@ type 'a renv = {
   s: symcaml;
   cnv: 'a->symvar;
   icnv: symvar->'a;
+  iswc : 'a -> bool;
+  freshvar: int -> unifytype -> 'a;
 }
 
 (*the tableau, which is comprised of the original statements  *)

@@ -174,6 +174,9 @@ struct
   let count lst n =
       List.length (List.filter (fun x -> n = x) lst)
 
+  let empty x =
+    List.length x = 0
+    
   let iter = List.iter
   (*joins list into tuples*)
   let zip a b =
@@ -350,15 +353,20 @@ struct
   let clear x =
     Hashtbl.clear x
 
-
   let fold (type a) (type b) (type c) (x:(a,b) map) (f: a -> b -> c -> c) (iv: c) : c =
     Hashtbl.fold f x iv
+
 
   let to_values (type a) (type b) (x:(a,b) map) : b list =
     fold x (fun k v rst -> v::rst) []
 
   let to_keys (type a) (type b) (x:(a,b) map) : a list =
       fold x (fun k v rst -> k::rst) []
+
+  let rand x =
+    let k = LIST.rand (to_keys x) in
+    let v = get x k in
+    k,v
 
   let iter (type a) (type b) (x:(a,b) map) (f: a -> b -> unit) : unit =
     Hashtbl.iter f x

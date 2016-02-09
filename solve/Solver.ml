@@ -398,6 +398,11 @@ struct
       let _ = print_debug "TODO: Implement add unification" in
       ()
     in
+    let is_wc (a:unid) = match a with MathId(_) -> false | HwId(_) -> true in
+    let freshvar (n:int) (k:unifytype) = match k with
+    | UTypTempl -> HwId(HNPort(HNInput,HCMLocal("tvar"^(string_of_int n)),"null","none","nil"))
+    | UTypTarg -> MathId(MNVar(MInput,"tvar"^(string_of_int n),UNone))
+    in
     (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
     if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
       (*let comp = HwLib.getcomp s.hw node.name in*)
@@ -415,12 +420,13 @@ struct
       let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
       let vgl,_,_ = goal2info g in
       let slns : (unid fusion) set =
-        ASTUnifier.multipattern templ targ vgl
+        ASTUnifier.multipattern templ targ vgl 5
         (UnivLib.unid2var)
         (UnivLib.var2unid (s))
+        is_wc freshvar
         (UnivLib.unid2var)
       in
-      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in 
+      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
       let nslns = SET.size slns in
       if nslns = 0 then
         let _ = SearchLib.rm gtbl.search comp_cursor in

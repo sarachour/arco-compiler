@@ -104,7 +104,10 @@ struct
 
   let _steps2str (type a) (type b) (indent: int) (sr:(a,b) ssearch) (n:a snode) =
     let spcs = STRING.repeat "  " indent  in
-    let id = (if is_deadend sr n then "[x]" else "[?]")^(string_of_int n.id) in
+    let id = (
+      if is_deadend sr n then "[XX]"
+      else if is_solution sr n then "[!!]"
+      else "[  ]")^(string_of_int n.id) in
     let prefix = match sr.curs with
     | Some(c) -> if c = n then "{{C}}"^id else id
     | None -> id
@@ -352,7 +355,8 @@ struct
     | h::t ->
       (*look at everything but the current node*)
       let leaves = LIST.filter (fun x -> x <> currnode) leaves in
-      let _,best = LIST.max (fun x -> score_path x) leaves in
-      Some(best)
+      if List.length leaves = 0 then None else
+        let _,best = LIST.max (fun x -> score_path x) leaves in
+        Some(best)
 
 end
