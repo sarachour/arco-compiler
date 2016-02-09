@@ -74,8 +74,11 @@ struct
     let _ = MAP.rm b.tbl n.id in
     ()
 
+  let num_solutions (b:sstats) : int =
+    MAP.fold b.tbl (fun x v c -> if v = SStatSolution then c+1 else c) 0
+
   let has_solution (b:sstats) =
-    MAP.fold b.tbl (fun x v c -> if v = SStatSolution then true else c) true
+    num_solutions b > 0
 
   let get_solutions (b:sstats) : int list =
     let res = MAP.fold b.tbl (fun x v c -> if v = SStatSolution then x::c else c) [] in
@@ -198,6 +201,7 @@ struct
     let _ : unit = SStatLib.solution sr.st n in
     ()
 
+
   let get_solutions  (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : (a snode) list=
     let test_sln (x:int) =
       let nd : a snode = id2node sr x in
@@ -212,8 +216,12 @@ struct
     let stslns : (a snode) list = List.map (fun x -> id2node sr x) fslns in
     stslns
 
-  let has_solution (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) =
-    (List.length (get_solutions sr root)) > 0
+  let num_solutions (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : int =
+    (List.length (get_solutions sr root))
+
+  let has_solution (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : bool =
+    (num_solutions sr root) > 0
+
 
 
   let cursor b =

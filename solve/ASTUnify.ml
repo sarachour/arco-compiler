@@ -370,8 +370,25 @@ struct
     result
 
 
+  let propose_bans_uniform (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
+    let proposal =  MAP.fold assigns (fun k v r -> [RBanAssign(k,v)]::r) [] in
+    proposal
+
+  let propose_bans (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list =
+    propose_bans_uniform s n assigns
+
   (*don't ban anything*)
-  let select_bans (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) =
+  let select_bans (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : unit =
+    let bans = propose_bans s n assigns in
+    let curs = SearchLib.cursor s.search in
+    let add_bans (bans:a rstep list) =
+      let _ = SearchLib.move_cursor s.search s.tbl curs in
+      let _ = SearchLib.start s.search in
+      let _ = SearchLib.add_steps s.search bans in
+      let _ = SearchLib.commit s.search s.tbl in
+      ()
+    in
+    let _ = List.iter (fun x -> add_bans x) bans in
     ()
 
   let solve_node (type a) (s:a runify) =
@@ -417,8 +434,8 @@ struct
       else
         (*get the next node*)
         let maybe_next_node = get_best_valid_node sr (Some root) in
-        if SearchLib.has_solution sr.search (Some root) then
-         let _ = print_debug "[search_tree] Found Solution" in
+        if SearchLib.num_solutions sr.search (Some root) > 4 then
+         let _ = print_debug "[search_tree] Found Solutions" in
          ()
         else
           match maybe_next_node with
@@ -496,8 +513,8 @@ struct
     (*make the search tree*)
     let root,smeta = mksearch tmpl targ cnv icnv tostr in
     (*build a tree for the particular set of goals*)
-    (*let _ = build_tree smeta root (Some targvar) in*)
-    let _ = build_tree smeta root (None) in
+    let _ = build_tree smeta root (Some targvar) in
+    (*let _ = build_tree smeta root (None) in*)
     (*solve a thing*)
     let _ = solve smeta root in
     let _ = print_debug "=== Done with Relation Search ===" in
