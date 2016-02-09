@@ -223,7 +223,7 @@ struct
   let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
     let _ = print_debug "applied state." in
     let _ = SymCaml.clear (g_sym s.tbl) in
-    let _ = SymCaml.set_debug (g_sym s.tbl) true in
+    (*let _ = SymCaml.set_debug (g_sym s.tbl) true in*)
     let targ_repls : (a,a ast) map = MAP.make () in
     let templ_repls : (a,a ast) map = MAP.make () in
     let _ = SET.iter (g_targ_st s.tbl).fill ( fun x ->
@@ -316,7 +316,7 @@ struct
       let _ = print_debug ("unify: "^(ASTLib.ast2str rtempl s.tostr)^" with "^(ASTLib.ast2str rtarg s.tostr)) in
       let symtempl : symexpr = ASTLib.to_symcaml rtempl a2sym in
       let symtarg : symexpr = ASTLib.to_symcaml rtarg a2sym in
-      let maybe_assigns = SymCaml.pattern (g_sym s.tbl) symtempl symtarg in
+      let maybe_assigns = SymCaml.pattern (g_sym s.tbl) symtarg symtempl in
       match maybe_assigns with
       | Some(assigns) ->
         let _ = print_debug "<!> found assigns" in
@@ -500,6 +500,7 @@ struct
     let _ = build_tree smeta root (None) in
     (*solve a thing*)
     let _ = solve smeta root in
+    let _ = print_debug "=== Done with Relation Search ===" in
     let slns = get_slns smeta in
     slns
 
