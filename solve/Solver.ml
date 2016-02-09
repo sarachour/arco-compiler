@@ -400,35 +400,36 @@ struct
     in
     (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
     if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
-    (*let comp = HwLib.getcomp s.hw node.name in*)
-    let inst_id = SlnLib.usecomp gtbl.sln node_id in
-    (*the cursor associated with the goal*)
-    let goal_cursor = SearchLib.cursor gtbl.search in
-    (*update search algorithm to include the usage*)
-    let _ = SearchLib.start gtbl.search in
-    let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
-    (*the cursor associated with the component*)
-    let comp_cursor : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
-    (*use node*)
-    let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
-    let templ : (unid rarg) list = SET.map node.rels (fun x -> rel2info x)  in
-    let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
-    let vgl,_,_ = goal2info g in
-    let slns : (unid fusion) set =
-      ASTUnifier.multipattern templ targ vgl
-      (UnivLib.unid2var)
-      (UnivLib.var2unid (s))
-      (UnivLib.unid2var)
-    in
-    let nslns = SET.size slns in
-    if nslns = 0 then
-      let _ = SearchLib.rm gtbl.search comp_cursor in
-      let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
-      None
-    else
-      let _ = SearchLib.visited gtbl.search comp_cursor in
-      let _ = SET.iter slns (fun x -> add_unification x)  in
-      Some(nslns)
+      (*let comp = HwLib.getcomp s.hw node.name in*)
+      let inst_id = SlnLib.usecomp gtbl.sln node_id in
+      (*the cursor associated with the goal*)
+      let goal_cursor = SearchLib.cursor gtbl.search in
+      (*update search algorithm to include the usage*)
+      let _ = SearchLib.start gtbl.search in
+      let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
+      (*the cursor associated with the component*)
+      let comp_cursor : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
+      (*use node*)
+      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
+      let templ : (unid rarg) list = SET.map node.rels (fun x -> rel2info x)  in
+      let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
+      let vgl,_,_ = goal2info g in
+      let slns : (unid fusion) set =
+        ASTUnifier.multipattern templ targ vgl
+        (UnivLib.unid2var)
+        (UnivLib.var2unid (s))
+        (UnivLib.unid2var)
+      in
+      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in 
+      let nslns = SET.size slns in
+      if nslns = 0 then
+        let _ = SearchLib.rm gtbl.search comp_cursor in
+        let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
+        None
+      else
+        let _ = SearchLib.visited gtbl.search comp_cursor in
+        let _ = SET.iter slns (fun x -> add_unification x)  in
+        Some(nslns)
 
 
 

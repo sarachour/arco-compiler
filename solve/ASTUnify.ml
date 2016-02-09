@@ -141,7 +141,7 @@ struct
 
   let score_steps env steps : sscore =
     let delta = 0. in
-    let state = 0. in
+    let state = RAND.rand_norm () in
     {delta=delta; state=state}
 
   let unifytype2str u = match u with
@@ -221,6 +221,8 @@ struct
   (*apply the existing state to python, that is transform the expressions*)
 
   let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
+    let _ = print_debug "applied state." in
+    let _ = SymCaml.set_debug (g_sym s.tbl) true in
     let targ_repls : (a,a ast) map = MAP.make () in
     let templ_repls : (a,a ast) map = MAP.make () in
     let _ = SET.iter (g_targ_st s.tbl).fill (
@@ -234,36 +236,44 @@ struct
       let _ = MAP.put scr v rhs in
       (v,rhs)
     in
-    let decl_wild v =
-      let bans = if MAP.has (g_bans s.tbl) v then
-        let bans : (a ast) set = MAP.get (g_bans s.tbl) v in
-          let scratch  = MAP.make () in
-          let nbans = SET.map bans (fun x -> ASTLib.sub x templ_repls) in
-          nbans
+    let var2symvar = g_conv s.tbl in
+    let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s.tbl) in
+    let add_wild (set:(symvar*(symexpr list)) set) (v:a) =
+      let bans =
+        if MAP.has (g_bans s.tbl) v then
+          let bans = SET.map (MAP.get (g_bans s.tbl) v) (fun x -> ASTLib.sub x templ_repls) in
+          bans
         else []
       in
-      let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s.tbl) in
-      let var2symvar = g_conv s.tbl in
       let symbans : symexpr list = List.map (fun (x) -> expr2symexpr x) bans in
-      let _ = SymCaml.define_wildcard (g_sym s.tbl) (var2symvar v) symbans in
+      let _ = SET.add set (var2symvar v, symbans) in
       ()
     in
-    let decl_sym v =
+    let decl_wild v bans = let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in () in
+    let add_sym (set:symvar set) (v:a) =
       let var2symvar = g_conv s.tbl in
-      let _ = SymCaml.define_symbol (g_sym s.tbl) (var2symvar v) in
+      let _ = SET.add set (var2symvar v) in ()
+    in
+    let decl_sym v = let _ = SymCaml.define_symbol (g_sym s.tbl) v in () in
+    let add_vars set (fn) lhs rhs =
+      let _ = fn set lhs in
+      let _ = List.iter (fun q -> fn set q) (ASTLib.get_vars rhs) in
       ()
     in
-    let decl_vars fn lhs rhs =
-      let _ = fn lhs in
-      let _ = List.iter (fun q -> fn q) (ASTLib.get_vars rhs) in
-      ()
-    in
-    let scratch_targ = MAP.make () in
-    let scratch_templ = MAP.make () in
+    let scratch_targ = MAP.make () and scratch_templ = MAP.make () in
+    let sym_vars = SET.make_dflt () and wc_vars = SET.make_dflt () in
     let _ = MAP.iter (g_targ_i s.tbl).info
-      (fun v data -> let _ = decl_vars decl_sym v data.rhs in let _ = MAP.put scratch_targ v (data.rhs) in ()) in
+      (fun v data ->
+        let _ = add_vars sym_vars add_sym v data.rhs in
+        let _ = MAP.put scratch_targ v (data.rhs) in ()
+      ) in
     let _ = MAP.iter (g_templ_i s.tbl).info
-      (fun v data -> let _ = decl_vars decl_wild v data.rhs in let _ = MAP.put scratch_templ v (data.rhs) in ()) in
+      (fun v data ->
+        let _ = add_vars wc_vars add_wild v data.rhs in
+        let _ = MAP.put scratch_templ v (data.rhs) in ()
+      ) in
+    let _ = SET.iter sym_vars (fun x -> decl_sym x) in
+    let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild x bans) in
     (*next process removals*)
     let _ = SET.iter (g_targ_st s.tbl).rm (fun v -> let _ = MAP.rm scratch_targ v in ()) in
     let _ = SET.iter (g_templ_st s.tbl).rm (fun v -> let _ = MAP.rm scratch_templ v in ()) in
@@ -299,6 +309,7 @@ struct
     else
       let sym2a : symvar -> a = g_iconv s.tbl in
       let a2sym : a -> symvar = g_conv s.tbl in
+      let _ = print_debug ("unify: "^(ASTLib.ast2str rtempl s.tostr)^" with "^(ASTLib.ast2str rtarg s.tostr)) in
       let symtempl : symexpr = ASTLib.to_symcaml rtempl a2sym in
       let symtarg : symexpr = ASTLib.to_symcaml rtarg a2sym in
       let maybe_assigns = SymCaml.pattern (g_sym s.tbl) symtempl symtarg in
@@ -335,7 +346,7 @@ struct
     let _ = print_debug ((s.tostr vtempl)^" <-> "^(s.tostr vtarg)) in
     let rtempl = MAP.get etmpl vtempl in
     let rtarg = MAP.get etarg vtarg in
-    let maybe_assigns = unify_one s vtarg rtempl vtempl rtarg in
+    let maybe_assigns = unify_one s vtempl rtempl vtarg rtarg in
     let result = match maybe_assigns with
     | Some(assigns) ->
       let _ = SearchLib.start s.search in
