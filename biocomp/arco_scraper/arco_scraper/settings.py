@@ -18,8 +18,8 @@ NEWSPIDER_MODULE = 'arco_scraper.spiders'
 #     'arco_scraper.pipelines.ArcoScraperPipeline'
 # ]
 ITEM_PIPELINES = {'arco_scraper.pipelines.MyFilesPipeline' : 1,
-'scrapy.pipelines.files.FilesPipeline': 2,
-'arco_scraper.pipelines.WriteToCsv': 49
+'scrapy.pipelines.files.FilesPipeline': 2
+# 'arco_scraper.pipelines.WriteToCsv': 49
 # 'arco_scraper.write_to_csv.WriteToCsv' : 21
 }
 
