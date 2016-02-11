@@ -420,7 +420,7 @@ struct
       let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
       let vgl,_,_ = goal2info g in
       let slns : (unid fusion) set =
-        ASTUnifier.multipattern templ targ vgl 5
+        ASTUnifier.multipattern templ targ vgl 1
         (UnivLib.unid2var)
         (UnivLib.var2unid (s))
         is_wc freshvar

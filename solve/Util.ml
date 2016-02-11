@@ -49,6 +49,30 @@ struct
 
 end
 
+
+module REF :
+sig
+  (* ref(x) creates a new ref containing x *)
+  val mk : 'a -> 'a ref
+
+  (* !x is the contents of the ref cell x *)
+  val dr : 'a ref -> 'a
+
+  (* Effects: x := y updates the contents of x
+  * so it contains y. *)
+  val set : 'a ref -> 'a -> unit
+
+  val upd: 'a ref -> ('a -> 'a) -> unit
+
+end =
+struct
+  let mk v = ref v
+  let dr v = !v
+  let set v x = v := x
+  let upd (type a) (v:a ref) (f:a -> a) =
+    v := (f (!v))
+end
+
 module MATH =
 struct
 
@@ -134,7 +158,7 @@ struct
   let enq (type a) (s:a queue) (x:a) : a queue =
     s @ [x]
 
-  let deq (type a) (s:a queue) (x:a) : a queue =
+  let deq (type a) (s:a queue) : a queue =
     match s with
     | h::t -> t
     | [] -> error "queue.deq" "failed to dequeue empty list"
@@ -163,6 +187,48 @@ struct
 end
 
 
+type 'a stack = ('a list) ref
+module STACK =
+struct
+  let make () : 'a stack = REF.mk []
+
+  let push (type a) (s:a stack) (x:a) : a stack =
+    let _ : unit = REF.upd s (fun s -> x::s) in s
+
+  let pop (type a) (s:a stack) : a stack =
+    let _ : unit = REF.upd s (fun st ->
+      match st with
+      | h::t -> t
+      | [] -> error "stack.pop" "failed to dequeue empty list"
+    ) in s
+
+  let peek (type a) (s:a stack) : a =
+    match REF.dr s with
+    | h::t -> h
+    | _ -> error "stack.peek" "can't peek empty list"
+
+  let empty (type a) (s:a stack) : a queue =
+    []
+
+  let filter (type a) (s:a stack) (f:a->bool) : a queue =
+    List.filter f (REF.dr s)
+
+  let has (type a) (s:a stack) (x:a) : bool =
+    match filter s (fun q -> q = x) with
+    | [] -> false
+    | _ -> true
+
+  let tostr (type a) (s:a stack) (st : a -> string) =
+    List.fold_left (fun r x -> r^" "^(st x) ) "" (REF.dr s)
+
+  let length (type a) (s:a stack) =
+    List.length (REF.dr s)
+
+  let empty (type a) (s:a stack) =
+    length s = 0
+end
+
+
 module LIST =
 struct
   type sortorder =
@@ -176,7 +242,7 @@ struct
 
   let empty x =
     List.length x = 0
-    
+
   let iter = List.iter
   (*joins list into tuples*)
   let zip a b =
@@ -290,8 +356,11 @@ struct
       else
         (lst,false)
     in
-    let f,_ = List.fold_left gen ([],false) t in
-    f
+    if st = en then
+      [st]
+    else
+      let f,_ = List.fold_left gen ([],false) t in
+      f
 
   let sublist_i (type a) (t:a list) (st:int) (en:int) =
     let gen (lst,idx,add) v  =
@@ -302,8 +371,11 @@ struct
       else
         (lst,idx+1,false)
     in
-    let f,_,_ = List.fold_left gen ([],0,false) t in
-    f
+    if st = en then
+      [List.nth t st]
+    else
+      let f,_,_ = List.fold_left gen ([],0,false) t in
+      f
 
   let rand (type a) (s: a list) :a  =
     if List.length s == 0 then
@@ -803,29 +875,4 @@ struct
       x
     else
       error "select" "cannot select node that does not exist in tree."
-end
-
-
-
-module REF :
-sig
-  (* ref(x) creates a new ref containing x *)
-  val mk : 'a -> 'a ref
-
-  (* !x is the contents of the ref cell x *)
-  val dr : 'a ref -> 'a
-
-  (* Effects: x := y updates the contents of x
-  * so it contains y. *)
-  val set : 'a ref -> 'a -> unit
-
-  val upd: 'a ref -> ('a -> 'a) -> unit
-
-end =
-struct
-  let mk v = ref v
-  let dr v = !v
-  let set v x = v := x
-  let upd (type a) (v:a ref) (f:a -> a) =
-    v := (f (!v))
 end

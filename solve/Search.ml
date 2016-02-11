@@ -7,6 +7,8 @@ open SolverUtil
 open SolverSln
 open SolverData
 
+open Interactive
+
 
 exception SearchException of (string)
 let error n msg = raise (SearchException(n^": "^msg))
@@ -266,12 +268,13 @@ struct
       let anc = TREE.ancestor sr.tree next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path sr.tree old)) old anc in
       let from_anc = LIST.sublist (TREE.get_path sr.tree next) anc next in
-      let env = List.fold_right (fun x nenv -> let nenv = unapply_node sr env x in nenv) to_anc env in
-      let env = List.fold_right (fun x nenv -> let nenv= apply_node sr nenv x in nenv) from_anc env in
+      let _ = List.iter (fun x -> let _ = unapply_node sr env x in ()) to_anc in
+      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) from_anc in
       let _ = (sr.curs <- Some next) in
       env
-    | None -> let to_node = TREE.get_path sr.tree next in
-      let env = List.fold_right (fun x nenv -> let nenv = apply_node sr nenv x in nenv) to_node env in
+    | None ->
+      let to_node = TREE.get_path sr.tree next in
+      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) to_node in
       let _ = (sr.curs <- Some next) in
       env
     in

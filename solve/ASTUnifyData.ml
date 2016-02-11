@@ -56,7 +56,7 @@ type 'a rvstate = {
   (*add these temporary relations*)
   add: ('a,'a ast) map;
   (*the focus for the state*)
-  mutable focus: 'a option;
+  mutable focus: 'a stack;
 }
 (*the stateful part of teh tableau*)
 type 'a rstate = {
@@ -99,13 +99,13 @@ type 'a rtbl = {
   (*template to rel assignments*)
   st: 'a rstate;
   env: 'a renv;
+  tostr: 'a -> string;
 }
 
 (*the search tree to build*)
 type 'a runify = {
   search : ('a rstep, 'a rtbl) ssearch;
   tbl: 'a rtbl;
-  tostr: 'a -> string;
 }
 
 (*the data necessary for *)
