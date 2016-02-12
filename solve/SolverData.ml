@@ -67,7 +67,7 @@ type sstep =
   | SAddGoal of goal
   | SMakeGoalPassive of goal
   | SMakeGoalActive of goal
-  | SAddNode of unodeid*int*(urel list)
+  | SAddNodeRel of unodeid*int*(urel)
 
 
 type gltbl = {

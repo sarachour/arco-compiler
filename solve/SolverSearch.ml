@@ -71,7 +71,7 @@ struct
   let step2str (n:sstep) = match n with
   | SAddGoal(v) -> "add "^(UnivLib.goal2str v)
   | SRemoveGoal(v) -> "rm "^(UnivLib.goal2str v)
-  | SAddNode(id,i,rels) ->
+  | SAddNodeRel(id,i,rel) ->
     (*)"SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")*)
     "SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolUseNode(id,i) -> "s.use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
@@ -90,9 +90,8 @@ struct
         let _ = GoalStubLib.add_goal tbl g in ()
       | SRemoveGoal(g) ->
         let _ = GoalStubLib.remove_goal tbl g in ()
-      | SAddNode(id,i,u) ->
-        let partial_comp = {name=(UnivLib.unodeid2name id);rels=SET.to_set u (fun x y -> x = y)} in
-        let _ = GoalStubLib.add_partial_comp tbl id i partial_comp in ()
+      | SAddNodeRel(id,i,r) ->
+        let _ = GoalStubLib.add_rel_to_partial_comp tbl id i r in ()
       | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_mark tbl.sln id i in ()
       | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn tbl.sln src snk in ()
       | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel tbl.sln wid prop lbl in ()
@@ -116,8 +115,8 @@ struct
         let _ = GoalStubLib.remove_goal tbl g in ()
       | SRemoveGoal(g) ->
         let _ = GoalStubLib.add_goal tbl g in ()
-      | SAddNode(id,i,rels) ->
-        let _ = GoalStubLib.remove_partial_comp tbl id i  in ()
+      | SAddNodeRel(id,i,r) ->
+        let _ = GoalStubLib.rm_rel_from_partial_comp tbl id i r in ()
       | SSolUseNode(id,i) -> let _ = SlnLib.usecomp_unmark tbl.sln id i in ()
       | SSolAddConn(src,snk) -> let _ = SlnLib.mkconn_undo tbl.sln src snk in ()
       | SSolAddLabel(wid, prop, lbl) -> let _ = SlnLib.mklabel_undo tbl.sln wid prop lbl in ()

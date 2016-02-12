@@ -394,22 +394,32 @@ struct
       let rel = GoalTableLib.unwrap_goal g in
       rel2info rel
     in
-    let add_fuse f inst =
+    let add_fuse f inst : unit =
+      let mkfxn lhs rhs =
+        let lhs = Shim.lclid2glblid inst lhs in
+        let rhs = Shim.lcl2glbl inst rhs in
+        let rel = UFunction(lhs,rhs) in
+        rel
+      in
       let steps = match f with
         | USAdd(lhs,rhs,UTypTarg) -> (*technically a partial solution*)
-          error "unhandled" "unhandled fuse: add"
+          let rel = mkfxn lhs rhs in
+          error "unhandled" ("unhandled fuse: add = "^(UnivLib.urel2str rel))
         | USAdd(lhs,rhs,UTypTempl) ->
-          error "unhandled" "unhandled fuse: add"
+          let rel = mkfxn lhs rhs in
+          [SAddNodeRel(node_id,inst,rel)]
         | USRm(vr,UTypTarg) ->
-          let goal = OPTION.force_conc (GoalTableLib.get_goal_from_var gtbl vr) in
-          [SRemoveGoal(goal)]
+          let goal = GoalTableLib.get_goal_from_var gtbl vr in
+          begin
+          match goal with
+            | Some(goal) -> [SRemoveGoal(goal)]
+            | None -> []
+          end
         | USRm(vr,UTypTempl) ->
           let _ = print_debug "ignoring removal of template variable" in
           []
         | USAssign(lhs,rhs) ->
-          let lhs = Shim.lclid2glblid inst lhs in
-          let rhs = Shim.lcl2glbl inst rhs in
-          let rel = UFunction(lhs,rhs) in
+          let rel = mkfxn lhs rhs in
           let goal = GoalTableLib.wrap_goal gtbl rel in
           [SAddGoal(goal)]
       in
