@@ -21,6 +21,9 @@ let print_inter (v:string) =
   in
   _if_interactive fxn
 
+let print_prod (v:string) =
+  Printf.printf "%s\n" v 
+
 let exec_inter (v:unit->unit) =
     let fxn () =
       let _ = v ()  in

@@ -283,13 +283,14 @@ struct
         else []
       in
       let symbans : symexpr list = List.map (fun (x) -> expr2symexpr x) bans in
-      let _ = SET.add set (var2symvar v, symbans) in
+      let _ = if SET.has set (var2symvar v,symbans) = false then
+        ret (SET.add set (var2symvar v, symbans)) () in
       ()
     in
     let decl_wild v bans = let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in () in
     let add_sym (set:symvar set) (v:a) =
       let var2symvar = g_conv s.tbl in
-      let _ = SET.add set (var2symvar v) in ()
+      let _ = if SET.has set (var2symvar v) = false then ret (SET.add set (var2symvar v)) () in ()
     in
     let decl_sym v = let _ = SymCaml.define_symbol (g_sym s.tbl) v in () in
     (*actual conversion routine*)
@@ -319,8 +320,8 @@ struct
     let _ = MAP.iter (g_targ_i s.tbl).info (fun v data ->add_expr scratch_targ v data.rhs false true) in
     let _ = MAP.iter (g_templ_i s.tbl).info (fun v data ->add_expr scratch_templ v data.rhs true true) in
     (*add additional variables*)
-    let _ = MAP.iter (g_targ_st s.tbl).add (fun v rhs ->add_expr scratch_targ v rhs false false) in
-    let _ = MAP.iter (g_templ_st s.tbl).add (fun v rhs ->add_expr scratch_templ v rhs false false) in
+    let _ = MAP.iter (g_targ_st s.tbl).add (fun v rhs ->add_expr scratch_targ v rhs false true) in
+    let _ = MAP.iter (g_templ_st s.tbl).add (fun v rhs ->add_expr scratch_templ v rhs true true) in
     (*declare variables*)
     let _ = SET.iter sym_vars (fun x -> decl_sym x) in
     let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild x bans) in
@@ -691,7 +692,6 @@ struct
 
     in
     let slns  = SearchLib.get_solutions s.search None in
-    let _ = Printf.printf "FOUND SOLUTIONS: %d\n" (List.length slns) in
     let allslns = List.map (fun n -> node2fusion n) slns in
     SET.from_list allslns
 

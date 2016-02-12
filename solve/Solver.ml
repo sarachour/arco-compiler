@@ -432,6 +432,7 @@ struct
     (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
     if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
       (*let comp = HwLib.getcomp s.hw node.name in*)
+      let _ = print_prod ("==> Component "^node.name) in
       let inst_id = SlnLib.usecomp gtbl.sln node_id in
       (*the cursor associated with the goal*)
       let goal_cursor = SearchLib.cursor gtbl.search in
