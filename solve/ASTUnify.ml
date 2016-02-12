@@ -71,15 +71,12 @@ struct
 
   let g_bans s = s.st.bans
   let g_assigns s = s.st.assigns
-  let g_templ_st s = s.st.templ
-  let g_targ_st s = s.st.targ
-  let g_templ_i s = s.templ
-  let g_targ_i s = s.targ
+
   let g_state s ty =
-    if UTypTempl = ty then (g_templ_st s) else (g_targ_st s)
+    if UTypTempl = ty then (s.st.templ) else (s.st.targ)
 
   let g_info s ty =
-    if UTypTempl = ty then (g_templ_i s) else (g_targ_i s)
+    if UTypTempl = ty then (s.templ) else (s.targ)
 
   let g_cstr x = x.st.constraints
   let g_fresh s = s.env.freshvar
@@ -253,14 +250,16 @@ struct
     (*create replacement tables*)
     let targ_repls : (a,a ast) map = MAP.make () in
     let templ_repls : (a,a ast) map = MAP.make () in
-    let _ = SET.iter (g_targ_st s.tbl).fill ( fun x ->
-      let _ = print_debug ("ENV fill "^(s.tbl.tostr x)^"") in
-      let _ = MAP.put targ_repls x (MAP.get (g_targ_i s.tbl).info x).rhs in ()
-    ) in
-    let _ = SET.iter (g_templ_st s.tbl).fill ( fun x ->
-      let _ = print_debug ("ENV fill "^(s.tbl.tostr x)^"") in
-      let _ = MAP.put templ_repls x (MAP.get (g_templ_i s.tbl).info x).rhs in ()
-    ) in
+    let fill_t ty = SET.iter (g_state s.tbl ty).fill ( fun x ->
+      let _ = print_debug ("ENV fill  "^(s.tbl.tostr x)^" : "^(unifytype2str ty)) in
+      if MAP.has (g_info s.tbl ty).info x  = false then
+        ret (print_debug ("ENV ignore fill, already satisifed")) ()
+      else
+        ret (MAP.put targ_repls x (MAP.get (g_info s.tbl ty).info x).rhs) ()
+    )
+    in
+    let _ = fill_t UTypTempl in
+    let _ = fill_t UTypTarg in
     let _ = MAP.iter (s.tbl.st.assigns) (fun v rhs -> let _ = MAP.put templ_repls v rhs in () ) in
     (*add fill logic *)
     let fill_expr scr repls v =
@@ -317,20 +316,20 @@ struct
       ()
     in
     (*add original variables*)
-    let _ = MAP.iter (g_targ_i s.tbl).info (fun v data ->add_expr scratch_targ v data.rhs false true) in
-    let _ = MAP.iter (g_templ_i s.tbl).info (fun v data ->add_expr scratch_templ v data.rhs true true) in
+    let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs false true) in
+    let _ = MAP.iter (g_info s.tbl UTypTempl).info (fun v data ->add_expr scratch_templ v data.rhs true true) in
     (*add additional variables*)
-    let _ = MAP.iter (g_targ_st s.tbl).add (fun v rhs ->add_expr scratch_targ v rhs false true) in
-    let _ = MAP.iter (g_templ_st s.tbl).add (fun v rhs ->add_expr scratch_templ v rhs true true) in
+    let _ = MAP.iter (g_state s.tbl UTypTarg).add (fun v rhs ->add_expr scratch_targ v rhs false true) in
+    let _ = MAP.iter (g_state s.tbl UTypTempl).add (fun v rhs ->add_expr scratch_templ v rhs true true) in
     (*declare variables*)
     let _ = SET.iter sym_vars (fun x -> decl_sym x) in
     let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild x bans) in
-    (*next process removals*)
-    let _ = SET.iter (g_targ_st s.tbl).rm (fun v ->rm_expr scratch_targ v) in
-    let _ = SET.iter (g_templ_st s.tbl).rm (fun v -> rm_expr scratch_targ v) in
     (*next process assignments*)
     let _ = MAP.iter scratch_templ (fun lhs rhs -> let _ = fill_expr scratch_templ templ_repls lhs in ()) in
     let _ = MAP.iter scratch_targ (fun lhs rhs -> let _ = fill_expr scratch_targ templ_repls lhs in ()) in
+    (*next process removals*)
+    let _ = SET.iter (g_state s.tbl UTypTarg).rm (fun v ->rm_expr scratch_targ v) in
+    let _ = SET.iter (g_state s.tbl UTypTempl).rm (fun v -> rm_expr scratch_targ v) in
     (scratch_templ,scratch_targ)
 
   (*whether the unification is a value unification*)
@@ -560,8 +559,8 @@ struct
   let solve_node (type a) (s:a runify) =
     let curs = SearchLib.cursor s.search in
     let templs,targs = apply_state s in
-    let vtempl = STACK.peek ((g_templ_st s.tbl).focus) in
-    let vtarg = STACK.peek ((g_targ_st s.tbl).focus) in
+    let vtempl = STACK.peek ((g_state s.tbl UTypTempl).focus) in
+    let vtarg = STACK.peek ((g_state s.tbl UTypTarg).focus) in
     let _ = print_debug (" "^(s.tbl.tostr vtempl)^" <-> "^(s.tbl.tostr vtarg)) in
     let rtempl = MAP.get templs vtempl in
     let rtarg = MAP.get targs vtarg in
@@ -637,8 +636,8 @@ struct
     in
     let focus_comp (gnode:a rnode) (cmpvar:a) (cmpdata:a rdata) =
       let _ = SearchLib.move_cursor s.search s.tbl gnode in
-      let focv : a = STACK.peek (g_targ_st s.tbl).focus in
-      let focvdata : a rdata = MAP.get (g_targ_i s.tbl).info focv in
+      let focv : a = STACK.peek (g_state s.tbl UTypTarg).focus in
+      let focvdata : a rdata = MAP.get (g_info s.tbl UTypTarg).info focv in
       if cmpdata.kind = focvdata.kind then
         let _ = SearchLib.start s.search in
         let _ = SearchLib.add_step s.search (RVarFocus(cmpvar,UTypTempl)) in
@@ -646,13 +645,13 @@ struct
         ()
     in
     let focus_comps gnode =
-      MAP.iter (g_templ_i s.tbl).info (fun v data -> focus_comp gnode v data)
+      MAP.iter (g_info s.tbl UTypTempl).info (fun v data -> focus_comp gnode v data)
     in
     (*focus on each of the templs, and rels - where they're compatible*)
     let nodes : (a rnode) list =
       match gl with
-      | Some(varb) -> [focus_goal varb (MAP.get (g_targ_i s.tbl).info varb)]
-      | None -> MAP.map (g_targ_i s.tbl).info (fun v data -> focus_goal v data)
+      | Some(varb) -> [focus_goal varb (MAP.get (g_info s.tbl UTypTarg).info varb)]
+      | None -> MAP.map (g_info s.tbl UTypTarg).info (fun v data -> focus_goal v data)
     in
     let _ = List.iter (fun goal -> focus_comps goal) nodes in
     ()
