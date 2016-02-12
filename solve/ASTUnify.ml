@@ -24,7 +24,7 @@ let error n msg = raise (ASTUnifierException(n^": "^msg))
 module ASTUnifier =
 struct
   let state2buf (type a) chan (indent:int) (tostr:a->string) (st:a rvstate) =
-    let prefix = "" in
+    let prefix = STRING.repeat " " indent in
     let _ = Printf.fprintf chan "%sfill:" prefix in
     let _ = SET.iter st.fill (fun x -> Printf.fprintf chan "<%s> " (tostr x)) in
     let _ = Printf.fprintf chan "\n%srm:" prefix in
@@ -83,7 +83,6 @@ struct
 
   let g_cstr x = x.st.constraints
   let g_fresh s = s.env.freshvar
-  let g_wc s = s.env.iswc
   let g_sym s = s.env.s
   let g_conv s = s.env.cnv
   let g_iconv s = s.env.icnv
@@ -175,14 +174,14 @@ struct
   let order_steps a b = 0
 
   let score_steps env steps : sscore =
-    let delta = 1. in
+    let delta = 0. in
     let state = 0. in
     {delta=delta; state=state}
 
 
 
   let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
-    (cnv:a->symvar) (icnv:symvar -> a) (iswc: a-> bool) (freshvar:int->unifytype->a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
+    (cnv:a->symvar) (icnv:symvar -> a) (freshvar:int->unifytype->a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
     (*make the data for each variable*)
     let mkdata ifo relinfo =
       let lhs,rhs,knd = relinfo in
@@ -217,7 +216,6 @@ struct
       cnv= cnv;
       icnv= icnv;
       freshvar = freshvar;
-      iswc = iswc;
     } in
     (*make the dependency tree*)
     let tmpl_info =  mkinfo() in
@@ -297,8 +295,8 @@ struct
     (*actual conversion routine*)
     let scratch_targ = MAP.make () and scratch_templ = MAP.make () in
     let sym_vars = SET.make_dflt () and wc_vars = SET.make_dflt () in
-    let add_vars lhs (rhs:a ast) =
-      let addvar q = if s.tbl.env.iswc q
+    let add_vars lhs (rhs:a ast) (iswc:bool)=
+      let addvar q = if iswc
         then add_wild wc_vars q
         else add_sym sym_vars q
       in
@@ -306,8 +304,8 @@ struct
       let _ = List.iter (fun q -> addvar q) (ASTLib.get_vars rhs) in
       ()
     in
-    let add_expr scratch v rhs =
-      let _ = add_vars v rhs in
+    let add_expr scratch v rhs (iswc:bool) (addvars:bool)=
+      let _ = if addvars then add_vars v rhs iswc else () in
       let _ = MAP.put scratch v (rhs) in
       let _ = print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
       ()
@@ -318,11 +316,12 @@ struct
       ()
     in
     (*add original variables*)
-    let _ = MAP.iter (g_targ_i s.tbl).info (fun v data ->add_expr scratch_targ v data.rhs) in
-    let _ = MAP.iter (g_templ_i s.tbl).info (fun v data ->add_expr scratch_templ v data.rhs) in
+    let _ = MAP.iter (g_targ_i s.tbl).info (fun v data ->add_expr scratch_targ v data.rhs false true) in
+    let _ = MAP.iter (g_templ_i s.tbl).info (fun v data ->add_expr scratch_templ v data.rhs true true) in
     (*add additional variables*)
-    let _ = MAP.iter (g_targ_st s.tbl).add (fun v rhs ->add_expr scratch_targ v rhs) in
-    let _ = MAP.iter (g_templ_st s.tbl).add (fun v rhs ->add_expr scratch_templ v rhs) in
+    let _ = MAP.iter (g_targ_st s.tbl).add (fun v rhs ->add_expr scratch_targ v rhs false false) in
+    let _ = MAP.iter (g_templ_st s.tbl).add (fun v rhs ->add_expr scratch_templ v rhs false false) in
+    (*declare variables*)
     let _ = SET.iter sym_vars (fun x -> decl_sym x) in
     let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild x bans) in
     (*next process removals*)
@@ -658,11 +657,29 @@ struct
     ()
 
   let get_slns (type a) (s:a runify) : a fusion set =
-    let env2fuses (s:a runify) : (a fuse) list = []
+    let env2fuses (s:a runify) : (a fuse) list =
+      let asgns = (g_assigns s.tbl) in
+      let rm_targ = ((g_state s.tbl UTypTarg).rm) in
+      let rm_templ = ((g_state s.tbl UTypTempl).rm) in
+      let add_targ = ((g_state s.tbl UTypTarg)).add in
+      let add_templ = ((g_state s.tbl UTypTempl)).add in
+      let arr = [] in
+      let arr = MAP.fold asgns (fun lhs rhs q -> USAssign(lhs,rhs)::q)  arr in
+      let arr = SET.fold rm_targ (fun x q -> USRm(x,UTypTarg)::q) arr in
+      let arr = SET.fold rm_templ (fun x q -> USRm(x,UTypTempl)::q) arr in
+      let arr = MAP.fold add_targ (fun lhs rhs q -> USAdd(lhs,rhs,UTypTarg)::q)  arr in
+      let arr = MAP.fold add_templ (fun lhs rhs q -> USAdd(lhs,rhs,UTypTempl)::q)  arr in
+      arr
+      (*add all assignments in fusion.*)
     in
-    let step2fuse (s: a rstep) : (a fuse) list = []
+    let step2fuse (s: a rstep) : (a fuse) list = match s with
+    | RAddAssign(lhs,rhs) -> []
+    | RForceAssign(v1,v2) -> []
+    | _ -> []
     in
-    let steps2fuses (s:(a rstep) list) : (a fuse) list = []
+    let steps2fuses (s:(a rstep) list) : (a fuse) list =
+      let fuses = List.fold_right (fun x r -> (step2fuse x) @ r) s [] in
+      fuses
     in
     let node2fusion (node: (a rstep) snode) : a fusion =
         let _ = SearchLib.move_cursor s.search s.tbl node in
@@ -674,18 +691,35 @@ struct
 
     in
     let slns  = SearchLib.get_solutions s.search None in
+    let _ = Printf.printf "FOUND SOLUTIONS: %d\n" (List.length slns) in
     let allslns = List.map (fun n -> node2fusion n) slns in
     SET.from_list allslns
+
+  let print_fuse (type a) (tostr:a->string) (f:a fuse) = match f with
+    | USAdd(lhs,rhs,typ) -> "add rel "^(tostr lhs)^" = "^(ASTLib.ast2str rhs tostr)^" of <"^(unifytype2str typ)^">"
+    | USRm(vr,typ) -> "rm rel "^(tostr vr)^" of <"^(unifytype2str typ)^">"
+    | USAssign(lhs,rhs) -> "assign "^(tostr lhs)^" = "^(ASTLib.ast2str rhs tostr)
+
+  let print_fusion (type a) (indent:int) (tostr:a->string) (f:a fusion) : string=
+    let prefix = STRING.repeat " " indent  in
+    let fusion_str = List.fold_right (fun x r -> r^(prefix)^(print_fuse tostr x)^"\n" ) f "" in
+    fusion_str
+
+  let print_fusions (type a) (indent:int) (tostr:a->string) (f:a fusion set) =
+    let prefix = STRING.repeat " " indent in
+    let title = "# SOLUTION" in
+    let strrep = SET.fold f (fun x r -> r^prefix^title^"\n"^(print_fusion (indent+2) tostr x)) "" in
+    strrep
 
   (*given colored set of equations, match them*)
   let multipattern (type a)
     (tmpl: (a rarg) list) (targ: (a rarg) list) (targvar:a) (n:int)
     (cnv:a->symvar) (icnv:symvar -> a)
-    (is_wc:a->bool) (freshvar:int->unifytype->a)
+    (freshvar:int->unifytype->a)
     (tostr:a->string)
      =
     (*make the search tree*)
-    let root,smeta = mksearch tmpl targ cnv icnv is_wc freshvar tostr in
+    let root,smeta = mksearch tmpl targ cnv icnv freshvar tostr in
     (*build a tree for the particular set of goals*)
     let _ = build_tree smeta root (Some targvar) in
     (*let _ = build_tree smeta root (None) in*)
@@ -693,6 +727,10 @@ struct
     let _ = solve smeta root n in
     let _ = print_debug "=== Done with Relation Search ===" in
     let slns = get_slns smeta in
+    let rep = print_fusions 1 smeta.tbl.tostr slns in
+    let _ = print_debug "=== SOLUTIONS ===" in
+    let _ = print_debug rep in
+    let _ = print_debug "=================" in
     slns
 
 end

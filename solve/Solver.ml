@@ -394,14 +394,40 @@ struct
       let rel = GoalTableLib.unwrap_goal g in
       rel2info rel
     in
-    let add_unification (u:unid fusion) =
-      let _ = print_debug "TODO: Implement add unification" in
+    let add_fuse f inst =
+      let steps = match f with
+        | USAdd(lhs,rhs,UTypTarg) -> (*technically a partial solution*)
+          error "unhandled" "unhandled fuse: add"
+        | USAdd(lhs,rhs,UTypTempl) ->
+          error "unhandled" "unhandled fuse: add"
+        | USRm(vr,UTypTarg) ->
+          let goal = OPTION.force_conc (GoalTableLib.get_goal_from_var gtbl vr) in
+          [SRemoveGoal(goal)]
+        | USRm(vr,UTypTempl) ->
+          let _ = print_debug "ignoring removal of template variable" in
+          []
+        | USAssign(lhs,rhs) ->
+          let lhs = Shim.lclid2glblid inst lhs in
+          let rhs = Shim.lcl2glbl inst rhs in
+          let rel = UFunction(lhs,rhs) in
+          let goal = GoalTableLib.wrap_goal gtbl rel in
+          [SAddGoal(goal)]
+      in
+      let _ = SearchLib.add_steps gtbl.search steps in
       ()
     in
-    let is_wc (a:unid) = match a with MathId(_) -> false | HwId(_) -> true in
+    let add_unification (root:sstep snode) (u:unid fusion) inst =
+      let _ = print_debug "TODO: Implement add unification" in
+      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) root in
+      let _ = SearchLib.start gtbl.search in
+      let _ = List.iter (fun f -> add_fuse f inst) u in
+      let r = SearchLib.commit gtbl.search (s,gtbl) in
+      ()
+    in
+    (*only hardware ids belonging to the template count*)
     let freshvar (n:int) (k:unifytype) = match k with
-    | UTypTempl -> HwId(HNPort(HNInput,HCMLocal("tvar"^(string_of_int n)),"null","none","nil"))
-    | UTypTarg -> MathId(MNVar(MInput,"tvar"^(string_of_int n),UNone))
+      | UTypTempl -> HwId(HNPort(HNInput,HCMLocal("tvar"^(string_of_int n)),"null","none","nil"))
+      | UTypTarg -> MathId(MNVar(MInput,"tvar"^(string_of_int n),UNone))
     in
     (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
     if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
@@ -423,7 +449,7 @@ struct
         ASTUnifier.multipattern templ targ vgl 1
         (UnivLib.unid2var)
         (UnivLib.var2unid (s))
-        is_wc freshvar
+        freshvar
         (UnivLib.unid2var)
       in
       let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
@@ -434,7 +460,7 @@ struct
         None
       else
         let _ = SearchLib.visited gtbl.search comp_cursor in
-        let _ = SET.iter slns (fun x -> add_unification x)  in
+        let _ = SET.iter slns (fun x -> add_unification comp_cursor x inst_id)  in
         Some(nslns)
 
 

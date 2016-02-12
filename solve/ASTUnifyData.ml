@@ -13,8 +13,8 @@ type unifytype = UTypTempl| UTypTarg
 type 'a fuse =
   | USAssign of 'a*('a ast)
   (*remove solved targets*)
-  | USRm of 'a*('a ast)*unifytype
-  (*add partially resolved*)
+  | USRm of 'a*unifytype
+  (*add partially resolved goal*)
   | USAdd of 'a*('a ast)*unifytype
 
 type 'a fusion = 'a fuse list
@@ -88,7 +88,6 @@ type 'a renv = {
   s: symcaml;
   cnv: 'a->symvar;
   icnv: symvar->'a;
-  iswc : 'a -> bool;
   freshvar: int -> unifytype -> 'a;
 }
 
