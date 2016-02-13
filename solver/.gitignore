@@ -1,4 +1,4 @@
 solver
 solver.debug
-symcaml
+symcaml/git-repo
 _build
