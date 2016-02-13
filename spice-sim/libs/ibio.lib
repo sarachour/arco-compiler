@@ -1,0 +1,50 @@
+.INCLUDE magnz.hl
+
+* F = current controlled current, E voltage controlled current
+* http://web.stanford.edu/class/ee133/handouts/general/spice_ref.pdf
+
+
+.SUBCKT mm ET ST Kf Kr ES E S ES0
+
+
+  VKf 0 Kf DC 0
+  VKr 0 Kr DC 0
+  VET 0 ET DC 0
+  VST 0 ST DC 0
+  VES0 0 ES0 DC 0
+
+
+  VES 0 ESg DC 0
+  BES ESg 0 V=I(VKf)*(I(VET) - I(VES))*(I(VST) - I(VES))
+
+  CRET ESg 0 1F IC=0V
+  BDEG ESg 0 V=-I(VKr)*V(VES)
+
+  BOUT ES 0 I=V(ESg)
+  BE 0 E I=I(VET) - V(ESg)
+  BS 0 S I=I(VST) - V(ESg)
+
+
+
+
+
+
+  *
+  *
+
+
+  *XNOISE CNN CR inoise
+  *XCLMP CR C iclamp
+
+.ENDS mm
+
+
+
+.SUBCKT iout A B
+  ROUT A B 1000
+.ENDS iout
+
+
+.SUBCKT iin A B
+  RIN A B 1000
+.ENDS iin

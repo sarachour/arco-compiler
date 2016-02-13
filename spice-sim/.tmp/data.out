@@ -1,0 +1,104 @@
+
+Circuit: *include libs/vbio.lib
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+
+DC solution failed -
+
+Last Node Voltages
+------------------
+
+Node                                   Last Voltage        Previous Iter
+----                                   ------------        -------------
+23                                                0                    0
+22                                                0                    0
+20                                                0                    0
+19                                                0                    0
+18                                                0                    0
+15                                                0                    0
+21                                                0                    0
+5                                                 0                    0
+17                                                0                    0
+1                                                 0                    0
+24                                                0                    0
+11                                                0                    0
+7                                                 0                    0
+xmm_0.vsrc                                        0                    0
+xmm_0.xs                                          0                    0
+13                                                0                    0
+3                                                 0                    0
+9                                                 0                    0
+xmm_0.xint.3                                      0                    0
+xmm_0.xint.4                                      0                    0
+xmm_0.xint.int                                    0                    0
+v.xmm_0.xint.vc#branch                            0                    0
+b.xmm_0.xint.bc#branch                            0                    0
+b.xmm_0.bsrc#branch                               0                    0
+b.xmm_0.bs#branch                                 0                    0
+b.xmm_0.be#branch                                 0                    0
+v.xmm_0.vs#branch                                 0                    0
+vin_es_0_1#branch                                 0                    0
+vcst2#branch                                      0                    0
+vcst3#branch                                      0                    0
+vcst5#branch                                      0                    0
+vcst6#branch                                      0                    0
+
+
+Transient solution failed -
+
+Last Node Voltages
+------------------
+
+Node                                   Last Voltage        Previous Iter
+----                                   ------------        -------------
+23                                                0                    0
+22                                                0                    0
+20                                                0                    0
+19                                                0                    0
+18                                                0                    0
+15                                                0                    0
+21                                                0                    0
+5                                                 0                    0
+17                                                0                    0
+1                                                 0                    0
+24                                                0                    0
+11                                                0                    0
+7                                                 0                    0
+xmm_0.vsrc                                        0                    0
+xmm_0.xs                                          0                    0
+13                                                0                    0
+3                                                 0                    0
+9                                                 0                    0
+xmm_0.xint.3                                      0                    0
+xmm_0.xint.4                                      0                    0
+xmm_0.xint.int                                    0                    0
+v.xmm_0.xint.vc#branch                            0                    0
+b.xmm_0.xint.bc#branch                            0                    0
+b.xmm_0.bsrc#branch                               0                    0
+b.xmm_0.bs#branch                                 0                    0
+b.xmm_0.be#branch                                 0                    0
+v.xmm_0.vs#branch                                 0                    0
+vin_es_0_1#branch                                 0                    0
+vcst2#branch                                      0                    0
+vcst3#branch                                      0                    0
+vcst5#branch                                      0                    0
+vcst6#branch                                      0                    0
+
+
+
+
+
+elapsed time since last call: 0.013 seconds.
+
+Total elapsed time: 0.013 seconds.
+
+Total DRAM available = 4287.343750 MB.
+DRAM currently available = 3555.972656 MB.
+Total ngspice program size = 19.966797 MB.
+Resident set size = 1.890625 MB.
+Shared ngspice pages = 667.000 kB.
+Text (code) pages = 1.308594 MB.
+Stack = 0 bytes.
+Library pages = 6.025391 MB.
+

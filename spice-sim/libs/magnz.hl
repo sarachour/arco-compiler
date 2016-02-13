@@ -1,0 +1,10 @@
+
+.SUBCKT vnoise I O rel=0.1 fix=0.001
+  VNG 0 NZ DC 0 TRNOISE(1 1n 0 0)
+  ESUM O 0 VALUE = { V(I) + V(NZ)}
+
+.ENDS vnoise
+
+.SUBCKT vclamp I O mn=0 mx=5
+  BCK O 0 V = V(I) < mn ? mn : V(I) > mx ? mx : V(I)
+.ends vclmp
