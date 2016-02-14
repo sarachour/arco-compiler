@@ -1,0 +1,835 @@
+
+*@output mCHOP
+*@args 571,V
+*
+*@output mWFS1
+*@args 571,V
+*
+*@input BiATF
+Vin_BiATF_170		570	0	DC	1.
+*
+*constant value 0.
+Vcst169		570	0	DC	0.
+*
+*constant value -10.
+Vcst168		570	0	DC	-10.
+*
+*@input GADD34_0
+Vin_GADD34_0_167		569	0	DC	1.
+*
+*constant value 0.025
+Vcst166		568	0	DC	0.025
+*
+*constant value -1.
+Vcst165		568	0	DC	-1.
+*
+*@input ATF6
+Vin_ATF6_164		568	0	DC	1.
+*
+*constant value 2500.
+Vcst163		567	0	DC	2500.
+*
+*constant value -1.00200400802
+Icst162		567	0	DC	-1.00200400802
+*
+*@input mXbp1u
+Iin_mXbp1u_161		566	0	DC	1.
+*
+*@input UFPT
+Vin_UFPT_160		565	0	DC	1.
+*
+*@input WFS1_0
+Vin_WFS1_0_159		565	0	DC	1.
+*
+*@input UFPT_0
+Vin_UFPT_0_158		565	0	DC	1.
+*
+*@input GADD34
+Vin_GADD34_157		564	0	DC	1.
+*
+*@output Gamma
+*@args 564,I
+*
+*@output IRE1A
+*@args 563,V
+*
+*constant value 250.
+Vcst154		562	0	DC	250.
+*
+*constant value 90.
+Icst153		562	0	DC	90.
+*
+*@input UFP
+Iin_UFP_152		562	0	DC	1.
+*
+*@input BiPER
+Vin_BiPER_151		561	0	DC	1.
+*
+*constant value 1000000000.
+Vcst150		560	0	DC	1000000000.
+*
+*@input BAXmT
+Vin_BAXmT_149		560	0	DC	1.
+*
+*@output BCL2T
+*@args 560,V
+*
+*@output BAXmBCL2
+*@args 559,V
+*
+*@input mCHOP
+Vin_mCHOP_146		559	0	DC	1.
+*
+*@input IRE1
+Iin_IRE1_145		559	0	DC	1.
+*
+*@input ATF6T
+Vin_ATF6T_144		558	0	DC	1.
+*
+*@input mCHOP_0
+Vin_mCHOP_0_143		557	0	DC	1.
+*
+*constant value 6.
+Icst142		557	0	DC	6.
+*
+*@input PERKA_0
+Vin_PERKA_0_141		556	0	DC	1.
+*
+*@output Xbp1s
+*@args 555,V
+*
+*@input BiPT
+Vin_BiPT_139		555	0	DC	1.
+*
+*constant value -0.5
+Vcst138		554	0	DC	-0.5
+*
+*@input BiUFP_0
+Vin_BiUFP_0_137		553	0	DC	1.
+*
+*constant value 0.
+Icst136		553	0	DC	0.
+*
+*constant value 4e-05
+Vcst135		552	0	DC	4e-05
+*
+*constant value 50.
+Icst134		552	0	DC	50.
+*
+*@output mXbp1u
+*@args 551,V
+*
+*constant value 5e-05
+Icst132		550	0	DC	5e-05
+*
+*@input mXbp1u_0
+Vin_mXbp1u_0_131		550	0	DC	1.
+*
+*constant value 50.
+Vcst130		550	0	DC	50.
+*
+*@output ATF6
+*@args 549,I
+*
+*constant value 20.
+Vcst128		549	0	DC	20.
+*
+*@input Xbp1s_0
+Vin_Xbp1s_0_127		548	0	DC	1.
+*
+*constant value 4.
+Vcst126		547	0	DC	4.
+*
+*@input mUFPT
+Vin_mUFPT_125		547	0	DC	1.
+*
+*constant value -0.1
+Vcst124		546	0	DC	-0.1
+*
+*@input BiRE1
+Vin_BiRE1_123		545	0	DC	1.
+*
+*@input Gamma
+Iin_Gamma_122		545	0	DC	1.
+*
+*@input BiRE1
+Iin_BiRE1_121		545	0	DC	1.
+*
+*@output BiP
+*@args 544,I
+*
+*constant value 20.
+Icst119		544	0	DC	20.
+*
+*@input Xbp1s
+Vin_Xbp1s_118		544	0	DC	1.
+*
+*@output GADD34
+*@args 543,V
+*
+*constant value -11.
+Icst116		543	0	DC	-11.
+*
+*@input ATF6p50_0
+Vin_ATF6p50_0_115		542	0	DC	1.
+*
+*@input BiPT_0
+Vin_BiPT_0_114		542	0	DC	1.
+*
+*@input BiP
+Vin_BiP_113		541	0	DC	1.
+*
+*@input WFS1
+Vin_WFS1_112		540	0	DC	1.
+*
+*@input UFPT
+Iin_UFPT_111		539	0	DC	1.
+*
+*@output ATF4
+*@args 539,V
+*
+*@input BiATF
+Iin_BiATF_109		539	0	DC	1.
+*
+*@input GADD34
+Iin_GADD34_108		539	0	DC	1.
+*
+*constant value 0.16
+Vcst107		539	0	DC	0.16
+*
+*constant value 1.66666666667
+Icst106		539	0	DC	1.66666666667
+*
+*@input BCL2T
+Vin_BCL2T_105		539	0	DC	1.
+*
+*@output ATF6GB
+*@args 539,V
+*
+*constant value 0.004
+Vcst103		538	0	DC	0.004
+*
+*constant value -2.
+Vcst102		537	0	DC	-2.
+*
+*constant value 0.1
+Vcst101		537	0	DC	0.1
+*
+*@input mXbp1u
+Vin_mXbp1u_100		537	0	DC	1.
+*
+*constant value 0.04
+Vcst99		536	0	DC	0.04
+*
+*constant value 25000000000.
+Vcst98		535	0	DC	25000000000.
+*
+*@output mXbp1s
+*@args 535,V
+*
+*@input mWFS1_0
+Vin_mWFS1_0_96		535	0	DC	1.
+*
+*@input ATF6T_0
+Vin_ATF6T_0_95		535	0	DC	1.
+*
+*@output BH3
+*@args 534,V
+*
+*@input PERKA
+Iin_PERKA_93		533	0	DC	1.
+*
+*@output PERKA
+*@args 532,V
+*
+*@input ATF6GB_0
+Vin_ATF6GB_0_91		532	0	DC	1.
+*
+*@input BAXmBCL2_0
+Vin_BAXmBCL2_0_90		531	0	DC	1.
+*
+*@output BAXm
+*@args 530,V
+*
+*@input BiUFP
+Iin_BiUFP_88		530	0	DC	1.
+*
+*@input BiPER_0
+Vin_BiPER_0_87		529	0	DC	1.
+*
+*@output PERK
+*@args 528,I
+*
+*@input mXbp1s_0
+Vin_mXbp1s_0_85		528	0	DC	1.
+*
+*@output mBiPT
+*@args 528,V
+*
+*@input BAXmT
+Iin_BAXmT_83		528	0	DC	1.
+*
+*@input CHOP
+Vin_CHOP_82		528	0	DC	1.
+*
+*constant value 30.
+Vcst81		527	0	DC	30.
+*
+*@output WFS1
+*@args 526,V
+*
+*constant value -100.
+Vcst79		525	0	DC	-100.
+*
+*@input BiPER
+Iin_BiPER_78		525	0	DC	1.
+*
+*@output BiRE1
+*@args 525,V
+*
+*@input mCHOP
+Iin_mCHOP_76		524	0	DC	1.
+*
+*constant value 5.
+Icst75		524	0	DC	5.
+*
+*@output IRE1
+*@args 523,I
+*
+*@output spliceRate
+*@args 522,V
+*
+*@input mXbp1s
+Vin_mXbp1s_72		521	0	DC	1.
+*
+*@input mBiPT
+Vin_mBiPT_71		520	0	DC	1.
+*
+*@input IRE1A_0
+Vin_IRE1A_0_70		520	0	DC	1.
+*
+*@output BCL2
+*@args 519,V
+*
+*@output UFP
+*@args 518,I
+*
+*@input BiUFP
+Vin_BiUFP_67		518	0	DC	1.
+*
+*@input mBiPT_0
+Vin_mBiPT_0_66		517	0	DC	1.
+*
+*@input ATF6p50
+Iin_ATF6p50_65		516	0	DC	1.
+*
+*@input mGADD34
+Vin_mGADD34_64		516	0	DC	1.
+*
+*@input spliceRate
+Vin_spliceRate_63		515	0	DC	1.
+*
+*@output BiATF
+*@args 514,V
+*
+*@output fGK
+*@args 514,V
+*
+*constant value 25.
+Vcst60		513	0	DC	25.
+*
+*constant value 10.
+Vcst59		512	0	DC	10.
+*
+*@output BH3T
+*@args 512,V
+*
+*constant value 75000.
+Vcst57		511	0	DC	75000.
+*
+*constant value 1.
+Vcst56		510	0	DC	1.
+*
+*@output ATF6p50
+*@args 510,V
+*
+*@output mGADD34
+*@args 510,V
+*
+*constant value -0.5
+Icst53		510	0	DC	-0.5
+*
+*constant value -50.
+Icst52		509	0	DC	-50.
+*
+*constant value 100.
+Icst51		509	0	DC	100.
+*
+*@input PERKA
+Vin_PERKA_50		508	0	DC	1.
+*
+*constant value 0.02
+Icst49		507	0	DC	0.02
+*
+*constant value -1.
+Icst48		507	0	DC	-1.
+*
+*@input UFP
+Vin_UFP_47		506	0	DC	1.
+*
+*@output CHOP
+*@args 505,V
+*
+*@input ATF6GB
+Vin_ATF6GB_45		504	0	DC	1.
+*
+*@input BiATF_0
+Vin_BiATF_0_44		503	0	DC	1.
+*
+*@input BAXmT_0
+Vin_BAXmT_0_43		502	0	DC	1.
+*
+*@input CHOP_0
+Vin_CHOP_0_42		502	0	DC	1.
+*
+*@input BH3BCL2_0
+Vin_BH3BCL2_0_41		502	0	DC	1.
+*
+*@input ATF6T
+Iin_ATF6T_40		502	0	DC	1.
+*
+*@input PERK
+Iin_PERK_39		502	0	DC	1.
+*
+*@input mWFS1
+Vin_mWFS1_38		501	0	DC	1.
+*
+*constant value 10.
+Icst37		501	0	DC	10.
+*
+*@output BiPT
+*@args 500,V
+*
+*@input ATF4
+Vin_ATF4_35		500	0	DC	1.
+*
+*@input ATF6p50
+Vin_ATF6p50_34		499	0	DC	1.
+*
+*@output BH3BCL2
+*@args 498,V
+*
+*constant value 2000.
+Vcst32		497	0	DC	2000.
+*
+*@input mGADD34_0
+Vin_mGADD34_0_31		496	0	DC	1.
+*
+*@output BAXmT
+*@args 495,V
+*
+*constant value -3.
+Icst29		495	0	DC	-3.
+*
+*constant value 2.05
+Icst28		494	0	DC	2.05
+*
+*@input BH3
+Vin_BH3_27		493	0	DC	1.
+*
+*constant value 0.0002
+Icst26		493	0	DC	0.0002
+*
+*@output BiPER
+*@args 493,V
+*
+*@output ATF6T
+*@args 492,V
+*
+*@output eIF2a
+*@args 491,I
+*
+*@output UFPT
+*@args 490,V
+*
+*@input eIF2a
+Vin_eIF2a_21		489	0	DC	1.
+*
+*@output BiUFP
+*@args 488,V
+*
+*@input BiRE1_0
+Vin_BiRE1_0_19		487	0	DC	1.
+*
+*@input ATF4_0
+Vin_ATF4_0_18		486	0	DC	1.
+*
+*@input mGADD34
+Iin_mGADD34_17		485	0	DC	1.
+*
+*@input fGK
+Iin_fGK_16		484	0	DC	1.
+*
+*@input IRE1
+Vin_IRE1_15		483	0	DC	1.
+*
+*@input IRE1A
+Iin_IRE1A_14		483	0	DC	1.
+*
+*@input BH3T
+Vin_BH3T_13		482	0	DC	1.
+*
+*constant value 1000.
+Vcst12		481	0	DC	1000.
+*
+*@input IRE1A
+Vin_IRE1A_11		480	0	DC	1.
+*
+*@input BCL2T_0
+Vin_BCL2T_0_10		479	0	DC	1.
+*
+*constant value -1.05
+Icst9		478	0	DC	-1.05
+*
+*constant value 0.03
+Icst8		477	0	DC	0.03
+*
+*constant value 0.005
+Vcst7		476	0	DC	0.005
+*
+*constant value 1.
+Icst6		476	0	DC	1.
+*
+*@input CHOP
+Iin_CHOP_5		475	0	DC	1.
+*
+*constant value 3.
+Icst4		474	0	DC	3.
+*
+*constant value -0.0599999999999
+Vcst3		473	0	DC	-0.0599999999999
+*
+*@input PERK
+Vin_PERK_2		472	0	DC	1.
+*
+*@input BH3T_0
+Vin_BH3T_0_1		471	0	DC	1.
+*
+*@input BiPT
+Iin_BiPT_0		470	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xvgain_33		154	468	468	468	vgain
+Xvgain_23		468	166	468	468	vgain
+Xvgain_15		468	468	468	468	vgain
+Xvgain_21		468	468	468	401	vgain
+Xvgain_7		468	468	401	468	vgain
+Xvgain_26		468	468	468	468	vgain
+Xvgain_24		468	468	468	468	vgain
+Xvgain_2		468	468	468	468	vgain
+Xvgain_2		468	468	468	468	vgain
+Xvgain_24		468	468	468	468	vgain
+Xvgain_6		468	468	468	140	vgain
+Xvgain_36		468	406	140	468	vgain
+Xvgain_26		468	468	468	468	vgain
+Xvgain_31		468	468	468	468	vgain
+Xvgain_5		468	468	468	468	vgain
+Xvgain_38		468	468	468	468	vgain
+Xvgain_6		468	468	468	140	vgain
+Xvgain_18		468	468	468	468	vgain
+Xvgain_27		468	468	468	468	vgain
+Xvgain_25		468	468	468	409	vgain
+Xvgain_21		468	468	468	401	vgain
+Xvgain_30		468	468	22	283	vgain
+Xvgain_15		468	468	468	468	vgain
+Xvgain_35		468	135	468	468	vgain
+Xvgain_9		468	468	468	135	vgain
+Xvgain_31		468	468	468	468	vgain
+Xvgain_26		468	468	468	468	vgain
+Xvgain_38		468	468	468	468	vgain
+Xvgain_38		468	468	468	468	vgain
+Xvgain_20		468	468	468	468	vgain
+Xswitch_11		468	468	468	468	switch
+Xswitch_4		468	468	468	468	switch
+Xswitch_13		468	468	468	468	switch
+Xswitch_7		468	468	468	468	switch
+Xswitch_11		468	468	468	468	switch
+Xswitch_4		468	468	468	468	switch
+Xswitch_2		468	468	468	468	switch
+Xswitch_10		468	468	468	468	switch
+Xswitch_10		468	468	468	468	switch
+Xswitch_11		468	468	468	468	switch
+Xswitch_11		468	468	468	468	switch
+Xswitch_5		468	468	468	468	switch
+Xswitch_1		0	468	0	186	switch
+Xswitch_6		468	468	468	468	switch
+Xswitch_12		468	468	468	468	switch
+XinputI_47		562	468	iin
+XinputI_23		524	468	iin
+XinputI_47		562	468	iin
+XinputI_22		539	468	iin
+XinputI_47		562	468	iin
+XinputI_48		567	468	iin
+XinputI_23		524	468	iin
+XinputI_47		562	468	iin
+XinputI_47		562	468	iin
+XinputI_35		562	468	iin
+XinputI_35		562	468	iin
+XinputI_7		507	468	iin
+XinputI_35		562	468	iin
+XinputI_1		566	468	iin
+XinputI_34		509	468	iin
+XinputI_48		567	468	iin
+XinputI_48		567	468	iin
+XinputI_44		545	468	iin
+XinputI_45		553	468	iin
+XinputI_43		525	468	iin
+XinputI_45		553	468	iin
+XinputI_47		562	468	iin
+XinputI_44		545	468	iin
+XinputI_46		539	468	iin
+XinputI_47		562	468	iin
+XinputI_48		567	468	iin
+XinputI_47		562	468	iin
+XinputI_48		567	468	iin
+XinputI_46		539	468	iin
+XinputI_48		567	468	iin
+XinputI_38		478	468	iin
+XinputI_47		562	468	iin
+XinputI_45		553	468	iin
+XinputI_39		533	121	iin
+XinputI_47		562	468	iin
+XinputI_48		567	468	iin
+XinputI_32		484	468	iin
+XinputI_45		553	468	iin
+XinputI_43		525	468	iin
+XinputI_47		562	468	iin
+XinputI_47		562	468	iin
+XinputI_45		553	468	iin
+XinputI_37		550	468	iin
+XinputI_47		562	468	iin
+XoutputV_72		468	528	vout
+XoutputV_72		468	528	vout
+XoutputV_5		468	571	vout
+XoutputV_52		468	526	vout
+XoutputV_5		468	571	vout
+XoutputV_6		468	532	vout
+XoutputV_73		468	530	vout
+XoutputV_45		469	559	vout
+XoutputV_21		469	498	vout
+XoutputV_53		468	519	vout
+XoutputV_50		468	534	vout
+XoutputV_61		468	522	vout
+XoutputV_0		468	560	vout
+XoutputV_72		468	528	vout
+XoutputV_0		468	560	vout
+XoutputV_0		468	560	vout
+XoutputV_72		468	528	vout
+XoutputV_0		468	560	vout
+XoutputV_65		133	505	vout
+XoutputV_60		409	514	vout
+XoutputV_9		94	555	vout
+XoutputV_0		468	560	vout
+XoutputV_3		468	525	vout
+XoutputV_31		361	563	vout
+XoutputV_4		468	543	vout
+XoutputV_3		468	525	vout
+XoutputV_5		468	571	vout
+XoutputV_29		468	514	vout
+XoutputV_20		468	551	vout
+XoutputV_67		468	571	vout
+XoutputV_60		409	514	vout
+XoutputV_0		468	560	vout
+Xvadd_31		468	468	468	468	468	0	0	vadd
+Xvadd_3		468	468	468	468	0	468	468	vadd
+Xvadd_29		468	375	468	468	0	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_27		468	468	468	468	0	468	468	vadd
+Xvadd_30		468	468	468	468	0	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_17		468	468	468	468	0	468	27	vadd
+Xvadd_33		468	468	468	468	0	468	468	vadd
+Xvadd_24		468	140	468	22	0	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_29		468	375	468	468	0	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_25		468	468	468	468	0	133	468	vadd
+Xvadd_5		178	401	468	468	468	0	0	vadd
+Xvadd_16		468	283	468	468	0	94	243	vadd
+Xvadd_22		468	468	468	468	0	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_20		468	432	468	468	0	361	468	vadd
+Xvadd_30		468	468	468	468	0	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_11		468	468	468	413	0	468	96	vadd
+Xvadd_33		468	468	468	468	0	468	468	vadd
+Xvadd_32		468	468	468	468	468	468	468	vadd
+Xvadd_33		468	468	468	468	0	468	468	vadd
+Xvadd_2		468	468	468	468	0	409	23	vadd
+Xvadd_3		468	468	468	468	0	468	468	vadd
+Xihill_4		468	468	468	468	0	404	ihill
+Xihill_5		468	468	468	468	0	468	ihill
+Xihill_2		90	344	468	468	0	468	ihill
+Xihill_6		468	377	468	468	0	0	ihill
+Xihill_1		468	468	468	468	0	0	ihill
+Xvtoi_24		468	468	468	vtoi
+Xvtoi_26		468	468	468	vtoi
+Xvtoi_24		468	468	468	vtoi
+Xvtoi_28		468	468	468	vtoi
+Xvtoi_20		468	468	344	vtoi
+Xvtoi_28		468	468	468	vtoi
+Xvtoi_14		468	468	152	vtoi
+Xvtoi_27		468	468	279	vtoi
+Xvtoi_22		468	263	241	vtoi
+Xvtoi_27		468	468	279	vtoi
+Xigenebind_5		468	468	468	468	igenebind
+Xmm_0		468	468	468	468	469	468	468	468	mm
+Xmm_0		468	468	468	468	469	468	468	468	mm
+XinputV_17		555	468	vin
+XinputV_28		542	468	vin
+XinputV_108		544	468	vin
+XinputV_17		555	468	vin
+XinputV_123		570	468	vin
+XinputV_56		517	468	vin
+XinputV_18		489	154	vin
+XinputV_21		547	468	vin
+XinputV_58		565	468	vin
+XinputV_83		565	468	vin
+XinputV_19		565	468	vin
+XinputV_88		501	468	vin
+XinputV_122		550	468	vin
+XinputV_108		544	468	vin
+XinputV_64		556	468	vin
+XinputV_63		508	468	vin
+XinputV_6		560	468	vin
+XinputV_19		565	468	vin
+XinputV_32		502	468	vin
+XinputV_41		536	468	vin
+XinputV_28		542	468	vin
+XinputV_122		550	468	vin
+XinputV_109		567	468	vin
+XinputV_102		539	468	vin
+XinputV_38		479	27	vin
+XinputV_61		527	468	vin
+XinputV_98		482	468	vin
+XinputV_112		471	468	vin
+XinputV_20		515	468	vin
+XinputV_43		528	468	vin
+XinputV_66		568	468	vin
+XinputV_86		562	468	vin
+XinputV_103		558	468	vin
+XinputV_118		540	468	vin
+XinputV_122		550	468	vin
+XinputV_89		535	468	vin
+XinputV_102		539	468	vin
+XinputV_83		565	468	vin
+XinputV_39		513	468	vin
+XinputV_66		568	468	vin
+XinputV_42		510	468	vin
+XinputV_123		570	468	vin
+XinputV_10		502	468	vin
+XinputV_123		570	468	vin
+XinputV_123		570	468	vin
+XinputV_10		502	468	vin
+XinputV_57		512	468	vin
+XinputV_51		568	468	vin
+XinputV_15		568	178	vin
+XinputV_123		570	468	vin
+XinputV_85		564	468	vin
+XinputV_62		554	468	vin
+XinputV_25		537	468	vin
+XinputV_92		548	243	vin
+XinputV_120		521	22	vin
+XinputV_44		538	468	vin
+XinputV_122		550	468	vin
+XinputV_5		545	468	vin
+XinputV_66		568	468	vin
+XinputV_9		552	468	vin
+XinputV_51		568	468	vin
+XinputV_6		560	468	vin
+XinputV_32		502	468	vin
+XinputV_43		528	468	vin
+XinputV_87		560	430	vin
+XinputV_8		547	468	vin
+XinputV_82		569	468	vin
+XinputV_89		535	468	vin
+XinputV_59		493	468	vin
+XinputV_23		481	468	vin
+XinputV_43		528	468	vin
+XinputV_110		529	96	vin
+XinputV_107		561	413	vin
+XinputV_52		472	468	vin
+XinputV_122		550	468	vin
+XinputV_11		570	468	vin
+XinputV_122		550	468	vin
+XinputV_14		499	468	vin
+XinputV_122		550	468	vin
+XinputV_21		547	468	vin
+XinputV_123		570	468	vin
+XinputV_81		557	468	vin
+XinputV_122		550	468	vin
+XinputV_121		553	23	vin
+XinputV_122		550	468	vin
+XinputV_2		516	468	vin
+XinputV_1		497	263	vin
+XinputV_0		525	468	vin
+XinputV_31		496	468	vin
+XinputV_2		516	468	vin
+Xitov_28		468	468	468	itov
+Xitov_2		404	468	375	itov
+Xitov_27		468	468	468	itov
+Xitov_4		468	468	468	itov
+Xitov_9		468	468	166	itov
+Xitov_27		468	468	468	itov
+Xitov_5		468	468	406	itov
+Xitov_4		468	468	468	itov
+Xitov_21		468	468	468	itov
+Xitov_1		468	468	468	itov
+Xitov_16		468	468	468	itov
+Xitov_27		468	468	468	itov
+Xitov_22		468	0	468	itov
+Xitov_23		468	468	468	itov
+Xitov_6		468	468	375	itov
+Xitov_23		468	468	468	itov
+Xitov_4		468	468	468	itov
+Xitov_4		468	468	468	itov
+Xitov_10		0	468	468	itov
+Xitov_24		186	430	432	itov
+Xitov_1		468	468	468	itov
+Xitov_28		468	468	468	itov
+Xitov_13		468	468	468	itov
+Xitov_21		468	468	468	itov
+Xitov_27		468	468	468	itov
+Xitov_20		468	468	468	itov
+Xiadd_9		468	468	468	468	468	iadd
+Xiadd_14		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_28		468	468	468	468	468	iadd
+Xiadd_9		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_1		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_1		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_28		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_27		468	468	468	468	468	iadd
+Xiadd_4		468	468	468	468	90	iadd
+Xiadd_19		279	152	468	468	377	iadd
+Xiadd_0		468	241	468	279	468	iadd
+XoutputI_2		468	564	iout
+XoutputI_8		468	518	iout
+XoutputI_4		468	549	iout
+XoutputI_0		468	523	iout
+XoutputI_6		468	491	iout
+XoutputI_3		468	528	iout
+XoutputI_2		468	564	iout
