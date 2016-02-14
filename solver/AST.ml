@@ -200,7 +200,6 @@ struct
       let fld x r = let _ = fn x in r in
       fold a fld ()
 
-    type symcaml = SymCaml.symcaml
 
     let to_symcaml (type a) (x:a ast)  (fn:a -> symvar) : symexpr =
       let op1_ast2sym x : SymCamlData.op1 = match x with
