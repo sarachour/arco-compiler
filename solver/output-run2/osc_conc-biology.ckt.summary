@@ -1,0 +1,173 @@
+Comps:
+
+vgain | 0 = [20,7,6,2,1,9,11,12,13,16,18]
+switch | 0 = []
+input.I | 0 = [123,106,97,86,70,45]
+output.V | 0 = [27,21,15,6,1,3,10,19,23]
+copy.V | 0 = []
+vadd | 0 = [11,9,7,5,3,0,4,6,8,10]
+ihill | 0 = []
+vtoi | 0 = []
+igenebind | 0 = []
+mm | 0 = []
+input.V | 0 = [246,239,227,211,203,168,150,149,124,123,122,116,87,35,11,10,9,2,1,154,155,156,165,172,175,187,188,198,215,224,241]
+itov | 0 = [14,13,9,7,5,4,11]
+iadd | 0 = []
+output.I | 0 = []
+copy.I | 0 = []
+
+Conns:
+input.I[45].O->itov[4].X
+input.V[35].O->vgain[18].Z
+input.V[35].O->vgain[16].Z
+input.V[35].O->vgain[2].Z
+input.V[35].O->vadd[7].D
+vadd[8].OUT2->output.V[19].X
+input.V[211].O->itov[9].K
+vadd[10].OUT2->output.V[23].X
+input.I[86].O->itov[7].X
+vadd[9].OUT2->output.V[21].X
+input.V[165].O->vgain[16].Y
+input.V[165].O->vgain[9].Y
+vadd[11].B->vgain[20].P
+vadd[6].A->vgain[12].P
+input.V[187].O->vgain[12].Z
+input.V[187].O->vadd[9].D
+vadd[4].B->vgain[9].P
+input.V[198].O->vgain[13].X
+vadd[0].A->vgain[1].P
+vadd[3].A->vgain[7].P
+input.V[116].O->vadd[8].D
+input.V[116].O->itov[5].K
+vadd[5].OUT2->output.V[6].X
+input.V[246].O->vadd[11].OUT2_0
+input.V[155].O->vadd[10].C
+input.V[155].O->vadd[10].A
+input.V[155].O->vadd[8].C
+input.V[155].O->vadd[4].C
+input.V[155].O->vadd[4].A
+input.V[155].O->vadd[5].C
+input.V[155].O->vadd[5].A
+input.V[155].O->vadd[7].C
+input.V[155].O->vadd[7].A
+input.V[155].O->vadd[9].C
+input.V[155].O->vadd[11].C
+input.V[155].O->vadd[11].A
+input.V[224].O->itov[11].K
+input.V[154].O->vadd[4].OUT2_0
+vadd[6].C->vgain[13].P
+input.V[150].O->vgain[7].X
+vadd[7].B->itov[9].Y
+input.V[227].O->vadd[9].OUT2_0
+vadd[11].OUT2->output.V[27].X
+vadd[8].B->itov[11].Y
+vadd[0].B->vadd[3].OUT
+input.V[11].O->vgain[18].X
+input.V[11].O->vgain[9].X
+input.V[11].O->vgain[1].X
+input.V[11].O->vgain[2].X
+input.V[11].O->vgain[20].X
+vadd[0].OUT2->output.V[1].X
+vadd[3].B->vgain[6].P
+input.V[239].O->itov[13].K
+input.I[106].O->itov[13].X
+input.V[188].O->vgain[12].X
+input.V[9].O->vgain[18].Y
+input.V[9].O->vgain[1].Y
+input.V[9].O->vgain[2].Y
+input.V[9].O->vgain[20].Y
+vadd[6].OUT2->output.V[10].X
+input.I[70].O->itov[5].X
+input.V[122].O->vgain[16].X
+input.V[122].O->vgain[13].Y
+input.V[122].O->vgain[12].Y
+input.V[122].O->vgain[11].Y
+input.V[122].O->vgain[6].X
+input.V[122].O->vgain[7].Y
+input.I[97].O->itov[11].X
+input.I[97].O->itov[9].X
+input.V[172].O->vadd[6].OUT2_0
+vadd[6].B->vgain[11].P
+input.V[10].O->vgain[1].Z
+input.V[10].O->vadd[5].D
+input.V[10].O->vgain[20].Z
+input.V[87].O->itov[4].K
+vadd[9].B->itov[14].Y
+vadd[10].B->vgain[18].P
+vadd[7].OUT2->output.V[15].X
+input.V[215].O->vadd[8].OUT2_0
+vadd[5].B->itov[7].Y
+input.I[123].O->itov[14].X
+input.V[149].O->vadd[10].D
+input.V[149].O->vgain[7].Z
+input.V[2].O->vadd[0].OUT2_0
+input.V[1].O->vgain[13].Z
+input.V[1].O->vadd[6].D
+input.V[1].O->vgain[9].Z
+input.V[1].O->vadd[0].D
+input.V[175].O->vgain[11].X
+input.V[156].O->vgain[11].Z
+input.V[156].O->vadd[4].D
+input.V[168].O->vadd[5].OUT2_0
+vadd[8].A->vgain[16].P
+input.V[124].O->vgain[6].Z
+input.V[124].O->itov[7].K
+input.V[124].O->itov[14].K
+input.V[124].O->vadd[11].D
+vadd[3].D->itov[5].Y
+vadd[4].OUT2->output.V[3].X
+vadd[3].C->itov[4].Y
+input.V[123].O->vgain[6].Y
+vadd[9].A->itov[13].Y
+vadd[0].C->vgain[2].P
+input.V[241].O->vadd[10].OUT2_0
+input.V[203].O->vadd[7].OUT2_0
+
+Labels:
+I(input.I[70].X): bind -5000.
+I(input.I[45].X): bind A
+V(input.V[2].X): bind A_0
+V(input.V[124].X): bind DRp
+V(input.V[1].X): bind R
+V(output.V[27].O): bind DRp
+V(input.V[150].X): bind 125000.
+V(input.V[10].X): bind DR
+V(input.V[187].X): bind MR
+V(output.V[19].O): bind MA
+I(input.I[86].X): bind 1000.
+V(input.V[123].X): bind 4e-06
+V(output.V[1].O): bind A
+I(input.I[123].X): bind 500.
+V(input.V[227].X): bind MR_0
+V(input.V[211].X): bind 500.
+V(input.V[168].X): bind DR_0
+V(input.V[35].X): bind DA
+V(input.V[175].X): bind 250.
+V(input.V[246].X): bind DRp_0
+V(input.V[203].X): bind DA_0
+V(output.V[3].O): bind C
+V(input.V[156].X): bind C
+V(input.V[116].X): bind MA
+V(input.V[165].X): bind 8e-05
+V(input.V[11].X): bind A
+V(input.V[239].X): bind 0.1
+V(input.V[9].X): bind 0.004
+V(input.V[155].X): bind 0.
+V(output.V[15].O): bind DA
+V(input.V[215].X): bind MA_0
+I(input.I[97].X): bind DAp
+V(input.V[241].X): bind DAp_0
+V(input.V[87].X): bind 100.
+V(output.V[23].O): bind DAp
+V(input.V[149].X): bind DAp
+V(input.V[122].X): bind 1.
+V(input.V[188].X): bind 1250.
+V(output.V[21].O): bind MR
+V(output.V[6].O): bind DR
+V(input.V[172].X): bind R_0
+V(input.V[198].X): bind 50.
+I(input.I[106].X): bind DR
+V(input.V[154].X): bind C_0
+V(output.V[10].O): bind R
+V(input.V[224].X): bind 5000.
+

@@ -1,0 +1,107 @@
+
+*@output U
+*@args 65,V
+*
+*@output UTF
+*@args 64,I
+*
+*@input U_0
+Vin_U_0_21		64	0	DC	1.
+*
+*@input UTF
+Vin_UTF_20		64	0	DC	1.
+*
+*constant value 2.5
+Vcst19		64	0	DC	2.5
+*
+*constant value 250.
+Vcst18		63	0	DC	250.
+*
+*constant value 156.25
+Icst17		62	0	DC	156.25
+*
+*@output V
+*@args 61,V
+*
+*@input V
+Iin_V_15		60	0	DC	1.
+*
+*@input Km
+Iin_Km_14		59	0	DC	1.
+*
+*@output umodif
+*@args 58,I
+*
+*constant value 0.
+Vcst12		58	0	DC	0.
+*
+*constant value 15.6
+Icst11		58	0	DC	15.6
+*
+*@input IPTG
+Iin_IPTG_10		57	0	DC	1.
+*
+*@input VTF
+Vin_VTF_9		56	0	DC	1.
+*
+*@input U
+Iin_U_8		55	0	DC	1.
+*
+*constant value 1.
+Vcst7		54	0	DC	1.
+*
+*@output VTF
+*@args 53,I
+*
+*constant value 10.
+Icst5		52	0	DC	10.
+*
+*constant value 2.0015
+Vcst4		52	0	DC	2.0015
+*
+*@input V_0
+Vin_V_0_3		51	0	DC	1.
+*
+*@input umodif
+Iin_umodif_2		50	0	DC	1.
+*
+*constant value 0.01
+Vcst1		49	0	DC	0.01
+*
+*constant value 2.9618e-05
+Icst0		48	0	DC	2.9618e-05
+*
+*
+*
+* === Connectivity Schem ==== 
+Xvgain_4		36	45	45	29	vgain
+Xswitch_4		40	32	18	25	switch
+XinputI_28		50	31	iin
+XinputI_18		58	13	iin
+XinputI_43		60	31	iin
+XinputI_21		62	13	iin
+XinputI_5		59	45	iin
+XinputI_18		58	13	iin
+XinputI_47		48	18	iin
+XinputI_4		57	40	iin
+XinputI_15		52	1	iin
+XoutputV_23		10	61	vout
+XoutputV_72		34	65	vout
+Xvadd_28		29	45	45	7	0	10	32	vadd
+Xvadd_29		45	46	45	7	0	34	36	vadd
+Xihill_4		13	31	45	45	0	39	ihill
+Xihill_4		13	31	45	45	0	39	ihill
+XinputV_123		64	36	vin
+XinputV_4		64	45	vin
+XinputV_121		54	45	vin
+XinputV_117		52	32	vin
+XinputV_55		49	7	vin
+XinputV_4		64	45	vin
+XinputV_4		64	45	vin
+XinputV_117		52	32	vin
+XinputV_123		64	36	vin
+XinputV_123		64	36	vin
+Xitov_0		1	36	46	itov
+XoutputI_4		39	53	iout
+XoutputI_7		39	64	iout
+XoutputI_0		25	58	iout
