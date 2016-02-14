@@ -408,6 +408,7 @@ struct
         | USAdd(lhs,rhs,UTypTempl) ->
           let rel = mkfxn lhs rhs in
           [SAddNodeRel(node_id,inst,rel)]
+          
         | USRm(vr,UTypTarg) ->
           let goal = GoalTableLib.get_goal_from_var gtbl vr in
           begin
