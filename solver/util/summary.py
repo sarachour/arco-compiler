@@ -77,27 +77,39 @@ def to_list(f,m):
 	
 	return lst
 	
-for k in summary["comps"]:
+nblocks = 0
+
+order = ["vgain","vadd","mm","vtoi","itov","iadd","switch","ihill","igenebind"]
+
+for k in order:
+    if "input" in k or "output" in k:
+	continue;
     v = summary["comps"][k]
     print(k+"\t"+str(len(v)))
+    nblocks += len(v)
+
 
 print("\n\n")
-print("nconns"+"\t"+str(len(summary["conns"])))
+print("#conns"+"\t"+str(len(summary["conns"])))
+print("#blocks"+"\t"+str(nblocks))
 
-
-nlbls = count_d(summary["labels"])
+#nlbls = count_d(summary["labels"])
 print("\n\n")
-print("nlbls"+"\t"+str(nlbls))
-vlbls = filter_d(lambda k,v : "input" in k and v[0].isalpha(), summary["labels"])
-print("n input vars: "+str(count_d(vlbls)))
-vlbls = filter_d(lambda k,v : "output" in k and v[0].isalpha(), summary["labels"])
-print("n output vars: "+str(count_d(vlbls)))
-vlbls = filter_d(lambda k,v : "input" in k and not v[0].isalpha(), summary["labels"])
-print("n input vals: "+str(count_d(vlbls)))
-vlbls = filter_d(lambda k,v : "output" in k and not v[0].isalpha(), summary["labels"])
-print("n output vals: "+str(count_d(vlbls)))
+#print("nlbls"+"\t"+str(nlbls))
+invars = filter_d(lambda k,v : "input" in k and v[0].isalpha(), summary["labels"])
+#print("n input vars: "+str(count_d(vlbls)))
+outvars = filter_d(lambda k,v : "output" in k and v[0].isalpha(), summary["labels"])
+#print("n output vars: "+str(count_d(vlbls)))
+invals = filter_d(lambda k,v : "input" in k and not v[0].isalpha(), summary["labels"])
+#print("n input vals: "+str(count_d(vlbls)))
+outvals = filter_d(lambda k,v : "output" in k and not v[0].isalpha(), summary["labels"])
+#print("n output vals: "+str(count_d(vlbls)))
+ninps = count_d(invars) + count_d(invals) 
+nouts = count_d(outvars) + count_d(outvals) 
+print("#inputs\t"+str(ninps))
+print("#outputs\t"+str(nouts))
 print("================")
-outs = to_list(lambda k,v : v if "output" in k else None, summary["labels"])
-excins = filter_d(lambda k,v : "input" in k and v[0].isalpha() and v in outs, summary["labels"])
-print("n bound outputs: "+str(count_d(excins)))
-print(excins)
+#outs = to_list(lambda k,v : v if "output" in k else None, summary["labels"])
+#excins = filter_d(lambda k,v : "input" in k and v[0].isalpha() and v in outs, summary["labels"])
+#print("n bound outputs: "+str(count_d(excins)))
+#print(excins)
