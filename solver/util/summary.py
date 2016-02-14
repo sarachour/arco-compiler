@@ -82,7 +82,7 @@ nblocks = 0
 order = ["vgain","vadd","mm","vtoi","itov","iadd","switch","ihill","igenebind"]
 
 for k in order:
-    if "input" in k or "output" in k:
+    if not (k in summary["comps"]) or "input" in k or "output" in k:
 	continue;
     v = summary["comps"][k]
     print(k+"\t"+str(len(v)))
