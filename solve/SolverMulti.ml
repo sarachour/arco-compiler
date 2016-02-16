@@ -65,7 +65,8 @@ struct
         let _ = QUEUE.dequeue env.order in
         env
       else
-        error "apply_step" "inconsistent queue"
+        error "apply_step" ("inconsistent queue: top="
+        ^(UnivLib.unid2var (QUEUE.front env.order))^" != "^(UnivLib.unid2var id))
     | MSAddVar(id) ->
       let _ = QUEUE.enqueue env.order id in
       env
@@ -82,7 +83,8 @@ struct
         let _ = QUEUE.dequeue_back env.order in
         env
       else
-        error "apply_step" "inconsistent queue"
+        error "unapply_step" ("inconsistent queue: top="
+        ^(UnivLib.unid2var (QUEUE.back env.order))^" != "^(UnivLib.unid2var id))
     | MSRmVar(id) ->
       let _ = QUEUE.enqueue_front env.order id in
       env
