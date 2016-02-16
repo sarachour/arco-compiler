@@ -9,6 +9,8 @@ let error n m = raise (Z3Error (n^":"^m))
 
 type z3doc = z3st list
 
+let z3_print_debug = print_debug 1
+
 module Z3Lib =
 struct
 
@@ -210,11 +212,11 @@ struct
     let x = List.sort sortsts (LIST.uniq x) in
     let _ = z3stmts2buf oc x in
     let _ = close_out oc in
-    let _ = print_debug "---> Executing SMT Solver\n" in
+    let _ = z3_print_debug "---> Executing SMT Solver\n" in
     let _ = flush_all () in
     let res = "__res__.z3" in
     let _ = Sys.command ("z3 -smt2 "^fname^" > "^res) in
-    let _ = print_debug "---> Finished Search\n" in
+    let _ = z3_print_debug "---> Finished Search\n" in
     let _ = flush_all () in
     let z = ParserGenerator.file_to_z3sln res in
     z

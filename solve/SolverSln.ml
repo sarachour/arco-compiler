@@ -45,7 +45,7 @@ struct
       let mr = (RANGE.tostr mrng)^" "^(mp) in
       "time "^hwr^" => "^mr
     | LError -> "error prop"
-    | LBindValue(v) -> "bind "^(string_of_number v)
+    | LBindValue(k,v) -> "bind "^(string_of_number v)
     | LBindVar(k,v) -> "bind "^(MathLib.mid2str v)
 
   let mksln () : sln =
@@ -226,7 +226,7 @@ struct
         let sname,sid,sport = wire in
         let handle = prp^" of "^(UnivLib.unodeid2name sname)^" "^(string_of_int sid)^" "^sport in
         let cmd = match lbl with
-        | LBindValue(f) -> "bind value "^handle^" :: "^(string_of_number f)
+        | LBindValue(k,f) -> "bind value "^handle^" :: "^(string_of_number f)
         | LBindVar(HNInput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
         | LBindVar(HNOutput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
         | LBindVar(HNInput,MNTime(_)) -> "bind time "^handle

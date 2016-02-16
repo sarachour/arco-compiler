@@ -2,36 +2,34 @@ open SolverData
 open Util
 open Globals
 
-let _if_interactive (f:unit->'a) =
-  if get_glbl_bool "interactive" then
+let _if_interactive (ilevel:int) (f:unit->'a) =
+  if ilevel <= get_glbl_int "interactive" then
     let _ = f () in
     ()
   else ()
 
-let _if_debug (f:unit->'a) =
-  if get_glbl_bool "debug" then
+let _if_debug (ilevel:int) (f:unit->'a) =
+  if ilevel <= get_glbl_int "debug" then
     let _ = f () in
     ()
   else ()
 
-let print_inter (v:string) =
+let print_inter (i:int) (v:string) =
   let fxn () =
     let _ = Printf.printf "%s\n" v  in
     flush_all()
   in
-  _if_interactive fxn
+  _if_interactive i fxn
 
-let print_prod (v:string) =
-  Printf.printf "%s\n" v 
 
-let exec_inter (v:unit->unit) =
+let exec_inter (i:int) (v:unit->unit) =
     let fxn () =
       let _ = v ()  in
       flush_all()
     in
-    _if_interactive fxn
+    _if_interactive i fxn
 
-let menu (label:string) (handle:string->unit) (menu:string) =
+let menu (i:int) (label:string) (handle:string->unit) (menu:string) =
 let fxn () =
   let _ = Printf.printf "%s: (%s):" label menu in
   let _ = flush_all() in
@@ -46,9 +44,9 @@ let fxn () =
   else
     ()
 in
-_if_interactive fxn
+_if_interactive i fxn
 
-let wait () =
+let wait (i:int) =
   let fxn s =
     let _ = Printf.printf "<please press key to continue. 'q' to quit>:"  in
     let _ = flush_all() in
@@ -61,14 +59,14 @@ let wait () =
     else
       ()
   in
-  _if_interactive fxn
+  _if_interactive i fxn
 
-let print_debug (v:string) =
+let print_debug (i:int) (v:string) =
   let fxn () =
     let _ = Printf.printf "[DBG]: %s\n" v in
     flush_all()
   in
-  _if_debug fxn
+  _if_debug i fxn
 
-let exec_debug (e:unit->unit) =
-  _if_debug e
+let exec_debug (i:int) (e:unit->unit) =
+  _if_debug i e

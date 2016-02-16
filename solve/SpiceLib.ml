@@ -183,7 +183,7 @@ struct
           error "handle_lbl" "unknown property"
       in
       match lbl with
-      | LBindValue(vl) ->
+      | LBindValue(k,vl) ->
         let cmt = SpcComment("constant value "^(string_of_number vl)) in
         let vs = mksrc ("cst"^indx) (SpcFlatValue(float_of_number vl)) in
         let res = match vs with

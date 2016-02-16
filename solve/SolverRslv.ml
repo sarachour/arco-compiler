@@ -13,6 +13,9 @@ exception HwConnRslvrException of string
 let error s e =
   raise (HwConnRslvrException (s^": "^e))
 
+let srslv_print_debug = print_debug 1
+let srslv_exec_debug = exec_debug 1
+
 module HwConnRslvr =
 struct
 
@@ -70,7 +73,7 @@ struct
 
   let report_noconns msg sc si sp dc di dp =
     let _ =
-      exec_debug (fun () ->
+      srslv_exec_debug (fun () ->
         let _ = Printf.printf
           "[Resolver]: no connections between %s[%d].%s -> %s[%d].%s (%s)\n"
           sc si sp dc di dp msg
@@ -228,11 +231,11 @@ struct
       if is_succ = false then
         false
       else
-        let _ = print_debug "== Passed Shallow Test\n" in
+        let _ = srslv_print_debug "== Passed Shallow Test\n" in
         let _  = flush_all() in
         let _,decls,_ = to_smt_prob cfg sln in
-        let _ = print_debug "== Generated Constraints\n" in
-        let _ = print_debug "== Created Z3 Instance\n" in
+        let _ = srslv_print_debug "== Generated Constraints\n" in
+        let _ = srslv_print_debug "== Created Z3 Instance\n" in
         let _  = flush_all() in
         let z = Z3Lib.exec decls in
         z.sat

@@ -43,11 +43,12 @@ type goal =
 
 type wireid = unodeid*int*string
 
+(*Different kinds of labels*)
 type label =
   | LMagnitude of range*untid*range*unt
   | LTime of range*untid*range*untid
   | LError
-  | LBindValue of number
+  | LBindValue of hwvkind*number
   | LBindVar of hwvkind*mid
 
 type sln = {

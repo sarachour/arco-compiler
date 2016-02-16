@@ -15,12 +15,13 @@ open Interactive
 open Globals
 
 exception MainException of string*string;;
+let main_exec_debug = exec_debug 0 
 
 let read_data f h =
   let fenv = ParserGenerator.file_to_formula f in
   let henv = ParserGenerator.file_to_hwspec h in
-  let hwstr = exec_debug (fun () -> HwLib.to_file henv "henv.debug.txt") in
-  let hwstr = exec_debug (fun () -> MathLib.to_file fenv "fenv.debug.txt" ) in
+  let hwstr = main_exec_debug (fun () -> HwLib.to_file henv "henv.debug.txt") in
+  let hwstr = main_exec_debug (fun () -> MathLib.to_file fenv "fenv.debug.txt" ) in
   (fenv,henv)
 
 let gen h f o cfg =

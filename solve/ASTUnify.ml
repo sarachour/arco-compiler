@@ -20,6 +20,8 @@ open SolverUtil
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
+let auni_print_debug = print_debug 2
+let auni_menu = menu 2
 
 module ASTUnifier =
 struct
@@ -64,7 +66,7 @@ struct
         ()
     in
     let internal_menu_handle x = menu_handle x (fun () -> ()) in
-    let rec user_menu_handle () = menu "ast-unify" (fun x -> menu_handle x user_menu_handle) menu_desc in
+    let rec user_menu_handle () = auni_menu "ast-unify" (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
 
@@ -244,16 +246,16 @@ struct
   (*apply the existing state to python, that is transform the expressions*)
 
   let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
-    let _ = print_debug "ENV == STATE ===" in
+    let _ = auni_print_debug "ENV == STATE ===" in
     let _ = SymCaml.clear (g_sym s.tbl) in
     (*let _ = SymCaml.set_debug (g_sym s.tbl) true in*)
     (*create replacement tables*)
     let targ_repls : (a,a ast) map = MAP.make () in
     let templ_repls : (a,a ast) map = MAP.make () in
     let fill_t ty = SET.iter (g_state s.tbl ty).fill ( fun x ->
-      let _ = print_debug ("ENV fill  "^(s.tbl.tostr x)^" : "^(unifytype2str ty)) in
+      let _ = auni_print_debug ("ENV fill  "^(s.tbl.tostr x)^" : "^(unifytype2str ty)) in
       if MAP.has (g_info s.tbl ty).info x  = false then
-        ret (print_debug ("ENV ignore fill, already satisifed")) ()
+        ret (auni_print_debug ("ENV ignore fill, already satisifed")) ()
       else
         ret (MAP.put targ_repls x (MAP.get (g_info s.tbl ty).info x).rhs) ()
     )
@@ -275,7 +277,7 @@ struct
         if MAP.has (g_bans s.tbl) v then
           let bans = SET.map (MAP.get (g_bans s.tbl) v) (fun x ->
             let nx = ASTLib.sub x templ_repls in
-            let _ = print_debug ("ENV ban: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str nx s.tbl.tostr)^"") in
+            let _ = auni_print_debug ("ENV ban: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str nx s.tbl.tostr)^"") in
             nx
           ) in
           bans
@@ -307,12 +309,12 @@ struct
     let add_expr scratch v rhs (iswc:bool) (addvars:bool)=
       let _ = if addvars then add_vars v rhs iswc else () in
       let _ = MAP.put scratch v (rhs) in
-      let _ = print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
+      let _ = auni_print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
       ()
     in
     let rm_expr scratch v =
       let _ = MAP.rm scratch_targ v in
-      let _ = print_debug ("ENV remove "^(s.tbl.tostr v)) in
+      let _ = auni_print_debug ("ENV remove "^(s.tbl.tostr v)) in
       ()
     in
     (*add original variables*)
@@ -363,26 +365,26 @@ struct
       let sym2a : symvar -> a = g_iconv s.tbl in
       let a2sym : a -> symvar = g_conv s.tbl in
       let rtempl = ASTLib.sub_one rtempl ltempl (Term ltarg) in (*bind any circular dependencies*)
-      let _ = print_debug ("#unify\n  templ: "^(ASTLib.ast2str rtempl s.tbl.tostr)^"\n  targ"^(ASTLib.ast2str rtarg s.tbl.tostr)^"\n") in
+      let _ = auni_print_debug ("#unify\n  templ: "^(ASTLib.ast2str rtempl s.tbl.tostr)^"\n  targ"^(ASTLib.ast2str rtarg s.tbl.tostr)^"\n") in
       let symtempl : symexpr = ASTLib.to_symcaml rtempl a2sym in
       let symtarg : symexpr = ASTLib.to_symcaml rtarg a2sym in
       let maybe_assigns = SymCaml.pattern (g_sym s.tbl) symtarg symtempl in
       match maybe_assigns with
       | Some(assigns) ->
-        let _ = print_debug "<!> found assigns" in
+        let _ = auni_print_debug "<!> found assigns" in
         let mp = MAP.make () in
         let _ = MAP.put mp ltempl (Term ltarg) in
         let _ = List.iter (fun ((l,r):symvar*symexpr) ->
           let al : a = sym2a l in
           let ar : a ast = ASTLib.from_symcaml r sym2a in
-          let _ = print_debug (" assign: "^(s.tbl.tostr al)^"="^(ASTLib.ast2str ar s.tbl.tostr)) in
+          let _ = auni_print_debug (" assign: "^(s.tbl.tostr al)^"="^(ASTLib.ast2str ar s.tbl.tostr)) in
           let _ = MAP.put mp al ar in
           ()
         ) assigns
         in
         Some(mp)
       | None ->
-        let _ = print_debug "no assigns found" in
+        let _ = auni_print_debug "no assigns found" in
         None
 
 
@@ -425,16 +427,16 @@ struct
   let get_orig_rhs_and_kind (type a) s (utyp:unifytype) (vr:a) =
     if MAP.has (g_info s.tbl utyp).info vr then
       let ifo = MAP.get (g_info s.tbl utyp).info vr in
-      let _ = print_debug ("+ local: "^(s.tbl.tostr vr)) in
+      let _ = auni_print_debug ("+ local: "^(s.tbl.tostr vr)) in
       Some(ifo.kind,ifo.rhs)
     (*a temporary variable*)
     else if MAP.has (g_state s.tbl utyp).add vr then
       let rhs = MAP.get (g_state s.tbl utyp).add vr in
-      let _ = print_debug ("+ fillvar: "^(s.tbl.tostr vr)) in
+      let _ = auni_print_debug ("+ fillvar: "^(s.tbl.tostr vr)) in
       Some(RKFunction,rhs)
     (*an uncaptured variable*)
     else
-      let _ = print_debug ("+ uncaptured: "^(s.tbl.tostr vr)) in
+      let _ = auni_print_debug ("+ uncaptured: "^(s.tbl.tostr vr)) in
       None
 
   let get_any_orig_rhs_and_kind (type a) (s) (v:a) =
@@ -486,37 +488,37 @@ struct
       match tplifo with
       (*variable, is itself an output*)
       | Some(tplkind,tplrhs) ->
-        let _ = print_debug ("captured templ var: "^(s.tbl.tostr asgnlhs)) in
+        let _ = auni_print_debug ("captured templ var: "^(s.tbl.tostr asgnlhs)) in
         begin
         (*determine kind of right hand side of assignment*)
         match asgnrhs with
           (**)
           | Term(targvar) ->
-            let _ = print_debug ("var-var assign: "^(s.tbl.tostr asgnlhs)^"="^(s.tbl.tostr targvar)) in
+            let _ = auni_print_debug ("var-var assign: "^(s.tbl.tostr asgnlhs)^"="^(s.tbl.tostr targvar)) in
             let targifo = get_orig_rhs_and_kind s UTypTarg targvar in
             begin
             match targifo with
             | Some(targkind,targrhs) ->
-              let _ = print_debug ("captured targ var: "^(s.tbl.tostr targvar)) in
+              let _ = auni_print_debug ("captured targ var: "^(s.tbl.tostr targvar)) in
               if targkind != tplkind then false (*the kinds don't match*)
               else (*kinds match, add this *)
                 let _ = SearchLib.add_step s.search (RForceAssign(asgnlhs,targvar)) in
                 true
               (*assigned to an uncaptured variable - it's okay.*)
             | None ->
-              let _ = print_debug ("uncaptured targ var: "^(s.tbl.tostr targvar)) in
+              let _ = auni_print_debug ("uncaptured targ var: "^(s.tbl.tostr targvar)) in
               if RKFunction != tplkind then false (*the kinds don't match*)
               else true
             end
           | _ ->
-            let _ = print_debug ("var-expr assign: "^(s.tbl.tostr asgnlhs)^" = "^(ASTLib.ast2str asgnrhs s.tbl.tostr)) in
+            let _ = auni_print_debug ("var-expr assign: "^(s.tbl.tostr asgnlhs)^" = "^(ASTLib.ast2str asgnrhs s.tbl.tostr)) in
             let tvar = s.tbl.env.freshvar (RAND.rand_int 100) UTypTarg in
             let _ = SearchLib.add_step s.search (RForceAssign(asgnlhs,tvar)) in
             let _ = SearchLib.add_step s.search (RVarAdd(tvar,asgnrhs,UTypTarg)) in
             true
         end
       | None ->
-        let _ = print_debug ("uncaptured templ var: "^(s.tbl.tostr asgnlhs)) in
+        let _ = auni_print_debug ("uncaptured templ var: "^(s.tbl.tostr asgnlhs)) in
         true
     in
     (*add a cursor for solving the goal*)
@@ -561,7 +563,7 @@ struct
     let templs,targs = apply_state s in
     let vtempl = STACK.peek ((g_state s.tbl UTypTempl).focus) in
     let vtarg = STACK.peek ((g_state s.tbl UTypTarg).focus) in
-    let _ = print_debug (" "^(s.tbl.tostr vtempl)^" <-> "^(s.tbl.tostr vtarg)) in
+    let _ = auni_print_debug (" "^(s.tbl.tostr vtempl)^" <-> "^(s.tbl.tostr vtarg)) in
     let rtempl = MAP.get templs vtempl in
     let rtarg = MAP.get targs vtarg in
     match unify_one s vtempl rtempl vtarg rtarg with
@@ -573,10 +575,10 @@ struct
     | None ->
       (*marks a deadend if there was no solution*)
       if add_fill_nodes s curs templs targs vtempl vtarg then
-        let _ = print_debug "filled in some nodes." in
+        let _ = auni_print_debug "filled in some nodes." in
         ()
       else
-        let _ = print_debug "no more nodes to fill in." in
+        let _ = auni_print_debug "no more nodes to fill in." in
         let _ = SearchLib.deadend s.search curs in
         ()
 
@@ -593,26 +595,26 @@ struct
     let rec _solve () =
       let sysmenu,usrmenu = mkmenu sr in
       if SearchLib.is_exhausted sr.search (Some root) then
-        let _ = print_debug "exhausted search" in
+        let _ = auni_print_debug "exhausted search" in
         ()
       else
         (*get the next node*)
         let maybe_next_node = get_best_valid_node sr (Some root) in
         let nslns = SearchLib.num_solutions sr.search (Some root) in
-        let _ = print_debug ("# solutions: "^(string_of_int nslns)) in
+        let _ = auni_print_debug ("# solutions: "^(string_of_int nslns)) in
         if nslns > n then
-         let _ = print_debug "[search_tree] Found Solutions" in
+         let _ = auni_print_debug "[search_tree] Found Solutions" in
          ()
         else
           match maybe_next_node with
           | Some(next_node) ->
               (*move to node*)
-              let _ = print_debug "=== Moving to Node ==" in
+              let _ = auni_print_debug "=== Moving to Node ==" in
               let _ = usrmenu () in
               let _ = SearchLib.move_cursor sr.search sr.tbl next_node in
               let _ = if SearchLib.is_deadend sr.search next_node  = false then
                 let _ = solve_node sr in
-                let _ = print_debug "== Solution Node ==" in
+                let _ = auni_print_debug "== Solution Node ==" in
                 let _ = usrmenu () in
                 ()
               in
@@ -724,12 +726,12 @@ struct
     (*let _ = build_tree smeta root (None) in*)
     (*solve a thing*)
     let _ = solve smeta root n in
-    let _ = print_debug "=== Done with Relation Search ===" in
+    let _ = auni_print_debug "=== Done with Relation Search ===" in
     let slns = get_slns smeta in
     let rep = print_fusions 1 smeta.tbl.tostr slns in
-    let _ = print_debug "=== SOLUTIONS ===" in
-    let _ = print_debug rep in
-    let _ = print_debug "=================" in
+    let _ = auni_print_debug "=== SOLUTIONS ===" in
+    let _ = auni_print_debug rep in
+    let _ = auni_print_debug "=================" in
     slns
 
 end
