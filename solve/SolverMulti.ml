@@ -79,12 +79,12 @@ struct
       let _ = SearchLib.unapply_steps search (env.slvr, env.multtbl) steps in
       env
     | MSAddVar(id) ->
-      if QUEUE.back env.order = id then
-        let _ = QUEUE.dequeue_back env.order in
+      if QUEUE.front env.order = id then
+        let _ = QUEUE.dequeue env.order in
         env
       else
-        error "unapply_step" ("inconsistent queue: top="
-        ^(UnivLib.unid2var (QUEUE.back env.order))^" != "^(UnivLib.unid2var id))
+        error "unapply_step" ("inconsistent queue: back="
+        ^(UnivLib.unid2var (QUEUE.front env.order))^" != "^(UnivLib.unid2var id))
     | MSRmVar(id) ->
       let _ = QUEUE.enqueue_front env.order id in
       env
@@ -162,8 +162,22 @@ struct
     | Some(nodes) ->
       let proc_node (n:sstep snode) : _ =
         let _ = SearchLib.move_cursor multi sl.tbl curs in
+        let steps : sstep list = SearchLib.get_path partial n in
+        let _ = SearchLib.start multi in
+        let _ = List.iter (fun x -> match x with
+          | SRemoveGoal(g) ->
+            let lhs = Shim.goal2lhs g in
+            if QUEUE.has sl.tbl.order lhs then
+              SearchLib.add_step multi (MSRmVar(lhs))
+          | SAddGoal(g) ->
+            let lhs = Shim.goal2lhs g in
+            if QUEUE.has sl.tbl.order lhs then
+              SearchLib.add_step multi (MSAddVar(lhs))
+          | _ -> ()
+
+        ) steps
+        in
         let _ = SearchLib.add_step multi (MSSlnApp(id,n.id)) in
-        let _ = SearchLib.add_step multi (MSRmVar(id)) in
         let _ = SearchLib.commit multi sl.tbl in
         ()
       in
@@ -173,7 +187,78 @@ struct
       let _ = SearchLib.deadend multi curs in
       ()
 
+    let test_node_validity (ms:msearch) newnode =
+      true
 
+    (*get the best valid node. If there is no valid node, return none *)
+    let rec get_best_valid_node (ms:msearch)   : (msstep snode) option =
+      let collate_score old_score score : float =
+        score.state
+      in
+      match SearchLib.select_best_node ms.multst collate_score None with
+      | Some(newnode) ->
+          if test_node_validity ms newnode then
+            Some(newnode)
+          else
+            get_best_valid_node ms
+      | None -> None
+
+
+
+    let msolve sl (ms:msearch) (nslns:int): (sln list) option =
+      let mint,musr = mkmenu ms in
+      let rec _msolve () =
+        if SearchLib.is_exhausted ms.multst None then
+          let _ = m_print_debug "[search_tree] is exhausted" in
+          ()
+        else
+          let _ = musr () in
+          let maybe_next_node = get_best_valid_node ms in
+          (*found enough solutions*)
+          if SearchLib.num_solutions ms.multst None >= nslns then
+           let _ = slvr_print_debug "[search_tree] Found enough solutions" in
+           ()
+          else
+            match maybe_next_node with
+            | Some(curs) ->
+              let _ = SearchLib.move_cursor ms.multst ms.tbl curs in
+              let _ = musr () in
+              let id : unid = QUEUE.front ms.tbl.order in
+              (*if we find a solution*)
+              if QUEUE.empty ms.tbl.order then
+                let _ = SearchLib.solution ms.multst curs in
+                let _ = m_print_debug ("Solved all equations.") in
+                let _ = _msolve () in
+                ()
+              else
+                let _ = m_print_debug ("Solving Target: "^(UnivLib.unid2var id)) in
+                let _  : unit= expand_search ms id 1 in
+                let _ = _msolve () in
+                ()
+            | None ->
+              ()
+      in
+      let root = SearchLib.cursor ms.multst in 
+      let _ = if QUEUE.empty ms.tbl.order then
+        let _ = SearchLib.solution ms.multst root in
+        let _ = _msolve () in
+        ()
+      else
+        let id : unid = QUEUE.front ms.tbl.order in
+          let _  : unit= expand_search ms id 1 in
+          let _ = _msolve () in
+          ()
+      in
+      let snodes = SearchLib.get_solutions ms.multst None in
+      let slns = List.map (fun x ->
+        let _ = SearchLib.move_cursor ms.multst ms.tbl x in
+        let gltbl = ms.tbl.multtbl in
+        gltbl.sln
+      ) snodes
+      in
+      match slns with
+      | h::t -> Some(h::t)
+      |[] ->None
 
   let mkmulti (slvr:slvr) =
     let mult_tbl = GoalTableLib.mktbl slvr (TrivialLib.is_trivial) in
@@ -209,14 +294,7 @@ struct
     in
     msearch
 
-  let msolve sl (ms:msearch) : (sln list) option =
-    let id : unid = QUEUE.front ms.tbl.order in
-    (*find solution*)
-    let mint,musr = mkmenu ms in
-    let _ = musr () in
-    let _  : unit= expand_search ms id 1 in
-    let _ = musr () in
-    None
+
 
 
 end

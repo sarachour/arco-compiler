@@ -10,6 +10,7 @@ open SolverSln
 open Common
 open HWData
 open Math
+open HW
 
 exception TrivialException of (string)
 let error n msg = raise (TrivialException(n^": "^msg))
@@ -70,6 +71,9 @@ struct
     | (HNInput,MLocal) ->
       let stps = [SSolAddLabel(wire,prop,nlbl)] in
       stps
+    | (HNInput,MOutput) ->
+      let stps = [SSolAddLabel(wire,prop,nlbl)] in
+      stps
     | (HNOutput,MLocal) ->
       let stps = [SSolAddLabel(wire,prop,nlbl)] in
       stps
@@ -77,7 +81,7 @@ struct
     | (HNInput,MInput) ->
       let stps = [SSolAddLabel(wire,prop,nlbl)] in
       stps
-    | _ -> error "rslv_lbl" "impossible label."
+    | (a,b)-> error "rslv_lbl" ("impossible label: hw "^(HwLib.kind2str a)^" := math "^(MathLib.kind2str b))
 
   let resolve_trivial_step (s:slvr) (t:gltbl) g : sstep list =
     match GoalTableLib.unwrap_goal g with

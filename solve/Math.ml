@@ -41,6 +41,7 @@ sig
   val to_file : menv -> string -> unit
   val cstrs : menv -> mcstrs
   val mid2str : mid -> string
+  val kind2str: mkind -> string
   val mid2name : mid -> string
   val rel2str : mrel -> string
   val mkvar : menv -> string -> mkind -> unt -> menv

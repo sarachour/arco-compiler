@@ -80,16 +80,17 @@ struct
       HNParam(HCMGlobal(c.name,i),v.name,f,u)
     | _ -> error "cv2hwid" "unexpected arguments"
 
+  let kind2str v =
+    match v with
+    | HNInput -> "input"
+    | HNOutput -> "output"
+
+
   let to_buf e fb =
     let os x = output_string fb x in
-    let pkind2str v =
-      match v with
-      | HNInput -> "input"
-      | HNOutput -> "output"
-    in
     let type2str v =
       match v with
-      | HPortType(knd,tps) -> "port "^(pkind2str knd)
+      | HPortType(knd,tps) -> "port "^(kind2str knd)
       | HParamType(v,t) -> "param : "^(UnitLib.unit2str t)^" = "^(string_of_number v)
     in
     let print_var (x:hwvar) =
