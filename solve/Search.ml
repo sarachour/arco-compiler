@@ -169,6 +169,17 @@ struct
     let _ = List.iter (fun x -> add_step sr x) st in
     ()
 
+  let apply_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (st:a list) =
+    let _ = List.iter (fun x -> let _ = sr.apply env x in ()) st in
+    ()
+
+  let unapply_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (st:a list) =
+    let _ = List.iter (fun x -> let _ = sr.unapply env x in ()) st in
+    ()
+
+  let has_child (type a) (type b) (sr:(a,b) ssearch) (s:a snode) =
+    TREE.has_child sr.tree s 
+
   let commit (type a) (type b) (sr:(a,b) ssearch) (state:b) : a snode=
     match sr.scratch, sr.curs with
     | Some(node), Some(cursor) ->

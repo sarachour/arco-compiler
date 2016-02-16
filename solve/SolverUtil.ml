@@ -14,6 +14,16 @@ open SolverData
 
 module Shim =
 struct
+  let wrap_goal (v:gltbl) (u:urel) : goal =
+    if v.is_trivial u then
+      TrivialGoal(u)
+    else
+      NonTrivialGoal(u)
+
+  let unwrap_goal (g:goal) : urel = match g with
+  | TrivialGoal(v) -> v
+  | NonTrivialGoal(v) -> v
+
   let unt s uid : unt =
     match uid with
     | MathId(MNVar(_,_,u)) -> u
@@ -85,6 +95,11 @@ struct
   |  UFunction(l,r) -> UFunction(lclid2glblid i l, lcl2glbl i r)
   |  UState(l,r,ic,t) -> UState(lclid2glblid i l, lcl2glbl i r, lclid2glblid i ic, lclid2glblid i t)
 
+  let rel2lhs (g:urel) : unid =  match g with
+  |  UFunction(l,r) -> l
+  |  UState(l,r,ic,t) -> l
+
+  let goal2lhs (g:goal) = rel2lhs (unwrap_goal g)
 
   let unid2wcsym cmpname ciid uid is_templ cnv= match uid, is_templ with
   | (HwId(HNPort(k,HCMLocal(c),port,prop,u)), true) ->
@@ -327,14 +342,7 @@ struct
   let is_trivial (t:gltbl) (r:urel) =
     t.is_trivial r
 
-  let wrap_goal (v:gltbl) (u:urel) : goal =
-    if v.is_trivial u then
-      TrivialGoal(u)
-    else
-      NonTrivialGoal(u)
-
-  let unwrap_goal (g:goal) : urel = match g with
-  | TrivialGoal(v) -> v
-  | NonTrivialGoal(v) -> v
+  let wrap_goal = Shim.wrap_goal
+  let unwrap_goal = Shim.unwrap_goal
 
 end

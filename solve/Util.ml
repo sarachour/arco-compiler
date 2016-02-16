@@ -150,29 +150,37 @@ struct
     (min,max)
 end
 
-type 'a queue = 'a list
+
+type 'a queue = ('a list) ref
 module QUEUE =
 struct
-  let make () = []
+  let make () : 'a queue = REF.mk []
 
-  let enq (type a) (s:a queue) (x:a) : a queue =
-    s @ [x]
+  let enqueue (type a) (s:a queue) (x:a) : a queue =
+    let _ : unit = REF.upd s (fun s -> s @ [x]) in s
 
-  let deq (type a) (s:a queue) : a queue =
-    match s with
-    | h::t -> t
-    | [] -> error "queue.deq" "failed to dequeue empty list"
+  let enqueue_front (type a) (s:a queue) (x:a) : a queue =
+    let _ : unit = REF.upd s (fun s -> x::s) in s
 
-  let peek (type a) (s:a queue) : a =
-    match s with
+
+  let dequeue (type a) (s:a queue) : a queue =
+    let _ : unit = REF.upd s (fun st ->
+      match st with
+      | h::t -> t
+      | [] -> error "stack.dequeue" "failed to dequeue empty list"
+    ) in s
+
+  let front (type a) (s:a queue) : a =
+    match REF.dr s with
     | h::t -> h
-    | _ -> error "queue.peek" "can't peek empty list"
+    | _ -> error "queue.front" "can't peek empty list"
 
   let empty (type a) (s:a queue) : a queue =
-    []
+    let _ = REF.upd s (fun x -> []) in
+    s
 
-  let filter (type a) (s:a queue) (f:a->bool) : a queue =
-    List.filter f s
+  let filter (type a) (s:a queue) (f:a->bool) : a list =
+    List.filter f (REF.dr s)
 
   let has (type a) (s:a queue) (x:a) : bool =
     match filter s (fun q -> q = x) with
@@ -180,10 +188,44 @@ struct
     | _ -> true
 
   let tostr (type a) (s:a queue) (st : a -> string) =
-    List.fold_left (fun r x -> r^"\n"^(st x) ) "" s
+    List.fold_left (fun r x -> r^" "^(st x) ) "" (REF.dr s)
 
   let length (type a) (s:a queue) =
-    List.length s
+    List.length (REF.dr s)
+
+  let empty (type a) (s:a queue) =
+    length s = 0
+
+  let from_list (type a) (x:a list) : (a queue) =
+    let q = make () in
+    let _ = REF.upd q (fun q -> x) in
+    q
+
+  let map (type a) (type b) (x:a queue) (r:a -> b): (b list) =
+    List.map r (REF.dr x)
+
+  let iter (type a) (type b) (x:a queue) (r:a -> unit): unit =
+    List.iter r (REF.dr x)
+
+  let dequeue_back (type a) (type b) (x:a queue) : a queue =
+    let rec deq_back l = match l with
+      | [] -> []
+      | [h] -> []
+      | h::t -> h::(deq_back t)
+    in
+    let _ = REF.upd x (fun lst ->
+      deq_back lst
+    ) in
+    x
+
+  let back (type a) (x:a queue) : a =
+    let rec _back (r:a list) =
+      match (r) with
+      | [] -> error "QUEUE.back" "empty queue"
+      | [h] -> h
+      | _::t -> _back t
+    in
+    _back (REF.dr x)
 end
 
 
@@ -208,9 +250,10 @@ struct
     | _ -> error "stack.peek" "can't peek empty list"
 
   let empty (type a) (s:a stack) : a queue =
-    []
+    let _ = REF.upd s (fun st -> []) in
+    s
 
-  let filter (type a) (s:a stack) (f:a->bool) : a queue =
+  let filter (type a) (s:a stack) (f:a->bool) : a list =
     List.filter f (REF.dr s)
 
   let has (type a) (s:a stack) (x:a) : bool =
@@ -709,6 +752,17 @@ struct
     | [(snk,edj)] -> edj
     | _ -> error "edge" "does not exist"
 
+
+  let children (type a) (type b) (g:(a,b) tree) (n:a) : a list =
+    let chld,_ = MAP.get g.adj n in
+    SET.map chld (fun (n,e) -> n)
+
+  let has_child (type a) (type b) (g:(a,b) tree) (n:a) (c:a) : bool =
+    let ch = children g n in
+    if LIST.count ch c > 0 then
+      true
+    else
+      false
 
   let parent  (type a) (type b) (g:(a,b) tree) (n:a) : a option =
     let _,p = MAP.get g.adj n in

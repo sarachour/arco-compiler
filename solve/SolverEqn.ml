@@ -276,7 +276,7 @@ struct
 
   (*solve a goal*)
 
-  let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) (nslns:int) =
+  let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) (nslns:int) : unit =
     let solve_goal (g:goal) =
       let curr = SearchLib.cursor v.search in
       let mint,musr = mkmenu s v (Some g) in
@@ -304,12 +304,13 @@ struct
     let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
       if SearchLib.is_exhausted v.search (Some root) then
+        let _ = slvr_print_debug "[search_tree] is exhausted" in
         ()
       else
         (*get the next node*)
         let maybe_next_node = get_best_valid_node s v (Some root) in
         if SearchLib.num_solutions v.search (Some root) >= nslns then
-         let _ = slvr_print_debug "[search_tree] Found Enought Solutions" in
+         let _ = slvr_print_debug "[search_tree] Found enough solutions" in
          ()
         else
           match maybe_next_node with
@@ -335,14 +336,8 @@ struct
         ()
 
     let solve (s:slvr) (v:gltbl) (nslns:int) : ((sstep snode) list) option =
-      let goal_has_mvar (gs:goal) (target:mid) : bool = match GoalTableLib.unwrap_goal gs with
-        | UState(MathId(q),_,_,_) -> q = target
-        | UFunction(MathId(q),_) -> q = target
-        | _ -> true
-      in
-      (*ban directly solving goals that are not the mvar one*)
       let root = SearchLib.cursor v.search in
-      let _ = solve_subtree s v root in
+      let _ : unit= solve_subtree s v root nslns in
       let slns = SearchLib.get_solutions v.search (Some root) in
       match slns with
       | h::t -> Some slns
