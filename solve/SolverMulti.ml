@@ -139,17 +139,9 @@ struct
     in
     (*get the current state*)
     let search = MAP.get ms.tbl.st id in
+    let tbl = GoalTableLib.mktbl ms.tbl.slvr ms.is_trivial in
     (*ban everything but current variable*)
-    let tbl = {
-      goals=ms.goals;
-      nodes=ms.nodes;
-      dngl=MAP.make();
-      blacklist=SET.make_dflt();
-      is_trivial=ms.is_trivial;
-      search=search;
-      sln=SlnLib.mksln();
-    }
-    in
+    let _ = (tbl.search <- search) in
     tbl
 
 

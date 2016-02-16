@@ -126,7 +126,6 @@ struct
       ()
     in
     let add_unification (root:sstep snode) (u:unid fusion) inst =
-      let _ = slvr_print_debug "TODO: Implement add unification" in
       let _ = SearchLib.move_cursor gtbl.search (s,gtbl) root in
       let _ = SearchLib.start gtbl.search in
       let _ = List.iter (fun f -> add_fuse f inst) u in

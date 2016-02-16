@@ -9,6 +9,10 @@ open SolverUtil
 open Unit
 open SolverRslv
 
+exception SolverSlnError of string
+
+let error n m = raise (SolverSlnError (n^":"^m))
+
 module SlnLib =
 struct
   let hwport2wire cm port =

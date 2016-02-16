@@ -170,7 +170,14 @@ struct
   in
   s
 
-  let order_steps a b = 0
+  (*add variables first*)
+  let order_steps a b = match (a,b) with
+  | (RVarRemove(_),_) -> -1
+  | (_,RVarRemove(_)) -> 1
+  | (RVarAdd(_),_) -> 1
+  | (_,RVarAdd(_)) -> -1
+  | _ -> 0
+
 
   let score_steps env steps : sscore =
     let delta = 0. in

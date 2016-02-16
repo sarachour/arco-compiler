@@ -11,6 +11,10 @@ open Common
 open HWData
 open Math
 
+exception TrivialException of (string)
+let error n msg = raise (TrivialException(n^": "^msg))
+
+
 module TrivialLib =
 struct
 
