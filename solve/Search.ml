@@ -178,7 +178,7 @@ struct
     ()
 
   let has_child (type a) (type b) (sr:(a,b) ssearch) (s:a snode) =
-    TREE.has_child sr.tree s 
+    TREE.has_child sr.tree s
 
   let commit (type a) (type b) (sr:(a,b) ssearch) (state:b) : a snode=
     match sr.scratch, sr.curs with
@@ -343,7 +343,10 @@ struct
       None
 
   let is_exhausted  (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) =
-    if List.length (get_paths sr root) == 0 then
+    let currnode = cursor sr in
+    let leaves = get_paths sr root in
+    let leaves = LIST.filter (fun x -> x <> currnode) leaves in
+    if List.length leaves == 0 then
       true
     else
       false
@@ -360,10 +363,7 @@ struct
       score
     in
     (*get all the paths for teh root node*)
-    let leaves = if root = None
-      then get_paths sr None
-      else get_paths sr (root)
-    in
+    let leaves = get_paths sr root in
     match leaves with
     | [] -> None
     | h::t ->

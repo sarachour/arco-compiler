@@ -27,16 +27,9 @@ struct
     let n,i,p = wire in
     (UnivLib.unodeid2name n)^"["^(string_of_int i)^"]."^p
 
-  let wire2hid he (wire:wireid) prop =
-    let cmpn,cmpid,name = wire in
-    let cmpname = UnivLib.unodeid2name cmpn in
-    let knd = HwLib.getkind he cmpname name in
-    let unt = HwLib.getunit he cmpname name prop in
-    HNPort(knd, HCMGlobal(cmpname,cmpid), name, prop, unt)
-
-  let wire2uid he (wire:wireid) prop =
-    let hid = wire2hid he wire prop in
-    HwId(hid)
+  let wire2hwid = UnivLib.wire2hid
+  let wire2hid = UnivLib.wire2hid
+  let wire2uid = UnivLib.wire2uid
 
   let label2str pr =
     match pr with

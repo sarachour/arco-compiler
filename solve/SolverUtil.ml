@@ -131,6 +131,11 @@ end
 module UnivLib =
 struct
 
+  let wrap_goal = Shim.wrap_goal
+  let unwrap_goal = Shim.unwrap_goal
+  let lclid2glblid = Shim.lclid2glblid
+
+
   let unodeid2name unodeid = match unodeid with
   | UNoInput(x) -> HwLib.input_cid x
   | UNoOutput(x) -> HwLib.output_cid x
@@ -165,6 +170,21 @@ struct
   | MathId(m) -> "m:"^(mid2var m)
   | HwId(h) -> "h:"^(hwid2var h)
 
+  let hwid2prop hwid : propid = match hwid with
+  | HNPort(_,_,_,p,_) -> p
+  | _ -> error "hwid2wire" "no property"
+
+  let unid2prop u : propid = match u with
+  | HwId(h) -> hwid2prop h
+  | _ -> error "unid2prop" "error"
+
+  let hwid2wire hwid : wireid = match hwid with
+  | HNPort(_,HCMGlobal(c,i),v,_,_) -> (name2unodeid c,i,v)
+  | _ -> error "hwid2wire" "cannot convert to wire"
+
+  let unid2wire uid = match uid with
+  | HwId(h) -> hwid2wire h
+  | _ -> error "unid2wire" "cannot convert mid to wire"
 
   let _var2mid s rst =  match rst with
   | [v] -> let vv = MathLib.getvar s.prob v in vv.typ
@@ -274,7 +294,18 @@ struct
 
 
 
+  let wire2hid he (wire:wireid) prop =
+    let cmpn,cmpid,name = wire in
+    let cmpname = unodeid2name cmpn in
+    let knd = HwLib.getkind he cmpname name in
+    let unt = HwLib.getunit he cmpname name prop in
+    HNPort(knd, HCMGlobal(cmpname,cmpid), name, prop, unt)
 
+  let wire2hwid = wire2hid
+
+  let wire2uid he (wire:wireid) prop =
+    let hid = wire2hid he wire prop in
+    HwId(hid)
 
 end
 

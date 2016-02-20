@@ -172,10 +172,12 @@ struct
 
   (*add variables first*)
   let order_steps a b = match (a,b) with
-  | (RVarRemove(_),_) -> -1
-  | (_,RVarRemove(_)) -> 1
+  (*add should be very first*)
   | (RVarAdd(_),_) -> 1
   | (_,RVarAdd(_)) -> -1
+  (*removal should be second*)
+  | (RVarRemove(_),_) -> 1
+  | (_,RVarRemove(_)) -> -1
   | _ -> 0
 
 
@@ -359,7 +361,7 @@ struct
     | _ -> None
 
   (*unify one expression with one target*)
-  let unify_one (type a) (s:a runify) (ltempl:a) (rtempl:a ast) (ltarg: a) (rtarg:a ast) : (a,a ast) map option =
+  let unify_one (type a) (s:a runify) (ltempl:a) (rtempl:a ast) (ltarg: a) (rtarg:a ast) : ((a,a ast) map) option =
     let vl = unify_value s ltempl rtempl ltarg rtarg in
     (*determine if unification by value is something*)
     if vl <> None then
@@ -380,7 +382,6 @@ struct
       | Some(assigns) ->
         let _ = auni_print_debug "<!> found assigns" in
         let mp = MAP.make () in
-        let _ = MAP.put mp ltempl (Term ltarg) in
         let _ = List.iter (fun ((l,r):symvar*symexpr) ->
           let al : a = sym2a l in
           let ar : a ast = ASTLib.from_symcaml r sym2a in
@@ -431,7 +432,7 @@ struct
     else
       [[(LIST.rand targ,UTypTarg)]]
 
-  let get_orig_rhs_and_kind (type a) s (utyp:unifytype) (vr:a) =
+  let get_orig_rhs_and_kind (type a) (s:a runify) (utyp:unifytype) (vr:a) =
     if MAP.has (g_info s.tbl utyp).info vr then
       let ifo = MAP.get (g_info s.tbl utyp).info vr in
       let _ = auni_print_debug ("+ local: "^(s.tbl.tostr vr)) in
@@ -540,7 +541,8 @@ struct
     let _ = SearchLib.add_step s.search (RVarRemove(vtempl,UTypTempl)) in
     let _ = SearchLib.add_step s.search (RVarRemove(vtarg,UTypTarg)) in
     (*add the assignments and any additional constraints*)
-    let issucc = MAP.fold assigns (fun lhs rhs succ -> succ && (addassign lhs rhs)) true in
+    let issucc = addassign vtempl (Term vtarg) in
+    let issucc = MAP.fold assigns (fun lhs rhs succ -> succ && (addassign lhs rhs)) issucc in
     let anode = SearchLib.commit s.search s.tbl in
     let _ = SearchLib.move_cursor s.search s.tbl anode in
     (*if any of the assignments are impossible*)
@@ -571,7 +573,13 @@ struct
     let vtempl = STACK.peek ((g_state s.tbl UTypTempl).focus) in
     let vtarg = STACK.peek ((g_state s.tbl UTypTarg).focus) in
     let _ = auni_print_debug (" "^(s.tbl.tostr vtempl)^" <-> "^(s.tbl.tostr vtarg)) in
+    if MAP.has templs vtempl = false then
+      error "solve_node" ("missing templ variable "^(s.tbl.tostr vtempl))
+    else
     let rtempl = MAP.get templs vtempl in
+    if MAP.has targs vtarg = false then
+      error "solve_node" ("missing templ variable "^(s.tbl.tostr vtarg))
+    else
     let rtarg = MAP.get targs vtarg in
     match unify_one s vtempl rtempl vtarg rtarg with
     | Some(assigns) ->
@@ -580,7 +588,11 @@ struct
       let _ = add_assignment_node s curs templs targs vtempl vtarg assigns in
       ()
     | None ->
+      let _ = SearchLib.deadend s.search curs in
+      ()
+      (*TODO: disabled fill*)
       (*marks a deadend if there was no solution*)
+      (*
       if add_fill_nodes s curs templs targs vtempl vtarg then
         let _ = auni_print_debug "filled in some nodes." in
         ()
@@ -588,9 +600,9 @@ struct
         let _ = auni_print_debug "no more nodes to fill in." in
         let _ = SearchLib.deadend s.search curs in
         ()
-
+    *)
   let rec get_best_valid_node (type a) (sr:a runify) (root:(a rnode) option)  : (a rnode) option =
-    let collate_score old_score score : float =
+    let collate_score old_score (score:sscore) : float =
       score.state +. score.delta +. old_score
     in
     let nnode =  SearchLib.select_best_node sr.search collate_score root in

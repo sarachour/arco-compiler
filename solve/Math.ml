@@ -51,7 +51,7 @@ sig
   val mkparam : menv -> string -> number -> unt -> menv
   val mkstrel : menv -> string -> mid ast -> number -> menv
   val mkrel : menv -> string -> mid ast -> menv
-
+  val isvar : mvar -> bool
 
 end =
 struct
@@ -69,6 +69,11 @@ struct
     | MNVar(_,n,u) -> pr_nuid n u
     | MNParam(n,v,u) ->pr_nuid n u
     | MNTime(u) -> pr_nuid "t" u
+
+  let isvar v =
+    match v.typ with
+    | MNVar(_) -> true
+    | _ -> false
 
   let kind2str (k:mkind) : string = match k with
     | MInput -> "input"

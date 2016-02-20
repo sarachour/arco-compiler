@@ -3,7 +3,7 @@ open Util
 open ASTUnifyData
 open ASTUnify
 
-
+open AST
 open Interactive
 open Globals
 
@@ -92,31 +92,52 @@ struct
       let rel = GoalTableLib.unwrap_goal g in
       rel2info rel
     in
+    let mappings = MAP.make () in
+    let clear_fuse_state () =
+      let _ = MAP.clear mappings in
+      ()
+    in
+    let proc_fuse f inst : unit =
+      let mkassign lhs rhs =
+        let lhs = Shim.lclid2glblid inst lhs in
+        let rhs = Shim.lcl2glbl inst rhs in
+        let _ = MAP.put mappings lhs rhs in
+        ()
+      in
+      let _ : unit = match f with
+        | USAdd(lhs,rhs,UTypTarg) -> (*technically a partial solution*)
+          let _ = mkassign lhs rhs in
+          let _ = slvr_print_debug ("add-targ: "^(UnivLib.unid2str lhs)) in
+          ()
+        | _ -> ()
+      in
+      ()
+    in
     let add_fuse f inst : unit =
       let mkfxn lhs rhs =
         let lhs = Shim.lclid2glblid inst lhs in
         let rhs = Shim.lcl2glbl inst rhs in
-        let rel = UFunction(lhs,rhs) in
-        rel
+        let rhs = ASTLib.sub rhs mappings in
+        let _ = slvr_print_debug ((UnivLib.unid2var lhs)^" = "^(ASTLib.ast2str rhs UnivLib.unid2var)) in
+        if MAP.has mappings lhs then
+          error "apply_component" "impossible to enforce added relation"
+        else
+          let rel = UFunction(lhs,rhs) in
+          rel
       in
       let steps = match f with
-        | USAdd(lhs,rhs,UTypTarg) -> (*technically a partial solution*)
-          let rel = mkfxn lhs rhs in
-          error "unhandled" ("unhandled fuse: add = "^(UnivLib.urel2str rel))
+        | USAdd(lhs,rhs,UTypTarg) -> []
         | USAdd(lhs,rhs,UTypTempl) ->
           let rel = mkfxn lhs rhs in
           [SAddNodeRel(node_id,inst,rel)]
 
-        | USRm(vr,UTypTarg) ->
+        | USRm(vr,_) ->
           let goal = GoalTableLib.get_goal_from_var gtbl vr in
           begin
           match goal with
             | Some(goal) -> [SRemoveGoal(goal)]
             | None -> []
           end
-        | USRm(vr,UTypTempl) ->
-          let _ = slvr_print_debug "ignoring removal of template variable" in
-          []
         | USAssign(lhs,rhs) ->
           let rel = mkfxn lhs rhs in
           let goal = GoalTableLib.wrap_goal gtbl rel in
@@ -128,6 +149,8 @@ struct
     let add_unification (root:sstep snode) (u:unid fusion) inst =
       let _ = SearchLib.move_cursor gtbl.search (s,gtbl) root in
       let _ = SearchLib.start gtbl.search in
+      let _ = clear_fuse_state () in
+      let _ = List.iter (fun f -> proc_fuse f inst) u in
       let _ = List.iter (fun f -> add_fuse f inst) u in
       let r = SearchLib.commit gtbl.search (s,gtbl) in
       ()
@@ -324,6 +347,9 @@ struct
           | None ->
             ()
       in
+      let _ = slvr_print_debug "[search-tree] starting" in
+      let mint,musr = mkmenu s v (None) in
+      let _ = musr () in
       if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
         let _ = SearchLib.solution v.search root in
         let _ = rec_solve_subtree root in
@@ -335,6 +361,7 @@ struct
         ()
 
     let solve (s:slvr) (v:gltbl) (nslns:int) : ((sstep snode) list) option =
+      let _ = slvr_print_debug ("find # solutions: "^(string_of_int nslns)) in
       let root = SearchLib.cursor v.search in
       let _ : unit= solve_subtree s v root nslns in
       let slns = SearchLib.get_solutions v.search (Some root) in

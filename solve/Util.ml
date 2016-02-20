@@ -19,6 +19,9 @@ type ('a,'b) either = Left of 'a | Right of 'b
 
 type number = Integer of int | Decimal of float
 
+let return x b = let _ = x in begin
+  
+end
 let string_of_number n = match n with
   | Integer(q) -> string_of_int(q)
   | Decimal(q) -> string_of_float(q)
@@ -181,6 +184,10 @@ struct
 
   let filter (type a) (s:a queue) (f:a->bool) : a list =
     List.filter f (REF.dr s)
+
+  let rm (type a) (s: a queue) (z:a) : a queue =
+    let _ = REF.upd s (fun (x:a list) -> List.filter (fun (r:a) -> r <> z) x) in
+    s
 
   let has (type a) (s:a queue) (x:a) : bool =
     match filter s (fun q -> q = x) with

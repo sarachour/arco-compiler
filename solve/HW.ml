@@ -41,6 +41,9 @@ struct
   | HNPort(k,HCMLocal(c),n,p,_) -> k,c,n,p,None
   | _ -> error "hwid2port" "only works for port hwids"
 
+  let port2hwid k cname pname prop un =
+    HNPort(k, HCMLocal(cname),pname,prop,un)
+
   let compid2str c = match c with
   | HCMGlobal(n,i) -> n
   | HCMLocal(n) -> n
@@ -207,6 +210,7 @@ struct
       ("more than one port of that kind exists: # ports "^(string_of_int (List.length o)))
     | _ -> error "get_port_by_kind" "no port of that kind exists"
 
+
   let getcomps e  =
     MAP.to_values e.comps
 
@@ -216,7 +220,7 @@ struct
     | HPortType(_,unts) -> unts
     | _ -> error "getunit" "param doesn't have type unit."
 
-let getunit e (cname:string) pname propname =
+  let getunit e (cname:string) pname propname =
     let p = getvar e cname pname in
     match p.typ with
     | HPortType(_,unts) ->
@@ -231,6 +235,37 @@ let getunit e (cname:string) pname propname =
     match p.typ with
     | HPortType(knd, _) -> knd
     | _ -> error "getunit" "param doesn't have type unit."
+
+  (*get the *)
+  let getout e pr : string*hwvid*hwvid =
+    let name = output_cid pr in
+    let mkid k cname =
+      let pvar = get_port_by_kind e k cname in
+      let port = pvar.name in
+      let proptbl = getprops e cname port in
+      let prop,unt = MAP.rand proptbl in
+      let id = port2hwid k cname port prop unt in
+      id
+    in
+    let inport = mkid HNInput name in
+    let outport = mkid HNOutput name in
+    name,(inport),(outport)
+
+  let getin e pr : string*hwvid*hwvid =
+    let name = input_cid pr in
+    let cmp = getcomp e name in
+    let mkid k cname =
+      let pvar = get_port_by_kind e k cname in
+      let port = pvar.name in
+      let proptbl = getprops e cname port in
+      let prop,unt = MAP.rand proptbl in
+      let id = port2hwid k cname port prop unt in
+      id
+    in
+    let inport = mkid HNInput name in
+    let outport = mkid HNOutput name in
+    name,(inport),(outport)
+
 
   let mkport e cname (hwkind:hwvkind) iname (types:(propid*untid) list) =
     if hascomp e cname = false then

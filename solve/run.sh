@@ -36,8 +36,6 @@ TMPDIR=.tmp
 mkdir -p $OUTDIR
 mkdir -p $TMPDIR
 
-mv *.ckt $OUTDIR/
-mv *.ckt.caml $OUTDIR/
-mv *.summary $OUTDIR/
+mv *.ckt.* $OUTDIR/
 mv *.z3 $TMPDIR/
 mv *.debug.txt $TMPDIR
