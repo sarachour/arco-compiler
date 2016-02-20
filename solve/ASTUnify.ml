@@ -20,7 +20,7 @@ open SolverUtil
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
-let auni_print_debug = print_debug 2
+let auni_print_debug = print_debug 2 "uni"
 let auni_menu = menu 2
 
 module ASTUnifier =

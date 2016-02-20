@@ -31,7 +31,7 @@ let error n m = raise (SolverMultiError (n^":"^m))
 
 
 
-let m_print_debug : string -> unit = print_debug 1
+let m_print_debug : string -> unit = print_debug 1 "multi"
 let m_menu = menu 1
 
 module MultiSearchTree =

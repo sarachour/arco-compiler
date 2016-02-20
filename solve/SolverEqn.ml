@@ -22,7 +22,8 @@ open SolverTrivial
 exception SolverEqnError of string
 
 let error n m = raise (SolverEqnError (n^":"^m))
-let slvr_print_debug = print_debug 1
+
+let slvr_print_debug = print_debug 1 "slvr"
 let slvr_menu = menu 1
 let slvr_print_inter = print_inter 1
 
@@ -200,7 +201,9 @@ struct
   let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
     let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
+    let goal_cursor = SearchLib.cursor tbl.search in
     let handle_component (id,x) status =
+      let _ = SearchLib.move_cursor tbl.search (slvenv,tbl) goal_cursor in
       let yielded_results = apply_component slvenv tbl g id x in
       match yielded_results with
       | Some(q) -> Some(q)
