@@ -224,6 +224,7 @@ struct
       cnv= cnv;
       icnv= icnv;
       freshvar = freshvar;
+      nfresh=0;
     } in
     (*make the dependency tree*)
     let tmpl_info =  mkinfo() in
@@ -485,6 +486,11 @@ struct
       let _ = List.iter (fun (fill) -> add_fills fill) fills in
       true
 
+  let get_fresh_variable_id (type a) (s:a runify) : int =
+    let r = s.tbl.env.nfresh in
+    let _ = s.tbl.env.nfresh <- s.tbl.env.nfresh + 1 in
+    r
+
   let add_assignment_node (type a) (s:a runify) node templs targs vtempl vtarg assigns =
     let addassign asgnlhs asgnrhs : bool =
       (*we assign a value to a variable in the component*)
@@ -520,7 +526,7 @@ struct
             end
           | _ ->
             let _ = auni_print_debug ("var-expr assign: "^(s.tbl.tostr asgnlhs)^" = "^(ASTLib.ast2str asgnrhs s.tbl.tostr)) in
-            let tvar = s.tbl.env.freshvar (RAND.rand_int 100) UTypTarg in
+            let tvar = s.tbl.env.freshvar (get_fresh_variable_id s) UTypTarg in
             let _ = SearchLib.add_step s.search (RForceAssign(asgnlhs,tvar)) in
             let _ = SearchLib.add_step s.search (RVarAdd(tvar,asgnrhs,UTypTarg)) in
             true

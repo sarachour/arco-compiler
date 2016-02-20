@@ -89,6 +89,7 @@ type 'a renv = {
   cnv: 'a->symvar;
   icnv: symvar->'a;
   freshvar: int -> unifytype -> 'a;
+  mutable nfresh: int;
 }
 
 (*the tableau, which is comprised of the original statements  *)
