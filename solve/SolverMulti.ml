@@ -168,7 +168,7 @@ struct
       | [] ->
         let _ = m_print_debug "this local variable is not bound yet, so we're not going to loop back." in
         []
-      | h::t -> error "proc_local" "cannot have more than one output variable"
+      | h::t -> error "proc_local" ("cannot have more than one output variable: "^name)
 
     in
     let proc_out_var (name:string) =

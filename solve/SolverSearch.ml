@@ -80,8 +80,8 @@ struct
     "SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolUseNode(id,i) -> "s.use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "s.mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
-  | SSolAddLabel(w,p,l) -> "s.mklbl "^(SlnLib.wire2str w)^"."^p^(SlnLib.label2str l)
-  | SSolRemoveLabel(w,p,l) -> "s.rmlbl "^(SlnLib.wire2str w)^"."^p^(SlnLib.label2str l)
+  | SSolAddLabel(w,p,l) -> "s.mklbl "^(SlnLib.wire2str w)^"."^p^" -> "^(SlnLib.label2str l)
+  | SSolRemoveLabel(w,p,l) -> "s.rmlbl "^(SlnLib.wire2str w)^"."^p^" -> "^(SlnLib.label2str l)
   | SMakeGoalActive(v) -> "activate "^(UnivLib.goal2str v)
   | SMakeGoalPassive(v) -> "inactive "^(UnivLib.goal2str v)
 

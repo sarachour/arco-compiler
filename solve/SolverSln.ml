@@ -42,8 +42,8 @@ struct
       let mr = (RANGE.tostr mrng)^" "^(mp) in
       "time "^hwr^" => "^mr
     | LError -> "error prop"
-    | LBindValue(k,v) -> "bind "^(string_of_number v)
-    | LBindVar(k,v) -> "bind "^(MathLib.mid2str v)
+    | LBindValue(k,v) -> "bind "^(string_of_number v)^" : "^(HwLib.kind2str k)
+    | LBindVar(k,v) -> "bind "^(MathLib.mid2str v)^" : "^(HwLib.kind2str k)
 
   let mksln () : sln =
     {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
