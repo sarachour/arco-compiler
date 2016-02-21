@@ -23,9 +23,9 @@ exception SolverEqnError of string
 
 let error n m = raise (SolverEqnError (n^":"^m))
 
-let slvr_print_debug = print_debug 1 "slvr"
-let slvr_menu = menu 1
-let slvr_print_inter = print_inter 1
+let slvr_print_debug = print_debug 2 "slvr"
+let slvr_menu = menu 2
+let slvr_print_inter = print_inter 2
 
 module SolverEqn =
 struct
@@ -257,8 +257,8 @@ struct
 
   (*get the best valid node. If there is no valid node, return none *)
   let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option)  : (sstep snode) option =
-    let collate_score old_score score : float =
-      score.state
+    let collate_score (o:sscore) (n:sscore) : sscore =
+      SearchLib.mkscore n.state (o.delta +. n.delta)
     in
     match SearchLib.select_best_node v.search collate_score root with
     | Some(newnode) ->
@@ -268,6 +268,9 @@ struct
           get_best_valid_node s v root
     | None -> None
 
+  (*
+    Scoring the goal: higher = better
+  *)
   let score_goal_uniform g = 0.
   let score_goal_random g = RAND.rand_norm()
 

@@ -52,6 +52,7 @@ sig
   val mkstrel : menv -> string -> mid ast -> number -> menv
   val mkrel : menv -> string -> mid ast -> menv
   val isvar : mvar -> bool
+  val isvar : menv -> string -> bool
 
 end =
 struct
@@ -135,6 +136,11 @@ struct
       error "mkrel" ("variable "^name^" does not exist.")
     else
       MAP.get (e.vars) name
+
+  let isvar e name =
+    match (getvar e name).typ with
+    | MNVar(_) -> true
+    | _ -> false
 
   let getkind e name =
     if hasvar e name then

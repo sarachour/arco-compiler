@@ -20,8 +20,8 @@ open SolverUtil
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
-let auni_print_debug = print_debug 2 "uni"
-let auni_menu = menu 2
+let auni_print_debug = print_debug 3 "uni"
+let auni_menu = menu 3
 
 module ASTUnifier =
 struct
@@ -608,8 +608,8 @@ struct
         ()
     *)
   let rec get_best_valid_node (type a) (sr:a runify) (root:(a rnode) option)  : (a rnode) option =
-    let collate_score old_score (score:sscore) : float =
-      score.state +. score.delta +. old_score
+    let collate_score (o:sscore) (score:sscore) : sscore =
+      SearchLib.mkscore score.state  (score.delta +. o.delta)
     in
     let nnode =  SearchLib.select_best_node sr.search collate_score root in
     nnode

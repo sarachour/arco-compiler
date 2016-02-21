@@ -166,6 +166,10 @@ struct
   | MNParam(name,v,u) -> name
   | MNTime(_) -> "t'"
 
+  let label2uid x = match x with
+  | LBindVar(k,mid) -> MathId(mid)
+  | _ -> error "label2unid" "can only convert bind variable"
+
   let unid2var uid = match uid with
   | MathId(m) -> "m:"^(mid2var m)
   | HwId(h) -> "h:"^(hwid2var h)

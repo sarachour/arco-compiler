@@ -14,6 +14,11 @@ exception SearchException of (string)
 let error n msg = raise (SearchException(n^": "^msg))
 
 
+let lcl_print_debug = print_debug 2 "search"
+let lcl_menu = menu 2
+let lcl_print_inter = print_inter 2
+
+
 module SStatLib =
 struct
   let mk () =
@@ -180,17 +185,6 @@ struct
   let has_child (type a) (type b) (sr:(a,b) ssearch) (s:a snode) =
     TREE.has_child sr.tree s
 
-  let commit (type a) (type b) (sr:(a,b) ssearch) (state:b) : a snode=
-    match sr.scratch, sr.curs with
-    | Some(node), Some(cursor) ->
-      let _ = TREE.mknode sr.tree node in
-      let score : sscore = sr.score state node.s in
-      let _ = TREE.mkedge sr.tree cursor node score in
-      let _ = sr.scratch <- None in
-      node
-    | Some(_), None ->
-      error "commit" "cannot commit new step with no parent."
-    | _,_ -> error "commit" "cannot commit empty node."
 
 
   let rm (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
@@ -259,7 +253,7 @@ struct
   let apply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
     let steps = List.sort (sr.order) node.s in
     let nenv = List.fold_right (fun x b -> let nb = sr.apply b x in nb) steps env in
-    let _ = upd_score sr env node in
+    (*let _ = upd_score sr env node in*)
     (*recompute score*)
     nenv
 
@@ -268,10 +262,11 @@ struct
     {id=(-1); s=s}
 
   let unapply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
-      let _ = upd_score sr env node in
+      (*let _ = upd_score sr env node in*)
       let steps = List.sort (sr.order) node.s in
       let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) steps env in
       nenv
+
 
   let move_cursor (type a) (type b) (sr:(a,b) ssearch) (env:b) (next:a snode)  =
     let nenv = match sr.curs with
@@ -289,8 +284,27 @@ struct
       let _ = (sr.curs <- Some next) in
       env
     in
-
     env
+
+  let commit (type a) (type b) (sr:(a,b) ssearch) (state:b) : a snode=
+    match sr.scratch, sr.curs with
+    (*add the scratch node, and then apply the thing*)
+    | Some(node), Some(cursor) ->
+      let _ = TREE.mknode sr.tree node in
+      let _ = TREE.mkedge sr.tree cursor node (mkscore 0. 0.) in
+      let _ = sr.scratch <- None in
+      (*move the cursor to the created node*)
+      let _ = move_cursor sr state node in
+      let score : sscore = sr.score state node.s in
+      let _ = upd_score sr state node in
+      (*move back*)
+      let _ = move_cursor sr state cursor in
+      node
+    | Some(_), None ->
+      error "commit" "cannot commit new step with no parent."
+    | _,_ -> error "commit" "cannot commit empty node."
+
+
 
   let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
     let _ = start sr in
@@ -353,14 +367,21 @@ struct
 
 
   (*select best node, given a criteria*)
-  let select_best_node (type a) (type b) (sr:(a,b) ssearch) (conv:float->sscore->float) (root:(a snode) option) : (a snode) option =
+  let select_best_node (type a) (type b) (sr:(a,b) ssearch) (conv:sscore->sscore->sscore) (root:(a snode) option) : (a snode) option =
     let currnode = cursor sr in
     let score_path (endnode:a snode) : float =
-      let score_node (e:a snode) (r:float) : float = r in
-      let score_edge src snk (v:sscore) (r:float) : float =  conv r v in
-      let init_score : float = 0. in
-      let score = TREE.fold_path score_node score_edge sr.tree endnode init_score in
-      score
+      (*pass through node*)
+      let score_node (e:a snode) (r:sscore) : sscore =
+        r
+      in
+      (*pass through edge*)
+      let score_edge src snk (n:sscore) (old:sscore) : sscore =
+        conv old n
+      in
+      let init_score : sscore = mkscore 0. 0. in
+      let score = TREE.fold_to_node score_node score_edge sr.tree endnode init_score in
+      (*let _ = lcl_print_debug ("node "^(string_of_int endnode.id)^": "^(score2str score)) in *)
+      score.state +. score.delta
     in
     (*get all the paths for teh root node*)
     let leaves = get_paths sr root in

@@ -20,7 +20,7 @@ type ('a,'b) either = Left of 'a | Right of 'b
 type number = Integer of int | Decimal of float
 
 let return x b = let _ = x in begin
-  
+
 end
 let string_of_number n = match n with
   | Integer(q) -> string_of_int(q)
@@ -876,6 +876,34 @@ struct
   let get_path (type a) (type b) (g: (a,b) tree) (en:a) : a list =
     fold_path (fun x lst -> lst @ [x]) (fun src snk v r -> r) g en []
 
+  let fold_from_node (type a) (type b) (type c) (nf:a->c->c) (ef:a->a->b->c->c) (g: (a,b) tree) (en:a) (ic:c) : c =
+    let rec proc_path (pth:a list) (r:c) : c = match pth with
+      | n1::n2::t ->
+        let r = nf n1 r in
+        let r = ef n1 n2 (edge g n2 n1) r in
+        proc_path (n2::t) r
+      | [n1] ->
+        let r = nf n1 r in
+        r
+      | [] -> r
+    in
+    let path : a list = get_path g en in
+    let res : c = proc_path path ic in
+    res
+
+  let fold_to_node (type a) (type b) (type c) (nf:a->c->c) (ef:a->a->b->c->c) (g: (a,b) tree) (en:a) (ic:c) : c =
+    let rec proc_path (pth:a list) (r:c) : c = match pth with
+      | n1::n2::t ->
+        let r = nf n1 r in
+        let r = ef n1 n2 (edge g n1 n2) r in
+        proc_path (n2::t) r
+      | [n1] ->
+        let r = nf n1 r in
+        r
+      | [] -> r
+    in
+    let path = get_path g en in
+    proc_path (LIST.rev path) ic
 
   let ancestor (type a) (type b) (t:(a,b) tree) (a:a) (b:a) : a =
     let pa = get_path t a in

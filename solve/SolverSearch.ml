@@ -12,7 +12,11 @@ module SlvrSearchLib =
 struct
 
 
-  (*select table with most trivial to non-trivial goals*)
+  (*
+  select table with most trivial to non-trivial goals
+
+  higher score is better
+  *)
 
   let score_goal_complexity ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let score_goal (g:goal) =
@@ -28,13 +32,13 @@ struct
     let delta = 0. in
     SearchLib.mkscore state delta
 
-
+  (*the higher the score, the deeper the thing*)
   let score_ngoals ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let goals : goal set = tbl.goals in
     let trivial : float = SET.fold goals (fun x r -> if GoalStubLib.is_trivial tbl (GoalStubLib.unwrap_goal x) then r+.1. else r) 0. in
     let nontrivial = (float_of_int (SET.size tbl.goals)) -. trivial in
-    let state = -.nontrivial -. (trivial*.0.2) in
-    let delta = 0. in
+    let state = -.nontrivial in
+    let delta = -0.0 in
     SearchLib.mkscore state delta
 
   let score_triv_goals ((slvenv,tbl):slvr*gltbl) (s:sstep list) =

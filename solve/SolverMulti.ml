@@ -161,21 +161,28 @@ struct
     let tbl = ms.state.mtbl in
     let menv : menv = ms.state.slvr.prob in
     let hwenv : hwenv=  ms.state.slvr.hw  in
+    (*process a local variable*)
     let proc_local_var name =
       let olabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
       let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
       match olabels with
       | [(owire,oprop,olabel)] ->
         let _ = m_print_debug "noted! we found an output label. Let's connect all inputs." in
+        let ohwid = UnivLib.wire2uid hwenv owire oprop in
+        let omid = UnivLib.label2uid olabel in
         (*lets create goals for the tableau to map*)
-        let add_goals : sstep list = List.map (fun (iwire,iprop,ilbl) ->
+        let connect_ports : sstep list = List.map (fun (iwire,iprop,ilbl) ->
           let ihwid = UnivLib.wire2uid hwenv iwire iprop in
-          let ohwid = UnivLib.wire2uid hwenv owire oprop in
           let rel = UFunction(ohwid,Term(ihwid)) in
           let goal = UnivLib.wrap_goal tbl rel in
+          (*this is the connection goal*)
           SAddGoal(goal)
         ) ilabels in
-        add_goals
+        let remove_existing_goal = match GoalTableLib.get_goal_from_var tbl omid with
+         | Some(v) -> [SRemoveGoal(v)]
+         | _ -> []
+        in
+        remove_existing_goal @ connect_ports
       | [] ->
         let _ = m_print_debug "this local variable is not bound yet, so we're not going to loop back." in
         []
@@ -256,22 +263,25 @@ struct
         res
     in
     let var_steps : sstep list = MAP.fold menv.vars (fun name mid (rest:sstep list) ->
-      match MathLib.getkind menv name with
-      (*input variable*)
-      | Some MInput ->
-        let insteps : sstep list = proc_in_var name in
-        insteps @ rest
-      (*output variable*)
-      | Some MOutput ->
-        let lclsteps = proc_local_var name in
-        let outsteps = proc_out_var name in
-        lclsteps @ outsteps @ rest
-      (*local variable*)
-      | Some MLocal ->
-        let lclsteps = proc_local_var name in
-        lclsteps @ rest
-      | None ->
-        error "var_steps" ("cannot find variable of : "^name)
+      if MathLib.isvar menv name then
+        match MathLib.getkind menv name with
+        (*input variable*)
+        | Some MInput ->
+          let insteps : sstep list = proc_in_var name in
+          insteps @ rest
+        (*output variable*)
+        | Some MOutput ->
+          let lclsteps = proc_local_var name in
+          let outsteps = proc_out_var name in
+          lclsteps @ outsteps @ rest
+        (*local variable*)
+        | Some MLocal ->
+          let lclsteps = proc_local_var name in
+          lclsteps @ rest
+        | None ->
+          error "var_steps" ("cannot find variable of : "^name)
+      else
+        rest
     ) []
     in
     let val_steps = proc_in_val () in
@@ -410,8 +420,8 @@ struct
 
     (*get the best valid node. If there is no valid node, return none *)
     let rec get_best_valid_node (ms:musearch)  : (mustep snode) option =
-      let collate_score old_score (score:sscore) : float =
-        score.state
+      let collate_score (o:sscore) (n:sscore) : sscore =
+        SearchLib.mkscore n.state (o.delta +. n.delta)
       in
       SearchLib.select_best_node ms.search collate_score None
 
