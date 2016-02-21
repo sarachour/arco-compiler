@@ -179,8 +179,9 @@ struct
       let templ : (unid rarg) list = SET.map node.rels (fun x -> rel2info x)  in
       let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
       let vgl,_,_ = goal2info g in
+      let nunify = Globals.get_glbl_int "eqn-unifications" in
       let slns : (unid fusion) set =
-        ASTUnifier.multipattern templ targ vgl 1
+        ASTUnifier.multipattern templ targ vgl nunify
         (UnivLib.unid2var)
         (UnivLib.var2unid (s))
         freshvar
@@ -228,7 +229,7 @@ struct
     let old_cursor = SearchLib.cursor v.search in
     let _ = SearchLib.move_cursor v.search (s,v) c in
     let depth =  List.length (TREE.get_path v.search.tree c) in
-    let is_valid = if depth >= get_glbl_int "search_max_depth" then
+    let is_valid = if depth >= get_glbl_int "eqn-depth" then
       let _ = slvr_print_debug "[test-node-validity] hit max depth" in
       let _ = SearchLib.deadend v.search c in
       false
@@ -284,7 +285,7 @@ struct
     | NonTrivialGoal(v) -> 1. +. RAND.rand_norm()
 
   let best_goal_function () =
-    let typ = get_glbl_string "goal_search_selector_type" in
+    let typ = get_glbl_string "eqn-selector-goal" in
     match typ with
     | "uniform" -> score_goal_uniform
     | "random" -> score_goal_random

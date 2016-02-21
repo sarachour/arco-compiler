@@ -1,0 +1,30 @@
+
+## Search Space
+
+**slvr-solutions** (`int`): the number of top level solutions to generate
+**eqn-unifications** (`int`): the number of unifications to generate.
+**eqn-depth** (`int`): the bound on the depth of the search
+
+## Search Heuristics
+
+**eqn-selector-goal** (`string`): the kind of goal selector to use.
+| "uniform" -> score_goal_uniform
+| "random" -> score_goal_random
+| "trivial" -> score_goal_trivial_preferred
+| "nontrivial" -> score_goal_nontrivial_preferred
+| _ ->
+
+**eqn-selector-branch** (`string`): the kind of selector to use when selecting branches in the mid-level
+branch selection search.
+  `uniform`:  DESC
+  `random`: DESC
+  `trivial-ratio`: DESC
+  `ngoals`: DESC
+  `goal-complexity`: DESC
+
+
+## Debugging
+
+**interactive** (`int`): the interactivity level to use.
+
+**

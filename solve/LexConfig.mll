@@ -8,7 +8,7 @@ open ParseConfig;;
 
 let integer = ['0' - '9']+
 let float = ['0'-'9']*"."['0' - '9']+
-let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
+let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_''-']*
 let str = '"' [^ '"']* '"'
 
 

@@ -248,7 +248,8 @@ let solve (hw:hwenv) (prob:menv) (out:string) =
   let sl = SolveLib.mkslv hw prob in
   let msearch = MultiSearch.mkmulti sl in
   let _ = slvr_print_inter "===== Beginning Interactive Solver ======\n" in
-  let slns : (sln list) option = MultiSearch.msolve (REF.mk sl) msearch 1 in
+  let nslns = Globals.get_glbl_int "slvr-solutions" in
+  let slns : (sln list) option = MultiSearch.msolve (REF.mk sl) msearch nslns in
   match slns with
     | Some(slns) ->
       let outp_sln sln i =

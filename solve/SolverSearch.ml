@@ -61,7 +61,7 @@ struct
     SearchLib.mkscore state delta
 
   let score_step () =
-    let typ = get_glbl_string "path_search_selector_type" in
+    let typ = get_glbl_string "eqn-selector-branch" in
     match typ with
     | "uniform" -> score_uniform
     | "random" -> score_random

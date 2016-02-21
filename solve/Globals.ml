@@ -9,15 +9,17 @@ type glblprop = GlblPropInt of int
 
 let glbls : (string,glblprop) map = MAP.make ();;
 
-let _ = MAP.put glbls "ast_pattern_breadth" (GlblPropInt 15)
-let _ = MAP.put glbls "ast_pattern_depth" (GlblPropInt 2)
-let _ = MAP.put glbls "ast_pattern_frac_ban" (GlblPropFloat 0.65)
-let _ = MAP.put glbls "search_max_depth" (GlblPropInt 65)
-let _ = MAP.put glbls "search_n_patterns_found" (GlblPropInt 5)
 let _ = MAP.put glbls "interactive" (GlblPropInt 0)
 let _ = MAP.put glbls "debug" (GlblPropInt 0)
-let _ = MAP.put glbls "path_search_selector_type" (GlblPropString "random")
-let _ = MAP.put glbls "goal_search_selector_type" (GlblPropString "random")
+
+let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
+let _ = MAP.put glbls "eqn-depth" (GlblPropInt 32)
+let _ = MAP.put glbls "eqn-selector-branch" (GlblPropString "uniform")
+let _ = MAP.put glbls "eqn-selector-goal" (GlblPropString "uniform")
+
+let _ = MAP.put glbls "slvr-solutions" (GlblPropInt 1)
+
+
 
 (*
 

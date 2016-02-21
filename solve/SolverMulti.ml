@@ -194,6 +194,11 @@ struct
         ]
         in
         steps
+    | [] ->
+      let _ = m_print_debug ("no bindings yet: "^name) in
+      []
+    | h::t ->
+      error "proc_out_bar" ("multiple bindings: "^name)
     in
     let proc_in_var (name:string) =
       let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
@@ -273,13 +278,11 @@ struct
       (*make the current search state*)
       let _ = if MAP.has ms.state.partials id = false then
           let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
-          let _ = GoalTableLib.mkgoalroot ms.state.slvr tbl in
           (*make passive bans*)
           let blacklist = SET.filter ms.goals (fun g -> Shim.goal2lhs g <> id) in
           let bansteps = List.map (fun x -> SMakeGoalPassive(x)) blacklist in
-          let _ = SearchLib.start tbl.search in
-          let _ = SearchLib.add_steps tbl.search bansteps in
-          let _ : sstep snode = SearchLib.commit tbl.search (ms.state.slvr,tbl) in
+          let goalsteps = SET.map ms.goals (fun g -> SAddGoal(g)) in
+          let _ = GoalTableLib.mkroot ms.state.slvr tbl (bansteps @ goalsteps) in
           let _ = m_print_debug "made a partial tree" in
           let _ = MAP.put ms.state.partials id tbl.search in
           ()
@@ -439,7 +442,7 @@ struct
       let tbl = mk_global_tbl ms in
       (*find the global steps *)
       let results = SolverEqn.solve ms.state.slvr tbl nsols in
-      let root = OPTION.force_conc (SearchLib.root tbl.search) in 
+      let root = OPTION.force_conc (SearchLib.root tbl.search) in
       let _ = SearchLib.move_cursor tbl.search (ms.state.slvr,tbl) root in
       results
 
