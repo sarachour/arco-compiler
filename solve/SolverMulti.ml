@@ -439,6 +439,8 @@ struct
       let tbl = mk_global_tbl ms in
       (*find the global steps *)
       let results = SolverEqn.solve ms.state.slvr tbl nsols in
+      let root = OPTION.force_conc (SearchLib.root tbl.search) in 
+      let _ = SearchLib.move_cursor tbl.search (ms.state.slvr,tbl) root in
       results
 
     let get_existing_global_solutions (ms:musearch) =
@@ -473,7 +475,8 @@ struct
         let pnode = SearchLib.commit ms.search ms.state in
         let _ = SearchLib.move_cursor ms.search ms.state pnode in
         match find_global_solution ms 1 with
-        | Some(_) -> (*this is valid*) ()
+        | Some(slns) ->
+          ()
         | None ->
           let _ = SearchLib.deadend ms.search pnode in
           ()
@@ -517,7 +520,14 @@ struct
     let choose_var (ms:musearch) : unid option=
       if QUEUE.empty ms.order then
         None
-      else Some (QUEUE.front ms.order)
+      else
+        let left = QUEUE.filter ms.order
+          (fun x -> SET.has ms.state.solved x = false)
+        in
+        if LIST.empty left then
+          None
+        else
+          Some (List.nth left 0)
     (*
       Choose a variable that has not been solved yet
       If there are existing solutions, collate those onto tree.
