@@ -140,6 +140,9 @@ struct
   let startswith (s:string) (p:string) : bool =
     Str.string_match (Str.regexp p) s 0
 
+  let compare (s1) (s2) : int =
+    String.compare s1 s2
+
 end
 
 module RANGE =
@@ -365,7 +368,7 @@ struct
     | h::t -> List.fold_left (fun r x -> r^delim^(fn x)) (fn h) t
     | [] -> ""
 
-  let sort (type a) (fn: a->int) (lst:a list) strategy=
+  let sort2 (type a) (fn: a->int) (lst:a list) strategy=
     if strategy = SortAscending then
       List.sort (fun x y -> (fn x) - (fn y)) lst
     else
@@ -563,6 +566,10 @@ struct
       end
     else
       s
+
+  let sort (type a)  (lst:a set)  (fn: a->a->int): a list =
+    List.sort (fun x y -> fn x y) (lst.lst)
+
 
   let tostr (type a) (s:a set) (f:a->string) (delim:string) : string =
     LIST.tostr f delim s.lst

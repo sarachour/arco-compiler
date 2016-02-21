@@ -38,7 +38,7 @@ struct
   let activate_goal = GoalStubLib.activate_goal
   let has_partial_comp = GoalStubLib.has_partial_comp
   let get_partial_comp = GoalStubLib.get_partial_comp
-  
+
   let get_goal_from_var (t:gltbl) (vr:unid) =
     let is_var (x:goal) (v:unid) = match unwrap_goal x with
       |UFunction(lhs,rhs) -> v = lhs
@@ -95,36 +95,22 @@ struct
     let _ = SearchLib.setroot st (s,v) steps in
     (v)
 
+
+  (* add all relations to the tableau of goals. *)
+  let _rm_pars x : unid ast option =
+    match x with
+    | Term(HwId(HNParam(c,n,v,p))) -> Some (ast_of_number (v))
+    | Term(MathId(MNParam(n,v,u))) ->Some (ast_of_number (v))
+    | _ -> None
+
+
+  (*make an empty node without the goals*)
   let mktbl s (is_trivial:urel->bool) : gltbl =
-    (* add all relations to the tableau of goals. *)
-    let rm_pars x : unid ast option =
-      match x with
-      | Term(HwId(HNParam(c,n,v,p))) -> Some (ast_of_number (v))
-      | Term(MathId(MNParam(n,v,u))) ->Some (ast_of_number (v))
-      | _ -> None
-    in
-    let math2goal (x:mvar) : goal =
-      let m2u = UnivLib.mid2unid in
-      let tf x =
-        let t = ASTLib.trans (ASTLib.map x m2u) rm_pars in
-        t
-      in
-      match x.rel with
-      | MRFunction(l,r) ->
-        let rel = UFunction(m2u l, tf r) in
-        if is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
-      | MRState(l,r,x) ->
-        let time = (MathLib.getvar s.prob (OPTION.force_conc s.prob.time)).typ in
-        let rel = UState(m2u l, tf r, m2u x, m2u time) in
-        if is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
-      | MRNone -> error "math2goal" "impossible."
-    in
-    let fltmath x = x.rel <> MRNone in
     let comp2node (c:hwcomp) =
       let nvars = List.filter (fun (x:hwvar) -> x.rel <> HRNone) (MAP.to_values (c.vars)) in
       let var2urel (x:hwvar) =
         let h2u = UnivLib.hwid2unid in
-        let tf x = ASTLib.trans (ASTLib.map x h2u) rm_pars in
+        let tf x = ASTLib.trans (ASTLib.map x h2u) _rm_pars in
         match x.rel with
         | HRFunction(l,r) -> UFunction(h2u l, tf r)
         | HRState(l,r,i) ->
@@ -137,7 +123,6 @@ struct
       n
     in
     let nodetbl : (unodeid,unode) map = MAP.make () in
-    let goals : goal list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
     let sln = SlnLib.mksln () in
     let nodes : unode list = List.map comp2node (MAP.to_values s.hw.comps) in
     let handle_node (x) =
@@ -157,8 +142,36 @@ struct
         dngl = MAP.make ();
         blacklist = SET.make_dflt ()
       } in
-    let steps = List.map (fun x -> SAddGoal x) goals in
-    let _ = SearchLib.setroot search (s,tbl) steps in
     tbl
 
+  let mkgoalroot s tbl =
+    let fltmath x = x.rel <> MRNone in
+    let math2goal (x:mvar) : goal =
+      let m2u = UnivLib.mid2unid in
+      let tf x =
+        let t = ASTLib.trans (ASTLib.map x m2u) _rm_pars in
+        t
+      in
+      match x.rel with
+      | MRFunction(l,r) ->
+        let rel = UFunction(m2u l, tf r) in
+        if tbl.is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
+      | MRState(l,r,x) ->
+        let time = (MathLib.getvar s.prob (OPTION.force_conc s.prob.time)).typ in
+        let rel = UState(m2u l, tf r, m2u x, m2u time) in
+        if tbl.is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
+      | MRNone -> error "math2goal" "impossible."
+    in
+    let goals : goal list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
+    let steps = List.map (fun x -> SAddGoal x) goals in
+    let _ = SearchLib.setroot tbl.search (s,tbl) steps in
+    ()
+
+  let mknullroot s tbl =
+    let _ = SearchLib.setroot tbl.search (s,tbl) [] in
+    ()
+
+  let mkroot s tbl steps =
+    let _ = SearchLib.setroot tbl.search (s,tbl) steps in
+    ()
 end

@@ -58,6 +58,7 @@ struct
           | Some(currgoal) -> Printf.printf ">> Current Goal: %s\n" (GoalTableLib.goal2str currgoal)
           | _ -> Printf.printf ">> CurrentGoal: (none)"
         in
+        let _ = on_finished() in
         ()
       else if STRING.startswith inp "c" then
         let _ = match currgoal with
@@ -355,7 +356,10 @@ struct
       in
       let _ = slvr_print_debug "[search-tree] starting" in
       let mint,musr = mkmenu s v (None) in
+      let _ = mint "g" in
       let _ = musr () in
+      let r = SearchLib.root v.search in
+      let _ = SearchLib.move_cursor v.search (s,v) (OPTION.force_conc r) in
       if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
         let _ = SearchLib.solution v.search root in
         let _ = rec_solve_subtree root in

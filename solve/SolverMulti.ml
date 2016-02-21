@@ -6,6 +6,7 @@ open ASTUnify
 
 open Interactive
 open Globals
+open AST
 
 open HWData
 open Math
@@ -39,24 +40,15 @@ struct
   let step2str x = match x with
     | MSSolveVar(id) -> "-var "^(UnivLib.unid2var id)
     | MSPartialApp(id,i) -> "#partial"^(UnivLib.unid2var id)^"."^(string_of_int i)
-    | MSGlobalApp(_) -> "#global"
 
 
   let apply_step (env:mutbl) (x:mustep) : mutbl =
     let _ = m_print_debug ("apply "^step2str x) in
     match x with
     | MSPartialApp(id,i) ->
-      let search = MAP.get env.partials id in
-      (*get solution node to apply by id*)
-      let node : sstep snode = SearchLib.id2node search i in
-      (*get the subset of steps*)
-      let steps : sstep list = SearchLib.get_path search node in
-      let _ = SearchLib.apply_steps search (env.slvr,env.mtbl) steps in
+      let _ = SET.add env.local (id,i) in
       env
-    | MSGlobalApp(steps) ->
-      let _,search = MAP.rand env.partials in
-      let _ = SearchLib.apply_steps search (env.slvr,env.mtbl) steps in
-      env
+
     | MSSolveVar(id) ->
       let _ = SET.add env.solved id in
       env
@@ -65,15 +57,9 @@ struct
     let _ = m_print_debug ("unapply "^step2str x) in
     match x with
     | MSPartialApp(id,i) ->
-      let search = MAP.get env.partials id in
-      let node : sstep snode = SearchLib.id2node search i in
-      let steps : sstep list = SearchLib.get_path search node in
-      let _ = SearchLib.unapply_steps search (env.slvr, env.mtbl) steps in
+      let _ = SET.rm env.local (id,i) in
       env
-    | MSGlobalApp(steps) ->
-      let _,search = MAP.rand env.partials in
-      let _ = SearchLib.unapply_steps search (env.slvr,env.mtbl) steps in
-      env
+
     | MSSolveVar(id) ->
       let _ = SET.rm env.solved id in
       env
@@ -99,7 +85,7 @@ The multi-solution search tree tries patterns of solutions
 module MultiSearch =
 struct
   let mkmenu (s:musearch)  =
-    let menu_desc = "t=search-tree, s=sol, o=order, any-key=continue, q=quit" in
+    let menu_desc = "t=search-tree, o=order, any-key=continue, q=quit" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
         let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str s.search) in
@@ -107,10 +93,6 @@ struct
         ()
       else if STRING.startswith inp "o" then
         let _ = Printf.printf "\n%s\n\n" (QUEUE.tostr s.order UnivLib.unid2var) in
-        let _ = on_finished() in
-        ()
-      else if STRING.startswith inp "s" then
-        let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr s.state.mtbl.sln) in
         let _ = on_finished() in
         ()
       else
@@ -121,18 +103,21 @@ struct
     internal_menu_handle,user_menu_handle
 
 
-  let mk_partial_tbl (ms:musearch) (id:unid) =
-    (*make the current search state*)
-    let _ = if MAP.has ms.state.partials id = false then
-      error "mk_partial_tbl" "doesn't exist"
+  let set2key (x:(unid*int) set) : string =
+    let xsort = SET.sort x (fun (unid1,i1) (unid2,i2) ->
+      let s1 = UnivLib.unid2str unid1 in
+      let s2 = UnivLib.unid2str unid2 in
+      if s1 = s2 then
+        i1 - i2
+      else
+        STRING.compare s1 s2
+    )
     in
-    (*get the current state*)
-    let search = MAP.get ms.state.partials id in
-    let tbl = GoalTableLib.mktbl ms.state.slvr ms.state.mtbl.is_trivial in
-    (*ban everything but current variable*)
-    let _ = (tbl.search <- search) in
-    tbl
-
+    let str = List.fold_right (fun (x,i) r->
+      let s = UnivLib.unid2str x in
+      s^"~"^(string_of_int i)^r
+    ) xsort "" in
+    str
 
 
   let get_labels tbl valfilt varfilt : (wireid*propid*label) list =
@@ -152,13 +137,10 @@ struct
       in
       results
 
-
-
   (*
     create global circuit from the partial solution buffer
   *)
-  let get_global_context ms : sstep list =
-    let tbl = ms.state.mtbl in
+  let get_global_context ms tbl : sstep list =
     let menv : menv = ms.state.slvr.prob in
     let hwenv : hwenv=  ms.state.slvr.hw  in
     (*process a local variable*)
@@ -205,7 +187,7 @@ struct
           (*node utilization*)
           SSolUseNode(cmpid,inst_id);
           (*wire connection*)
-          SAddGoal(UnivLib.wrap_goal tbl (UFunction(whwid,Term(ohwid))));
+          SAddGoal(UnivLib.wrap_goal tbl (UFunction(whwid,Term(ihwid))));
           (*label of var*)
           SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);
           SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
@@ -287,55 +269,37 @@ struct
     let val_steps = proc_in_val () in
     val_steps @ var_steps
 
-      (* find n more solutions *)
-      (*
-      let expand_search (sl:musearch) (id:unid) (nsols:int) : unit =
-        (*mktable*)
-        let multi = sl.search in
-        let curs = SearchLib.cursor multi in
-        let partial_tbl = mk_partial_tbl sl id in
-        let slvr = sl.state.slvr in
-        (*get partial search tree*)
-        let partial = MAP.get sl.state.partials id in
-        let currsols : int = SearchLib.num_solutions partial None in
-        let r : ((sstep snode) list) option = SolverEqn.solve slvr partial_tbl (nsols+currsols) in
-        match r with
-        | Some(nodes) ->
-          let proc_node (n:sstep snode) : _ =
-            let _ = SearchLib.move_cursor multi sl.state curs in
-            let steps : sstep list = SearchLib.get_path partial n in
-            let _ = SearchLib.start multi in
-            let _ = List.iter (fun x -> match x with
-              | SRemoveGoal(g) ->
-                let lhs = Shim.goal2lhs g in
-                if QUEUE.has sl.order lhs then
-                  SearchLib.add_step multi (MSSolveVar(lhs))
-              | _ -> ()
-
-            ) steps
-            in
-            let _ = SearchLib.add_step multi (MSPartialApp(id,n.id)) in
-            let _ = SearchLib.commit multi sl.state in
-            ()
-          in
-          let nns = List.map (fun (x:sstep snode) -> proc_node x) nodes in
+    let mk_partial_tbl (ms:musearch) (id:unid) =
+      (*make the current search state*)
+      let _ = if MAP.has ms.state.partials id = false then
+          let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
+          let _ = GoalTableLib.mkgoalroot ms.state.slvr tbl in
+          (*make passive bans*)
+          let blacklist = SET.filter ms.goals (fun g -> Shim.goal2lhs g <> id) in
+          let bansteps = List.map (fun x -> SMakeGoalPassive(x)) blacklist in
+          let _ = SearchLib.start tbl.search in
+          let _ = SearchLib.add_steps tbl.search bansteps in
+          let _ : sstep snode = SearchLib.commit tbl.search (ms.state.slvr,tbl) in
+          let _ = m_print_debug "made a partial tree" in
+          let _ = MAP.put ms.state.partials id tbl.search in
           ()
-        | None ->
-          let _ = SearchLib.deadend multi curs in
-          ()
-    *)
+      in
+      let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
+      (*get the current state*)
+      let search = MAP.get ms.state.partials id in
+      let _ = (tbl.search <- search) in
+      tbl
 
     (*find a partial solution*)
     let find_partial_solution (ms:musearch) (pvar) (nslns) : ((sstep snode) list) option =
       let slvr = ms.state.slvr in
-      let partial_search = MAP.get ms.state.partials pvar in
-      let partial_tbl = mk_partial_tbl ms pvar in
-      let currsols : int = SearchLib.num_solutions partial_search None in
+      let ptbl = mk_partial_tbl ms pvar in
+      let currsols : int = SearchLib.num_solutions ptbl.search None in
       (*original solution set*)
-      let orig : (sstep snode) list= SearchLib.get_solutions partial_search None in
+      let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
       let is_new q = List.length (LIST.filter (fun x -> q.id = x.id) orig) = 0 in
       let _ = m_print_debug "find a partial solution" in
-      let r : ((sstep snode) list) option = SolverEqn.solve slvr partial_tbl (nslns+currsols) in
+      let r : ((sstep snode) list) option = SolverEqn.solve slvr ptbl (nslns+currsols) in
       let _ = m_print_debug "found partial solutions" in
       match r with
       | None -> None
@@ -347,16 +311,146 @@ struct
         | h::t -> Some(h::t)
         end
 
+
+
+    let build_partial_steps ms (ctx:sstep list) (id:unid) (i:int) : sstep list =
+      let idalloc : (unodeid,int set) map = MAP.make () in
+      let idmapper : (unodeid*int,int) map = MAP.make () in
+      let proc_ctx s = match s with
+        | SSolUseNode(id,i) ->
+            let _ = if MAP.has idalloc id = false then
+              return (MAP.put idalloc id (SET.make_dflt ())) ()
+            in
+              return (SET.add (MAP.get idalloc id) i) ()
+        | _ -> ()
+      in
+      let rec find_fresh allocs id =
+        if SET.has allocs id then
+          find_fresh allocs (id+1)
+        else
+          id
+      in
+      let has_mapping id i =
+        MAP.has idalloc id && SET.has (MAP.get idalloc id) i
+      in
+      let add_mapping id i = (*collision*)
+        if has_mapping id i then
+          let alloced = MAP.get idalloc id in
+          let fid = find_fresh alloced 0 in
+          if MAP.has idmapper (id,i) then
+            error "proc_lcl" "cannot use the same node multiple times"
+          else
+            return (MAP.put idmapper (id,i) fid) ()
+        else
+          return (MAP.put idmapper (id,i) i) ()
+      in
+      let proc_lcl s = match s with
+        | SSolUseNode(id,i) -> add_mapping id i
+        | SAddNodeRel(id,i,_) -> add_mapping id i
+        | _ -> ()
+      in
+      let trans_wire (w:wireid) =
+        let cid,i,lc = w in
+        let ni = MAP.get idmapper (cid,i) in
+        (cid,ni,lc)
+      in
+      let trans_unid (u:unid) : unid = match u with
+        | HwId(HNPort(knd,HCMGlobal(c,i),p,pr,u)) ->
+          let id = UnivLib.name2unodeid c in
+          let ni = MAP.get idmapper (id,i) in
+          HwId(HNPort(knd,HCMGlobal(c,ni),p,pr,u))
+        | _ -> u
+      in
+      let trans_urel (u:urel) =
+        match u with
+        | UFunction(rhs,lhs) -> UFunction(trans_unid rhs, ASTLib.map lhs trans_unid)
+        | UState(rhs,lhs,deriv,time) -> UState(trans_unid rhs, ASTLib.map lhs trans_unid,
+            trans_unid deriv, trans_unid time)
+      in
+      let trans_goal (g:goal) =
+        (UnivLib.wrap_goal_fun ms.is_trivial (trans_urel (UnivLib.unwrap_goal g)))
+      in
+      let trans_lcl s = match s with
+        | SSolUseNode(id,i) ->
+          let ni = MAP.get idmapper (id,i) in
+           SSolUseNode (id,ni)
+        | SSolAddConn(w1,w2) -> SSolAddConn(trans_wire w1, trans_wire w2)
+        | SSolAddLabel(w,lbl,k) -> SSolAddLabel(trans_wire w,lbl,k)
+        | SSolRemoveLabel(w,lbl,k) -> SSolRemoveLabel(trans_wire w,lbl,k)
+        | SRemoveGoal(g) -> SRemoveGoal (trans_goal g)
+        | SAddGoal(g) -> SAddGoal (trans_goal g)
+        | SMakeGoalActive(g) -> SMakeGoalActive(g)
+        | SMakeGoalPassive(g) -> SMakeGoalPassive(g)
+        | SAddNodeRel(n,i,rs) ->
+          let ni = MAP.get idmapper (n,i) in
+          SAddNodeRel(n,ni,trans_urel rs)
+      in
+      let psearch = MAP.get ms.state.partials id in
+      let lclnode = SearchLib.id2node psearch i in
+      let lclsteps = LIST.rev (SearchLib.get_path psearch lclnode) in
+      let _ = List.iter (fun x -> proc_ctx x) ctx in
+      let _ = List.iter (fun x -> proc_lcl x) lclsteps in
+      let nlcl = List.map (fun x -> trans_lcl x) lclsteps in
+      let _ = m_print_debug "=== Mappings ===" in
+      let _ = MAP.iter idmapper (fun (uid,i) (fi) ->
+        let  _ = m_print_debug (" "^(UnivLib.unodeid2name uid)^" "^(string_of_int i)^" -> "^(string_of_int fi)^"\n") in
+        ()
+      ) in
+      let _ = m_print_debug "=== Normalized Partial Solution ===" in
+      let _ = List.iter (fun x ->
+        let _ = m_print_debug ("  "^(SlvrSearchLib.step2str x)) in
+        ()
+      ) nlcl in
+      let _ = m_print_debug "================" in
+      nlcl
+
+
+
+    let build_partials_steps ms (ids:(unid*int) set) : sstep list =
+      let _ = m_print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
+      let steps = SET.fold ids (fun (id,i) steps -> steps @ (build_partial_steps ms steps id i)) [] in
+      steps
+
+    let build_global_steps ms =
+      let dummy = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
+      let _ = GoalTableLib.mknullroot ms.state.slvr dummy in
+      let steps = build_partials_steps ms ms.state.local in
+      let _ = SearchLib.apply_steps dummy.search (ms.state.slvr,dummy) steps in
+      let glsteps = get_global_context ms dummy in
+      glsteps @ steps
+
+    let mk_global_tbl (ms:musearch) =
+      let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
+      let key = (set2key ms.state.local) in
+      (*if this table already exists*)
+      if MAP.has ms.state.globals key = false then
+        let steps = build_global_steps ms in
+        let _ = GoalTableLib.mkroot ms.state.slvr tbl steps in
+        let _ = MAP.put ms.state.globals key tbl.search in
+        tbl
+      else
+        let search = MAP.get ms.state.globals key in
+        let _ = (tbl.search <- search) in
+        tbl
+
+
     (*find a global solution, given the set of partials that have been applied*)
     let find_global_solution (ms:musearch) (nsols:int)=
-      let mtbl = ms.state.mtbl in
-      let mglbl = ms.state.glbl in
-      let dummy = SlvrSearchLib.mksearch () in
-      let st =  (ms.state.slvr,ms.state.mtbl) in
-      let _ = SearchLib.apply_steps dummy st mglbl in
-      let results = SolverEqn.solve ms.state.slvr ms.state.mtbl nsols in
-      let _ = SearchLib.unapply_steps dummy st mglbl in
+      let tbl = mk_global_tbl ms in
+      (*find the global steps *)
+      let results = SolverEqn.solve ms.state.slvr tbl nsols in
       results
+
+    let get_existing_global_solutions (ms:musearch) =
+      let gtbl = mk_global_tbl ms in
+      let node2sln n : sln =
+        let _ = SearchLib.move_cursor gtbl.search (ms.state.slvr,gtbl) n in
+        let sln = gtbl.sln in
+        sln
+      in
+      let nodes = SearchLib.get_solutions gtbl.search None in
+      let slns = List.map node2sln nodes in
+      slns
 
     (*Find and add a new partial *)
     let augment_with_partial_solution (ms:musearch) (pvar) (slns) :  unit =
@@ -378,16 +472,9 @@ struct
         let _ = List.iter (fun x -> proc_step x) (SearchLib.get_path partial sln) in
         let pnode = SearchLib.commit ms.search ms.state in
         let _ = SearchLib.move_cursor ms.search ms.state pnode in
-        (*create global context node*)
-        let glblctx = get_global_context ms in
-        let _ = SearchLib.start ms.search in
-        let _ = SearchLib.add_step ms.search (MSGlobalApp glblctx) in
-        let gnode = SearchLib.commit ms.search ms.state in
-        let _ = SearchLib.move_cursor ms.search ms.state gnode in
         match find_global_solution ms 1 with
         | Some(_) -> (*this is valid*) ()
         | None ->
-          let _ = SearchLib.deadend ms.search gnode in
           let _ = SearchLib.deadend ms.search pnode in
           ()
       in
@@ -482,49 +569,42 @@ struct
       in
       let _ = _msolve () in
       let snodes = SearchLib.get_solutions ms.search None in
-      let slns = List.map (fun x ->
+      let slns = List.fold_right (fun (x:mustep snode) (r:sln list) ->
         let _ = SearchLib.move_cursor ms.search ms.state x in
-        let gltbl = ms.state.mtbl in
-        gltbl.sln
-      ) snodes
+        let slns :sln list = get_existing_global_solutions ms in
+        slns @ r
+      ) snodes []
       in
       match slns with
       | h::t -> Some(h::t)
       |[] ->None
 
   let mkmulti (slvr:slvr) =
-    let mult_tbl = GoalTableLib.mktbl slvr (TrivialLib.is_trivial) in
-    let scratch_partial_table = GoalTableLib.mktbl slvr (TrivialLib.is_trivial) in
+    (*make a top level table with default goals*)
+    let scratch = GoalTableLib.mktbl slvr (TrivialLib.is_trivial) in
+    let _ = GoalTableLib.mkgoalroot slvr scratch  in
+    (*create ordering*)
     let order = QUEUE.make () in
-    let _ =SET.iter mult_tbl.goals (fun g -> let v = Shim.goal2lhs g in
+    let _ =SET.iter scratch.goals (fun g -> let v = Shim.goal2lhs g in
       return (QUEUE.enqueue order v) ()
     ) in
     (*initialize partial tree*)
-    let partial_tree = MAP.make () in
-    let mult_tree =  MultiSearchTree.mksearch () in
-    let make_partial_tree v =
-      let sr = SlvrSearchLib.mksearch() in
-      let blacklist = SET.filter mult_tbl.goals (fun g -> Shim.goal2lhs g <> v) in
-      let bansteps = List.map (fun x -> SMakeGoalPassive(x)) blacklist in
-      let _ = SearchLib.setroot sr (slvr,scratch_partial_table) (bansteps) in
-      let _ = MAP.put partial_tree v sr in
-      ()
-    in
-    let _ = QUEUE.iter order (fun q -> make_partial_tree q) in
+    let mtree =  MultiSearchTree.mksearch () in
     let mtbl : mutbl = {
-      mtbl = mult_tbl;
-      partials = partial_tree;
-      glbl =  [];
+      partials = MAP.make ();
+      globals = MAP.make ();
+      local = SET.make_dflt ();
       solved = SET.make_dflt ();
       slvr = slvr;
     } in
-    let _ = SearchLib.setroot mult_tree mtbl [] in
+    let _ = SearchLib.setroot mtree mtbl [] in
     let msearch : musearch = {
-      nodes = mult_tbl.nodes;
-      goals = mult_tbl.goals;
+      nodes = scratch.nodes;
+      goals = scratch.goals;
       order = order;
-      search = mult_tree;
+      search = mtree;
       state = mtbl;
+      is_trivial = TrivialLib.is_trivial;
     }
     in
     msearch

@@ -106,10 +106,10 @@ struct
       (slvenv,tbl)
     in
     let order_steps x y = match (x,y) with
-    | (SAddGoal(_),SRemoveGoal(_)) -> -1
-    | (SRemoveGoal(_),SAddGoal(_)) -> 1
     | (_,SRemoveGoal(_)) -> 1
-    | (_,SAddGoal(_)) -> 1
+    | (SRemoveGoal(_),_) -> -1
+    | (SAddGoal(_),_) -> 1
+    | (_,SAddGoal(_)) -> -1
     | _ -> 0
     in
     let unapply_step ((slvenv,tbl):slvr*gltbl) (s:sstep) =
@@ -135,6 +135,7 @@ struct
       SearchLib.mksearch apply_step unapply_step order_steps score_step step2str
     in
     search
+
 
 
 end

@@ -20,6 +20,13 @@ struct
     else
       NonTrivialGoal(u)
 
+
+  let wrap_goal_fun (v:urel->bool) (u:urel) : goal =
+    if v u then
+      TrivialGoal(u)
+    else
+      NonTrivialGoal(u)
+
   let unwrap_goal (g:goal) : urel = match g with
   | TrivialGoal(v) -> v
   | NonTrivialGoal(v) -> v
@@ -132,6 +139,7 @@ module UnivLib =
 struct
 
   let wrap_goal = Shim.wrap_goal
+  let wrap_goal_fun = Shim.wrap_goal_fun
   let unwrap_goal = Shim.unwrap_goal
   let lclid2glblid = Shim.lclid2glblid
 

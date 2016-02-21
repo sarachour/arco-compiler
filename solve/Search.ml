@@ -318,6 +318,9 @@ struct
       sb,sr
     |None -> error "mkbuf" "impossible to not have initial step"
 
+  let root (type a) (type b) (sr:(a,b) ssearch ) =
+    let n = TREE.root sr.tree in
+    n
 
   let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b) (order:a->a->int) (score:b->a list->sscore) (tostr:a->string) =
     let g = TREE.make (fun x y -> x.id=y.id) (fun x y -> x = y) in
