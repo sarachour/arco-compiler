@@ -14,6 +14,7 @@ let _ = MAP.put glbls "debug" (GlblPropInt 0)
 
 let _ = MAP.put glbls "uast-selector-branch" (GlblPropString "uniform")
 let _ = MAP.put glbls "uast-depth" (GlblPropInt 8)
+let _ = MAP.put glbls "uast-ban-strategy" (GlblPropString "ban-one")
 
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
 let _ = MAP.put glbls "eqn-depth" (GlblPropInt 32)

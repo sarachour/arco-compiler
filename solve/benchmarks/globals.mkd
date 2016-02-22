@@ -4,6 +4,7 @@
 **slvr-solutions** (`int`): the number of top level solutions to generate
 **eqn-unifications** (`int`): the number of unifications to generate.
 **eqn-depth** (`int`): the bound on the depth of the search
+**uast-depth** (`int`): the depth of the uast
 
 ## Search Heuristics
 
@@ -22,9 +23,10 @@ branch selection search.
   `ngoals`: DESC
   `goal-complexity`: DESC
 
+**uast-ban-strategy** (`string`): ban
 
 ## Debugging
 
 **interactive** (`int`): the interactivity level to use.
 
-**
+*debug* (`int`): amount to emit

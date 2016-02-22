@@ -51,6 +51,7 @@ comp emmblock
 
   % inputs
   input Atot where I:nA
+  input Btot where I:nA
 
   input Cfree where I:nA
   input Cprod where I:nA
@@ -103,7 +104,7 @@ comp emmblock
 
 
   rel I(Afree) = I(Atot) - D(A_SW)*I(Ctot)
-  rel I(Bfree) = I(Atot) - D(B_SW)*I(Ctot)
+  rel I(Bfree) = I(Btot) - D(B_SW)*I(Ctot)
   rel I(rateFW) = I(Afree)*((I(Bfree)/I(KDfw))^D(n))
   rel I(rateFWUp) = I(Cprod) - D(FF_SW1)*I(rateFW)
   rel I(rateFWTot) = I(Cprod) + D(FF_SW2)*I(rateFW)
