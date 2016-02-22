@@ -12,6 +12,9 @@ let glbls : (string,glblprop) map = MAP.make ();;
 let _ = MAP.put glbls "interactive" (GlblPropInt 0)
 let _ = MAP.put glbls "debug" (GlblPropInt 0)
 
+let _ = MAP.put glbls "uast-selector-branch" (GlblPropString "uniform")
+let _ = MAP.put glbls "uast-depth" (GlblPropInt 8)
+
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
 let _ = MAP.put glbls "eqn-depth" (GlblPropInt 32)
 let _ = MAP.put glbls "eqn-selector-branch" (GlblPropString "uniform")

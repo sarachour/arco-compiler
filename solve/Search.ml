@@ -100,6 +100,7 @@ end
 module SearchLib =
 struct
 
+
   let is_deadend (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
     SStatLib.is_deadend sr.st n
 
@@ -156,6 +157,9 @@ struct
 
   let get_path (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : a list =
      fold_path sr n (fun x r -> x::r) []
+
+  let depth (type a) (type b) (sr:(a,b) ssearch) (c) =
+    List.length (TREE.get_path sr.tree c)
 
   let start (type a) (type b) (sr:(a,b) ssearch) =
     sr.scratch <- mknode sr

@@ -181,12 +181,20 @@ struct
   | (_,RVarRemove(_)) -> -1
   | _ -> 0
 
-
-  let score_steps env steps : sscore =
+  let score_uniform env steps : sscore =
     let delta = 0. in
     let state = 0. in
-    {delta=delta; state=state}
+    SearchLib.mkscore delta state
 
+  let score_random env steps : sscore =
+    let delta = RAND.rand_norm () in
+    let state = RAND.rand_norm () in
+    SearchLib.mkscore delta state
+
+  let get_score ()  =
+    match get_glbl_string "uast-selector-branch" with
+    | "uniform" -> score_uniform
+    | "random" -> score_random
 
 
   let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
@@ -243,7 +251,7 @@ struct
     } in
     (*make search object*)
     let search : (a rstep, a rtbl) ssearch =
-      SearchLib.mksearch apply_step unapply_step order_steps score_steps (step2str tostr)
+      SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str tostr)
     in
     let strct: a runify = {
         search=search;
@@ -524,7 +532,7 @@ struct
       if vconflict <> None then
         let conflict_var,conflict = OPTION.force_conc vconflict in
         (*determine if there are multiple assignment conflicts*)
-        if more_than_one_assignment s assigns asgnlhs conflict_var then
+        if false && more_than_one_assignment s assigns asgnlhs conflict_var then
           let _ = auni_print_debug ("<conflict> multiple assignments for "^(s.tbl.tostr conflict_var)) in
           false
         else
@@ -664,6 +672,11 @@ struct
         else
           match maybe_next_node with
           | Some(next_node) ->
+              let depth : int =  SearchLib.depth sr.search next_node in
+              (*if we're going really deep*)
+              let _ = if depth - 2 >= get_glbl_int "uast-depth" then
+                return (SearchLib.deadend sr.search next_node) ()
+              in
               (*move to node*)
               let _ = auni_print_debug "=== Moving to Node ==" in
               let _ = usrmenu () in

@@ -46,6 +46,9 @@ type 'a rstep =
   (*Fill a relation*)
   | RVarFill of 'a*unifytype
 
+type 'a rvstats = {
+  nconflicts: ('a*('a ast), int) map
+}
 
 (*the variables that are filled and removed*)
 type 'a rvstate = {
