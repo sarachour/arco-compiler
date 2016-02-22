@@ -419,8 +419,50 @@ struct
     let proposal =  MAP.fold assigns (fun k v r -> [RBanAssign(k,v)]::r) [] in
     proposal
 
+  let propose_bans_fraction (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
+    let frac = get_glbl_float "uast-restrict-fraction-ban-prop" in
+    let fracsets = get_glbl_float "uast-restrict-fraction-set-prop" in
+    let n = int_of_float ((float_of_int (MAP.size assigns))*.fracsets) in
+    let choose_ban k v r =
+      if RAND.rand_norm () < frac then
+        RBanAssign(k,v)::r
+      else
+        r
+    in
+    let rec make_bans i r =
+      let bans : a rstep list = MAP.fold assigns (fun k v r -> choose_ban k v r) [] in
+      let r = bans::r in
+      if i < n then
+        make_bans (i+1) r
+      else
+        r
+    in
+    make_bans 0 []
+
+  let propose_bans_common (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
+    [[]]
+  let propose_bans_all_rhs (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
+    let lhses : a list = MAP.to_keys assigns in
+    let cplx_rhs x = match x with Term(_) -> false | Integer(_) -> false | Decimal(_) -> false | _ -> true in
+    let choose_ban lhs rhs r =
+      if cplx_rhs rhs then
+        let bans : a rstep list = List.map (fun clhs -> RBanAssign(clhs,rhs)) lhses in
+        bans::r
+      else
+        [RBanAssign(lhs,rhs)]::r
+    in
+    let bans : (a rstep list) list = MAP.fold assigns (fun k v r -> choose_ban k v r) [] in
+    bans
+
   let propose_bans (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list =
-    propose_bans_uniform s n assigns
+    match get_glbl_string "uast-selector-restrict" with
+    | "single" -> propose_bans_uniform s n assigns
+    | "fraction" ->
+      propose_bans_fraction s n assigns
+    | "all-rhs" ->
+      propose_bans_all_rhs s n assigns
+    | "common" ->
+      propose_bans_common s n assigns
 
   (*don't ban anything*)
   let add_restrictions (type a) (s:a runify) (n:a rnode) (vtempl:a) (vtarg:a) (assigns:(a,a ast) map) : unit =

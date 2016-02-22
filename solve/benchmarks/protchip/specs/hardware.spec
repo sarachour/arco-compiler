@@ -145,6 +145,12 @@ comp addi
 
 end
 
+comp gnd
+  output O where I:nA
+
+  rel I(O) = 0
+end
+
 schematic
   inst emmblock : 20
   inst digiswitch : 1
@@ -152,6 +158,8 @@ schematic
   % 1-160 are normal, 160-180 are for ics
   inst input I : 180
   inst output I : 24
+
+  conn gnd -> emmblock
 
   conn digiswitch -> emmblock.A_SW
   conn digiswitch -> emmblock.B_SW

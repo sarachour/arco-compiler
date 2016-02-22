@@ -469,6 +469,9 @@ struct
     let vap = f va in
     put x k vap
 
+  let size (type a) (type b) (x:(a,b) map) =
+    Hashtbl.length x 
+
   let size x =
     Hashtbl.length x
 

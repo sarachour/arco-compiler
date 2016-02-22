@@ -10,11 +10,13 @@ let integer = ['0' - '9']+
 let float = ['0'-'9']*"."['0' - '9']+
 let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_''-']*
 let str = '"' [^ '"']* '"'
+let comment = '%'[^'\n']*
 
 
 
 rule toplvl = parse
-   |[' ''\t''\n'] {toplvl lexbuf}
+   | comment          {toplvl lexbuf}
+   |[' ''\t''\n']     {toplvl lexbuf}
    | "bool"           {TBOOL}
    | "float"          {TFLOAT}
    | "int"            {TINT}
