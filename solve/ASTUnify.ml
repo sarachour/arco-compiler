@@ -456,7 +456,8 @@ struct
 
   let propose_bans (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list =
     match get_glbl_string "uast-selector-restrict" with
-    | "single" -> propose_bans_uniform s n assigns
+    | "single" ->
+      propose_bans_uniform s n assigns
     | "fraction" ->
       propose_bans_fraction s n assigns
     | "all-rhs" ->
@@ -668,26 +669,31 @@ struct
       error "solve_node" ("missing templ variable "^(s.tbl.tostr vtarg))
     else
     let rtarg = MAP.get targs vtarg in
-    match unify_one s vtempl rtempl vtarg rtarg with
-    | Some(assigns) ->
-      (*add a bunch of branches of what ifs*)
-      let _ = add_restrictions s curs vtempl vtarg assigns in
-      let _ = add_assignment_node s curs templs targs vtempl vtarg assigns in
-      ()
-    | None ->
-      let _ = SearchLib.deadend s.search curs in
-      ()
-      (*TODO: disabled fill*)
-      (*marks a deadend if there was no solution*)
-      (*
-      if add_fill_nodes s curs templs targs vtempl vtarg then
-        let _ = auni_print_debug "filled in some nodes." in
+    let ndups = get_glbl_int "uast-duplicates" in
+    let proc_one () =
+      match unify_one s vtempl rtempl vtarg rtarg with
+      | Some(assigns) ->
+        (*add a bunch of branches of what ifs*)
+        let _ = add_restrictions s curs vtempl vtarg assigns in
+        let _ = add_assignment_node s curs templs targs vtempl vtarg assigns in
         ()
-      else
-        let _ = auni_print_debug "no more nodes to fill in." in
+      | None ->
         let _ = SearchLib.deadend s.search curs in
         ()
-    *)
+        (*TODO: disabled fill*)
+        (*marks a deadend if there was no solution*)
+        (*
+        if add_fill_nodes s curs templs targs vtempl vtarg then
+          let _ = auni_print_debug "filled in some nodes." in
+          ()
+        else
+          let _ = auni_print_debug "no more nodes to fill in." in
+          let _ = SearchLib.deadend s.search curs in
+          ()
+      *)
+    in
+    FUN.iter_n proc_one ndups
+
   let rec get_best_valid_node (type a) (sr:a runify) (root:(a rnode) option)  : (a rnode) option =
     let collate_score (o:sscore) (score:sscore) : sscore =
       SearchLib.mkscore score.state  (score.delta +. o.delta)

@@ -145,6 +145,21 @@ struct
 
 end
 
+module FUN =
+struct
+  let iter_n x n =
+    let rec q i =
+      if i < n then
+        let _ = x () in
+        let _ = q (i+1) in
+        ()
+      else
+        ()
+    in
+    q 0
+
+end
+
 module RANGE =
 struct
   let range2str ((a,b):range) = "("^(string_of_float a)^","^(string_of_float b)^")"
@@ -154,6 +169,9 @@ struct
     let min = if a < x then a else x in
     let max = if b < y then b else y in
     (min,max)
+
+
+
 end
 
 
@@ -470,7 +488,7 @@ struct
     put x k vap
 
   let size (type a) (type b) (x:(a,b) map) =
-    Hashtbl.length x 
+    Hashtbl.length x
 
   let size x =
     Hashtbl.length x

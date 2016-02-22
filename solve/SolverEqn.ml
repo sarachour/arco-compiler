@@ -329,7 +329,22 @@ struct
       | TrivialGoal(grel) ->
         let mktrv = TrivialLib.resolve_trivial_step s v g in
         let triv = mknode ((SRemoveGoal g)::mktrv) curr in
-        ()
+        (*test the validity of the trival node*)
+        let _ = SearchLib.move_cursor v.search (s,v) triv in
+        (**)
+        if SlnLib.usecomp_cons s v.sln && SlnLib.mkconn_cons s v.sln then
+          let _ = SearchLib.move_cursor v.search (s,v) curr in
+          ()
+        else
+          (*this trivial resolution does not work*)
+          let _ = slvr_print_debug "[search_tree] trivial solution is invalid. downgrade." in
+          let _ = SearchLib.deadend v.search triv in
+          (*downgrade goal*)
+          let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
+          let downgrade_triv = mknode ([SRemoveGoal g; SAddGoal gnt]) curr in
+          let _ = musr () in
+          ()
+
     in
     let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
