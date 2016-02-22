@@ -113,7 +113,7 @@ struct
     let spcs = STRING.repeat "  " indent  in
     let id = (
       if is_deadend sr n then "[XX]"
-      else if is_solution sr n then "[!!]"
+      else if is_solution sr n then "[SL]"
       else "[  ]")^(string_of_int n.id) in
     let prefix = match sr.curs with
     | Some(c) -> if c = n then "{{C}}"^id else id

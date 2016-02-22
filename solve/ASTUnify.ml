@@ -20,6 +20,7 @@ open SolverUtil
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
+let spy_print_debug = print_debug 4 "sympy"
 let auni_print_debug = print_debug 3 "uni"
 let auni_menu = menu 3
 
@@ -256,16 +257,16 @@ struct
   (*apply the existing state to python, that is transform the expressions*)
 
   let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
-    let _ = auni_print_debug "ENV == STATE ===" in
+    let _ = spy_print_debug "ENV == STATE ===" in
     let _ = SymCaml.clear (g_sym s.tbl) in
     (*let _ = SymCaml.set_debug (g_sym s.tbl) true in*)
     (*create replacement tables*)
     let targ_repls : (a,a ast) map = MAP.make () in
     let templ_repls : (a,a ast) map = MAP.make () in
     let fill_t ty = SET.iter (g_state s.tbl ty).fill ( fun x ->
-      let _ = auni_print_debug ("ENV fill  "^(s.tbl.tostr x)^" : "^(unifytype2str ty)) in
+      let _ = spy_print_debug ("ENV fill  "^(s.tbl.tostr x)^" : "^(unifytype2str ty)) in
       if MAP.has (g_info s.tbl ty).info x  = false then
-        ret (auni_print_debug ("ENV ignore fill, already satisifed")) ()
+        ret (spy_print_debug ("ENV ignore fill, already satisifed")) ()
       else
         ret (MAP.put targ_repls x (MAP.get (g_info s.tbl ty).info x).rhs) ()
     )
@@ -287,7 +288,7 @@ struct
         if MAP.has (g_bans s.tbl) v then
           let bans = SET.map (MAP.get (g_bans s.tbl) v) (fun x ->
             let nx = ASTLib.sub x templ_repls in
-            let _ = auni_print_debug ("ENV ban: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str nx s.tbl.tostr)^"") in
+            let _ = spy_print_debug ("ENV ban: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str nx s.tbl.tostr)^"") in
             nx
           ) in
           bans
@@ -319,12 +320,12 @@ struct
     let add_expr scratch v rhs (iswc:bool) (addvars:bool)=
       let _ = if addvars then add_vars v rhs iswc else () in
       let _ = MAP.put scratch v (rhs) in
-      let _ = auni_print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
+      let _ = spy_print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
       ()
     in
     let rm_expr scratch v =
       let _ = MAP.rm scratch_targ v in
-      let _ = auni_print_debug ("ENV remove "^(s.tbl.tostr v)) in
+      let _ = spy_print_debug ("ENV remove "^(s.tbl.tostr v)) in
       ()
     in
     (*add original variables*)
@@ -433,6 +434,7 @@ struct
     else
       [[(LIST.rand targ,UTypTarg)]]
 
+  (*get the original relation from the table*)
   let get_orig_rhs_and_kind (type a) (s:a runify) (utyp:unifytype) (vr:a) =
     if MAP.has (g_info s.tbl utyp).info vr then
       let ifo = MAP.get (g_info s.tbl utyp).info vr in
@@ -491,49 +493,78 @@ struct
     let _ = s.tbl.env.nfresh <- s.tbl.env.nfresh + 1 in
     r
 
+  let more_than_one_assignment (type a) (s:a runify) (stk) (hwvar:a) (mvar:a) =
+    let is_match lhs rhs =
+      match rhs with
+      | Term(v) -> lhs <> hwvar && v = mvar
+      | _ -> false
+    in
+    let omatches = MAP.filter s.tbl.st.assigns is_match in
+    let nmatches = MAP.filter stk is_match in
+    let matches = omatches @ nmatches in
+    let _ = List.iter (fun (lhs,rhs) ->
+      auni_print_debug ("  <?>"^(s.tbl.tostr lhs)^"="^(ASTLib.ast2str rhs s.tbl.tostr)^"\n")
+    ) matches in
+    (LIST.empty matches) = false
+
+  let get_var_assignment (type a) s (l:a) (r: a ast) =
+    let ifol = get_orig_rhs_and_kind s UTypTempl l in
+    match r with
+    | Term(x) ->
+      let ifor = get_orig_rhs_and_kind s UTypTarg  x in
+      (ifol, Some(x,ifor))
+    | _ ->
+      (ifol,None)
+
   let add_assignment_node (type a) (s:a runify) node templs targs vtempl vtarg assigns =
     let addassign asgnlhs asgnrhs : bool =
       (*we assign a value to a variable in the component*)
       let _ = SearchLib.add_step s.search (RAddAssign(asgnlhs,asgnrhs)) in
-      (*if the left hand side of this assignment is the template variable, skip*)
-      if asgnlhs = vtempl then true else
-      (*if the assignment concerns another output component*)
-      let tplifo = get_orig_rhs_and_kind s UTypTempl asgnlhs in
-      match tplifo with
-      (*variable, is itself an output*)
-      | Some(tplkind,tplrhs) ->
-        let _ = auni_print_debug ("captured templ var: "^(s.tbl.tostr asgnlhs)) in
-        begin
-        (*determine kind of right hand side of assignment*)
-        match asgnrhs with
-          (**)
-          | Term(targvar) ->
-            let _ = auni_print_debug ("var-var assign: "^(s.tbl.tostr asgnlhs)^"="^(s.tbl.tostr targvar)) in
-            let targifo = get_orig_rhs_and_kind s UTypTarg targvar in
-            begin
-            match targifo with
-            | Some(targkind,targrhs) ->
-              let _ = auni_print_debug ("captured targ var: "^(s.tbl.tostr targvar)) in
-              if targkind != tplkind then false (*the kinds don't match*)
-              else (*kinds match, add this *)
-                let _ = SearchLib.add_step s.search (RForceAssign(asgnlhs,targvar)) in
-                true
-              (*assigned to an uncaptured variable - it's okay.*)
-            | None ->
-              let _ = auni_print_debug ("uncaptured targ var: "^(s.tbl.tostr targvar)) in
-              if RKFunction != tplkind then false (*the kinds don't match*)
-              else true
-            end
-          | _ ->
-            let _ = auni_print_debug ("var-expr assign: "^(s.tbl.tostr asgnlhs)^" = "^(ASTLib.ast2str asgnrhs s.tbl.tostr)) in
-            let tvar = s.tbl.env.freshvar (get_fresh_variable_id s) UTypTarg in
-            let _ = SearchLib.add_step s.search (RForceAssign(asgnlhs,tvar)) in
-            let _ = SearchLib.add_step s.search (RVarAdd(tvar,asgnrhs,UTypTarg)) in
+      let varinfo, vconflict = get_var_assignment s asgnlhs asgnrhs in
+      if vconflict <> None then
+        let conflict_var,conflict = OPTION.force_conc vconflict in
+        (*determine if there are multiple assignment conflicts*)
+        if more_than_one_assignment s assigns asgnlhs conflict_var then
+          let _ = auni_print_debug ("<conflict> multiple assignments for "^(s.tbl.tostr conflict_var)) in
+          false
+        else
+          (*ignore any conflicts with the template variable*)
+          if asgnlhs = vtempl then true
+          else
+          (*determine if there are cross relational conflicts*)
+          begin
+          match varinfo,conflict with
+          | (Some(varkind,varrhs),Some(confkind,confrhs)) ->
+            let _ = auni_print_debug ("<conflict?> captured targ var: "^(s.tbl.tostr conflict_var)) in
+            if confkind != varkind then
+              let _ = auni_print_debug ("<conflict> invalid assignment. mismatched types: "^(s.tbl.tostr conflict_var)) in
+              false
+            else
+              let _ = auni_print_debug ("<averted> adding constraint to correct conflict: "^(s.tbl.tostr conflict_var)) in
+              let _ = SearchLib.add_step s.search (RForceAssign(asgnlhs,conflict_var)) in
+              true
+          | (Some(varkind,varrhs),None) ->
+            let _ = auni_print_debug ("<conflict?> uncaptured targ var: "^(s.tbl.tostr conflict_var)) in
+            if RKFunction != varkind then
+              let _ = auni_print_debug ("<conflict> invalid assignment. cannot be stateful: "^(s.tbl.tostr asgnlhs)^"="^(s.tbl.tostr conflict_var)) in
+              false
+            else true
+          | (None,_) ->
+            let _ = auni_print_debug ("<averted>. template variable is uncaptured: "^(s.tbl.tostr asgnlhs)) in
             true
-        end
-      | None ->
-        let _ = auni_print_debug ("uncaptured templ var: "^(s.tbl.tostr asgnlhs)) in
-        true
+          end
+      (*the left hand side is an expression*)
+      else
+        match varinfo with
+        | Some(varkind,varrhs) ->
+          let _ = auni_print_debug ("<conflict> var-expr assign: "^(s.tbl.tostr asgnlhs)^" = "^(ASTLib.ast2str asgnrhs s.tbl.tostr)) in
+          let tvar = s.tbl.env.freshvar (get_fresh_variable_id s) UTypTarg in
+          let _ = SearchLib.add_step s.search (RForceAssign(asgnlhs,tvar)) in
+          let _ = SearchLib.add_step s.search (RVarAdd(tvar,asgnrhs,UTypTarg)) in
+          true
+        | None ->
+          let _ = auni_print_debug ("<averted> uncaptured var: simple mapping for "^(s.tbl.tostr asgnlhs)) in
+          true
     in
     (*add a cursor for solving the goal*)
     let _ = SearchLib.move_cursor s.search s.tbl node in
@@ -550,25 +581,25 @@ struct
     let issucc = addassign vtempl (Term vtarg) in
     let issucc = MAP.fold assigns (fun lhs rhs succ -> succ && (addassign lhs rhs)) issucc in
     let anode = SearchLib.commit s.search s.tbl in
+    let _ = auni_print_debug ("---- pushed node -----") in
     let _ = SearchLib.move_cursor s.search s.tbl anode in
     (*if any of the assignments are impossible*)
-    let _ = if issucc = false then
+    if issucc = false then
         let _ = SearchLib.deadend s.search anode in ()
-        else ()
-    in
-    (*if this node is a solution then, mark it as one*)
-    let _ = if MAP.empty (g_cstr s.tbl) then
-        ret (SearchLib.solution s.search anode) ()
-      else
-        (*otherwise focus on the next target*)
-        let nvtempl,nvtarg = MAP.rand (g_cstr s.tbl) in
-        let fnode = SearchLib.start s.search in
-        let fnode = SearchLib.add_step s.search (RVarFocus(nvtempl,UTypTempl)) in
-        let fnode = SearchLib.add_step s.search (RVarFocus(nvtarg,UTypTarg)) in
-        let _ = SearchLib.commit s.search s.tbl in
-        ()
-    in
-    ()
+    else
+      (*if this node is a solution then, mark it as one*)
+      let _ = if MAP.empty (g_cstr s.tbl) then
+          ret (SearchLib.solution s.search anode) ()
+        else
+          (*otherwise focus on the next target*)
+          let nvtempl,nvtarg = MAP.rand (g_cstr s.tbl) in
+          let fnode = SearchLib.start s.search in
+          let fnode = SearchLib.add_step s.search (RVarFocus(nvtempl,UTypTempl)) in
+          let fnode = SearchLib.add_step s.search (RVarFocus(nvtarg,UTypTarg)) in
+          let _ = SearchLib.commit s.search s.tbl in
+          ()
+      in
+      ()
 
 
 
