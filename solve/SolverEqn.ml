@@ -225,12 +225,12 @@ struct
 
 
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
-  let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) =
+  let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) (depth:int)=
     let old_cursor = SearchLib.cursor v.search in
     let _ = SearchLib.move_cursor v.search (s,v) c in
-    let depth =  List.length (TREE.get_path v.search.tree c) in
-    let is_valid = if depth >= get_glbl_int "eqn-depth" then
-      let _ = slvr_print_debug "[test-node-validity] hit max depth" in
+    let currdepth =  List.length (TREE.get_path v.search.tree c) in
+    let is_valid = if currdepth >= depth then
+      let _ = slvr_print_debug "[test-node-validity] hit max depth:" in
       let _ = SearchLib.deadend v.search c in
       false
     else
@@ -258,16 +258,16 @@ struct
 
 
   (*get the best valid node. If there is no valid node, return none *)
-  let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option)  : (sstep snode) option =
+  let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option) (depth:int)  : (sstep snode) option =
     let collate_score (o:sscore) (n:sscore) : sscore =
       SearchLib.mkscore n.state (o.delta +. n.delta)
     in
     match SearchLib.select_best_node v.search collate_score root with
     | Some(newnode) ->
-        if test_node_validity s v newnode then
+        if test_node_validity s v newnode depth then
           Some(newnode)
         else
-          get_best_valid_node s v root
+          get_best_valid_node s v root depth
     | None -> None
 
   (*
@@ -306,7 +306,7 @@ struct
 
   (*solve a goal*)
 
-  let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) (nslns:int) : unit =
+  let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
     let solve_goal (g:goal) =
       let curr = SearchLib.cursor v.search in
       let mint,musr = mkmenu s v (Some g) in
@@ -353,7 +353,7 @@ struct
         ()
       else
         (*get the next node*)
-        let maybe_next_node = get_best_valid_node s v (Some root) in
+        let maybe_next_node = get_best_valid_node s v (Some root) depth in
         if SearchLib.num_solutions v.search (Some root) >= nslns then
          let _ = slvr_print_debug "[search_tree] Found enough solutions" in
          ()
@@ -386,10 +386,10 @@ struct
         let _ = rec_solve_subtree root in
         ()
 
-    let solve (s:slvr) (v:gltbl) (nslns:int) : ((sstep snode) list) option =
+    let solve (s:slvr) (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
       let _ = slvr_print_debug ("find # solutions: "^(string_of_int nslns)) in
       let root = SearchLib.cursor v.search in
-      let _ : unit= solve_subtree s v root nslns in
+      let _ : unit= solve_subtree s v root nslns depth in
       let slns = SearchLib.get_solutions v.search (Some root) in
       match slns with
       | h::t -> Some slns

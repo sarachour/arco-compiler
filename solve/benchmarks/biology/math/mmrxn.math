@@ -27,4 +27,4 @@ ensure err E(P) = 0.01 : M
 rel deriv(S,t) = (-kf)*E*S + kr*ES with S(0) = 0.256
 rel deriv(E,t) = (-kf)*E*S + kr*ES + kcat*ES with E(0) = 0.124
 rel deriv(ES,t) = kf*E*S - kr*ES - kcat*ES with ES(0) = 0
-rel deriv(P,t) = kcat*ES with P(0) = 0
+%rel deriv(P,t) = kcat*ES with P(0) = 0
