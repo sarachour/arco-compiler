@@ -27,10 +27,6 @@ open SolverSearch
 module GoalTableLib =
 struct
 
-
-
-  let is_trivial g = match g with TrivialGoal(g) -> true | _ -> false
-
   let wrap_goal = GoalStubLib.wrap_goal
   let unwrap_goal = GoalStubLib.unwrap_goal
   let add_goal = GoalStubLib.add_goal
@@ -85,7 +81,7 @@ struct
     let v =  {
        goals = SET.make_dflt ();
        nodes = nodetbl;
-       dngl = MAP.make();
+       used_nodes = MAP.make();
        is_trivial = triv;
        blacklist = SET.make_dflt ();
        search= st;
@@ -139,7 +135,7 @@ struct
         nodes=nodetbl;
         sln=sln;
         search=search;
-        dngl = MAP.make ();
+        used_nodes = MAP.make ();
         blacklist = SET.make_dflt ()
       } in
     tbl

@@ -11,6 +11,7 @@ let report lexbuf q =
 
 let whitespace = ['\t'' ']*
 let comment = '%'[^'\n']*
+let commentblock = '#'[^'#']*'#'
 let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
 let str = '"' [^ '"']* '"'
 let decimal = '-'? ['0'-'9']*'.'['0'-'9']+
@@ -20,6 +21,7 @@ let op = ['[' ']' '+' '-' '*' '^' '.' '/']+
 rule env = parse
   | whitespace              {env lexbuf}
   | comment                 {env lexbuf}
+  | commentblock            {env lexbuf}
   | '\n'                    {Lexing.new_line lexbuf; EOL}
   | eof                     {EOF}
   | "with"                  {WITH}

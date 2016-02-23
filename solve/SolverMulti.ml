@@ -401,7 +401,7 @@ struct
     if MAP.has ms.state.globals key = false then
       let steps = build_global_steps ms in
       let _ = m_print_debug "======= Global Steps =======" in
-      let _ = List.iter (fun x -> m_print_debug ("   "^(SlvrSearchLib.step2str x))) in
+      let _ = List.iter (fun x -> m_print_debug ("   "^(SlvrSearchLib.step2str x))) steps in
       let _ = m_print_debug "============================" in
       let _ = GoalTableLib.mkroot ms.state.slvr tbl steps in
       let _ = MAP.put ms.state.globals key tbl.search in
@@ -419,20 +419,39 @@ struct
     let depth = get_glbl_int "slvr-global-depth" in
     let results = SolverEqn.solve ms.state.slvr tbl nsols depth in
     let root = OPTION.force_conc (SearchLib.root tbl.search) in
-    let _ = SearchLib.move_cursor tbl.search (ms.state.slvr,tbl) root in
+    let _ = SearchLib.clear_cursor tbl.search in
     results
 
   let get_existing_global_solutions (ms:musearch) =
-    let gtbl = mk_global_tbl ms in
-    let node2sln n : sln =
-      let _ = SearchLib.move_cursor gtbl.search (ms.state.slvr,gtbl) n in
-      let sln = gtbl.sln in
-      sln
+    let handle_sln search (s:sstep snode) (tbl:gltbl) =
+      let _ = SearchLib.move_cursor search (ms.state.slvr,tbl) s in
+      let ss = tbl.sln in
+      ss
     in
-    let nodes = SearchLib.get_solutions gtbl.search None in
-    let slns = List.map node2sln nodes in
+    let handle_msln sln : sln list =
+      let _ = SearchLib.move_cursor ms.search ms.state sln in
+      let key = (set2key ms.state.local) in
+      let stree,snodes =
+        if MAP.has ms.state.globals key then
+          let _ = m_print_debug "found existing tree" in
+          let tree = MAP.get ms.state.globals key in
+          (tree,SearchLib.get_solutions tree None)
+        else
+          let _ = m_print_debug "find new tree" in
+          let slns = find_global_solution ms 1 in
+          let tree = MAP.get ms.state.globals key in
+          match slns with
+          | Some(s) -> (tree,s)
+          | None -> (tree,[])
+      in
+      let ptbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
+      let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str stree) in
+      let slns : sln list = List.fold_right (fun x r -> (handle_sln stree x ptbl)::r) snodes [] in
+      slns
+    in
+    let mslns = SearchLib.get_solutions ms.search None in
+    let slns = List.fold_right (fun x r -> (handle_msln x) @ r) mslns [] in
     slns
-
 
   let mk_partial_tbl (ms:musearch) (id:unid) =
     (*make the current search state*)
@@ -464,6 +483,7 @@ struct
     let _ = m_print_debug "find a partial solution" in
     let depth = get_glbl_int "slvr-partial-depth" in
     let r : ((sstep snode) list) option = SolverEqn.solve slvr ptbl (nslns+currsols) depth in
+    let _ = SearchLib.clear_cursor ptbl.search in
     let _ = m_print_debug "found partial solutions" in
     match r with
     | None -> None
@@ -476,7 +496,7 @@ struct
       end
 
     (*Find and add a new partial *)
-    let augment_with_partial_solution (ms:musearch) (pvar) (slns) :  unit =
+    let augment_with_partial_solution (ms:musearch) (pvar) (slns: sstep snode list option) :  'a option =
       let curs = SearchLib.cursor ms.search in
       let proc_step x = match x with
         | SRemoveGoal(g) ->
@@ -503,28 +523,28 @@ struct
           ()
       in
       match slns with
-      | Some(slns) ->
+      | Some(cslns) ->
         let _ = m_print_debug "found some partial solutions. Will add partial solution node and global" in
-        let _ = List.iter (fun x -> add_solution x) slns in
-        ()
+        let _ = List.iter (fun x -> add_solution x) cslns in
+        slns
       | None ->
         let _ = m_print_debug "could not find any more partial solutions." in
-        ()
+        slns
 
     let augment_with_new_partial_sln (ms:musearch) (pvar) (nslns) =
       let _ = m_print_debug "finding new partial solution" in
       let slns : (sstep snode list) option = find_partial_solution ms pvar nslns in
       let _ = m_print_debug "done with search" in
-      let _ = augment_with_partial_solution ms pvar slns in
-      ()
+      let res : 'a option = augment_with_partial_solution ms pvar slns in
+      res
 
     let augment_with_existing_partial_sln (ms:musearch) (pvar) =
       let _ = m_print_debug "finding existing partial solution" in
       let partial_search = MAP.get ms.state.partials pvar in
       let slns  = SearchLib.get_solutions partial_search None in
       let slns = if List.length slns = 0 then None else Some(slns) in
-      let _ = augment_with_partial_solution ms pvar slns in
-      ()
+      let res : 'a option = augment_with_partial_solution ms pvar slns in
+      res
 
     let n_existing_partial_slns (ms:musearch) (pvar) =
       0
@@ -571,10 +591,10 @@ struct
             ()
 
         in
+        let cnode = SearchLib.cursor ms.search in
         match choose_var ms with
         (*no variables left, mark a sa solution*)
         | None ->
-          let cnode = SearchLib.cursor ms.search in
           let _ = SearchLib.solution ms.search cnode in
           if SearchLib.num_solutions ms.search None >= nslns then
            let _ = m_print_debug "[search_tree] Found enough solutions" in
@@ -588,9 +608,15 @@ struct
           let _ = m_print_debug ("solving target: "^(UnivLib.unid2var id)) in
           if SearchLib.is_exhausted ms.search None then
             let _ = m_print_debug ("search tree is exhausted. adding new.") in
-            let _  = augment_with_new_partial_sln ms id 1 in
-            let _ = _msolve_next () in
-            ()
+            let res  = augment_with_new_partial_sln ms id 1 in
+            if res <> None then
+              let _ = _msolve_next () in
+              ()
+            else
+              let _ = SearchLib.deadend ms.search cnode in
+              let _ = _msolve_next () in
+              ()
+
           else
             let _ = m_print_debug ("search tree is not exhausted. adding existing.") in
             let _ = augment_with_existing_partial_sln ms id in

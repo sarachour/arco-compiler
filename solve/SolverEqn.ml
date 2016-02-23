@@ -23,7 +23,7 @@ exception SolverEqnError of string
 
 let error n m = raise (SolverEqnError (n^":"^m))
 
-let slvr_print_debug = print_debug 2 "slvr"
+let slvr_print_debug = print_debug 2 "eqn"
 let slvr_menu = menu 2
 let slvr_print_inter = print_inter 2
 
@@ -84,7 +84,7 @@ struct
     res
  *)
  (*TODO Fix*)
-  let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (node:unode) : int option =
+  let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (iid:int option) : int option =
     let rel2info (rel:urel) : unid rarg =
       match rel with
       | UState(lhs,rhs,t,ic) -> (lhs,rhs,RKDeriv)
@@ -128,19 +128,30 @@ struct
           rel
       in
       let steps = match f with
-        | USAdd(lhs,rhs,UTypTarg) -> []
+        | USAdd(lhs,rhs,UTypTarg) ->
+          let _ = slvr_print_debug "<@> Add Target Relation" in
+          []
         | USAdd(lhs,rhs,UTypTempl) ->
           let rel = mkfxn lhs rhs in
+            let _ = slvr_print_debug "<@> Add Templ Relation" in
           [SAddNodeRel(node_id,inst,rel)]
 
-        | USRm(vr,_) ->
+        | USRm(vr,UTypTarg) ->
           let goal = GoalTableLib.get_goal_from_var gtbl vr in
+          let _ = slvr_print_debug "<@> Remove Target Relation" in
           begin
           match goal with
             | Some(goal) -> [SRemoveGoal(goal)]
             | None -> []
           end
+
+        | USRm(vr,UTypTempl) ->
+          let _ = slvr_print_debug "<@> Remove Template Relation" in
+          []
+          (*error "make_fuse" ("unimplemented: remove template variable: "^(UnivLib.unodeid2name node_id)^": "^(UnivLib.unid2str vr))*)
+
         | USAssign(lhs,rhs) ->
+          let _ = slvr_print_debug "<@> Add Assignment" in
           let rel = mkfxn lhs rhs in
           let goal = GoalTableLib.wrap_goal gtbl rel in
           [SAddGoal(goal)]
@@ -162,62 +173,85 @@ struct
       | UTypTempl -> HwId(HNPort(HNInput,HCMLocal("tvar"^(string_of_int n)),"null","none","nil"))
       | UTypTarg -> MathId(MNVar(MInput,"tvar"^(string_of_int n),UNone))
     in
-    (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
-    if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then None else
-      (*let comp = HwLib.getcomp s.hw node.name in*)
-      let _ = print_debug 0 ("==> Component "^node.name) in
-      let inst_id = SlnLib.usecomp gtbl.sln node_id in
-      (*the cursor associated with the goal*)
-      let goal_cursor = SearchLib.cursor gtbl.search in
-      (*update search algorithm to include the usage*)
-      let _ = SearchLib.start gtbl.search in
-      let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
-      (*the cursor associated with the component*)
-      let comp_cursor : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
+    (*determine if this is a filler nodes*)
+    let comp_info : (unode*int*(sstep snode)*(unit->unit)) option=
+      if iid <> None then
+        (*get the concrete nodes*)
+        let inst_id = OPTION.force_conc iid in
+        let node = MAP.get gtbl.used_nodes (node_id,inst_id) in
+        let _ = SearchLib.start gtbl.search in
+        (*remove all the relations in the used node, any remaining relations will be added back in*)
+        let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
+        let curs = SearchLib.commit gtbl.search (s,gtbl) in
+        let cleanup () = () in
+        Some(node,inst_id,curs,cleanup)
+      else
+        (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
+        if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then
+          None
+        else
+          let inst_id = SlnLib.usecomp gtbl.sln node_id in
+          let node = MAP.get gtbl.nodes node_id in
+          (*the cursor associated with the goal*)
+          let goal_cursor = SearchLib.cursor gtbl.search in
+          (*update search algorithm to include the usage*)
+          let _ = SearchLib.start gtbl.search in
+          let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
+          (*the cursor associated with the component*)
+          let curs : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
+          let cleanup () =
+            let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in ()
+          in
+          Some(node,inst_id,curs,cleanup)
+    in
+    match comp_info with
+    | Some(node,iid, comp_cursor,cleanup) ->
       (*use node*)
+      let goal_cursor = SearchLib.cursor gtbl.search in
       let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
       let templ : (unid rarg) list = SET.map node.rels (fun x -> rel2info x)  in
       let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
-      let vgl,_,_ = goal2info g in
-      let nunify = Globals.get_glbl_int "eqn-unifications" in
-      let slns : (unid fusion) set =
-        ASTUnifier.multipattern templ targ vgl nunify
-        (UnivLib.unid2var)
-        (UnivLib.var2unid (s))
-        freshvar
-        (UnivLib.unid2var)
-      in
-      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
-      let nslns = SET.size slns in
-      if nslns = 0 then
-        let _ = SearchLib.rm gtbl.search comp_cursor in
-        let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in
+      if List.length templ = 0 || List.length targ = 0 then
         None
       else
-        let _ = SearchLib.visited gtbl.search comp_cursor in
-        let _ = SET.iter slns (fun x -> add_unification comp_cursor x inst_id)  in
-        Some(nslns)
+        let vgl,_,_ = goal2info g in
+        let nunify = Globals.get_glbl_int "eqn-unifications" in
+        let slns : (unid fusion) set =
+          ASTUnifier.multipattern templ targ vgl nunify
+          (UnivLib.unid2var)
+          (UnivLib.var2unid (s))
+          freshvar
+          (UnivLib.unid2var)
+        in
+        let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
+        let nslns = SET.size slns in
+        if nslns = 0 then
+          let _ = SearchLib.rm gtbl.search comp_cursor in
+          let _ = cleanup () in
+          None
+        else
+          let _ = SearchLib.visited gtbl.search comp_cursor in
+          let _ = SET.iter slns (fun x -> add_unification comp_cursor x iid)  in
+          Some(nslns)
+    | None -> None
 
 
 
   let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
-    let comps = MAP.filter tbl.nodes (fun k v -> match k with UNoComp(_) -> true | _ -> false)  in
-    let rels = MAP.filter tbl.nodes (fun k v -> match k with UNoConcComp(_) -> true | _ -> false)  in
     let goal_cursor = SearchLib.cursor tbl.search in
-    let handle_component (id,x) status =
+    let handle_component id inst status : bool =
       let _ = SearchLib.move_cursor tbl.search (slvenv,tbl) goal_cursor in
-      let yielded_results = apply_component slvenv tbl g id x in
-      match yielded_results with
-      | Some(q) -> Some(q)
+      let results = apply_component slvenv tbl g id inst in
+      match results with
+      | Some(q) -> true
       | None -> status
     in
-    let res = List.fold_right handle_component rels None  in
-    let res = List.fold_right handle_component comps res  in
-    (*mark goal as explored.*)
-    let goal_cursor = SearchLib.cursor tbl.search in
-    (*let _ = SearchLib.deadend tbl.search goal_cursor in*)
+    let has_results = false in
+    let has_results = MAP.fold tbl.used_nodes (fun (id,i) x status -> handle_component id (Some i) status) has_results  in
+    let has_results = MAP.fold tbl.nodes (fun id x status -> match id with
+      | UNoComp(_) -> handle_component id None status | _ -> status) has_results in
     (* failed to find any solutions.. *)
-    if res = None then
+    if has_results = false then
       let _ =  SearchLib.deadend tbl.search goal_cursor in
       ()
     else ()
@@ -324,6 +358,8 @@ struct
       | NonTrivialGoal(_) ->
         (*found a nontrivial goal -> applying components*)
         let _ = apply_components s v g in
+        let _ = slvr_print_debug "[search_tree] successfully applied components." in
+        let _ = musr () in
         ()
       (* if we're looking at a trivial goal, try to solve everything under the goal*)
       | TrivialGoal(grel) ->
@@ -334,6 +370,8 @@ struct
         (**)
         if SlnLib.usecomp_cons s v.sln && SlnLib.mkconn_cons s v.sln then
           let _ = SearchLib.move_cursor v.search (s,v) curr in
+          let _ = slvr_print_debug "[search_tree] trivial solution is successful." in
+          let _ = musr () in
           ()
         else
           (*this trivial resolution does not work*)
@@ -346,16 +384,19 @@ struct
           ()
 
     in
+    let mint,musr = mkmenu s v (None) in
     let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
       if SearchLib.is_exhausted v.search (Some root) then
         let _ = slvr_print_debug "[search_tree] is exhausted" in
+        let _ = musr () in
         ()
       else
         (*get the next node*)
         let maybe_next_node = get_best_valid_node s v (Some root) depth in
         if SearchLib.num_solutions v.search (Some root) >= nslns then
          let _ = slvr_print_debug "[search_tree] Found enough solutions" in
+         let _ = musr () in
          ()
         else
           match maybe_next_node with
@@ -371,7 +412,6 @@ struct
             ()
       in
       let _ = slvr_print_debug "[search-tree] starting" in
-      let mint,musr = mkmenu s v (None) in
       let _ = mint "g" in
       let _ = musr () in
       let r = SearchLib.root v.search in

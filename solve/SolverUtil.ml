@@ -128,7 +128,6 @@ struct
     let ginst x = HwCstrLib.getinsts s.hw.cstr x in
     match id with
     | UNoComp(x) -> ginst x
-    | UNoConcComp(x,inst) -> 1
     | UNoCopy(x) -> ginst (HwLib.copy_cid x)
     | UNoInput(x) -> ginst (HwLib.input_cid x)
     | UNoOutput(x) -> ginst (HwLib.output_cid x)
@@ -149,7 +148,6 @@ struct
   | UNoOutput(x) -> HwLib.output_cid x
   | UNoCopy(x) -> HwLib.copy_cid x
   | UNoComp(x) -> x
-  | UNoConcComp(x,inst) -> x
 
   let name2unodeid (c:string) = match HwLib.get_special c with
     | Some("copy",prop) -> UNoCopy(prop)
@@ -338,7 +336,7 @@ struct
 
 
   let add_partial_comp (t:gltbl) (id:unodeid) (i:int) (cmp:unode) =
-    MAP.put t.dngl (id,i) cmp
+    MAP.put t.used_nodes (id,i) cmp
 
 
   let mk_partial_comp (t:gltbl) (id:unodeid) (i:int)=
@@ -346,41 +344,41 @@ struct
     let cname : string = cnode.name in
     let rels : urel set = SET.make_dflt() in
     let cmp : unode = {name=cname;rels=rels} in
-    let _ = MAP.put t.dngl (id,i) cmp in
+    let _ = MAP.put t.used_nodes (id,i) cmp in
     ()
 
   let has_partial_comp (t:gltbl) (id:unodeid) (i:int) =
-    MAP.has t.dngl (id,i)
+    MAP.has t.used_nodes (id,i)
 
   let add_rel_to_partial_comp (t:gltbl) (id:unodeid) (i:int) (rr:urel) =
     let _ = if has_partial_comp t id i = false
       then mk_partial_comp t id i
       else ()
     in
-    let node = MAP.get t.dngl (id,i) in
+    let node = MAP.get t.used_nodes (id,i) in
     let _ = SET.add node.rels rr in
     ()
 
   let rm_rel_from_partial_comp (t:gltbl) (id:unodeid) (i:int) (rr:urel) =
     if has_partial_comp t id i then
-      let cmp = MAP.get t.dngl (id,i) in
+      let cmp = MAP.get t.used_nodes (id,i) in
       let _ = SET.rm cmp.rels rr in
       ()
     else
       ()
 
   let get_partial_comp (t:gltbl) (id:unodeid) (i:int) =
-    MAP.get t.dngl (id,i)
+    MAP.get t.used_nodes (id,i)
 
   let rm_partial_comp (t:gltbl) (id:unodeid) (i:int)  =
     if has_partial_comp t id i then
-      let _ = MAP.rm t.dngl (id,i) in
+      let _ = MAP.rm t.used_nodes (id,i) in
       ()
     else
       ()
 
   let remove_partial_comp (t:gltbl) (id:unodeid) (i:int)  =
-    MAP.rm t.dngl (id,i)
+    MAP.rm t.used_nodes (id,i)
 
   let is_trivial (t:gltbl) (r:urel) =
     t.is_trivial r

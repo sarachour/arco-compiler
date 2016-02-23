@@ -138,15 +138,22 @@ local BH3T : none
 local BAXmBCL2 : none
 local BH3BCL2 : none
 
-
+#
 rel UFP=UFPT-BiUFP
 rel BiP=BiPT-BiRE1-BiATF-BiPER-BiUFP
 rel IRE1=IRE1T-BiRE1-n*IRE1A
 rel PERK=PERKT-BiPER-n*PERKA
 rel ATF6=ATF6T-BiATF
-rel spliceRate= 0.5*ksplice*(mXbp1u+0.5*n*IRE1A+krcSplice-((mXbp1u+0.5*n*IRE1A+krcSplice)^2-4*mXbp1u*0.5*n*IRE1A)^(0.5))
+#
+
+%rel spliceRate= 0.5*ksplice*(mXbp1u+0.5*n*IRE1A+krcSplice-((mXbp1u+0.5*n*IRE1A+krcSplice)^2-4*mXbp1u*0.5*n*IRE1A)^(0.5))
+
+#
 rel Gamma = (kphos*0.5*n*PERKA)*(J/eIF2aT) + (kdephos*(GADD34+CReP))*(K/eIF2aT)
+#
 rel fGK = (2*(kdephos*(GADD34+CReP))*(K/eIF2aT))/(Gamma + (( (Gamma^2) - (4*(kphos*0.5*n*PERKA-kdephos*(GADD34+CReP))*(kdephos*(GADD34+CReP))*(K/eIF2aT))^(0.5))) )
+
+#
 rel eIF2a=eIF2aT*fGK
 rel BCL2=BCL2T-BH3BCL2-BAXmBCL2
 rel BH3=BH3T-BH3BCL2
@@ -182,3 +189,4 @@ rel deriv(BAXmT,t) = ( (kfx*BAXT)) + ( (kfxp*BH3*BAXT)) + (-(kfx*BAXmT)) + (-(kf
 rel deriv(BH3T,t) = ( (ks3)) + ( (ks3p*kstr*CHOP)) + (-(kd3*BH3T)) with BH3T(0) = 0
 rel deriv(BAXmBCL2,t) = ( (kasx*BAXm*BCL2)) + (-(kdsx*BAXmBCL2)) + (-(kbx*BAXmBCL2)) with BAXmBCL2(0) = 0
 rel deriv(BH3BCL2,t) = ( (kas3*BH3*BCL2)) + (-(kds3*BH3BCL2)) + (-(kd3*BH3BCL2)) with BH3BCL2(0) = 0
+#

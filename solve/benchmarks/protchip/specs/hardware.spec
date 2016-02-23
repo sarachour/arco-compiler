@@ -155,11 +155,15 @@ schematic
   inst emmblock : 20
   inst digiswitch : 1
   inst input D : 20
+  inst gnd: 1
+  inst addi: 50
+
   % 1-160 are normal, 160-180 are for ics
   inst input I : 180
   inst output I : 24
 
   conn gnd -> emmblock
+  conn gnd -> addi
 
   conn digiswitch -> emmblock.A_SW
   conn digiswitch -> emmblock.B_SW
@@ -182,12 +186,13 @@ schematic
   conn input(D) -> emmblock.n
 
   conn emmblock.Ctot -> addi
+  conn addi -> output(I)
+  %conn emmblock.Ctot -> output(I)
 
-  conn addi.O -> emmblock.Cfree
-  conn addi.O -> emmblock.Cprod
-  conn addi.O -> emmblock.Cdeg
-  conn addi.O -> emmblock.Ctot_in
+  %conn addi.O -> emmblock.Cfree
+  %conn addi.O -> emmblock.Cprod
+  %conn addi.O -> emmblock.Cdeg
+  %conn addi.O -> emmblock.Ctot_in
 
-  conn addi.O -> output(I)
 
 end

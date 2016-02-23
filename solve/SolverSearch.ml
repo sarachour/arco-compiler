@@ -21,7 +21,7 @@ struct
   let score_goal_complexity ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let score_goal (g:goal) =
       let r : urel = GoalStubLib.unwrap_goal g in
-      if GoalStubLib.is_trivial tbl r then 0. else
+      if GoalStubLib.is_trivial tbl r then 0.05 else
         let cplx = (UnivLib.goal2complexity r) in
         let score = cplx in
         score
@@ -31,6 +31,21 @@ struct
     let state = -.pscore in
     let delta = 0. in
     SearchLib.mkscore state delta
+
+  let score_goal_complexity_and_depth ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+    let score_goal (g:goal) =
+      let r : urel = GoalStubLib.unwrap_goal g in
+      if GoalStubLib.is_trivial tbl r then 0.05 else
+        let cplx = (UnivLib.goal2complexity r) in
+        let score = cplx in
+        score
+    in
+    let goals : goal set = tbl.goals in
+    let pscore = SET.fold goals (fun x r -> r +. (score_goal x) ) 0. in
+    let state = -.pscore in
+    let delta = 0.5 in
+    SearchLib.mkscore state delta
+
 
   (*the higher the score, the deeper the thing*)
   let score_ngoals ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
@@ -68,6 +83,7 @@ struct
     | "trivial-ratio" -> score_triv_goals
     | "ngoals" -> score_ngoals
     | "goal-complexity" -> score_goal_complexity
+    | "goal-complexity-and-depth" -> score_goal_complexity_and_depth
     | _ ->
       error "best_path_function" "path selector doesn't exist"
 

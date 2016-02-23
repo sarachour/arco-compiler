@@ -85,7 +85,7 @@ struct
       let _ = MAP.put sln.conns src s in
       ()
     else
-      error "mkconn_undo" "cannot undo connection that doesn't exist."
+      error "mkconn_undo" ("cannot undo connection that doesn't exist: "^(wire2str src)^"->"^(wire2str snk))
 
   let mklabel (sln:sln) (id:wireid) (prop:propid) (v:label) =
     let prps = if MAP.has sln.labels id = false then

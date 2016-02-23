@@ -272,6 +272,9 @@ struct
       nenv
 
 
+  let clear_cursor (type a) (type b) (sr:(a,b) ssearch) =
+      let _ = (sr.curs <- None) in
+      ()
   let move_cursor (type a) (type b) (sr:(a,b) ssearch) (env:b) (next:a snode)  =
     let nenv = match sr.curs with
     | Some(old) ->

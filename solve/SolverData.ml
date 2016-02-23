@@ -29,7 +29,6 @@ type unodeid =
   | UNoOutput of string
   | UNoCopy of string
   | UNoComp of string
-  | UNoConcComp of string*int
 
 type unode = {
   mutable rels : urel set;
@@ -68,14 +67,16 @@ type sstep =
   | SAddGoal of goal
   | SMakeGoalPassive of goal
   | SMakeGoalActive of goal
+  (*add a relation for a node*)
   | SAddNodeRel of unodeid*int*(urel)
+  | SRemoveNodeRel of unodeid*int*(urel)
 
 
 type gltbl = {
   mutable goals : goal set;
   mutable blacklist : goal set;
   mutable nodes : (unodeid, unode) map;
-  mutable dngl : (unodeid*int,unode) map;
+  mutable used_nodes : (unodeid*int,unode) map;
   is_trivial: urel->bool;
   mutable search: (sstep,slvr*gltbl) ssearch;
   mutable sln: sln;
