@@ -400,6 +400,9 @@ struct
     (*if this table already exists*)
     if MAP.has ms.state.globals key = false then
       let steps = build_global_steps ms in
+      let _ = m_print_debug "======= Global Steps =======" in
+      let _ = List.iter (fun x -> m_print_debug ("   "^(SlvrSearchLib.step2str x))) in
+      let _ = m_print_debug "============================" in
       let _ = GoalTableLib.mkroot ms.state.slvr tbl steps in
       let _ = MAP.put ms.state.globals key tbl.search in
       tbl
