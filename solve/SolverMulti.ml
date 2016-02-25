@@ -498,6 +498,8 @@ struct
     let _ = m_print_debug "find a partial solution" in
     let depth = get_glbl_int "slvr-partial-depth" in
     let _ = m_print_debug "== Finding Local Solution ==" in
+    let _ = m_print_debug ("== # Current: "^(string_of_int currsols)) in
+    let _ = m_print_debug ("== # Expected: "^(string_of_int nslns)) in
     let _ = musr () in
     let r : ((sstep snode) list) option = SolverEqn.solve slvr ptbl (nslns+currsols) depth in
     let _ = SearchLib.clear_cursor ptbl.search in
@@ -609,10 +611,11 @@ struct
            let _ = m_print_debug "[search_tree] Found enough solutions" in
            ()
           else
-            let _ = m_print_debug ("find another solution") in
+            let _ = m_print_debug ("dead end. find another solution") in
             (*TODO: move up the tree*)
-            ADD CODE THAT MOVES UP THE TREE
-            let _ = _msolve_next () in
+            let r = OPTION.force_conc (SearchLib.root ms.search) in
+            let _ = SearchLib.move_cursor ms.search ms.state r in
+            let _ = _msolve () in
             ()
 
         | Some(id) ->
