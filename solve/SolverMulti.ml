@@ -34,6 +34,7 @@ let error n m = raise (SolverMultiError (n^":"^m))
 
 let m_print_debug : string -> unit = print_debug 1 "multi"
 let m_menu = menu 1
+let m_print_inter = print_inter 1
 
 module MultiSearchTree =
 struct
@@ -99,7 +100,7 @@ struct
         ()
     in
     let internal_menu_handle x = menu_handle x (fun () -> ()) in
-    let rec user_menu_handle () = slvr_menu "multi-solver" (fun x -> menu_handle x user_menu_handle) menu_desc in
+    let rec user_menu_handle () = m_menu "multi-solver" (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
 
@@ -474,6 +475,7 @@ struct
 
   (*find a partial solution*)
   let find_partial_solution (ms:musearch) (pvar) (nslns) : ((sstep snode) list) option =
+    let mint,musr = mkmenu ms in
     let slvr = ms.state.slvr in
     let ptbl = mk_partial_tbl ms pvar in
     let currsols : int = SearchLib.num_solutions ptbl.search None in
@@ -482,6 +484,8 @@ struct
     let is_new q = List.length (LIST.filter (fun x -> q.id = x.id) orig) = 0 in
     let _ = m_print_debug "find a partial solution" in
     let depth = get_glbl_int "slvr-partial-depth" in
+    let _ = m_print_debug "== Finding Local Solution ==" in
+    let _ = musr () in
     let r : ((sstep snode) list) option = SolverEqn.solve slvr ptbl (nslns+currsols) depth in
     let _ = SearchLib.clear_cursor ptbl.search in
     let _ = m_print_debug "found partial solutions" in
@@ -497,6 +501,7 @@ struct
 
     (*Find and add a new partial *)
     let augment_with_partial_solution (ms:musearch) (pvar) (slns: sstep snode list option) :  'a option =
+      let mint,musr = mkmenu ms in
       let curs = SearchLib.cursor ms.search in
       let proc_step x = match x with
         | SRemoveGoal(g) ->
@@ -515,10 +520,14 @@ struct
         let _ = List.iter (fun x -> proc_step x) (SearchLib.get_path partial sln) in
         let pnode = SearchLib.commit ms.search ms.state in
         let _ = SearchLib.move_cursor ms.search ms.state pnode in
+        let _ = m_print_debug "== Finding Global Solution ==" in
+        let _ = musr () in
         match find_global_solution ms 1 with
         | Some(slns) ->
+          let _ = m_print_debug (">> Found # Solutions: "^(string_of_int (List.length slns))) in
           ()
         | None ->
+          let _ = m_print_debug (">> Found NO Solutions") in
           let _ = SearchLib.deadend ms.search pnode in
           ()
       in
@@ -625,7 +634,9 @@ struct
 
       in
       let _ = _msolve () in
+      let _ = m_print_debug "===== Getting Solutions =====" in
       let snodes = SearchLib.get_solutions ms.search None in
+      let _ = m_print_debug ("Number of Solutions:"^(string_of_int (List.length  snodes))) in
       let slns = List.fold_right (fun (x:mustep snode) (r:sln list) ->
         let _ = SearchLib.move_cursor ms.search ms.state x in
         let slns :sln list = get_existing_global_solutions ms in

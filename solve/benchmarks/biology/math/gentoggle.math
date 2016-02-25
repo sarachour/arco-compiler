@@ -37,7 +37,7 @@ assume mag IPTG in (0,1) : mol
 %individually, everything is solvable
 %rel Km = Kmp
 %rel umodif = (U)/((1+IPTG/K)^nu)
-%rel UTF = (((Cu*a1)*(Km^beta))/((Km^beta) +(V^beta)))
+rel UTF = (((Cu*a1)*(Km^beta))/((Km^beta) +(V^beta)))
 %rel VTF = (((Cv*a2)*(Km^gamma))/((Km*gamma) + (umodif^gamma)))
-%rel deriv(U,t) =  (UTF) - (Cu*kdeg*U) with U(0) = 0.35
+rel deriv(U,t) =  (UTF) - (Cu*kdeg*U) with U(0) = 0.35
 %rel deriv(V,t) = VTF - (Cv*kdeg*V) with V(0) = 0.5

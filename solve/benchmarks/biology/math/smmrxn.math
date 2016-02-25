@@ -26,6 +26,6 @@ assume mag ES in (0,1) : M
 
 ensure err E(ES) = 0.01 : M
 
-rel S = STOT - ES
 rel E = ETOT - ES
+rel S = STOT - ES
 rel deriv(ES,t) = (kf*E*S) - kr*ES with ES(0) = 0

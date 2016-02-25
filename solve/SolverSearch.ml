@@ -43,7 +43,7 @@ struct
     let goals : goal set = tbl.goals in
     let pscore = SET.fold goals (fun x r -> r +. (score_goal x) ) 0. in
     let state = -.pscore in
-    let delta = 0.5 in
+    let delta = -0.2 in
     SearchLib.mkscore state delta
 
 

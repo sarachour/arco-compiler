@@ -129,16 +129,16 @@ struct
       in
       let steps = match f with
         | USAdd(lhs,rhs,UTypTarg) ->
-          let _ = slvr_print_debug "<@> Add Target Relation" in
+          (*let _ = slvr_print_debug "<@> Add Target Relation" in*)
           []
         | USAdd(lhs,rhs,UTypTempl) ->
           let rel = mkfxn lhs rhs in
-            let _ = slvr_print_debug "<@> Add Templ Relation" in
+          (*let _ = slvr_print_debug "<@> Add Templ Relation" in*)
           [SAddNodeRel(node_id,inst,rel)]
 
         | USRm(vr,UTypTarg) ->
           let goal = GoalTableLib.get_goal_from_var gtbl vr in
-          let _ = slvr_print_debug "<@> Remove Target Relation" in
+          (*let _ = slvr_print_debug "<@> Remove Target Relation" in*)
           begin
           match goal with
             | Some(goal) -> [SRemoveGoal(goal)]
@@ -146,12 +146,12 @@ struct
           end
 
         | USRm(vr,UTypTempl) ->
-          let _ = slvr_print_debug "<@> Remove Template Relation" in
+          (*let _ = slvr_print_debug "<@> Remove Template Relation" in*)
           []
           (*error "make_fuse" ("unimplemented: remove template variable: "^(UnivLib.unodeid2name node_id)^": "^(UnivLib.unid2str vr))*)
 
         | USAssign(lhs,rhs) ->
-          let _ = slvr_print_debug "<@> Add Assignment" in
+          (*let _ = slvr_print_debug "<@> Add Assignment" in*)
           let rel = mkfxn lhs rhs in
           let goal = GoalTableLib.wrap_goal gtbl rel in
           [SAddGoal(goal)]
@@ -378,8 +378,9 @@ struct
           let _ = slvr_print_debug "[search_tree] trivial solution is invalid. downgrade." in
           let _ = SearchLib.deadend v.search triv in
           (*downgrade goal*)
-          let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
+          (*let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
           let downgrade_triv = mknode ([SRemoveGoal g; SAddGoal gnt]) curr in
+          *)
           let _ = musr () in
           ()
 
