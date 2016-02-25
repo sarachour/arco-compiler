@@ -120,6 +120,19 @@ struct
     ) xsort "" in
     str
 
+  (*choose a variable, if there are no variables left, don't do anything.*)
+  let get_unsolved_var (ms:musearch) : unid option=
+    if QUEUE.empty ms.order then
+      None
+    else
+      let left = QUEUE.filter ms.order
+        (fun x -> SET.has ms.state.solved x = false)
+      in
+      if LIST.empty left then
+        None
+      else
+        Some (List.nth left 0)
+
 
   let get_labels tbl valfilt varfilt : (wireid*propid*label) list =
     let results = MAP.fold tbl.sln.labels (fun wire pmap rest ->
@@ -525,7 +538,11 @@ struct
         match find_global_solution ms 1 with
         | Some(slns) ->
           let _ = m_print_debug (">> Found # Solutions: "^(string_of_int (List.length slns))) in
-          ()
+          if get_unsolved_var ms = None then
+            let _ = SearchLib.solution ms.search pnode in
+            ()
+          else
+            ()
         | None ->
           let _ = m_print_debug (">> Found NO Solutions") in
           let _ = SearchLib.deadend ms.search pnode in
@@ -566,23 +583,7 @@ struct
       SearchLib.select_best_node ms.search collate_score None
 
 
-    (*choose a variable, if there are no variables left, don't do anything.*)
-    let choose_var (ms:musearch) : unid option=
-      if QUEUE.empty ms.order then
-        None
-      else
-        let left = QUEUE.filter ms.order
-          (fun x -> SET.has ms.state.solved x = false)
-        in
-        if LIST.empty left then
-          None
-        else
-          Some (List.nth left 0)
-    (*
-      Choose a variable that has not been solved yet
-      If there are existing solutions, collate those onto tree.
 
-    *)
     let msolve sl (ms:musearch) (nslns:int): (sln list) option =
       let mint,musr = mkmenu ms in
       let rec _msolve () =
@@ -601,15 +602,16 @@ struct
 
         in
         let cnode = SearchLib.cursor ms.search in
-        match choose_var ms with
+        match get_unsolved_var ms with
         (*no variables left, mark a sa solution*)
         | None ->
-          let _ = SearchLib.solution ms.search cnode in
           if SearchLib.num_solutions ms.search None >= nslns then
            let _ = m_print_debug "[search_tree] Found enough solutions" in
            ()
           else
-            let _ = m_print_debug ("must find next solution") in
+            let _ = m_print_debug ("find another solution") in
+            (*TODO: move up the tree*)
+            ADD CODE THAT MOVES UP THE TREE
             let _ = _msolve_next () in
             ()
 
@@ -635,6 +637,7 @@ struct
       in
       let _ = _msolve () in
       let _ = m_print_debug "===== Getting Solutions =====" in
+      let _ = musr () in
       let snodes = SearchLib.get_solutions ms.search None in
       let _ = m_print_debug ("Number of Solutions:"^(string_of_int (List.length  snodes))) in
       let slns = List.fold_right (fun (x:mustep snode) (r:sln list) ->
