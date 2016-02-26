@@ -329,11 +329,14 @@ struct
       error "best_goal_function" ("goal selector named <"^typ^"> doesn't exist")
 
   let get_best_valid_goal (v:gltbl) : goal =
+    let cursor = SearchLib.cursor v.search in
     let goals = GoalTableLib.get_actionable_goals v in
     let score_goal = best_goal_function() in
-    let _,targ_goal = LIST.max (fun x -> score_goal x) goals in
-    targ_goal
-
+    if List.length goals > 0  then
+      let _,targ_goal = LIST.max (fun x -> score_goal x) goals in
+      targ_goal
+    else
+      error "get_best_valid_goal" ("non-visited node has no goals: "^(string_of_int cursor.id))
 
   let no_more_nodes (v:gltbl) (head:(sstep snode) option) =
     (List.length (SearchLib.get_paths v.search head))
@@ -369,8 +372,10 @@ struct
         let _ = SearchLib.move_cursor v.search (s,v) triv in
         (**)
         if SlnLib.usecomp_cons s v.sln && SlnLib.mkconn_cons s v.sln then
-          let _ = SearchLib.move_cursor v.search (s,v) curr in
-          let _ = slvr_print_debug "[search_tree] trivial solution is successful." in
+          let _ = if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
+            return (SearchLib.solution v.search triv) () else ()
+          in
+          let _ = slvr_print_debug "[search_tree] trivial solution is successful: " in
           let _ = musr () in
           ()
         else
@@ -393,13 +398,13 @@ struct
         let _ = musr () in
         ()
       else
-        (*get the next node*)
-        let maybe_next_node = get_best_valid_node s v (Some root) depth in
         if SearchLib.num_solutions v.search (Some root) >= nslns then
          let _ = slvr_print_debug "[search_tree] Found enough solutions" in
          let _ = musr () in
          ()
         else
+          (*get the next node*)
+          let maybe_next_node = get_best_valid_node s v (Some root) depth in
           match maybe_next_node with
           | Some(next_node) ->
             (*move to node*)

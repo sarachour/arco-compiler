@@ -484,6 +484,8 @@ struct
     (*get the current state*)
     let search = MAP.get ms.state.partials id in
     let _ = (tbl.search <- search) in
+    let root = SearchLib.root tbl.search in
+    let _ = SearchLib.move_cursor tbl.search (ms.state.slvr,tbl) (OPTION.force_conc root) in
     tbl
 
   (*find a partial solution*)
@@ -499,7 +501,7 @@ struct
     let depth = get_glbl_int "slvr-partial-depth" in
     let _ = m_print_debug "== Finding Local Solution ==" in
     let _ = m_print_debug ("== # Current: "^(string_of_int currsols)) in
-    let _ = m_print_debug ("== # Expected: "^(string_of_int nslns)) in
+    let _ = m_print_debug ("== # New: "^(string_of_int nslns)) in
     let _ = musr () in
     let r : ((sstep snode) list) option = SolverEqn.solve slvr ptbl (nslns+currsols) depth in
     let _ = SearchLib.clear_cursor ptbl.search in
