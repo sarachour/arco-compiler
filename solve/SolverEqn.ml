@@ -469,7 +469,7 @@ struct
 
     let solve (s:slvr) (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
       let _ = _print_debug ("find # solutions: "^(string_of_int nslns)) in
-      let root = SearchLib.cursor v.search in
+      let root = OPTION.force_conc (SearchLib.root v.search) in
       let _ : unit= solve_subtree s v root nslns depth in
       let slns = SearchLib.get_solutions v.search (Some root) in
       match slns with

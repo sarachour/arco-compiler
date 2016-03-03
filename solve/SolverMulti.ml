@@ -569,12 +569,14 @@ struct
       res
 
     let augment_with_existing_partial_sln (ms:musearch) (pvar) =
-      let _ = m_print_debug "finding existing partial solution" in
-      let partial_search = MAP.get ms.state.partials pvar in
-      let slns  = SearchLib.get_solutions partial_search None in
-      let slns = if List.length slns = 0 then None else Some(slns) in
-      let res : 'a option = augment_with_partial_solution ms pvar slns in
-      res
+      if MAP.has ms.state.partials pvar = false then
+        None
+      else
+        let partial_search = MAP.get ms.state.partials pvar in
+        let slns  = SearchLib.get_solutions partial_search None in
+        let slns = if List.length slns = 0 then None else Some(slns) in
+        let res : 'a option = augment_with_partial_solution ms pvar slns in
+        res
 
     let n_existing_partial_slns (ms:musearch) (pvar) =
       0
@@ -608,6 +610,14 @@ struct
 
         in
         let cnode = SearchLib.cursor ms.search in
+        let _msolve_new id =
+          let res  = augment_with_new_partial_sln ms id 1 in
+          if res <> None then
+            ()
+          else
+            let _ = SearchLib.deadend ms.search cnode in
+            ()
+        in
         match get_unsolved_var ms with
         (*no variables left, mark a sa solution*)
         | None ->
@@ -624,18 +634,15 @@ struct
           let _ = m_print_debug ("solving target: "^(UnivLib.unid2var id)) in
           if SearchLib.is_exhausted ms.search None then
             let _ = m_print_debug ("search tree is exhausted. adding new.") in
-            let res  = augment_with_new_partial_sln ms id 1 in
-            if res <> None then
-              let _ = _msolve_next () in
-              ()
-            else
-              let _ = SearchLib.deadend ms.search cnode in
-              let _ = _msolve_next () in
-              ()
-
+            let _ = _msolve_new id in
+            let _ = _msolve_next () in
+            ()
           else
-            let _ = m_print_debug ("search tree is not exhausted. adding existing.") in
-            let _ = augment_with_existing_partial_sln ms id in
+            let _ = m_print_debug ("search tree is not exhausted. adding existing:"^(UnivLib.unid2var id)) in
+            (*try and augment with existing partials*)
+            let _ = if augment_with_existing_partial_sln ms id = None then
+              _msolve_new id
+            in
             let _ = _msolve_next () in
             ()
 
