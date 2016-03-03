@@ -199,6 +199,7 @@ end*)
       | OpN(Add, dlst) -> Some (conv dlst (fun x r -> x +. r))
       | OpN(Sub, dlst) -> Some (conv dlst (fun x r -> x -. r))
       | OpN(Mult, dlst) -> Some (conv dlst (fun x r -> x *. r))
+      | OpN(Func(_),_) -> None
       | _ ->  Some (Integer(-1))
       in
       match trans a tf with
@@ -226,6 +227,7 @@ end*)
         | Add -> Add
         | Mult -> Mult
         | Sub -> Sub
+        | Func(q) -> Function(q)
       in
       let rec _tosym (e:a ast) = match e with
         | Term(x) -> let sx = fn x in Symbol(sx)
@@ -255,6 +257,7 @@ end*)
       | Add -> Add
       | Mult -> Mult
       | Sub -> Sub
+      | Function(q) -> Func(q)
       in
       let rec _fromsym (e:symexpr) : a ast =
         let _fromsymlist lst =
@@ -392,7 +395,7 @@ end*)
   let sub_one (type a) (expr:a ast) (lhs:a) (rhs:a ast) : a ast =
     let v = MAP.make () in
     let _ = MAP.put v lhs rhs in
-    sub expr v 
+    sub expr v
 
   let add_deps (type a) (g:(a,unit) graph) (l:a) (e:a ast) =
     let add_node_if_dne l = if GRAPH.hasnode g l = false then

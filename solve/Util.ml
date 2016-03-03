@@ -143,6 +143,9 @@ struct
   let compare (s1) (s2) : int =
     String.compare s1 s2
 
+  let removeprefix (s:string) (prefix:string)  =
+    List.nth (Str.split (Str.regexp prefix) s) 0
+
 end
 
 module FUN =

@@ -467,6 +467,8 @@ struct
         let _ = rec_solve_subtree root in
         ()
 
+      
+
     let solve (s:slvr) (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
       let _ = _print_debug ("find # solutions: "^(string_of_int nslns)) in
       let root = OPTION.force_conc (SearchLib.root v.search) in
