@@ -198,16 +198,14 @@ struct
     let c = getcomp e cname in
     MAP.to_values c.vars
 
-  let get_port_by_kind e (k:hwvkind) (c:string) : hwvar =
+  let get_port_by_kind e (k:hwvkind) (c:string) : hwvar list =
     let vrs = getvars e c in
     let o = List.filter (fun q -> match q.typ with
         | HPortType(z,_) -> z = k
         | _ -> false
     ) vrs in
     match o with
-    | [h] -> h
-    | h::t -> error "get_port_by_kind"
-      ("more than one port of that kind exists: # ports "^(string_of_int (List.length o)))
+    | h::t -> h::t
     | _ -> error "get_port_by_kind" "no port of that kind exists"
 
 
@@ -240,7 +238,7 @@ struct
   let getout e pr : string*hwvid*hwvid =
     let name = output_cid pr in
     let mkid k cname =
-      let pvar = get_port_by_kind e k cname in
+      let pvar = List.nth (get_port_by_kind e k cname) 0 in
       let port = pvar.name in
       let proptbl = getprops e cname port in
       let prop,unt = MAP.rand proptbl in
@@ -255,7 +253,7 @@ struct
     let name = input_cid pr in
     let cmp = getcomp e name in
     let mkid k cname =
-      let pvar = get_port_by_kind e k cname in
+      let pvar = List.nth (get_port_by_kind e k cname) 0 in
       let port = pvar.name in
       let proptbl = getprops e cname port in
       let prop,unt = MAP.rand proptbl in

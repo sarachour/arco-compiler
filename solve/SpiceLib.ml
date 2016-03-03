@@ -155,7 +155,7 @@ struct
           let vout = (List.length (MAP.to_values wmaps)) + 1 in
           (*get the port that feeds into this component and connect to voltage source*)
           if is_port_comp nm then
-            let nport = HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name nm) in
+            let nport = List.nth (HwLib.get_port_by_kind s.hw HNInput (UnivLib.unodeid2name nm)) 0 in
             let inpcompwire = (nm, inst, nport.name) in
             let _ = MAP.put wmaps inpcompwire vout in
             let res =
@@ -172,7 +172,7 @@ struct
       in
       let mksnk varname  =
         let vout = List.length (MAP.to_values wmaps) + 1 in
-        let nport = HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name nm) in
+        let nport = List.nth (HwLib.get_port_by_kind s.hw HNOutput (UnivLib.unodeid2name nm)) 0 in
         let outcompwire  = (nm,inst,nport.name) in
         let _ = MAP.put wmaps outcompwire vout in
         if pr = "V" || pr = "v" then

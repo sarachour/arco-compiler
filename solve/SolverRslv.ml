@@ -82,21 +82,25 @@ struct
         ) in
     ()
 
+  let valid_conn (s:slvr) (src:wireid) (dest:wireid) =
+    let sc,si,sp = src in
+    let dc,di,dp = dest in
+    let sc : string = UnivLib.unodeid2name sc in
+    let dc : string = UnivLib.unodeid2name dc in
+    let res = if HwCstrLib.valid_conn s.hw.cstr sc sp dc dp then
+      true
+    else
+      let _ = report_noconns "no source <-> dest connection" sc si sp dc di dp in
+      false
+    in
+      res
+
+
   let valid_smt_prob cfg sol : bool =
     let sol_conns : (wireid, wireid set) map = sol.conns in
     let cstr_conns = cfg.hw.cstr.conns in
     let test_conns  (src:wireid) (dest:wireid) : bool =
-      let sc,si,sp = src in
-      let dc,di,dp = dest in
-      let sc : string = UnivLib.unodeid2name sc in
-      let dc : string = UnivLib.unodeid2name dc in
-      let res = if HwCstrLib.valid_conn cfg.hw.cstr sc sp dc dp then
-          true
-        else
-          let _ = report_noconns "no source <-> dest connection" sc si sp dc di dp in
-          false
-      in
-      res
+      valid_conn cfg src dest
     in
     let success = MAP.fold sol_conns (fun sln_src dests success ->
       if success = false then false else

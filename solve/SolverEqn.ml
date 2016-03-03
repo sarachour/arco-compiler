@@ -16,16 +16,19 @@ open SearchData
 open SolverGoalTable
 open SolverData
 open SolverUtil
+open SolverRslv
 open SolverSln
 open SolverTrivial
+
+open HW
 
 exception SolverEqnError of string
 
 let error n m = raise (SolverEqnError (n^":"^m))
 
-let slvr_print_debug = print_debug 2 "eqn"
-let slvr_menu = menu 2
-let slvr_print_inter = print_inter 2
+let _print_debug = print_debug 2 "eqn"
+let _menu = menu 2
+let _print_inter = print_inter 2
 
 module SolverEqn =
 struct
@@ -70,7 +73,7 @@ struct
         ()
     in
     let internal_menu_handle x = menu_handle x (fun () -> ()) in
-    let rec user_menu_handle () = slvr_menu "goal-solver" (fun x -> menu_handle x user_menu_handle) menu_desc in
+    let rec user_menu_handle () = _menu "goal-solver" (fun x -> menu_handle x user_menu_handle) menu_desc in
     internal_menu_handle,user_menu_handle
 
 
@@ -84,7 +87,34 @@ struct
     res
  *)
  (*TODO Fix*)
+
+  let feasible_component_goal_combo (s:slvr) (g:goal) (node_id:unodeid) =
+    let node_name = UnivLib.unodeid2name node_id in
+    let test_conn (src:hwvid) (snk:hwvar) =
+      let wsrc : wireid = UnivLib.hwid2wire src in
+      let wsnk : wireid = UnivLib.hwvar2wire node_name snk in
+      let result = HwConnRslvr.valid_conn s wsrc wsnk in
+      result
+    in
+    match g with
+    | NonTrivialGoal(UFunction(HwId(id),lhs)) ->
+      let outputs = HwLib.get_port_by_kind s.hw  HNOutput node_name in
+      let success = List.fold_right (fun snk r -> test_conn id snk || r) outputs false in
+      if success then
+        true
+      else
+        let _ = _print_debug ("[OPTIMIZE ] no connections: "^node_name^" to "^(UnivLib.hwid2var id)) in
+        false
+    | NonTrivialGoal(UFunction(MathId(id),lhs)) -> true
+    | NonTrivialGoal(UState(MathId(id),_,_,_)) -> true
+    | _ -> error "feasible_component_goal_combo" "unexpected"
+
+
+
   let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (iid:int option) : int option =
+    if feasible_component_goal_combo s g node_id = false then
+      None
+    else
     let rel2info (rel:urel) : unid rarg =
       match rel with
       | UState(lhs,rhs,t,ic) -> (lhs,rhs,RKDeriv)
@@ -109,7 +139,7 @@ struct
       let _ : unit = match f with
         | USAdd(lhs,rhs,UTypTarg) -> (*technically a partial solution*)
           let _ = mkassign lhs rhs in
-          let _ = slvr_print_debug ("add-targ: "^(UnivLib.unid2str lhs)) in
+          let _ = _print_debug ("add-targ: "^(UnivLib.unid2str lhs)) in
           ()
         | _ -> ()
       in
@@ -120,7 +150,7 @@ struct
         let lhs = Shim.lclid2glblid inst lhs in
         let rhs = Shim.lcl2glbl inst rhs in
         let rhs = ASTLib.sub rhs mappings in
-        let _ = slvr_print_debug ((UnivLib.unid2var lhs)^" = "^(ASTLib.ast2str rhs UnivLib.unid2var)) in
+        let _ = _print_debug ((UnivLib.unid2var lhs)^" = "^(ASTLib.ast2str rhs UnivLib.unid2var)) in
         if MAP.has mappings lhs then
           error "apply_component" "impossible to enforce added relation"
         else
@@ -129,16 +159,16 @@ struct
       in
       let steps = match f with
         | USAdd(lhs,rhs,UTypTarg) ->
-          (*let _ = slvr_print_debug "<@> Add Target Relation" in*)
+          (*let _ = _print_debug "<@> Add Target Relation" in*)
           []
         | USAdd(lhs,rhs,UTypTempl) ->
           let rel = mkfxn lhs rhs in
-          (*let _ = slvr_print_debug "<@> Add Templ Relation" in*)
+          (*let _ = _print_debug "<@> Add Templ Relation" in*)
           [SAddNodeRel(node_id,inst,rel)]
 
         | USRm(vr,UTypTarg) ->
           let goal = GoalTableLib.get_goal_from_var gtbl vr in
-          (*let _ = slvr_print_debug "<@> Remove Target Relation" in*)
+          (*let _ = _print_debug "<@> Remove Target Relation" in*)
           begin
           match goal with
             | Some(goal) -> [SRemoveGoal(goal)]
@@ -146,12 +176,12 @@ struct
           end
 
         | USRm(vr,UTypTempl) ->
-          (*let _ = slvr_print_debug "<@> Remove Template Relation" in*)
+          (*let _ = _print_debug "<@> Remove Template Relation" in*)
           []
           (*error "make_fuse" ("unimplemented: remove template variable: "^(UnivLib.unodeid2name node_id)^": "^(UnivLib.unid2str vr))*)
 
         | USAssign(lhs,rhs) ->
-          (*let _ = slvr_print_debug "<@> Add Assignment" in*)
+          (*let _ = _print_debug "<@> Add Assignment" in*)
           let rel = mkfxn lhs rhs in
           let goal = GoalTableLib.wrap_goal gtbl rel in
           [SAddGoal(goal)]
@@ -247,9 +277,14 @@ struct
       | None -> status
     in
     let has_results = false in
+    (*apply partially filled nodes*)
     let has_results = MAP.fold tbl.used_nodes (fun (id,i) x status -> handle_component id (Some i) status) has_results  in
+    (**apply component if there is a possible connection *)
     let has_results = MAP.fold tbl.nodes (fun id x status -> match id with
-      | UNoComp(_) -> handle_component id None status | _ -> status) has_results in
+      | UNoComp(_) ->
+        handle_component id None status
+      | _ -> status
+    ) has_results in
     (* failed to find any solutions.. *)
     if has_results = false then
       let _ =  SearchLib.deadend tbl.search goal_cursor in
@@ -264,7 +299,7 @@ struct
     let _ = SearchLib.move_cursor v.search (s,v) c in
     let currdepth =  List.length (TREE.get_path v.search.tree c) in
     let is_valid = if currdepth >= depth then
-      let _ = slvr_print_debug "[test-node-validity] hit max depth:" in
+      let _ = _print_debug "[test-node-validity] hit max depth:" in
       let _ = SearchLib.deadend v.search c in
       false
     else
@@ -273,17 +308,17 @@ struct
         (*determine if there are any goals left*)
         if (GoalTableLib.num_actionable_goals v) = 0 then
           (*found all goals*)
-          let _ = slvr_print_debug "[test-node-validity] found a valid solution" in
+          let _ = _print_debug "[test-node-validity] found a valid solution" in
           let _ = SearchLib.solution v.search c in
           true
         else
           true
       else
-        let _ = slvr_print_debug "[test-node-validity] impossible set of connections" in
+        let _ = _print_debug "[test-node-validity] impossible set of connections" in
         let _ = SearchLib.deadend v.search c in
         false
       else
-        let _ = slvr_print_debug "[test-node-validity] impossible set of component uses" in
+        let _ = _print_debug "[test-node-validity] impossible set of component uses" in
         let _ = SearchLib.deadend v.search c in
         false
     in
@@ -361,7 +396,7 @@ struct
       | NonTrivialGoal(_) ->
         (*found a nontrivial goal -> applying components*)
         let _ = apply_components s v g in
-        let _ = slvr_print_debug "[search_tree] successfully applied components." in
+        let _ = _print_debug "[search_tree] successfully applied components." in
         let _ = musr () in
         ()
       (* if we're looking at a trivial goal, try to solve everything under the goal*)
@@ -375,12 +410,12 @@ struct
           let _ = if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
             return (SearchLib.solution v.search triv) () else ()
           in
-          let _ = slvr_print_debug "[search_tree] trivial solution is successful: " in
+          let _ = _print_debug "[search_tree] trivial solution is successful: " in
           let _ = musr () in
           ()
         else
           (*this trivial resolution does not work*)
-          let _ = slvr_print_debug "[search_tree] trivial solution is invalid. downgrade." in
+          let _ = _print_debug "[search_tree] trivial solution is invalid. downgrade." in
           let _ = SearchLib.deadend v.search triv in
           (*downgrade goal*)
           (*let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
@@ -394,12 +429,12 @@ struct
     let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
       if SearchLib.is_exhausted v.search (Some root) then
-        let _ = slvr_print_debug "[search_tree] is exhausted" in
+        let _ = _print_debug "[search_tree] is exhausted" in
         let _ = musr () in
         ()
       else
         if SearchLib.num_solutions v.search (Some root) >= nslns then
-         let _ = slvr_print_debug "[search_tree] Found enough solutions" in
+         let _ = _print_debug "[search_tree] Found enough solutions" in
          let _ = musr () in
          ()
         else
@@ -417,7 +452,7 @@ struct
           | None ->
             ()
       in
-      let _ = slvr_print_debug "[search-tree] starting" in
+      let _ = _print_debug "[search-tree] starting" in
       let _ = mint "g" in
       let _ = musr () in
       let r = SearchLib.root v.search in
@@ -433,7 +468,7 @@ struct
         ()
 
     let solve (s:slvr) (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
-      let _ = slvr_print_debug ("find # solutions: "^(string_of_int nslns)) in
+      let _ = _print_debug ("find # solutions: "^(string_of_int nslns)) in
       let root = SearchLib.cursor v.search in
       let _ : unit= solve_subtree s v root nslns depth in
       let slns = SearchLib.get_solutions v.search (Some root) in

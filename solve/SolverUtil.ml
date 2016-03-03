@@ -188,6 +188,9 @@ struct
   | HwId(h) -> hwid2prop h
   | _ -> error "unid2prop" "error"
 
+  let hwvar2wire (nodeid:string) (v:hwvar) : wireid =
+      (name2unodeid nodeid,-1,v.name)
+
   let hwid2wire hwid : wireid = match hwid with
   | HNPort(_,HCMGlobal(c,i),v,_,_) -> (name2unodeid c,i,v)
   | _ -> error "hwid2wire" "cannot convert to wire"
