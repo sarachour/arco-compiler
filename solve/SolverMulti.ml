@@ -601,6 +601,8 @@ struct
             ()
           | None ->
             let _ = m_print_debug "[search_tree] is exhausted" in
+            let r = OPTION.force_conc (SearchLib.root ms.search) in
+            let _ = SearchLib.move_cursor ms.search ms.state r in
             let _ = _msolve() in
             ()
 
@@ -613,10 +615,8 @@ struct
            let _ = m_print_debug "[search_tree] Found enough solutions" in
            ()
           else
-            let _ = m_print_debug ("dead end. find another solution") in
-            (*TODO: move up the tree*)
-            let r = OPTION.force_conc (SearchLib.root ms.search) in
-            let _ = SearchLib.move_cursor ms.search ms.state r in
+            let _ = m_print_debug ("need more solutions. find another solution") in
+            (*TODO: *)
             let _ = _msolve () in
             ()
 
