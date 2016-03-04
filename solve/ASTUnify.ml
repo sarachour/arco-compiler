@@ -361,21 +361,10 @@ struct
     let add_expr scratch v rhs (iswc:bool) (addvars:bool)=
       let _ = if addvars then add_vars v rhs iswc else () in
       let _ = MAP.put scratch v (rhs) in
-      let _ = if iswc then
-        let sw_name = var2enable s v in
-        let _ = decl_wild sw_name [] in
-        ()
-      in
       let _ = spy_print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
       ()
     in
     (*define default values*)
-    let _ = decl_func (funvar()) in
-    let _ = decl_func (dfunvar()) in
-    let _ = decl_func (dofvar()) in
-    let _ = decl_sym (dofbanvar()) in
-    let _ = decl_sym (mainvar()) in
-    let _ = decl_wild (restvar()) [Symbol(dofbanvar())] in
     (*add original variables*)
     let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs false true) in
     let _ = MAP.iter (g_info s.tbl UTypTempl).info (fun v data ->add_expr scratch_templ v data.rhs true true) in
@@ -390,90 +379,117 @@ struct
     else
       (MAP.get s.tbl.targ.info v).kind = RKDeriv
 
+  let compute_vars s templs =
+    let outvars = SET.make_dflt () in
+    let invars = SET.make_dflt () in
+    let localvars = SET.make_dflt () in
+    let _ = MAP.iter templs (fun lhs rhs ->
+      let out = lhs and ins = List.filter (fun q -> q <> lhs) (ASTLib.get_vars rhs) in
+      let _ = SET.add outvars out in
+      let _ = SET.add_all invars ins in
+      ()
+    )
+    in
+    let _ = SET.iter outvars (fun x -> if SET.has invars x then
+          let _ = SET.add localvars x in
+          let _ = SET.rm invars x in
+          ()
+        else ()
+    )
+    in
+    (outvars,invars,localvars)
   (*unify the two components*)
   let unify (type a) (s:a runify) (templs) (targs) : (a set*a set*a set*(a,a ast) map) option =
       (*calculate how many bound switches you have*)
-      let switches = MAP.fold templs (fun lhs rhs lst  -> (var2enable s lhs)::lst) [] in
-      let nbound = (List.length switches) - (g_dof s.tbl) in
-      if nbound <= 0 then
-        None
-      else
-        let sym2a : symvar -> a = g_iconv s.tbl in
-        let a2sym : a -> symvar = g_conv s.tbl in
-        let gen_subexpr (lhs:a) (rhs:a ast) is_templ: symexpr=
-          let en : string = var2enable s lhs in
-          let fxn : a ast= if is_deriv s lhs then
-              OpN(Func(dfunvar()),[Term(lhs);rhs])
-            else
-              OpN(Func(funvar()),[Term(lhs);rhs])
-          in
-          let fxn = ASTLib.to_symcaml fxn a2sym in
-          if is_templ then
-            OpN(Mult,[Symbol(en);fxn])
+      let decl_wild v bans =
+        let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in ()
+      in
+      let decl_sym v = let _ =
+        SymCaml.define_symbol (g_sym s.tbl) v in ()
+      in
+      let decl_func x =
+        let _ = SymCaml.define_function (g_sym s.tbl) x in ()
+      in
+      (*declare intermediate functions*)
+      let _ = decl_func (funvar()) in
+      let  _ = decl_func (dfunvar()) in
+      let _ = decl_wild (restvar()) [] in
+      (*determine input and output vars*)
+      let outs,ins,locals = compute_vars s templs in
+      let sym2a : symvar -> a = g_iconv s.tbl in
+      let a2sym : a -> symvar = g_conv s.tbl in
+      let gen_subexpr (lhs:a) (rhs:a ast) is_templ: symexpr=
+        let fxn : a ast= if is_deriv s lhs then
+            OpN(Func(dfunvar()),[Term(lhs);rhs])
           else
-            fxn
+            OpN(Func(funvar()),[Term(lhs);rhs])
         in
-        let gen_overall_expr (m:(a, a ast) map) is_templ : symexpr=
-          (*get args an enables *)
-          let args = MAP.fold m (fun k v (rexpr) ->
-            let expr = gen_subexpr k v is_templ in
-            expr::rexpr
-          ) []
+        let fxn = ASTLib.to_symcaml fxn a2sym in
+        fxn
+      in
+      let gen_asgn (v:a) : symexpr =
+          let rhs = MAP.get templs v in
+          gen_subexpr v rhs false
+      in
+      let gen_overall_expr (m:(a, a ast) map) is_templ : symexpr=
+        (*get args an enables *)
+        let rels = MAP.fold m (fun k v (rexpr) ->
+          let expr = gen_subexpr k v is_templ in
+          expr::rexpr
+        ) []
+        in
+        if is_templ then
+          OpN(Add,Symbol(restvar())::rels)
+        else
+          let asgns = SET.map locals (fun v -> gen_asgn v) in
+          OpN(Add,rels @ asgns)
+      in
+      let templ_expr = gen_overall_expr templs true in
+      let targ_expr = gen_overall_expr targs false in
+      let _ = _print_debug ("#unify\n  templ:\n"^(SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n") in
+      let maybe_assigns = SymCaml.pattern (g_sym s.tbl) targ_expr templ_expr in
+      match maybe_assigns with
+      | Some(assigns) ->
+        let extract_lhses ast =
+          let _extract (node:a ast) vlst: a list =
+            match node with
+            | OpN(Func(_), Term(lhs)::t) -> (lhs::vlst)
+            | _ -> vlst
           in
-          if is_templ then
-            let sswitches : symexpr list = List.map (fun x -> Symbol(x)) switches in
-            let dofexpr : symexpr = OpN(Function(dofvar()),[Symbol(dofbanvar());OpN(Add,sswitches)]) in
-            OpN(Add,Symbol(restvar())::dofexpr::args)
-          else
-            let dofexpr : symexpr = OpN(Function(dofvar()),[Symbol(dofbanvar());Integer(nbound)]) in
-            OpN(Add,dofexpr::args)
+          ASTLib.fold ast _extract []
         in
-        let templ_expr = gen_overall_expr templs true in
-        let targ_expr = gen_overall_expr targs false in
-        let _ = _print_debug ("#unify\n  templ: "^(SymCaml.expr2str templ_expr)^"\n  targ: "^(SymCaml.expr2str targ_expr)^"\n") in
-        let maybe_assigns = SymCaml.pattern (g_sym s.tbl) targ_expr templ_expr in
-        match maybe_assigns with
-        | Some(assigns) ->
-          let extract_lhses ast =
-            let _extract (node:a ast) vlst: a list =
-              match node with
-              | OpN(Func(_), Term(lhs)::t) -> (lhs::vlst)
-              | _ -> vlst
+        let _ = _print_debug "<!> found assigns" in
+        let mp = MAP.make () in
+        let rest = SET.make_dflt () in
+        let disabled = SET.make_dflt () in
+        let enabled = SET.make_dflt () in
+        let _ = List.iter (fun ((l,r):symvar*symexpr) ->
+          if is_rest l then
+            let ar : a ast = ASTLib.from_symcaml r sym2a in
+            let _ = _print_debug ("REST: "^(ASTLib.ast2str ar a2sym)) in
+            let ignored = extract_lhses ar in
+            let _ = List.iter (fun x -> return (SET.add rest x) ()) ignored in
+            ()
+          else if is_enable l then
+            let vr = enable2var s l in
+            let _ = match r with
+            | Integer(1) -> SET.add enabled vr
+            | Integer(0) -> SET.add disabled vr
+            | _ -> error "is_enable" "unexpected"
             in
-            ASTLib.fold ast _extract []
-          in
-          let _ = _print_debug "<!> found assigns" in
-          let mp = MAP.make () in
-          let rest = SET.make_dflt () in
-          let disabled = SET.make_dflt () in
-          let enabled = SET.make_dflt () in
-          let _ = List.iter (fun ((l,r):symvar*symexpr) ->
-            if is_rest l then
-              let ar : a ast = ASTLib.from_symcaml r sym2a in
-              let _ = _print_debug ("REST: "^(ASTLib.ast2str ar a2sym)) in
-              let ignored = extract_lhses ar in
-              let _ = List.iter (fun x -> return (SET.add rest x) ()) ignored in
-              ()
-            else if is_enable l then
-              let vr = enable2var s l in
-              let _ = match r with
-              | Integer(1) -> SET.add enabled vr
-              | Integer(0) -> SET.add disabled vr
-              | _ -> error "is_enable" "unexpected"
-              in
-              ()
-            else
-              let al : a = sym2a l in
-              let ar : a ast = ASTLib.from_symcaml r sym2a in
-              let _ = _print_debug (" assign: "^(s.tbl.tostr al)^"="^(ASTLib.ast2str ar s.tbl.tostr)) in
-              let _ = MAP.put mp al ar in
-              ()
-          ) assigns
-          in
-          Some(disabled,enabled,rest,mp)
-        | None ->
-          let _ = _print_debug "no assigns found" in
-          None
+            ()
+          else
+            let al : a = sym2a l in
+            let ar : a ast = ASTLib.from_symcaml r sym2a in
+            let _ = _print_debug (" assign: "^(s.tbl.tostr al)^"="^(ASTLib.ast2str ar s.tbl.tostr)) in
+            let _ = MAP.put mp al ar in
+            ()
+        ) assigns
+        in
+        Some(disabled,enabled,rest,mp)
+      | None ->
+        let _ = _print_debug "no assigns found" in
+        None
 
   let solve_node (type a) (s:a runify) =
     let v2str = s.tbl.tostr in
