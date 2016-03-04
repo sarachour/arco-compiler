@@ -546,8 +546,11 @@ struct
     let res = fold x repl [] in
     res
 
-  let filter (type a) (type b) (type c) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
+  let filter (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
     fold x (fun q v k -> if f q v then (q,v)::k else k) []
+
+  let to_list (type a) (type b) (x:(a,b) map) : (a*b) list =
+    fold x (fun q v k -> (q,v)::k) []
 
   let from_list (type a) (type b) (x:(a*b) list) : (a,b) map =
     let mp = make() in
@@ -710,6 +713,18 @@ struct
       else
         true
 
+  (*get disjoint graph nodes*)
+  let get_disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =
+    if empty g then [] else
+    (*all the nodes that are touched by the algorithm*)
+    let incl = SET.make_dflt () in
+    (**)
+    let subset = SET.make_dflt () in
+
+  (*get all the cycles *)
+  let get_cycles (type a) (type b) (g:(a,b) graph) : (a list) set =
+    let visited = SET.make_dflt () in
+
   let mknode (type a) (type b) (g:(a,b) graph) (n:a) : (a,b) graph =
     if hasnode g n then
       error "mknode" "node already exists"
@@ -740,7 +755,7 @@ struct
 
 
 
-  let tostr g =
+  let tostr g : string =
     let prodstr src snk edge r  =
       let src_str = g.node2str src in
       let dest_str = g.node2str snk in

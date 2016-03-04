@@ -158,7 +158,7 @@ comp mm
   output X where V:mV
   output Y where V:mV
 
-  rel V(X) = V(Xtot) - V(XY)
+  %rel V(X) = V(Xtot) - V(XY)
   rel V(Y) = V(Ytot) - V(XY)
   rel deriv(V(XY),t) = I(kf)*V(X)*V(Y) - I(kr)*V(XY) initially V(XY0)
 
