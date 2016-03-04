@@ -307,6 +307,9 @@ struct
   let dofbanvar () =
     "DOFBAN"
 
+  let mainvar () =
+    "MAIN"
+
   let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
     let _ = spy_print_debug "ENV == STATE ===" in
     let _ = SymCaml.clear (g_sym s.tbl) in
@@ -371,6 +374,7 @@ struct
     let _ = decl_func (dfunvar()) in
     let _ = decl_func (dofvar()) in
     let _ = decl_sym (dofbanvar()) in
+    let _ = decl_sym (mainvar()) in
     let _ = decl_wild (restvar()) [Symbol(dofbanvar())] in
     (*add original variables*)
     let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs false true) in

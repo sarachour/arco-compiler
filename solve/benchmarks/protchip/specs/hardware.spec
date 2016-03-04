@@ -106,24 +106,27 @@ comp emmblock
   rel I(Afree) = I(Atot) - D(A_SW)*I(Ctot)
   rel I(Bfree) = I(Btot) - D(B_SW)*I(Ctot)
   rel I(rateFW) = I(Afree)*((I(Bfree)/I(KDfw))^D(n))
+
   rel I(rateFWUp) = I(Cprod) - D(FF_SW1)*I(rateFW)
   rel I(rateFWTot) = I(Cprod) + D(FF_SW2)*I(rateFW)
   rel I(rateRV) = I(Cfree)*(I(Dfree)/I(KDrv))
   rel I(rateRVTot) = I(Cdeg) + I(ratC)*I(Cfree) + D(FF_SW3)*I(rateRV)
   rel I(rateRVUp) = I(Cdeg) + (I(ratC)*I(Cfree) - D(FF_SW4)*I(rateRV))
+
   rel I(DfreeCopy) = I(Dfree)
   rel I(CfreeCopy) = I(Cfree)
 
   rel deriv(I(Ctot),t) = I(kr1)*(I(Cprod) + D(FF_SW3)*I(rateFW) ) - I(kr2)*(I(Cdeg) + I(Cfree)*I(ratC)) initially I(Ctot_0)
 
-  % copiers
-  rel I(Ctot2) = I(Ctot)
-  rel I(Ctot3) = I(Ctot)
-  rel I(Ctotn1) = -I(Ctot)
-  rel I(Ctotn2) = -I(Ctot)
 
-  rel I(Afree1) = I(Afree)
-  rel I(Bfree1) = I(Bfree)
+  % copiers
+  %rel I(Ctot2) = I(Ctot)
+  %rel I(Ctot3) = I(Ctot)
+  %rel I(Ctotn1) = -I(Ctot)
+  %rel I(Ctotn2) = -I(Ctot)
+
+  %rel I(Afree1) = I(Afree)
+  %rel I(Bfree1) = I(Bfree)
 
 end
 
