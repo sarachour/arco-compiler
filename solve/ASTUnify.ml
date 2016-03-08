@@ -427,6 +427,10 @@ struct
     let a2sym : a -> symvar = g_conv s.tbl in
     let graph : (a,unit) graph = ASTLib.mk_dep_graph (MAP.to_list templs) a2sym in
     let _ = _print_debug ("Dependency Graph:\n"^(GRAPH.tostr graph)^"\n------") in
+    let cycs : (symvar list) set = GRAPH.cycles graph in
+    let _ = _print_debug("Cycles :") in
+    let cycle2str x = LIST.fold_left (fun r x -> r^"->"^(x)) " " in
+    let _ = SET.iter cycs (fun x -> _print_debug "  "^(cycle2str x)^"\n") in 
     templs
 
   (*unify the two components*)
