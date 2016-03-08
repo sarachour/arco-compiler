@@ -34,7 +34,7 @@ type 'a rstep =
   | RSetAssigns of ('a*('a ast)) list
   (*ban an assignment*)
   | RBanAssign of 'a*('a ast)
-  | RAddDOF
+  | RTemplSubgraph of 'a set
 
 type 'a rvstats = {
   nconflicts: ('a*('a ast), int) map
@@ -46,7 +46,7 @@ type 'a rstate = {
   mutable assigns: ('a, 'a ast) map;
   (*targ bans for templ*)
   bans: ('a, ('a ast) set) map;
-  mutable ndeg: int;
+  mutable subset: 'a set;
 }
 
 (*the data for each variable*)
@@ -56,7 +56,14 @@ type 'a rdata = {
 }
 
 type 'a rinfo = {
+  (*the info*)
   info: ('a,'a rdata) map;
+  (*the data with no dependences*)
+  mutable nodep: ('a,'a rdata) map;
+  (*replacements to break cycles*)
+  mutable repls: ('a, 'a set) map;
+  (*subtrees to apply*)
+  mutable subtrees: ('a set) list;
 }
 
 (*the symcaml environment*)

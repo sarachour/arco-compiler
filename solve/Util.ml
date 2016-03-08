@@ -600,6 +600,9 @@ struct
 
   let make_dflt (type a) () : a set = make ()
 
+  let tostr (type a) (a:a set) (f:a -> string) (delim:string) =
+    MAP.fold a (fun k v r -> r^delim^(f k)) ""
+
   let has s e = MAP.has s e
 
   let add s e = MAP.put s e ()
@@ -640,6 +643,14 @@ struct
 
   let count s f : int =
     MAP.fold s (fun x v r -> if f x then r+1 else r) 0
+
+  let clear (type a) (s:a set) =
+    MAP.clear s
+
+  let setv (type a) (s:a set) (cpy:a set) : a set =
+    let _ = clear s in
+    let _ = iter cpy (fun q -> return (add s q) ()) in
+    s
 
   let filter (type a) (s:a set) f : a list =
     MAP.fold s (fun x v r -> if f x then x::r else r) []
