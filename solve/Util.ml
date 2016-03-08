@@ -779,10 +779,24 @@ struct
     let disj = build_subset remaining_nodes in
     disj
 
-  (*get all the cycles *)
+  (*get all the cycles, iterate through paths in a graph determine, if there is a cycle*)
   let get_cycles (type a) (type b) (g:(a,b) graph) : (a list) set =
-    let visited = SET.make_dflt () in
-    SET.make_dflt ()
+    let cycles = SET.make () in
+    let rec track_path (path:a list) (curr:a) : unit =
+      (*cycle detected*)
+      if LIST.has path curr then
+        let cycpath = curr::path in
+        (*make path oldest -> newest*)
+        let _ = SET.add cycles (LIST.rev cycpath) in
+        ()
+      else
+        let chld : a list = children g curr in
+        let npath = curr::path in
+        let _ = List.iter (fun x -> track_path npath x) chld in
+        ()
+    in
+    let _ = MAP.iter g.adj (fun src snks -> track_path [] src) in
+    cycles
 
   let mknode (type a) (type b) (g:(a,b) graph) (n:a) : (a,b) graph =
     if hasnode g n then
