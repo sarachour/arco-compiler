@@ -172,6 +172,7 @@ struct
       s=s;
       cnv= cnv;
       icnv= icnv;
+      freshvar = freshvar;
     } in
     (*make the dependency tree*)
     let tmpl_info =  mkinfo() in
@@ -388,7 +389,7 @@ struct
   let lhsfunvar () =
     "LHS"
 
-  let assigns2state (type a) (s:a runify) (assigns:(string*symexpr) list) =
+  let assigns2state (type a) (s:a runify) (assigns:(string*symexpr) list) (repls:(a,a set) map) =
     let sym2a : symvar -> a = g_iconv s.tbl in
     let a2sym : a -> symvar = g_conv s.tbl in
     let extract_lhses ast =
@@ -398,6 +399,12 @@ struct
         | _ -> vlst
       in
       ASTLib.fold ast _extract []
+    in
+    let get_canon (x:string) =
+      (*get the variables that contain the temporary variable *)
+      match MAP.filter repls (fun k tvars -> (SET.count tvars (fun q -> (a2sym q) = x )) > 0) with
+      | [(act,_)] -> act
+      | [] -> sym2a x
     in
     let _ = _print_debug "<!> found assigns" in
     let sassigns = MAP.make () in
@@ -410,7 +417,7 @@ struct
         let _ = List.iter (fun x -> return (SET.add rest x) ()) ignored in
         ()
       else
-        let al : a = sym2a l in
+        let al : a = get_canon l in
         let ar : a ast = ASTLib.from_symcaml r sym2a in
         let _ = MAP.put sassigns al ar in
         ()
@@ -421,17 +428,68 @@ struct
     let _ = _print_debug "--------------------\n" in
     (sassigns,rest)
 
-
-  let unlink_deps (type a) (s:a runify) templs =
+  (*
+  break any cycles
+  *)
+  let rec break_cycles (type a) (s:a runify) (gtabl:(a,a ast) map)  =
     let sym2a : symvar -> a = g_iconv s.tbl in
     let a2sym : a -> symvar = g_conv s.tbl in
-    let graph : (a,unit) graph = ASTLib.mk_dep_graph (MAP.to_list templs) a2sym in
+    let breaks = MAP.make () in
+    let tabl = MAP.copy gtabl in
+    let nallocs : int ref = REF.mk 1 in
+    let freshvar () =
+      let v = s.tbl.env.freshvar (REF.dr nallocs) UTypTempl in
+      let _ = REF.upd nallocs (fun x -> x + 1) in
+      v
+    in
+    let rec _break_cycles () =
+      let _ = _print_debug "==== Breaking Cycles =====" in
+      let cycle2str lst : string = List.fold_right (fun x r -> r^"->"^(a2sym x)) lst "" in
+      let graph : (a,unit) graph = ASTLib.mk_dep_graph (MAP.to_list tabl) a2sym in
+      let cycs : (a list) set = GRAPH.cycles graph in
+      if SET.empty cycs then
+        let _ = _print_debug ("[DEP] ----> No Cycles Left!") in
+        tabl
+      else
+        let _ = _print_debug("[DEP] Cycles :\n") in
+        let _ = SET.iter cycs (fun x -> _print_debug ("::> "^(cycle2str x))) in
+        let cyc = SET.rand cycs in
+        let use_var : a = LIST.from_end cyc 1 in
+        let def_var : a = LIST.from_end cyc 0 in
+        let use_var_dup :a = freshvar () in
+        let _ = _print_debug ("@ repl "^(a2sym use_var)^" with "^(a2sym use_var_dup)^" in "^(a2sym def_var)) in
+        (*replace the uses of the use var*)
+        let _ = if MAP.has breaks use_var = false then
+          return (MAP.put breaks use_var (SET.make ())) ()
+        in
+        let uses : a set = MAP.get breaks use_var in
+        let rhs = MAP.get tabl def_var in
+        let replmap = MAP.make () in
+        let _ = MAP.put replmap use_var (Term(use_var_dup)) in
+        let nrhs = ASTLib.sub rhs replmap in
+        let _ = MAP.put tabl def_var nrhs in
+        let _ = SET.add uses use_var_dup in
+        _break_cycles ()
+    in
+    let _ = _break_cycles () in
+    (tabl,breaks)
+
+
+  let unlink_deps (type a) (s:a runify) (templs:(a,a ast) map) =
+    let sym2a : symvar -> a = g_iconv s.tbl in
+    let a2sym : a -> symvar = g_conv s.tbl in
+    let nodep_templs, nodep_repls = break_cycles s templs in
+    let graph : (a,unit) graph = ASTLib.mk_dep_graph (MAP.to_list nodep_templs) a2sym in
+    let outputs : a list = MAP.keys templs in
     let _ = _print_debug ("Dependency Graph:\n"^(GRAPH.tostr graph)^"\n------") in
-    let cycs : (symvar list) set = GRAPH.cycles graph in
-    let _ = _print_debug("Cycles :") in
-    let cycle2str x = LIST.fold_left (fun r x -> r^"->"^(x)) " " in
-    let _ = SET.iter cycs (fun x -> _print_debug "  "^(cycle2str x)^"\n") in 
-    templs
+    (*construct disjoint, cycle sets*)
+    let cycs : (a list) set = GRAPH.cycles graph in
+    let subt : (a set) list = GRAPH.subtrees graph (Some outputs) in
+    (*printing data*)
+    let subt2str lst = SET.fold lst (fun  x r -> r^" "^(a2sym x)) "" in
+    let _ = _print_debug("\n[DEP] Subtrees :\n") in
+    let _ = List.iter (fun x -> _print_debug ("  "^(subt2str x))) subt in
+    nodep_templs,nodep_repls
 
   (*unify the two components*)
   let unify (type a) (s:a runify) (templs:(a, a ast) map) (targs:(a,a ast) map) (targvar:a) : (a set*(a,a ast) map) option =
@@ -450,15 +508,24 @@ struct
         in
         fxn
       in
+      let define_repls (repls:(a,a set) map) =
+        let _ = MAP.iter repls (fun x st -> SET.iter st (fun q -> decl_wild s (a2sym q) [])) in
+        ()
+      in
       (*declare intermediate functions*)
       let _ = decl_func s (funvar()) in
       let  _ = decl_func s (dfunvar()) in
       let _ = decl_func s (lhsfunvar()) in
       let banexpr : symexpr = gen_subexpr targvar (MAP.get targs targvar) in
-      let _ = _print_debug ("> disallow in REST: "^(SymCaml.expr2str banexpr)) in
+      let _ = _print_debug (">rest: disable overflow: "^(SymCaml.expr2str banexpr)) in
       let _ = decl_wild s (restvar()) [banexpr] in
       (*determine input and output vars*)
       let outs,ins,locals = compute_vars s templs in
+      (*unlink cycles and define temporary variables*)
+      let nd_templs,nd_repls = unlink_deps s templs in
+      (*define the replacements *)
+      let _ = define_repls nd_repls in
+      (*create assignment*)
       let gen_asgn (v:a) : symexpr =
           let rhs = MAP.get templs v in
           gen_subexpr v rhs
@@ -476,14 +543,13 @@ struct
           let asgns = SET.map locals (fun v -> gen_asgn v) in
           OpN(Add,rels @ asgns)
       in
-      let cctempls = unlink_deps s templs in
-      let templ_expr = gen_overall_expr templs true in
+      let templ_expr = gen_overall_expr nd_templs true in
       let targ_expr = gen_overall_expr targs false in
       let _ = _print_debug ("#unify <"^(a2sym targvar)^">\n  templ:\n"^(SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n") in
       let maybe_assigns = SymCaml.pattern (g_sym s.tbl) targ_expr templ_expr in
       match maybe_assigns with
       | Some(assigns) ->
-        let mp,rest = assigns2state s assigns in
+        let mp,rest = assigns2state s assigns nd_repls in
         Some(rest,mp)
       | None ->
         let _ = _print_debug "no assigns found" in

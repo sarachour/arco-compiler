@@ -342,6 +342,7 @@ struct
       zip_i a b
 
 
+
   let uniq a =
     List.fold_right (fun x r -> if count r x = 0 then x::r else r) a []
 
@@ -432,6 +433,9 @@ struct
 
   let rev (type a) (t:a list) =
     List.rev t
+
+  let from_end x i =
+    List.nth (rev x) i
 
   let sublist (type a) (t:a list) (st:a) (en:a) =
     let gen (lst,add) v  =
@@ -757,7 +761,7 @@ struct
     children @ parents
 
   (*get disjoint graph nodes*)
-  let get_disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =
+  let disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =
     let rec get_subset (s:a set) (n:a) : a set =
       let conn = connected g n in
       let nconn = List.filter (fun x -> SET.has s x = false) conn in
@@ -779,15 +783,42 @@ struct
     let disj = build_subset remaining_nodes in
     disj
 
+  (*subtrees *)
+  let subtrees (type a) (type b) (g:(a,b) graph) (roots:(a list) option): (a set) list =
+    let roots : a list = if roots = None
+      then MAP.fold (g.adj) (fun k chld r -> if MAP.empty chld then k::r else r) []
+      else OPTION.force_conc roots
+    in
+    let get_tree (n:a) : a set =
+      let nodes = SET.make () in
+      let rec _get_tree path n =
+        if LIST.has path n then ()
+        else
+          let npath = n::path in
+          let _ = SET.add nodes n in
+          let pars =  parents g n in
+          let _ = List.iter (fun q -> return (_get_tree npath q) ()) pars in
+          ()
+      in
+      let _ = _get_tree [] n in
+      nodes
+    in
+    let subtrees : (a set) list = List.map (fun x -> get_tree x) roots in
+    subtrees
   (*get all the cycles, iterate through paths in a graph determine, if there is a cycle*)
-  let get_cycles (type a) (type b) (g:(a,b) graph) : (a list) set =
+  let cycles (type a) (type b) (g:(a,b) graph) : (a list) set =
     let cycles = SET.make () in
+    let rec strip_cyc lst n = match lst with
+      | h::t -> if h = n then h::t else strip_cyc t n
+      | [] -> []
+    in
     let rec track_path (path:a list) (curr:a) : unit =
       (*cycle detected*)
       if LIST.has path curr then
         let cycpath = curr::path in
         (*make path oldest -> newest*)
-        let _ = SET.add cycles (LIST.rev cycpath) in
+        let stripped = strip_cyc (LIST.rev cycpath) curr in
+        let _ = SET.add cycles stripped in
         ()
       else
         let chld : a list = children g curr in

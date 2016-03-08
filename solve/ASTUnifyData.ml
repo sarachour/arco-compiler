@@ -64,6 +64,7 @@ type 'a renv = {
   s: symcaml;
   cnv: 'a->symvar;
   icnv: symvar->'a;
+  freshvar: int -> unifytype -> 'a;
 }
 
 (*the tableau, which is comprised of the original statements  *)

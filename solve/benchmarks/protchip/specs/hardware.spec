@@ -47,7 +47,7 @@ digital output I
 end
 
 % p53 in simulink
-comp emmblock
+comp emb
 
   % inputs
   input Atot where I:nA
@@ -103,15 +103,15 @@ comp emmblock
   input FF_SW4 where D:bits
 
 
-  %rel I(Afree) = I(Atot) - D(A_SW)*I(Ctot)
-  %rel I(Bfree) = I(Btot) - D(B_SW)*I(Ctot)
+  rel I(Afree) = I(Atot) - D(A_SW)*I(Ctot)
+  rel I(Bfree) = I(Btot) - D(B_SW)*I(Ctot)
   rel I(rateFW) = I(Afree)*((I(Bfree)/I(KDfw))^D(n))
 
-  %rel I(rateFWUp) = I(Cprod) - D(FF_SW1)*I(rateFW)
-  %rel I(rateFWTot) = I(Cprod) + D(FF_SW2)*I(rateFW)
-  %rel I(rateRV) = I(Cfree)*(I(Dfree)/I(KDrv))
-  %rel I(rateRVTot) = I(Cdeg) + I(ratC)*I(Cfree) + D(FF_SW3)*I(rateRV)
-  %rel I(rateRVUp) = I(Cdeg) + (I(ratC)*I(Cfree) - D(FF_SW4)*I(rateRV))
+  rel I(rateFWUp) = I(Cprod) - D(FF_SW1)*I(rateFW)
+  rel I(rateFWTot) = I(Cprod) + D(FF_SW2)*I(rateFW)
+  rel I(rateRV) = I(Cfree)*(I(Dfree)/I(KDrv))
+  rel I(rateRVTot) = I(Cdeg) + I(ratC)*I(Cfree) + D(FF_SW3)*I(rateRV)
+  rel I(rateRVUp) = I(Cdeg) + (I(ratC)*I(Cfree) - D(FF_SW4)*I(rateRV))
 
   %rel I(DfreeCopy) = I(Dfree)
   %rel I(CfreeCopy) = I(Cfree)
@@ -155,7 +155,7 @@ comp gnd
 end
 
 schematic
-  inst emmblock : 20
+  inst emb : 20
   inst digiswitch : 1
   inst input D : 20
   inst gnd: 1
@@ -165,37 +165,37 @@ schematic
   inst input I : 180
   inst output I : 24
 
-  conn gnd -> emmblock
+  conn gnd -> emb
   conn gnd -> addi
 
-  conn digiswitch -> emmblock.A_SW
-  conn digiswitch -> emmblock.B_SW
-  conn digiswitch -> emmblock.FF_SW1
-  conn digiswitch -> emmblock.FF_SW2
-  conn digiswitch -> emmblock.FF_SW3
-  conn digiswitch -> emmblock.FF_SW4
+  conn digiswitch -> emb.A_SW
+  conn digiswitch -> emb.B_SW
+  conn digiswitch -> emb.FF_SW1
+  conn digiswitch -> emb.FF_SW2
+  conn digiswitch -> emb.FF_SW3
+  conn digiswitch -> emb.FF_SW4
 
-  conn input(I)[160:180] -> emmblock.Atot
-  conn input(I)[160:180] -> emmblock.Btot
-  conn input(I)[160:180] -> emmblock.Dfree
+  conn input(I)[160:180] -> emb.Atot
+  conn input(I)[160:180] -> emb.Btot
+  conn input(I)[160:180] -> emb.Dfree
 
 
-  conn input(I)[1:160] -> emmblock.Ctot_0
-  conn input(I)[1:160] -> emmblock.KDfw
-  conn input(I)[1:160]  -> emmblock.KDrv
-  conn input(I)[1:160]  -> emmblock.ratC
-  conn input(I)[1:160]  -> emmblock.kr1
-  conn input(I)[1:160]  -> emmblock.kr2
-  conn input(D) -> emmblock.n
+  conn input(I)[1:160] -> emb.Ctot_0
+  conn input(I)[1:160] -> emb.KDfw
+  conn input(I)[1:160]  -> emb.KDrv
+  conn input(I)[1:160]  -> emb.ratC
+  conn input(I)[1:160]  -> emb.kr1
+  conn input(I)[1:160]  -> emb.kr2
+  conn input(D) -> emb.n
 
-  conn emmblock.Ctot -> addi
+  conn emb.Ctot -> addi
   conn addi -> output(I)
-  %conn emmblock.Ctot -> output(I)
+  %conn emb.Ctot -> output(I)
 
-  %conn addi.O -> emmblock.Cfree
-  %conn addi.O -> emmblock.Cprod
-  %conn addi.O -> emmblock.Cdeg
-  %conn addi.O -> emmblock.Ctot_in
+  %conn addi.O -> emb.Cfree
+  %conn addi.O -> emb.Cprod
+  %conn addi.O -> emb.Cdeg
+  %conn addi.O -> emb.Ctot_in
 
 
 end
