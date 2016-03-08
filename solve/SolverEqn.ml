@@ -145,7 +145,7 @@ struct
       in
       ()
     in
-    let add_fuse f inst : unit =
+    let add_fuse (f:unid fuse) inst : unit =
       let mkfxn lhs rhs =
         let lhs = Shim.lclid2glblid inst lhs in
         let rhs = Shim.lcl2glbl inst rhs in
@@ -157,7 +157,7 @@ struct
           let rel = UFunction(lhs,rhs) in
           rel
       in
-      let steps = match f with
+      let steps : sstep list = match f with
         | USAdd(lhs,rhs,UTypTarg) ->
           (*let _ = _print_debug "<@> Add Target Relation" in*)
           []
@@ -467,7 +467,7 @@ struct
         let _ = rec_solve_subtree root in
         ()
 
-      
+
 
     let solve (s:slvr) (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
       let _ = _print_debug ("find # solutions: "^(string_of_int nslns)) in

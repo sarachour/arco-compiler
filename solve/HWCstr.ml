@@ -206,7 +206,7 @@ struct
         "conn "^dc^"["^(hcconn2str id)^"]."^dp^"\n"
       in
       let pr_dests sc sp smap r =
-        MAP.fold smap (fun (dc,dp) idx r ->
+        MAP.fold smap (fun (dc,dp) (idx:(hcconn*hcconn) set) r ->
           SET.fold idx (fun (is,id) r -> r^(pr_conn sc sp dc dp is id)) r) r
       in
       MAP.fold e.conns (fun (sc,sp) dests r -> pr_dests sc sp dests r) ""

@@ -39,7 +39,7 @@ struct
     let node2str x = x in
     let val2str v = string_of_float v in
     let cmpval v1 v2 = true in
-    {units=SET.make (fun x y -> x = y); graph=(GRAPH.make cmpval node2str val2str)}
+    {units=SET.make (); graph=(GRAPH.make cmpval node2str val2str)}
 
   let to_buf e fb =
     let os x = output_string fb x in

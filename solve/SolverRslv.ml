@@ -28,7 +28,7 @@ struct
 
 
   let mkinstinfo n =
-    {id=n; cinsts = SET.make (fun x y -> x =y ); sinsts = SET.make (fun x y -> x = y)}
+    {id=n; cinsts = SET.make (); sinsts = SET.make ()}
 
 
   let to_id id = id

@@ -50,7 +50,7 @@ struct
 
 
   let mkcomp (sln:sln) (id:unodeid) =
-    MAP.put sln.comps id (SET.make (fun x y -> x = y),0)
+    MAP.put sln.comps id (SET.make (),0)
 
   (*
   let mkconn_valid (v:slvr) (s:sln) (src:wireid) (snk:wireid) =
@@ -68,7 +68,7 @@ struct
 
   let mkconn (sln:sln) (src:wireid) (snk:wireid) =
     let sinks = if MAP.has sln.conns src = false then
-        let s = (SET.make (fun x y -> x = y) ) in
+        let s = (SET.make () ) in
         let _ = MAP.put sln.conns src s in
         s
       else
@@ -96,7 +96,7 @@ struct
         MAP.get sln.labels id
     in
     let pset = if MAP.has prps prop = false then
-      let pset = SET.make (fun x y -> x = y) in
+      let pset = SET.make () in
       let _ = MAP.put prps prop pset in
       pset
       else

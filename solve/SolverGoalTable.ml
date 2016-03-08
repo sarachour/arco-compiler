@@ -35,7 +35,7 @@ struct
   let has_partial_comp = GoalStubLib.has_partial_comp
   let get_partial_comp = GoalStubLib.get_partial_comp
 
-  let get_goal_from_var (t:gltbl) (vr:unid) =
+  let get_goal_from_var (t:gltbl) (vr:unid) : goal option =
     let is_var (x:goal) (v:unid) = match unwrap_goal x with
       |UFunction(lhs,rhs) -> v = lhs
       |UState(lhs,rhs,_,_) -> v = lhs

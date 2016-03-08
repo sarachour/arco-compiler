@@ -303,12 +303,7 @@ end*)
       let onevarset (ast:a ast) (i:int)  (r: (symdecl) set) : (symdecl) set =
         fold ast (getvars i) r
       in
-      let cmpvars x y = match x,y with
-      | (SymbolVar(ra),SymbolVar(rb)) -> ra = rb
-      | (WildcardVar(ra,_), WildcardVar(rb,_)) -> ra = rb
-      | _ -> false
-      in
-      let allvars = LIST.fold_i onevarset exprs (SET.make cmpvars) in
+      let allvars = LIST.fold_i onevarset exprs (SET.make ()) in
       let syms,wcs = defsyms env (SET.to_list allvars) cnv in
       (env,wcs,syms)
 
@@ -326,64 +321,6 @@ end*)
       let res = from_symcaml r icnv in
       res
 
-    let pattern (type a) (type b) (e1:a ast) (e2:a ast) (cnv:a->symvar) (icnv:symvar -> a) (decl:a->bool->(a->symvar)->symdecl) (n:int) =
-      let match_trivial e1 e2 =
-        match (compute e1,compute e2) with
-        | (Some(x),Some(y)) ->
-          if x = y then
-            (*make a single solution of empty assignments*)
-            let empty = MAP.make () in
-            Some(Some([empty]))
-          else Some(None)
-        | (_,Some(x)) -> Some(None)
-        | _ -> None
-      in
-      let triv_sln = match_trivial e1 e2  in
-      if triv_sln <> None then OPTION.force_conc triv_sln else
-      let max_depth = get_glbl_int "ast_pattern_depth" in
-      let max_breadth = get_glbl_int "ast_pattern_breadth" in
-      let decl_tmpl_or_pat i x cnv =  if i = 0 then decl x false cnv else decl x true cnv in
-      let env,iwcs,syms = mkenv [e1;e2] cnv decl_tmpl_or_pat in
-      let cand = to_symcaml e1 cnv in
-      let templ = to_symcaml e2 cnv in
-      (*let _ = SymCaml.set_debug env true in*)
-      let mmap x =
-        let nm = MAP.make() in
-        let f k v = MAP.put nm (icnv k) (from_symcaml v icnv); () in
-        let _ = MAP.iter x (fun k v -> f k v) in
-        nm
-      in
-      let sols : (symvar,symexpr) map set = SET.make (fun x y -> x = y) in
-      let rec solve wcs depth fracbans =
-        if (SET.size sols) = n || depth = max_depth then () else
-        let res = SymCaml.pattern env templ cand in
-        match res with
-        | Some(r) ->
-            let symap = MAP.from_list r in
-            let _ = SET.add sols symap in
-            let solve_with_some_bans (x:symdecl list) =
-              let map_one x = match x with
-                | WildcardVar(n,bans) ->
-                  if MAP.has symap n = false || RAND.rand_norm() > fracbans then x else
-                    let new_ban = (MAP.get symap n) in
-                    let nx = WildcardVar(n, new_ban::bans) in
-                    nx
-                | _ -> x
-              in
-              let nwcs = List.map (map_one) wcs in
-              let _,nwcs = defsyms env nwcs cnv in
-              solve nwcs (depth+1) fracbans
-            in
-              let _ = List.iter (fun x -> solve_with_some_bans wcs) (LIST.mkrange 0 max_breadth) in
-              ()
-
-        | None -> ()
-      in
-      let _ = solve iwcs 0 (get_glbl_float "ast_pattern_frac_ban") in
-      let nlst : (a,a ast) map list = SET.map sols mmap in
-      match nlst with
-      | [] -> None
-      | h::t -> Some (nlst)
 
   let sub (type a) (expr:a ast) (subs: (a,a ast) map) : a ast =
     let tf x = match x with

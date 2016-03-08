@@ -5,19 +5,35 @@ open Random
 exception UtilError of string
 
 let error n m = raise (UtilError (n^":"^m))
-type 'a set = {
-  mutable lst : 'a list;
-  cmp : 'a -> 'a -> bool
-}
 
 type range = float*float
 type irange = int*int
 
 type ('a,'b) map = ('a, 'b) Hashtbl.t
+type 'a set = ('a,unit) map
 
 type ('a,'b) either = Left of 'a | Right of 'b
 
 type number = Integer of int | Decimal of float
+
+
+type 'a queue = ('a list) ref
+
+type 'a stack = ('a list) ref
+
+type ('a,'b) graph = {
+  mutable adj : ('a,('a,'b) map) map;
+  vcmp : 'b -> 'b -> bool;
+  node2str: 'a -> string;
+  val2str: 'b -> string;
+}
+
+type ('a,'b) tree = {
+  mutable adj : ('a,(('a,'b) map)*('a option)) map;
+  mutable root : 'a option;
+  vcmp : 'b -> 'b -> bool;
+  ncmp : 'a -> 'a -> bool;
+}
 
 let return x b = let _ = x in begin
 
@@ -177,8 +193,6 @@ struct
 
 end
 
-
-type 'a queue = ('a list) ref
 module QUEUE =
 struct
   let make () : 'a queue = REF.mk []
@@ -259,8 +273,6 @@ struct
     _back (REF.dr x)
 end
 
-
-type 'a stack = ('a list) ref
 module STACK =
 struct
   let make () : 'a stack = REF.mk []
@@ -552,6 +564,9 @@ struct
   let to_list (type a) (type b) (x:(a,b) map) : (a*b) list =
     fold x (fun q v k -> (q,v)::k) []
 
+  let keys (type a) (type b) (x:(a,b) map) : (a) list =
+    fold x (fun q v k -> (q)::k) []
+
   let from_list (type a) (type b) (x:(a*b) list) : (a,b) map =
     let mp = make() in
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
@@ -577,60 +592,71 @@ end
 
 module SET =
 struct
-  let make (type a) fn : a set = {lst=[]; cmp=fn}
+  let make (type a) () : a set = MAP.make()
 
-  let make_dflt (type a) () : a set =
-    {lst=[]; cmp=(fun x y -> x=y)}
+  let make_dflt (type a) () : a set = make ()
 
-  let has s e =
-    List.length (List.filter (fun x ->s.cmp x e) s.lst) > 0
+  let has s e = MAP.has s e
 
-  let add s e =
-    if has s e = false then
-      begin
-        s.lst <- e::s.lst;
-        s
-      end
-    else
-      s
+  let add s e = MAP.put s e ()
+
+  let empty (type a) (x:a set) = MAP.empty x
 
   let sort (type a)  (lst:a set)  (fn: a->a->int): a list =
-    List.sort (fun x y -> fn x y) (lst.lst)
+    let lst = MAP.keys lst in
+    List.sort (fun x y -> fn x y) lst
 
 
   let tostr (type a) (s:a set) (f:a->string) (delim:string) : string =
-    LIST.tostr f delim s.lst
+    let lst = MAP.keys s in
+    LIST.tostr f delim lst
 
-  let iter s f =
-    List.iter f (s.lst)
+  let iter (type a) (s:a set) f =
+    MAP.iter s (fun k v -> f k)
 
-  let fold s f iv =
-    List.fold_right f (s.lst) iv
+  let fold (type a) (s:a set) f iv =
+    MAP.fold (s) (fun k v r -> f k r) iv
 
   let fold_i  s f iv =
-    List.fold_right (fun x (i,v) -> (f x i v)) s.lst (0,iv)
+    MAP.fold s (fun x (i,v) -> (f x i v)) (0,iv)
 
   let map (type a) (type b) (s:a set) (f:a->b): b list  =
-    let v = List.map f (s.lst) in
+    let v = List.map f (MAP.keys s) in
     v
 
   let get s q =
-    match List.filter (fun x -> s.cmp x q) s.lst with
-    | [h] -> Some(h)
-    | _ -> None
+    if MAP.has s q then
+      Some(q)
+    else
+      None
 
   let nth s n =
-    List.nth s.lst n
+    let lst = MAP.keys s in
+    List.nth lst n
 
-  let filter s f =
-    List.filter f (s.lst)
+  let count s f : int =
+    MAP.fold s (fun x v r -> if f x then r+1 else r) 0
+
+  let filter (type a) (s:a set) f : a list =
+    MAP.fold s (fun x v r -> if f x then x::r else r) []
 
   let rm s v =
-    let _ = s.lst <- filter s (fun x -> s.cmp x v = false) in
+    let _ = MAP.rm s v in
     ()
 
+  let sub (type a) (src:a set) (sub:a set) =
+    let diff = make_dflt () in
+    let _ = iter src
+      (fun x -> if has sub x then () else return (add diff x) ())
+    in
+    diff
+  let rand (type a) (s:a set) =
+    let lst = MAP.keys s in
+    LIST.rand lst
+
   let to_list (type a) (s: a set) : a list=
-    s.lst
+    let lst = MAP.keys s in
+    lst
 
   let to_set (type a) (l: a list) fn : a set =
     List.fold_right (fun x s -> add s x) l (make fn)
@@ -640,26 +666,20 @@ struct
     s
 
   let from_list (type a) (a: a list) : a set =
-    let s = make (fun x y -> x = y) in
+    let s = make_dflt () in
     add_all s a
 
   let size s =
-    List.length s.lst
+    MAP.size s
 
   let rand (type a) (s: a set) :a  =
     let n = size s in
     let i = Random.int(n) in
-    List.nth s.lst i
+    List.nth (MAP.keys s) i
 
 end
 
 
-type ('a,'b) graph = {
-  mutable adj : ('a,('a,'b) map) map;
-  vcmp : 'b -> 'b -> bool;
-  node2str: 'a -> string;
-  val2str: 'b -> string;
-}
 
 
 module GRAPH =
@@ -667,10 +687,10 @@ struct
   let make (type a) (type b) vcmp astr bstr =
     {adj=MAP.make(); vcmp = vcmp; node2str = astr; val2str = bstr}
 
-  let hasnode (type a) (type b) (g) (n:a) : bool =
+  let hasnode (type a) (type b) (g:(a,b) graph) (n:a) : bool =
     MAP.has (g.adj) n
 
-  let iter (type a) (type b) (g) (fn : a-> a-> b -> unit) =
+  let iter (type a) (type b) (g:(a,b) graph) (fn : a-> a-> b -> unit) =
     let iterset src snk v =
       fn src snk v
     in
@@ -680,7 +700,7 @@ struct
     in
     MAP.iter (g.adj) itermap
 
-  let fold (type a) (type b) (type c) (g) (fn : a -> a -> b -> c -> c) (c0:c)=
+  let fold (type a) (type b) (type c) (g:(a,b) graph) (fn : a -> a -> b -> c -> c) (c0:c)=
     MAP.fold g.adj (fun src dests r0 ->
       MAP.fold dests (fun dest edj r -> fn src dest edj r) r0 ) c0
 
@@ -697,14 +717,14 @@ struct
     in
     fold g proc_edge []
 
-  let getedge (type a) (type b) (g) (n1:a) (n2:a) : b option =
+  let getedge (type a) (type b) (g:(a,b) graph) (n1:a) (n2:a) : b option =
     let chld = MAP.get (g.adj) n1 in
     if MAP.has chld n2 then
       Some (MAP.get chld n2)
     else
       None
 
-  let hasedge (type a) (type b) g s e : bool =
+  let hasedge (type a) (type b) (g:(a,b) graph) s e : bool =
     if hasnode g s == false || hasnode g e == false then
       false
     else
@@ -713,17 +733,56 @@ struct
       else
         true
 
+  let getnodes (type a) (type b) (g:(a,b) graph) (f:a->bool) : a list =
+    MAP.fold g.adj (fun k v r -> if f k then k::r else r) []
+
+  let children (type a) (type b) (g:(a,b) graph) (n:a) : a list =
+    let conns = MAP.get g.adj n in
+    let nodes = MAP.map conns (fun x b -> x)  in
+    nodes
+
+  let parents (type a) (type b) (g:(a,b) graph) (n:a) : a list =
+    let pars = MAP.fold g.adj (fun par chmap rest ->
+      if MAP.has chmap n  then
+        par::rest
+      else
+        rest
+    ) []
+    in
+      pars
+  (*get all the nodes going to and from*)
+  let connected (type a) (type b) (g:(a,b) graph) (n:a) : a list =
+    let children = children g n in
+    let parents = parents g n in
+    children @ parents
+
   (*get disjoint graph nodes*)
   let get_disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =
-    if empty g then [] else
-    (*all the nodes that are touched by the algorithm*)
-    let incl = SET.make_dflt () in
-    (**)
-    let subset = SET.make_dflt () in
+    let rec get_subset (s:a set) (n:a) : a set =
+      let conn = connected g n in
+      let nconn = List.filter (fun x -> SET.has s x = false) conn in
+      if List.length nconn = 0 then s else
+        let _ = SET.add_all s nconn in
+        let nset = List.fold_right (fun x ns -> get_subset ns x) nconn s in
+        nset
+    in
+    (*all the nodes *)
+    let remaining_nodes : a set = SET.add_all (SET.make_dflt ()) (getnodes g (fun x -> true)) in
+    let rec build_subset (remaining:a set) : (a set) list =
+      if SET.empty remaining then [] else
+      let rand_node = SET.rand remaining in
+      let subst = get_subset (SET.make_dflt ()) rand_node in
+      (*update remaining nodes*)
+      let remaining = SET.sub remaining subst in
+      subst::(build_subset remaining)
+    in
+    let disj = build_subset remaining_nodes in
+    disj
 
   (*get all the cycles *)
   let get_cycles (type a) (type b) (g:(a,b) graph) : (a list) set =
     let visited = SET.make_dflt () in
+    SET.make_dflt ()
 
   let mknode (type a) (type b) (g:(a,b) graph) (n:a) : (a,b) graph =
     if hasnode g n then
@@ -733,8 +792,6 @@ struct
       let _ = MAP.put (g.adj) n (MAP.make ()) in
       g
 
-  let getnodes (type a) (type b) (g) (f:a->bool) : a list =
-    MAP.fold g.adj (fun k v r -> if f k then k::r else r) []
 
   let mkedge (type a) (type b) (g) (a:a) (b:a) (v:b) : (a,b) graph =
     if hasnode g a && hasnode g b && hasedge g a b = false then
@@ -769,12 +826,7 @@ struct
 end
 
 
-type ('a,'b) tree = {
-  mutable adj : ('a,(('a*'b) set)*('a option)) map;
-  mutable root : 'a option;
-  ecmp : 'b -> 'b -> bool;
-  ncmp : 'a -> 'a -> bool;
-}
+
 
 type ('a,'b) cursor = 'a
 
@@ -785,12 +837,12 @@ struct
     {
       adj= MAP.make();
       root= None;
-      ncmp= ncmp;
-      ecmp= ecmp;
+      vcmp= ecmp;
+      ncmp = ncmp
 
     }
   let leaves g =
-    MAP.fold g.adj (fun k (v,p) r -> if SET.size v = 0 then k::r else r) []
+    MAP.fold g.adj (fun k (v,p) r -> if MAP.size v = 0 then k::r else r) []
 
   let root g =
     g.root
@@ -801,21 +853,18 @@ struct
 
   let edge (type a) (type b) (g:(a,b) tree) (x:a) (y:a) : b =
     let chld,_ = MAP.get g.adj x in
-    match SET.filter chld (fun (n,e) -> n = y)  with
+    match MAP.filter chld (fun n e -> n = y)  with
     | [(snk,edj)] -> edj
     | _ -> error "edge" "does not exist"
 
 
   let children (type a) (type b) (g:(a,b) tree) (n:a) : a list =
     let chld,_ = MAP.get g.adj n in
-    SET.map chld (fun (n,e) -> n)
+    MAP.map chld (fun n e -> n)
 
   let has_child (type a) (type b) (g:(a,b) tree) (n:a) (c:a) : bool =
-    let ch = children g n in
-    if LIST.count ch c > 0 then
-      true
-    else
-      false
+    let children,_ = MAP.get g.adj n in
+    MAP.has children c
 
   let parent  (type a) (type b) (g:(a,b) tree) (n:a) : a option =
     let _,p = MAP.get g.adj n in
@@ -825,31 +874,28 @@ struct
     MAP.has (g.adj) n
 
 
-  let hasedge (type a) (type b) g s e v : bool =
+  let hasedge (type a) (type b) (g:(a,b) tree) (s:a) (e:a) (v:b) : bool =
     if hasnode g s == false || hasnode g e == false then
       false
     else
       let chld,_ = MAP.get (g.adj) s in
-      SET.has chld (e,v)
+      MAP.has chld e && g.vcmp (MAP.get chld e) v
 
-  let getconn (type a) (type b) g s e : (a*b) option =
+  let getconn (type a) (type b) (g:(a,b) tree) (s:a) (e:a) : (a*b) option =
     if hasnode g s = false || hasnode g e = false then
       None
     else
       let chld,_ = MAP.get (g.adj) s in
-      match SET.filter chld (fun (x,_) -> x = e) with
-      | [h] -> Some(h)
-      | [] -> None
-      | _ -> error "updedge" "no edge exists"
-
-
+      if MAP.has chld e then
+        Some (e,MAP.get chld e)
+      else
+        None
 
   let mknode (type a) (type b) (g) (n:a) : (a,b) tree =
     if hasnode g n then
       error "mknode" "node already exists"
     else
-      let cmp ((n1,v1):a*b) (n2,v2) = g.ncmp n1 n2 && g.ecmp v1 v2 in
-      let _ = MAP.put (g.adj) n (SET.make cmp, None) in
+      let _ = MAP.put (g.adj) n (MAP.make (), None) in
       g
 
   let mkedge (type a) (type b) (g) (src:a) (snk:a) (v:b) : (a,b) tree =
@@ -860,7 +906,7 @@ struct
     else
     (* edges *)
     let edges,_ = MAP.get g.adj src in
-    let _ = SET.add edges (snk,v) in
+    let _ = MAP.put edges snk v in
     let edges,old = MAP.get g.adj snk in
     match old with
     | Some(q) ->
@@ -873,7 +919,7 @@ struct
   let updedge (type a) (type b) g (src:a) (snk:a) (v:b) : (a,b) tree =
     let edges,back = MAP.get g.adj src in
     let _ = match getconn g src snk with
-      | Some(conn) -> let _ = SET.rm edges conn in ()
+      | Some(conn) -> let _ = MAP.rm edges snk in ()
       | None -> ()
     in
     let _ = mkedge g src snk v in
@@ -882,18 +928,17 @@ struct
   let rmnode (type a) (type b) (g) (n:a) : (a,b) tree =
     let rec _rmnode (n:a) =
       if hasnode g n = false then
-        error "mknode" "node does not exist"
+        error "rmnode" "node does not exist"
       else
         let chld,_ = MAP.get (g.adj) n in
-        let _ = SET.iter chld (fun (x,v) -> _rmnode x) in
+        let _ = MAP.iter chld (fun x v -> _rmnode x) in
         let _ = MAP.rm (g.adj) n in
         ()
     in
     let _ = match parent g n with
       | Some(par) ->
         let parchld,parpar = MAP.get g.adj par in
-        let parchld = SET.to_set (SET.filter parchld (fun (x,v) -> g.ncmp x n == false)) parchld.cmp in
-        let _ = MAP.put g.adj par (parchld,parpar) in
+        let _ = if MAP.has parchld n then return (MAP.rm parchld n) () in
         ()
       | None -> ()
     in
@@ -916,7 +961,7 @@ struct
     _fold_path node ic
 
   let has_ancestor (type a) (type b) (g:(a,b) tree) (en:a) (anc:a) : bool =
-    let is_anc = fold_path (fun n c -> if g.ncmp n anc then true else c) (fun x y z c -> c) g en false in
+    let is_anc = fold_path (fun n c -> if n = anc then true else c) (fun x y z c -> c) g en false in
     is_anc
 
   let get_path (type a) (type b) (g: (a,b) tree) (en:a) : a list =
@@ -981,12 +1026,12 @@ struct
       else
         let res = nfx src res in
         let chldrn,_  = MAP.get (g.adj) (src) in
-        let proc_chld (snk,e) x =
+        let proc_chld snk e x =
           let x = efx src snk e x in
           let x = _traverse snk x in
           x
         in
-        SET.fold chldrn proc_chld res
+        MAP.fold chldrn proc_chld res
     in
       match g.root with
       |Some(root) ->  _traverse root ic

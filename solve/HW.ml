@@ -314,7 +314,7 @@ struct
     if hastime e then
       error "mktime" "time already defined"
     else
-      let s = SET.make (fun x y -> x = y) in
+      let s = SET.make () in
       let add_unit n =
         if UnitLib.has (e.units) n = false then
           error "mkunit" ("unit "^n^" doesn't exist")
@@ -331,7 +331,7 @@ struct
     if hasprop e name then
       error "mkprop" ("prop "^name^" already exists")
     else
-      let s = SET.make (fun x y -> x = y) in
+      let s = SET.make () in
       let add_unit n =
         if UnitLib.has (e.units) n = false then
           error "mkprop" ("unit "^n^" doesn't exist")
