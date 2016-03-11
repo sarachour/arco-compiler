@@ -314,7 +314,7 @@ struct
     let fracsets = get_glbl_float "uast-restrict-fraction-set-prop" in
     let n = int_of_float ((float_of_int (MAP.size assigns))*.fracsets) in
     let choose_ban k v r =
-      if RAND.rand_norm () < frac then
+      if RAND.rand_norm () <= frac then
         RBanAssign(k,v)::r
       else
         r
@@ -502,14 +502,14 @@ struct
     let rest = SET.make_dflt () in
     let _ = List.iter (fun ((l,r):symvar*symexpr) ->
       if is_rest l then
-        let ar : a ast = ASTLib.from_symcaml r sym2a in
+        let ar : a ast = ASTLib.from_symcaml r get_canon in
         let _ = _print_debug ("rest-expr: "^(ASTLib.ast2str ar a2sym)) in
         let ignored = extract_lhses ar in
         let _ = List.iter (fun x -> return (SET.add rest x) ()) ignored in
         ()
       else
         let al : a = get_canon l in
-        let ar : a ast = ASTLib.from_symcaml r sym2a in
+        let ar : a ast = ASTLib.from_symcaml r get_canon in
         let _ = MAP.put sassigns al ar in
         ()
     ) assigns
@@ -517,6 +517,7 @@ struct
     let _ = SET.iter rest (fun x -> _print_debug ("targ-rest:"^(a2sym x))) in
     let _ = MAP.iter sassigns (fun k v -> _print_debug ("assign: "^(a2sym k)^" = "^(ASTLib.ast2str v a2sym))) in
     let _ = _print_debug "--------------------\n" in
+    (*return the unsolved state variables, as well as the unused hw vars *)
     (sassigns,rest)
 
 
@@ -546,6 +547,11 @@ struct
       (*ban the target expression from the rest variable*)
       let banexpr : symexpr = gen_subexpr targvar (MAP.get targs targvar) in
       let _ = _print_debug (">rest: disable overflow: "^(SymCaml.expr2str banexpr)) in
+      (*let _ = decl_wild s (restvar()) [
+        OpN(Mult,[banexpr;Integer(2)]);
+        OpN(Add,[banexpr;banexpr])
+      ] in
+      *)
       let _ = decl_wild s (restvar()) [banexpr] in
       (*determine input and output vars*)
       let outs,ins,locals = compute_vars s templs in
@@ -588,7 +594,8 @@ struct
     let _ = SearchLib.move_cursor s.search s.tbl curs in
     let _ = SearchLib.start s.search in
     let _ = SearchLib.add_step s.search (RSetAssigns (MAP.to_list assigns)) in
-    let _ = SearchLib.commit s.search s.tbl in
+    let node = SearchLib.commit s.search s.tbl in
+    let _ = SearchLib.solution s.search node in
     ()
 
   let solve_node (type a) (s:a runify) (tvar:a) =
@@ -617,8 +624,8 @@ struct
 
   (*select the next node to solve*)
   let solve (type a) (sr:a runify) (root:a rnode) (targvar:a) (n:int) =
+    let sysmenu,usrmenu = mkmenu sr in
     let rec _solve () =
-      let sysmenu,usrmenu = mkmenu sr in
       let _mnext () =
         let maybe_next_node = get_best_valid_node sr (Some root) in
         match maybe_next_node with
@@ -649,7 +656,9 @@ struct
           let _ = _mnext () in
           ()
     in
-    _solve ()
+    let _ = _solve () in
+    let _ = sysmenu "t" in
+    ()
 
 
   let build_tree (type a) (s:a runify) (root: a rnode) (gl: a option): unit =
@@ -663,11 +672,14 @@ struct
     in
     ()
 
+  (*also fill in unused*)
   let get_slns (type a) (s:a runify) : a fusion set =
     let env2fuses (s:a runify) : (a fuse) list =
       let asgns = (g_assigns s.tbl) in
       let arr = [] in
       let arr = MAP.fold asgns (fun lhs rhs q -> USAssign(lhs,rhs)::q)  arr in
+      (*TODO: Add steps for resting vars*)
+      (*for each relation, if there are freee variables left, add a fuse*)
       arr
       (*add all assignments in fusion.*)
     in
