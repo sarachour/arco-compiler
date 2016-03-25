@@ -565,9 +565,10 @@ struct
   let filter (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
     fold x (fun q v k -> if f q v then (q,v)::k else k) []
 
-  let to_list (type a) (type b) (x:(a,b) map) : (a*b) list =
+   let to_list (type a) (type b) (x:(a,b) map) : (a*b) list =
     fold x (fun q v k -> (q,v)::k) []
-
+   
+   
   let keys (type a) (type b) (x:(a,b) map) : (a) list =
     fold x (fun q v k -> (q)::k) []
 
@@ -575,6 +576,10 @@ struct
     let mp = make() in
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
     mp
+  
+  let filter_map (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (a,b) map = 
+    from_list (filter x f)
+
 
   let set (type a) (type b) (x: (a,b) map) (y: (a,b) map) =
     let _ = clear x in

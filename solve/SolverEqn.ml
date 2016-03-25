@@ -124,65 +124,30 @@ struct
       let rel = GoalTableLib.unwrap_goal g in
       rel2info rel
     in
-    let mappings = MAP.make () in
-    let clear_fuse_state () =
-      let _ = MAP.clear mappings in
-      ()
-    in
-    let proc_fuse f inst : unit =
-      let mkassign lhs rhs =
+    let mkfxn inst lhs rhs mp =
         let lhs = Shim.lclid2glblid inst lhs in
         let rhs = Shim.lcl2glbl inst rhs in
-        let _ = MAP.put mappings lhs rhs in
-        ()
-      in
-      let _ : unit = match f with
-        | USAdd(lhs,rhs,UTypTarg) -> (*technically a partial solution*)
-          let _ = mkassign lhs rhs in
-          let _ = _print_debug ("add-targ: "^(UnivLib.unid2str lhs)) in
-          ()
-        | _ -> ()
-      in
-      ()
+        mp lhs rhs
     in
     let add_fuse (f:unid fuse) inst : unit =
-      let mkfxn lhs rhs =
-        let lhs = Shim.lclid2glblid inst lhs in
-        let rhs = Shim.lcl2glbl inst rhs in
-        let rhs = ASTLib.sub rhs mappings in
-        let _ = _print_debug ((UnivLib.unid2var lhs)^" = "^(ASTLib.ast2str rhs UnivLib.unid2var)) in
-        if MAP.has mappings lhs then
-          error "apply_component" "impossible to enforce added relation"
-        else
-          let rel = UFunction(lhs,rhs) in
-          rel
-      in
       let steps : sstep list = match f with
-        | USAdd(lhs,rhs,UTypTarg) ->
-          (*let _ = _print_debug "<@> Add Target Relation" in*)
-          []
-        | USAdd(lhs,rhs,UTypTempl) ->
-          let rel = mkfxn lhs rhs in
-          (*let _ = _print_debug "<@> Add Templ Relation" in*)
+        | USAddRel(lhs,rhs) ->
+          let _ = _print_debug "<@> Add Partially Concretized Relation" in
+          let rel = mkfxn inst lhs rhs (fun l r -> UFunction(l,r)) in
           [SAddNodeRel(node_id,inst,rel)]
 
-        | USRm(vr,UTypTarg) ->
+        | USRmGoal(vr) ->
+          let _ = _print_debug "<@> Remove Goal" in
           let goal = GoalTableLib.get_goal_from_var gtbl vr in
-          (*let _ = _print_debug "<@> Remove Target Relation" in*)
           begin
           match goal with
             | Some(goal) -> [SRemoveGoal(goal)]
             | None -> []
           end
 
-        | USRm(vr,UTypTempl) ->
-          (*let _ = _print_debug "<@> Remove Template Relation" in*)
-          []
-          (*error "make_fuse" ("unimplemented: remove template variable: "^(UnivLib.unodeid2name node_id)^": "^(UnivLib.unid2str vr))*)
-
         | USAssign(lhs,rhs) ->
-          (*let _ = _print_debug "<@> Add Assignment" in*)
-          let rel = mkfxn lhs rhs in
+          let _ = _print_debug "<@> Add Assignment" in
+          let rel = mkfxn inst lhs rhs (fun l r -> UFunction(l,r)) in
           let goal = GoalTableLib.wrap_goal gtbl rel in
           [SAddGoal(goal)]
       in
@@ -192,8 +157,6 @@ struct
     let add_unification (root:sstep snode) (u:unid fusion) inst =
       let _ = SearchLib.move_cursor gtbl.search (s,gtbl) root in
       let _ = SearchLib.start gtbl.search in
-      let _ = clear_fuse_state () in
-      let _ = List.iter (fun f -> proc_fuse f inst) u in
       let _ = List.iter (fun f -> add_fuse f inst) u in
       let r = SearchLib.commit gtbl.search (s,gtbl) in
       ()

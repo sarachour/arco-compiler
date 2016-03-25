@@ -9,6 +9,7 @@ let report lexbuf q =
   error "HW Lexer Error" ("At offset "^ofst^": unexpected character: <"^chr^">")
 }
 
+let nextline = '\\'['\t'' ']*'\n'
 let whitespace = ['\t'' ']*
 let comment = '%'[^'\n']*
 let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
@@ -18,6 +19,7 @@ let integer = ['0'-'9']+
 let op = [ '+' '-' '^' '/']+
 
 rule env = parse
+  | nextline                {env lexbuf}
   | ['\n']                  {Lexing.new_line lexbuf; EOL}
   | whitespace              {env lexbuf}
   | comment                 {env lexbuf}

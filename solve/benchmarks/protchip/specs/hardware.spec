@@ -116,7 +116,15 @@ comp emb
   %rel I(DfreeCopy) = I(Dfree)
   %rel I(CfreeCopy) = I(Cfree)
 
-  rel deriv(I(Ctot),t) = I(kr1)*(I(Cprod) + D(FF_SW3)*I(rateFW) ) - I(kr2)*(I(Cdeg) + I(Cfree)*I(ratC)) initially I(Ctot_0)
+  rel deriv(I(Ctot),t) = I(kr1)*(I(Cprod) + \
+	D(FF_SW3)*( \ 
+		(  I(Atot) - D(A_SW)*I(Ctot) )*(( \
+		( I(Btot) - D(B_SW)*I(Ctot) ) \ 
+		/I(KDfw))^D(n)) \
+	)) - \
+	I(kr2)*(I(Cdeg) + \
+	I(Cfree)*I(ratC)) \
+	initially I(Ctot_0)
 
 
   % copiers
