@@ -369,7 +369,7 @@ struct
   let is_exhausted  (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) =
     let currnode = cursor sr in
     let leaves = get_paths sr root in
-    let leaves = LIST.filter (fun x -> x <> currnode) leaves in
+    (*let leaves = LIST.filter (fun x -> x <> currnode) leaves in*)
     if List.length leaves == 0 then
       true
     else
@@ -400,7 +400,7 @@ struct
     | h::t ->
       (*look at everything but the current node*)
       let leaves = LIST.filter (fun x -> x <> currnode) leaves in
-      if List.length leaves = 0 then None else
+      if List.length leaves = 0 then Some(currnode) else
         let _,best = LIST.max (fun x -> score_path x) leaves in
         Some(best)
 

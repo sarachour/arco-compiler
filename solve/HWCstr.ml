@@ -67,7 +67,7 @@ struct
     in
     ()
 
-  let valid_conn hcs src_comp src_port dest_comp dest_port =
+  let _valid_conn hcs src_comp src_port dest_comp dest_port =
     if MAP.has hcs.conns (src_comp,src_port)= false then
       false
     else
@@ -77,7 +77,11 @@ struct
       else
         let ids = MAP.get dests (dest_comp,dest_port) in
         SET.size ids > 0
-
+  
+  let valid_conn hcs src_comp src_port dest_comp dest_port =
+     (_valid_conn hcs src_comp src_port dest_comp dest_port) ||  
+     (_valid_conn hcs dest_comp dest_port src_comp src_port ) 
+  
   let mag e cmp port prop  =
     match MAP.get e.mags (cmp,port,prop) with
     | HCMagRange(min,max) -> Some (min,max)

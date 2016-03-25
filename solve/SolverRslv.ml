@@ -198,12 +198,12 @@ struct
               ) []
             in
               if List.length indep > 0 then
-                let ens = Z3Eq(Z3Lib.plus_all indep, Z3Int(1)) in
+                let ens = Z3LT(Z3Lib.plus_all indep, Z3Int(2)) in
                 (Z3Assert ens )::lst
               else lst
           ) []
       in
-
+      let gdecls = gdecls @ decls in 
       (*let gdecls = gdecls @ decls in*)
       (*ensure each solution mapping is a thing*)
       let has_failed,decls = MAP.fold sol_conns (fun sln_src dests (failed,decls) ->

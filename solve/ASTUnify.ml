@@ -609,12 +609,12 @@ struct
       let  _ = decl_func s (dfunvar()) in
       let _ = decl_func s (lhsfunvar()) in
       (*ban the target expression from the rest variable*)
-      let bantargexpr : symexpr = gen_subexpr targvar (MAP.get targs targvar) in
+      let bantargexpr : symexpr list= [tolhsexpr (a2sym targvar)] in
       let banmvexpr : symexpr list = MAP.fold targs (fun lhs rhs lst -> (tolhsexpr (a2sym lhs))::lst) [] in   
-      let _ = _print_debug (">rest: in templ ban-expr: "^(SymCaml.expr2str bantargexpr)) in
+      let _ = _print_debug (">rest: in templ ban-expr: "^(LIST.tostr SymCaml.expr2str " "bantargexpr)) in
       let _ = _print_debug (">rest: in targ ban-expr: "^(LIST.tostr SymCaml.expr2str " "banmvexpr)) in
       let _ = decl_wild s (restvar2()) banmvexpr in 
-      let _ = decl_wild s (restvar()) [bantargexpr] in
+      let _ = decl_wild s (restvar()) bantargexpr in
       (*determine input and output vars*)
       let outs,ins,locals = compute_vars s templs in
       (*create assignment*)
@@ -640,7 +640,8 @@ struct
         else
           (*the assigns are the hardware relations*)
           let asgns = SET.map locals (fun v -> gen_asgn v) in
-          OpN(Add,Symbol(restvar2())::rels)
+          (*OpN(Add,Symbol(restvar2())::rels)*)
+          OpN(Add,rels)
       in
       let _ = _print_debug ("ALLOWED VARS: "^(SET.tostr (g_subset s) a2sym "; ")) in
       let templ_expr = gen_overall_expr templs true in

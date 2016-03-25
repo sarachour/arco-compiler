@@ -9,12 +9,14 @@ type mutbl = {
   globals: (string, (sstep,slvr*gltbl) ssearch) map;
   (*partial solutions that are applied*)
   local: (unid*int) set;
+  mutable global: (string*int) option;
   (*the set of variables that are already solved*)
   mutable solved: unid set;
 }
 type mustep =
   | MSPartialApp of unid*int
   | MSSolveVar of unid
+  | MSGlobalApp of string*int  
 
 type musearch = {
   (*determine which solution of which variable to apply,

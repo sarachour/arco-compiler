@@ -54,6 +54,7 @@ end
 
 
 let canonicalize_sln (hw:hwenv) (s:sln) =
+  
   let newlabels = MAP.make () in
   let mklbl wire propmap =
     MAP.put newlabels wire propmap
@@ -85,6 +86,7 @@ let solve (hw:hwenv) (prob:menv) (out:string) =
     | Some(slns) ->
       let outp_sln sln i =
         (*canonicalize the solution*)
+        let sln = SlnLib.conc_sln sl sln in 
         let _ = canonicalize_sln hw sln in
         let _ = Printf.printf "===== Concretizing to Spice File ======\n" in
         let _ = try

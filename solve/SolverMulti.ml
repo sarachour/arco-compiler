@@ -41,26 +41,30 @@ struct
   let step2str x = match x with
     | MSSolveVar(id) -> "-var "^(UnivLib.unid2var id)
     | MSPartialApp(id,i) -> "#partial"^(UnivLib.unid2var id)^"."^(string_of_int i)
-
+    | MSGlobalApp(key,i) -> "#global "^(key)^"  : "^(string_of_int i)
 
   let apply_step (env:mutbl) (x:mustep) : mutbl =
     let _ = m_print_debug ("apply "^step2str x) in
     match x with
     | MSPartialApp(id,i) ->
-      let _ = SET.add env.local (id,i) in
+      let _ = SET.add env.local(id,i) in
       env
-
+    | MSGlobalApp(idkey,i) -> 
+      let _ = env.global <- Some(idkey,i) in 
+      env 
     | MSSolveVar(id) ->
       let _ = SET.add env.solved id in
       env
-
+    
   let unapply_step (env:mutbl) (x:mustep) : mutbl =
     let _ = m_print_debug ("unapply "^step2str x) in
     match x with
     | MSPartialApp(id,i) ->
       let _ = SET.rm env.local (id,i) in
       env
-
+    | MSGlobalApp(idkey,i) -> 
+      let _ = env.global <- None in
+      env
     | MSSolveVar(id) ->
       let _ = SET.rm env.solved id in
       env
@@ -302,40 +306,40 @@ struct
 
 
     (*normalize partial steps so there are no id conflicts *)
-    let build_partial_steps ms (ctx:sstep list) (id:unid) (i:int) : sstep list =
+    let build_partial_steps ms (ctx:sstep list) (tree_id:unid) (node_id:int) : sstep list =
       let idalloc : (unodeid,int set) map = MAP.make () in
       let idmapper : (unodeid*int,int) map = MAP.make () in
-      let proc_ctx s = match s with
+      let populate_id_allocator s = match s with
         | SSolUseNode(id,i) ->
-            let _ = if MAP.has idalloc id = false then
-              return (MAP.put idalloc id (SET.make_dflt ())) ()
-            in
-              return (SET.add (MAP.get idalloc id) i) ()
+            (*if we have allocated the following id, map it*)
+            if MAP.has idalloc id = false then
+              let _ = MAP.put idalloc id (SET.make_dflt ()) in
+              let _ = SET.add (MAP.get idalloc id) i in 
+              ()
+            else
+              let _ = SET.add (MAP.get idalloc id) i in
+              ()
         | _ -> ()
       in
-      let rec find_fresh allocs id =
-        if SET.has allocs id then
-          find_fresh allocs (id+1)
-        else
-          id
-      in
-      let has_mapping id i =
-        MAP.has idalloc id && SET.has (MAP.get idalloc id) i
-      in
-      let add_mapping id i = (*collision*)
-        if has_mapping id i then
-          let alloced = MAP.get idalloc id in
-          let fid = find_fresh alloced 0 in
-          if MAP.has idmapper (id,i) then
-            error "proc_lcl" "cannot use the same node multiple times"
-          else
-            return (MAP.put idmapper (id,i) fid) ()
-        else
-          return (MAP.put idmapper (id,i) i) ()
-      in
-      let proc_lcl s = match s with
+      let populate_id_mapper s = 
+        let rec find_fresh allocs id =
+                if SET.has allocs id then find_fresh allocs (id+1) else id
+        in
+        let add_mapping id inst = 
+                if MAP.has idalloc id && SET.has (MAP.get idalloc id) inst then
+                        let ninst = find_fresh (MAP.get idalloc id) 0 in
+                        if MAP.has idmapper (id,inst) then
+                                error "normalize_partial.populate_allocator" "cannot use the same node multiple times"
+                        else
+                                let _ = MAP.put idmapper (id,inst) ninst in
+                                ()
+                else      
+                        let _ = MAP.put idmapper (id,inst) inst in 
+                        ()
+        
+        in        
+        match s with
         | SSolUseNode(id,i) -> add_mapping id i
-        | SAddNodeRel(id,i,_) -> add_mapping id i
         | _ -> ()
       in
       let trans_wire (w:wireid) =
@@ -361,8 +365,7 @@ struct
       in
       let trans_lcl s = match s with
         | SSolUseNode(id,i) ->
-          let ni = MAP.get idmapper (id,i) in
-           SSolUseNode (id,ni)
+          let ni = MAP.get idmapper (id,i) in SSolUseNode (id,ni)
         | SSolAddConn(w1,w2) -> SSolAddConn(trans_wire w1, trans_wire w2)
         | SSolAddLabel(w,lbl,k) -> SSolAddLabel(trans_wire w,lbl,k)
         | SSolRemoveLabel(w,lbl,k) -> SSolRemoveLabel(trans_wire w,lbl,k)
@@ -374,12 +377,14 @@ struct
           let ni = MAP.get idmapper (n,i) in
           SAddNodeRel(n,ni,trans_urel rs)
       in
-      let psearch = MAP.get ms.state.partials id in
-      let lclnode = SearchLib.id2node psearch i in
-      let lclsteps = LIST.rev (SearchLib.get_path psearch lclnode) in
-      let _ = List.iter (fun x -> proc_ctx x) ctx in
-      let _ = List.iter (fun x -> proc_lcl x) lclsteps in
-      let nlcl = List.map (fun x -> trans_lcl x) lclsteps in
+      (*get the partial set*)
+      let psearch = MAP.get ms.state.partials tree_id in
+      let partial_node = SearchLib.id2node psearch node_id in
+      let partial_steps = LIST.rev (SearchLib.get_path psearch partial_node) in
+      (*populate the data structures for mapping*)
+      let _ = List.iter (fun x -> populate_id_allocator x) ctx in
+      let _ = List.iter (fun x -> populate_id_mapper x) partial_steps in
+      let new_partial_steps = List.map (fun x -> trans_lcl x) partial_steps in
       let _ = m_print_debug "=== Mappings ===" in
       let _ = MAP.iter idmapper (fun (uid,i) (fi) ->
         let  _ = m_print_debug (" "^(UnivLib.unodeid2name uid)^" "^(string_of_int i)^" -> "^(string_of_int fi)^"\n") in
@@ -389,9 +394,9 @@ struct
       let _ = List.iter (fun x ->
         let _ = m_print_debug ("  "^(SlvrSearchLib.step2str x)) in
         ()
-      ) nlcl in
+      ) new_partial_steps in
       let _ = m_print_debug "================" in
-      nlcl
+      new_partial_steps 
 
 
 
@@ -427,45 +432,22 @@ struct
 
 
   (*find a global solution, given the set of partials that have been applied*)
-  let find_global_solution (ms:musearch) (nsols:int)=
+  let find_global_solution (ms:musearch) (nsols:int) : sstep snode list option =
     let tbl = mk_global_tbl ms in
     (*find the global steps *)
     let depth = get_glbl_int "slvr-global-depth" in
-    let results = SolverEqn.solve ms.state.slvr tbl nsols depth in
+    let results : sstep snode list option = SolverEqn.solve ms.state.slvr tbl nsols depth in
     let root = OPTION.force_conc (SearchLib.root tbl.search) in
     let _ = SearchLib.clear_cursor tbl.search in
     results
 
-  let get_existing_global_solutions (ms:musearch) =
-    let handle_sln search (s:sstep snode) (tbl:gltbl) =
-      let _ = SearchLib.move_cursor search (ms.state.slvr,tbl) s in
-      let ss = tbl.sln in
-      ss
-    in
-    let handle_msln sln : sln list =
-      let _ = SearchLib.move_cursor ms.search ms.state sln in
-      let key = (set2key ms.state.local) in
-      let stree,snodes =
-        if MAP.has ms.state.globals key then
-          let _ = m_print_debug "found existing tree" in
-          let tree = MAP.get ms.state.globals key in
-          (tree,SearchLib.get_solutions tree None)
-        else
-          let _ = m_print_debug "find new tree" in
-          let slns = find_global_solution ms 1 in
-          let tree = MAP.get ms.state.globals key in
-          match slns with
-          | Some(s) -> (tree,s)
-          | None -> (tree,[])
-      in
-      let ptbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
-      let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str stree) in
-      let slns : sln list = List.fold_right (fun x r -> (handle_sln stree x ptbl)::r) snodes [] in
-      slns
-    in
-    let mslns = SearchLib.get_solutions ms.search None in
-    let slns = List.fold_right (fun x r -> (handle_msln x) @ r) mslns [] in
-    slns
+  let get_existing_global_solution (ms:musearch) (key:string) (id:int) : sln =
+    let gtree = MAP.get ms.state.globals key in
+    let ptbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in 
+    let _ = m_print_debug ("=> Global Solution: "^key^" :: "^(string_of_int id)) in 
+    let slnnode = SearchLib.id2node gtree id in 
+    let _ = SearchLib.move_cursor gtree (ms.state.slvr,ptbl) slnnode in  
+    ptbl.sln
 
   let mk_partial_tbl (ms:musearch) (id:unid) =
     (*make the current search state*)
@@ -527,29 +509,44 @@ struct
             SearchLib.add_step ms.search (MSSolveVar(lhs))
         | _ -> ()
       in
-      (*attempt to add a new solution*)
-      let add_solution (sln:sstep snode) =
+      let add_glbl_sln (par:mustep snode) (node:sstep snode)  = 
+        let key = (set2key ms.state.local) in
+        let ident = node.id in 
+        let _ = SearchLib.move_cursor ms.search ms.state par in 
+        let _ = SearchLib.start ms.search in 
+        let _ = SearchLib.add_step ms.search (MSGlobalApp(key,ident)) in 
+        let glbl_node = SearchLib.commit ms.search ms.state in 
+        let _ = SearchLib.move_cursor ms.search ms.state par in 
+        if get_unsolved_var ms = None then 
+                let _ = SearchLib.solution ms.search glbl_node in 
+                ()
+        else
+                ()
+      in
+      let add_lcl_sln (par:mustep snode) (node:sstep snode) pvar = 
         let partial = MAP.get ms.state.partials pvar in
         let _ = SearchLib.move_cursor ms.search ms.state curs in
         let _ = SearchLib.start ms.search in
         (*partial application of solution*)
-        let _ = (SearchLib.add_step ms.search (MSPartialApp(pvar,sln.id))) in
-        let _ = List.iter (fun x -> proc_step x) (SearchLib.get_path partial sln) in
+        let _ = (SearchLib.add_step ms.search (MSPartialApp(pvar,node.id))) in
+        let _ = List.iter (fun x -> proc_step x) (SearchLib.get_path partial node) in
         let pnode = SearchLib.commit ms.search ms.state in
         let _ = SearchLib.move_cursor ms.search ms.state pnode in
+        pnode
+      in
+      (*attempt to add a new solution*)
+      let add_solution (sln:sstep snode) =
         let _ = m_print_debug "== Finding Global Solution ==" in
         let _ = musr () in
+        let partial_node = add_lcl_sln curs sln pvar in 
         match find_global_solution ms 1 with
         | Some(slns) ->
-          let _ = m_print_debug (">> Found # Solutions: "^(string_of_int (List.length slns))) in
-          if get_unsolved_var ms = None then
-            let _ = SearchLib.solution ms.search pnode in
-            ()
-          else
-            ()
+          let _ = m_print_debug (">> Found # Global Solutions: "^(string_of_int (List.length slns))) in
+          let _ = List.iter (fun sln -> add_glbl_sln partial_node sln) slns in 
+          () 
         | None ->
           let _ = m_print_debug (">> Found NO Solutions") in
-          let _ = SearchLib.deadend ms.search pnode in
+          let _ = SearchLib.deadend ms.search partial_node in
           ()
       in
       match slns with
@@ -592,6 +589,11 @@ struct
 
     let msolve sl (ms:musearch) (nslns:int): (sln list) option =
       let mint,musr = mkmenu ms in
+      let _msolve_new id =
+          let res  = augment_with_new_partial_sln ms id 1 in
+          ()
+      in
+
       let rec _msolve () =
         let _msolve_next () =
           let _ = musr () in
@@ -607,55 +609,49 @@ struct
             let _ = SearchLib.move_cursor ms.search ms.state r in
             let _ = _msolve() in
             ()
-
         in
         let cnode = SearchLib.cursor ms.search in
-        let _msolve_new id =
-          let res  = augment_with_new_partial_sln ms id 1 in
-          if res <> None then
-            ()
-          else
-            let _ = SearchLib.deadend ms.search cnode in
-            ()
-        in
-        match get_unsolved_var ms with
-        (*no variables left, mark a sa solution*)
-        | None ->
-          if SearchLib.num_solutions ms.search None >= nslns then
-           let _ = m_print_debug "[search_tree] Found enough solutions" in
+        let cnumslns = SearchLib.num_solutions ms.search None in
+        let _ = m_print_debug ("# Found "^(string_of_int cnumslns)^", Required: "^(string_of_int nslns)) in 
+        if cnumslns >= nslns then
+           let _ = m_print_debug "[DONE] found enough solutions" in
            ()
-          else
-            let _ = m_print_debug ("need more solutions. find another solution") in
-            (*TODO: *)
-            let _ = _msolve () in
-            ()
-
-        | Some(id) ->
-          let _ = m_print_debug ("solving target: "^(UnivLib.unid2var id)) in
-          if SearchLib.is_exhausted ms.search None then
-            let _ = m_print_debug ("search tree is exhausted. adding new.") in
-            let _ = _msolve_new id in
-            let _ = _msolve_next () in
-            ()
-          else
-            let _ = m_print_debug ("search tree is not exhausted. adding existing:"^(UnivLib.unid2var id)) in
-            (*try and augment with existing partials*)
-            let _ = if augment_with_existing_partial_sln ms id = None then
-              _msolve_new id
-            in
-            let _ = _msolve_next () in
-            ()
-
+        else
+           match get_unsolved_var ms with
+           (*no variables left, mark a sa solution*)
+           | None ->
+                let _ = m_print_debug ("need more solutions. find another solution") in
+                let _ = _msolve () in
+                ()
+           | Some(id) ->
+                let _ = m_print_debug ("solving target: "^(UnivLib.unid2var id)) in
+                if SearchLib.is_exhausted ms.search None then
+                        let _ = m_print_debug ("search tree is exhausted. adding new.") in
+                        let _ = _msolve_new id in
+                        let _ = _msolve_next () in
+                        ()
+                else
+                        let _ = m_print_debug ("search tree is not exhausted. adding existing:"^(UnivLib.unid2var id)) in
+                        (*try and augment with existing partials*)
+                        let _ = if augment_with_existing_partial_sln ms id = None then
+                                _msolve_new id
+                        in
+                        let _ = _msolve_next () in
+                                ()
+        
       in
       let _ = _msolve () in
       let _ = m_print_debug "===== Getting Solutions =====" in
       let _ = musr () in
       let snodes = SearchLib.get_solutions ms.search None in
       let _ = m_print_debug ("Number of Solutions:"^(string_of_int (List.length  snodes))) in
-      let slns = List.fold_right (fun (x:mustep snode) (r:sln list) ->
+      let slns = List.fold_right (fun (x:mustep snode) (rest:sln list) ->
         let _ = SearchLib.move_cursor ms.search ms.state x in
-        let slns :sln list = get_existing_global_solutions ms in
-        slns @ r
+        match ms.state.global with 
+        | Some(gkey,gid) ->
+                let s :sln  = get_existing_global_solution ms gkey gid in
+                s::rest
+        | None -> rest
       ) snodes []
       in
       match slns with
@@ -677,6 +673,7 @@ struct
       partials = MAP.make ();
       globals = MAP.make ();
       local = SET.make_dflt ();
+      global = None;
       solved = SET.make_dflt ();
       slvr = slvr;
     } in

@@ -58,13 +58,29 @@ struct
     res
   *)
 
-  let mkconn_cons (v:slvr) (s:sln) =
+  let mkconn_cons (v:slvr) (s:sln) : bool =
     let res = HwConnRslvr.is_valid v s in
     res
 
-  let mklbl_cons (v:slvr) (s:sln) =
+  let mklbl_cons (v:slvr) (s:sln) : bool =
     let res = HwErrRslvr.is_valid v s in
     res
+  
+  let usecomp_cons (s:slvr) (sln:sln) : bool =
+    let prop id (lst,n) (r:bool) : bool =
+      let nuses = SET.size lst in
+      let maxuses = Shim.max4unodeid s id in
+      if maxuses >= nuses then
+        r
+      else
+        let _ = Printf.printf "# over limit: %s: %d %d\n"(UnivLib.unodeid2name id) nuses maxuses in
+        let _ = flush_all() in
+        false
+    in
+    let res = MAP.fold (sln.comps) prop true in
+    res
+
+
 
   let mkconn (sln:sln) (src:wireid) (snk:wireid) =
     let sinks = if MAP.has sln.conns src = false then
@@ -156,22 +172,7 @@ struct
     let _ = sln.comps <- MAP.put sln.comps id (SET.add l n,n+1) in
     n
 
-  let usecomp_cons (s:slvr) (sln:sln) : bool =
-    let prop id (lst,n) (r:bool) : bool =
-      let nuses = SET.size lst in
-      let maxuses = Shim.max4unodeid s id in
-      if maxuses >= nuses then
-        r
-      else
-        let _ = Printf.printf "# over limit: %s: %d %d\n"(UnivLib.unodeid2name id) nuses maxuses in
-        let _ = flush_all() in
-        false
-    in
-    let res = MAP.fold (sln.comps) prop true in
-    res
-
-
-
+  
   let usecomp_valid (s:slvr) (sln:sln) id : bool =
     if MAP.has sln.comps id = false
       then error "usecomp_valid" ("does not exist in solution: "^(UnivLib.unodeid2name id))
@@ -193,6 +194,42 @@ struct
     let n = if i >= n then i+1 else n in
     let _ = SET.rm lst i in
     s.comps <- MAP.put s.comps id (lst,n)
+
+  let conc_sln (v:slvr) (s:sln) : sln =
+    let mappings : (string*int,string*int) map = HwConnRslvr.get_sln v s in
+    let comp_map : (unodeid,(int set)*int) map = MAP.make() in 
+    let label_map : (wireid, (string,label set) map) map = MAP.make() in 
+    let conn_map : (wireid,wireid set) map= MAP.make () in 
+    let u2str u = UnivLib.unodeid2name u in
+    let conc_wire (w:wireid) :wireid = 
+        let c,i,p = w in
+        let _,ni = MAP.get mappings (u2str c, i) in
+       (c,ni,p)
+    in 
+    (*used concretized versions of comps*)
+    let _ = MAP.iter s.comps (fun (comp) (insts,maxval) ->
+        let inst_set : int set= SET.make_dflt () in 
+        let _ = SET.iter insts (fun (inst:int) -> 
+                let _,ninst = MAP.get mappings (u2str comp,inst) in 
+                let _ = SET.add inst_set ninst in
+                ()
+        ) in
+        let _ = MAP.put comp_map comp (inst_set,maxval) in 
+        ()
+    ) in
+    let _ = MAP.iter s.labels (fun wire props ->
+        let nwire = conc_wire wire in
+        let _ = MAP.put label_map nwire props in 
+        ()
+    ) in  
+    let _ = MAP.iter s.conns (fun src snks ->
+        let nsrc = conc_wire src in
+        let nsnks = SET.from_list (SET.map snks (fun snk -> conc_wire snk)) in 
+        let _ = MAP.put conn_map nsrc nsnks in
+        ()
+    ) in
+    {comps=comp_map;labels=label_map;conns=conn_map}
+
 
   let repr2buf fb (s:sln) : unit =
     let os x = let _ = output_string fb x in () in
