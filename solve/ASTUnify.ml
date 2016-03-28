@@ -647,7 +647,11 @@ struct
       let templ_expr = gen_overall_expr templs true in
       let targ_expr = gen_overall_expr targs false in
       let _ = _print_debug ("#unify <"^(a2sym targvar)^">\n  templ:\n"^(SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n") in
-      let maybe_assigns = SymCaml.pattern (g_sym s.tbl) targ_expr templ_expr in
+      
+      let maybe_assigns = try 
+              SymCaml.pattern (g_sym s.tbl) targ_expr templ_expr 
+              with PyCamlWrapperException(_) -> None 
+      in
       match maybe_assigns with
       | Some(assigns) ->
         let assigns,solved,remaining = assigns2state s templs targs  assigns in
