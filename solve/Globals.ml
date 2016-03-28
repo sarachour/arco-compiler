@@ -9,6 +9,9 @@ type glblprop = GlblPropInt of int
 
 let glbls : (string,glblprop) map = MAP.make ();;
 
+let _ = MAP.put glbls "downgrade-trivial" (GlblPropBool false)
+let _ = MAP.put glbls "downgrade-trivial-global" (GlblPropBool true)
+let _ = MAP.put glbls "downgrade-trivial-partial" (GlblPropBool false)
 let _ = MAP.put glbls "interactive" (GlblPropInt 0)
 let _ = MAP.put glbls "debug" (GlblPropInt 0)
 
@@ -70,6 +73,8 @@ let get_glbl_string key =
   | GlblPropString(i) -> i
   | _ -> error "get_glbl_int" "unexpected property type with name. Expected int"
 
+let set_glbl_bool key v =
+        upd_glbl key (GlblPropBool v)
 
 let get_glbls () =
   glbls

@@ -436,6 +436,7 @@ struct
     let tbl = mk_global_tbl ms in
     (*find the global steps *)
     let depth = get_glbl_int "slvr-global-depth" in
+    let _ = set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-global") in
     let results : sstep snode list option = SolverEqn.solve ms.state.slvr tbl nsols depth in
     let root = OPTION.force_conc (SearchLib.root tbl.search) in
     let _ = SearchLib.clear_cursor tbl.search in
@@ -481,6 +482,7 @@ struct
     let is_new q = List.length (LIST.filter (fun x -> q.id = x.id) orig) = 0 in
     let _ = m_print_debug "find a partial solution" in
     let depth = get_glbl_int "slvr-partial-depth" in
+    let _ = set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-partial") in
     let _ = m_print_debug "== Finding Local Solution ==" in
     let _ = m_print_debug ("== # Current: "^(string_of_int currsols)) in
     let _ = m_print_debug ("== # New: "^(string_of_int nslns)) in
@@ -537,8 +539,8 @@ struct
       (*attempt to add a new solution*)
       let add_solution (sln:sstep snode) =
         let _ = m_print_debug "== Finding Global Solution ==" in
-        let _ = musr () in
         let partial_node = add_lcl_sln curs sln pvar in 
+        let _ = musr () in
         match find_global_solution ms 1 with
         | Some(slns) ->
           let _ = m_print_debug (">> Found # Global Solutions: "^(string_of_int (List.length slns))) in

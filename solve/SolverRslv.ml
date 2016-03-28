@@ -149,6 +149,7 @@ struct
     let cstr_conns  = cfg.hw.cstr.conns in
     let sol_cmps : (unodeid,(int set)*int) map = sol.comps in
     let cstr_cmps : (string,hcinst) map= cfg.hw.cstr.insts in
+    (*declare solution and constraint variables*)
     let _ = MAP.iter sol_cmps (fun k (v,cnt) -> if SET.size v = 0 then () else SET.iter v (fun x  -> declvar km (UnivLib.unodeid2name k) x false) ) in
     let _ = MAP.iter cstr_cmps (fun k q -> List.iter (fun x -> declvar km k x true) (LIST.mkrange 0 (q)  ) ) in
     (*decl conns helper routine*)

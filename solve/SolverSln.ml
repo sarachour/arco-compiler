@@ -187,7 +187,8 @@ struct
       let _ = mkcomp s id in () else () in
     let lst,n = MAP.get s.comps id in
     let lst = SET.add lst i in
-    s.comps <- MAP.put s.comps id (lst,n)
+    let new_n = MATH.max (i+1) n in 
+    s.comps <- MAP.put s.comps id (lst,new_n)
 
   let usecomp_unmark (s:sln) id (i:int) =
     let lst,n = MAP.get s.comps id in

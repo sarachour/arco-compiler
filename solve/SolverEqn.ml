@@ -342,7 +342,8 @@ struct
   (*solve a goal*)
 
   let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
-    let solve_goal (g:goal) =
+   let downgrade_enable = get_glbl_bool "downgrade-trivial" in 
+   let solve_goal (g:goal) =
       let curr = SearchLib.cursor v.search in
       let mint,musr = mkmenu s v (Some g) in
       let _ = mint "g" in
@@ -378,12 +379,14 @@ struct
           ()
         else
           (*this trivial resolution does not work*)
-          let _ = _print_debug "[search_tree] trivial solution is invalid. downgrade." in
           let _ = SearchLib.deadend v.search triv in
+          let _ = _print_debug "[search_tree] FAILURE trivial solution not resolved." in
           (*downgrade goal*)
-          (*let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
+          (*
+          let _ = _print_debug "[search_tree] trivial solution is invalid. downgrade." in
+          let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
           let downgrade_triv = mknode ([SRemoveGoal g; SAddGoal gnt]) curr in
-          *)
+          *)      
           let _ = musr () in
           ()
 

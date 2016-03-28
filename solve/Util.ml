@@ -94,6 +94,8 @@ end
 
 module MATH =
 struct
+  let max x y = 
+          if x < y then y else x
 
   let round x : float =
     let v = snd (modf (x +. copysign 0.5 x)) in
