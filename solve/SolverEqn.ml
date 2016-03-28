@@ -112,7 +112,8 @@ struct
 
 
   let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (iid:int option) : int option =
-    if feasible_component_goal_combo s g node_id = false then
+    
+    if get_glbl_bool "test-component-reachability" && feasible_component_goal_combo s g node_id = false then
       None
     else
     let rel2info (rel:urel) : unid rarg =
@@ -382,11 +383,12 @@ struct
           let _ = SearchLib.deadend v.search triv in
           let _ = _print_debug "[search_tree] FAILURE trivial solution not resolved." in
           (*downgrade goal*)
-          (*
-          let _ = _print_debug "[search_tree] trivial solution is invalid. downgrade." in
-          let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
-          let downgrade_triv = mknode ([SRemoveGoal g; SAddGoal gnt]) curr in
-          *)      
+          let _ = if downgrade_enable then 
+                let _ = _print_debug "[search_tree] Relaxed resolution mode enabled. Downgrading solution." in
+                let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
+                let downgrade_triv = mknode ([SRemoveGoal g; SAddGoal gnt]) curr in
+                ()
+          in
           let _ = musr () in
           ()
 

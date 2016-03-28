@@ -9,6 +9,7 @@ type glblprop = GlblPropInt of int
 
 let glbls : (string,glblprop) map = MAP.make ();;
 
+let _ = MAP.put glbls "test-component-reachability" (GlblPropBool false)
 let _ = MAP.put glbls "downgrade-trivial" (GlblPropBool false)
 let _ = MAP.put glbls "downgrade-trivial-global" (GlblPropBool true)
 let _ = MAP.put glbls "downgrade-trivial-partial" (GlblPropBool false)

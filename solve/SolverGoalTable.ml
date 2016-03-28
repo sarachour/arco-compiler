@@ -24,6 +24,11 @@ open SolverSln
 open SolverSearch
 
 
+exception GoalTableError of string
+
+let error n m = raise (GoalTableError (n^":"^m))
+
+
 module GoalTableLib =
 struct
 
