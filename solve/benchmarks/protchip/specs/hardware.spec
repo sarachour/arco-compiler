@@ -198,12 +198,12 @@ schematic
 
   conn emb.Ctot -> addi
   conn addi -> output(I)
-  %conn emb.Ctot -> output(I)
+  conn emb.Ctot -> output(I)
 
-  %conn addi.O -> emb.Cfree
-  %conn addi.O -> emb.Cprod
-  %conn addi.O -> emb.Cdeg
-  %conn addi.O -> emb.Ctot_in
+  conn addi.O -> emb.Cfree
+  conn addi.O -> emb.Cprod
+  conn addi.O -> emb.Cdeg
+  conn addi.O -> emb.Ctot_in
 
 
 end

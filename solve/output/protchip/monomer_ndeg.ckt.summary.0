@@ -1,0 +1,30 @@
+Comps:
+
+addi | 0 = []
+digiswitch | 0 = []
+gnd | 0 = []
+input.I | 3 = [173,19,18]
+input.D | 1 = [19]
+emb | 1 = [1]
+output.I | 1 = [14]
+
+Conns:
+emb[1].Btot->input.I[173].O
+emb[1].Ctot->output.I[14].X
+
+Labels:
+I(emb[1].Ctot): bind Adimer : output
+I(emb[1].ratC): bind 0 : input
+I(emb[1].kr1): bind Amonomer : input
+I(emb[1].Cprod): bind Amonomer : input
+D(emb[1].B_SW): bind 0 : input
+I(emb[1].Cdeg): bind 10 : input
+I(input.I[18].O): bind 0 : input
+D(emb[1].A_SW): bind 0 : input
+I(input.I[173].O): bind 10 : input
+I(input.I[19].O): bind 0 : input
+I(output.I[14].X): bind Adimer : output
+I(emb[1].Atot): bind 0 : input
+D(input.D[19].O): bind 0 : input
+I(emb[1].kr2): bind Adimer : input
+
