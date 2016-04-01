@@ -90,7 +90,7 @@ struct
                 ) ""
         in
         let slved : string = 
-                LIST.fold a.solved (fun x rest -> rest^" "^(tostr x)) " "
+                LIST.fold a.solved (fun (x,y) rest -> rest^" "^(tostr x)^"="^(ASTLib.ast2str y tostr)) " "
         in
         assgn^unused^slved
   
@@ -537,10 +537,10 @@ struct
        let nexp = SymCaml.subs (g_sym s.tbl) exp repls in 
        nexp     
     in
-    let extract_lhses ast =
-      let _extract (node:a ast) vlst: a list =
+    let extract_exprs ast =
+      let _extract (node:a ast) vlst: (a*a ast) list =
         match node with
-        | OpN(Func(_), Term(lhs)::t) -> (lhs::vlst)
+        | OpN(Func(_), [Term(lhs);rhs]) -> ((lhs,rhs)::vlst)
         | _ -> vlst
       in
       ASTLib.fold ast _extract []
@@ -548,14 +548,14 @@ struct
     let _ = _print_debug "<!> found assigns" in
     let assign_map = MAP.make () in
     let rest = SET.make_dflt () in
-    let solved_targs = SET.from_list (MAP.keys targs) in 
+    let solved_targs = SET.from_list (MAP.to_list targs) in 
     let unused_templ_vars = SET.from_list (MAP.keys templs) in 
     let _ = List.iter (fun ((l,r):symvar*symexpr) ->
         if is_rest l then
                 (*determine the rest variables*)
                 let ar : a ast = ASTLib.from_symcaml (clean_rest_var r) sym2a in
                 let _ = _print_debug ("templ-rest-expr: "^(ASTLib.ast2str ar a2sym)) in
-                let ignored = extract_lhses ar in
+                let ignored = extract_exprs ar in
                 (*let _ = List.iter (fun x -> return (SET.add rest x) ()) ignored in*)
                 let _ = List.iter (fun x -> return (SET.rm solved_targs x) ()) ignored in
                 ()
@@ -563,7 +563,7 @@ struct
                 let ar : a ast = ASTLib.from_symcaml (clean_rest_var r) sym2a in 
                 let _ = _print_debug ("targ-rest-expr: "^(ASTLib.ast2str ar a2sym)) in 
                 ()
-      else
+        else
                 let alhs : a = sym2a l in
                 let _ = SET.rm unused_templ_vars alhs in 
                 let arhs : a ast = ASTLib.from_symcaml r sym2a in
@@ -576,7 +576,7 @@ struct
         let nrhs : a ast = ASTLib.sub rhs assign_map in
         (vr, nrhs)   
     ) in
-    let _ = SET.iter solved_targs (fun x -> _print_debug ("solved:"^(a2sym x))) in
+    let _ = SET.iter solved_targs (fun (x,y) -> _print_debug ("solved:"^(a2sym x)^(ASTLib.ast2str y a2sym))) in
     let _ = List.iter (fun (lhs,rhs) -> _print_debug ("unused-templ:"^(a2sym lhs))) unused_templs in
     let _ = MAP.iter assign_map (fun k v -> _print_debug ("assign: "^(a2sym k)^" = "^(ASTLib.ast2str v a2sym))) in
     let _ = _print_debug "--------------------\n" in
@@ -587,7 +587,7 @@ struct
 
 
   (*unify the two components*)
-  let unify (type a) (s:a runify) (templs:(a, a ast) map) (targs:(a,a ast) map) (targvar:a) : (((a,a ast) map)*(a set)*((a*a ast) list)) option =
+  let unify (type a) (s:a runify) (templs:(a, a ast) map) (targs:(a,a ast) map) (targvar:a) : (((a,a ast) map)*((a*a ast) list)*((a*a ast) list)) option =
       let sym2a : symvar -> a = g_iconv s.tbl in
       let a2sym : a -> symvar = g_conv s.tbl in
       let tolhsexpr lh : symexpr =
@@ -656,15 +656,15 @@ struct
       match maybe_assigns with
       | Some(assigns) ->
         let assigns,solved,remaining = assigns2state s templs targs  assigns in
-        Some(assigns,solved,remaining)
+        Some(assigns,SET.to_list solved,remaining)
       | None ->
         let _ = _print_debug "no assigns found" in
         None
 
-  let add_assignment_node (type a) (s:a runify) curs (assigns:(a,a ast) map) (solved: a set) (unused:(a*(a ast)) list) =
+  let add_assignment_node (type a) (s:a runify) curs (assigns:(a,a ast) map) (solved: (a*a ast) list) (unused:(a*(a ast)) list) =
     let _ = SearchLib.move_cursor s.search s.tbl curs in
     let _ = SearchLib.start s.search in
-    let _ = SearchLib.add_step s.search (RSetState(mkstate assigns (SET.to_list solved) unused)) in
+    let _ = SearchLib.add_step s.search (RSetState(mkstate assigns solved unused)) in
     let node = SearchLib.commit s.search s.tbl in
     let _ = SearchLib.solution s.search node in
     ()
@@ -677,7 +677,7 @@ struct
     let proc_one () =
       match unify s templs targs tvar with
       | Some(assigns,solved,unused) ->
-        if SET.empty solved then () else
+        if LIST.empty solved then () else
         let _ = add_restrictions s curs assigns in
         let _ = add_assignment_node s curs assigns solved unused in
         ()
@@ -750,7 +750,7 @@ struct
       let state = OPTION.force_conc s.tbl.st.state in
       let arr = [] in
       let arr = MAP.fold state.assigns (fun lhs rhs q -> USAssign(lhs,rhs)::q)  arr in
-      let arr = LIST.fold state.solved (fun lhs q -> USRmGoal(lhs)::q) arr in 
+      let arr = LIST.fold state.solved (fun (lhs,rhs) q -> USRmGoal(lhs,rhs)::q) arr in 
       let arr = LIST.fold state.unused (fun (lhs,rhs) q -> USAddRel(lhs,rhs)::q) arr in 
       arr
       (*add all assignments in fusion.*)
@@ -770,7 +770,7 @@ struct
 
   let print_fuse (type a) (tostr:a->string) (f:a fuse) = match f with
     | USAddRel(lhs,rhs) -> "add rel "^(tostr lhs)^" = "^(ASTLib.ast2str rhs tostr)    
-    | USRmGoal(vr) -> "rm goal "^(tostr vr)    
+    | USRmGoal(vr,rhs) -> "rm goal "^(tostr vr) ^" = "^(ASTLib.ast2str rhs tostr)       
     | USAssign(lhs,rhs) -> "assign "^(tostr lhs)^" = "^(ASTLib.ast2str rhs tostr)
 
   let print_fusion (type a) (indent:int) (tostr:a->string) (f:a fusion) : string=

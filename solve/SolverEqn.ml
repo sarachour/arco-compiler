@@ -137,13 +137,15 @@ struct
           let _ = _print_debug ("<@> Add Partially Concretized Relation: "^(UnivLib.urel2str rel)) in
           [SAddNodeRel(node_id,inst,rel)]
 
-        | USRmGoal(vr) ->
-          let _ = _print_debug ("<@> Remove Goal: "^(UnivLib.unid2str vr)) in
-          let goal = GoalTableLib.get_goal_from_var gtbl vr in
+        | USRmGoal(vr,rhs) ->
+          let _ = _print_debug ("<@> Remove Goal: "^(UnivLib.unid2str vr)^(UnivLib.uast2str rhs)) in
+          let goal = GoalTableLib.get_goal_from_rel gtbl vr rhs in
           begin
           match goal with
             | Some(goal) -> [SRemoveGoal(goal)]
-            | None -> []
+            | None -> 
+               let _ = _print_debug "<@> warning... goal listed in fuse not found" in 
+               []
           end
 
         | USAssign(lhs,rhs) ->

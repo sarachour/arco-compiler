@@ -40,6 +40,19 @@ struct
   let has_partial_comp = GoalStubLib.has_partial_comp
   let get_partial_comp = GoalStubLib.get_partial_comp
 
+  let get_goal_from_rel (t:gltbl) (clhs:unid) (crhs:unid ast): goal option =
+    let is_var (x:goal) = match unwrap_goal x with
+      |UFunction(lhs,rhs) -> clhs = lhs && crhs = rhs
+      |UState(lhs,rhs,_,_) -> clhs = lhs && crhs = rhs
+    in
+    match SET.filter t.goals (fun x -> is_var x ) with
+    | [h] -> Some(h)
+    | [] -> None
+    | lst -> 
+        let goal_str = LIST.fold lst (fun el str -> str^"\n "^(UnivLib.goal2str el) ) "" in 
+        error "get_goal_from_var" ("multiple goals with the same identifier: "^goal_str)
+
+
   let get_goal_from_var (t:gltbl) (vr:unid) : goal option =
     let is_var (x:goal) (v:unid) = match unwrap_goal x with
       |UFunction(lhs,rhs) -> v = lhs
@@ -49,8 +62,8 @@ struct
     | [h] -> Some(h)
     | [] -> None
     | lst -> 
-        let goal_str = LIST.fold lst (fun el str -> str^"\n"^(UnivLib.goal2str el) ) "" in 
-        error "get_goal_from_var" ("multiple goals with the same identifier:\n"^goal_str)
+        let goal_str = LIST.fold lst (fun el str -> str^"\n "^(UnivLib.goal2str el) ) "" in 
+        error "get_goal_from_var" ("multiple goals with the same identifier: "^goal_str)
 
   let get_actionable_goals (t:gltbl) =
     let act = SET.filter t.goals (fun x -> SET.has t.blacklist x = false) in

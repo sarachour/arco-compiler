@@ -13,7 +13,7 @@ type unifytype = UTypTempl| UTypTarg
 type 'a fuse =
   | USAssign of 'a*('a ast)
   (*remove solved targets*)
-  | USRmGoal of 'a
+  | USRmGoal of 'a*('a ast)
   (*add partially resolved goal*)
   | USAddRel of 'a*('a ast)
 
@@ -32,7 +32,7 @@ fill in a templ var: fill in a template variable
 
 type 'a asgn_state  = {
         mutable assigns: ('a, 'a ast) map;
-        mutable solved: 'a list;
+        mutable solved: ('a*'a ast) list;
         mutable unused: ('a*('a ast)) list;
 }
 
