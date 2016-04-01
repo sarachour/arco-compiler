@@ -62,7 +62,7 @@ struct
     s.targ
   else
     s.templ
-
+  
   let g_sym s = s.env.s
   let g_conv s = s.env.cnv
   let g_iconv s = s.env.icnv
@@ -251,7 +251,7 @@ struct
 
   (*make search tree*)
   let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
-    (cnv:a->symvar) (icnv:symvar -> a) (freshvar:int->unifytype->a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
+    (is_wc: a->bool) (cnv:a->symvar) (icnv:symvar -> a) (freshvar:int->unifytype->a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
     (*make the data for each variable*)
     let mkdata ifo relinfo =
       let lhs,rhs,knd = relinfo in
@@ -284,6 +284,7 @@ struct
       cnv= cnv;
       icnv= icnv;
       freshvar = freshvar;
+      is_wc = is_wc;
     } in
     (*make the dependency tree*)
     let tmpl_info =  mkinfo() in
@@ -453,7 +454,7 @@ struct
     let scratch_targ = MAP.make () and scratch_templ = MAP.make () in
     let sym_vars = SET.make_dflt () and wc_vars = SET.make_dflt () in
     let add_vars lhs (rhs:a ast) (iswc:bool)=
-      let addvar q = if iswc
+      let addvar q = if iswc && (s.tbl.env).is_wc q
         then add_wild wc_vars q
         else add_sym sym_vars q
       in
@@ -786,12 +787,12 @@ struct
   (*given colored set of equations, match them*)
   let multipattern (type a)
     (tmpl: (a rarg) list) (targ: (a rarg) list) (targvar:a) (n:int)
-    (cnv:a->symvar) (icnv:symvar -> a)
+    (iswc:a->bool) (cnv:a->symvar) (icnv:symvar -> a)
     (freshvar:int->unifytype->a)
     (tostr:a->string)
      =
     (*make the search tree*)
-    let root,smeta = mksearch tmpl targ cnv icnv freshvar tostr in
+    let root,smeta = mksearch tmpl targ iswc cnv icnv freshvar tostr in
     (*build a tree for the particular set of goals*)
     let _ = build_tree smeta root (Some targvar) in
     (*let _ = build_tree smeta root (None) in*)

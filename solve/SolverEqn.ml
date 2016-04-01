@@ -133,12 +133,12 @@ struct
     let add_fuse (f:unid fuse) inst : unit =
       let steps : sstep list = match f with
         | USAddRel(lhs,rhs) ->
-          let _ = _print_debug "<@> Add Partially Concretized Relation" in
           let rel = mkfxn inst lhs rhs (fun l r -> UFunction(l,r)) in
+          let _ = _print_debug ("<@> Add Partially Concretized Relation: "^(UnivLib.urel2str rel)) in
           [SAddNodeRel(node_id,inst,rel)]
 
         | USRmGoal(vr) ->
-          let _ = _print_debug "<@> Remove Goal" in
+          let _ = _print_debug ("<@> Remove Goal: "^(UnivLib.unid2str vr)) in
           let goal = GoalTableLib.get_goal_from_var gtbl vr in
           begin
           match goal with
@@ -147,8 +147,8 @@ struct
           end
 
         | USAssign(lhs,rhs) ->
-          let _ = _print_debug "<@> Add Assignment" in
           let rel = mkfxn inst lhs rhs (fun l r -> UFunction(l,r)) in
+          let _ = _print_debug ("<@> Add Assignment: "^(UnivLib.urel2str rel)) in
           let goal = GoalTableLib.wrap_goal gtbl rel in
           [SAddGoal(goal)]
       in
@@ -198,6 +198,10 @@ struct
           in
           Some(node,inst_id,curs,cleanup)
     in
+    let testwc v = match v with 
+    | MathId(_) -> false
+    | _ -> true
+    in
     match comp_info with
     | Some(node,iid, comp_cursor,cleanup) ->
       (*use node*)
@@ -212,6 +216,7 @@ struct
         let nunify = Globals.get_glbl_int "eqn-unifications" in
         let slns : (unid fusion) set =
           ASTUnifier.multipattern templ targ vgl nunify
+          (testwc)
           (UnivLib.unid2var)
           (UnivLib.var2unid (s))
           freshvar

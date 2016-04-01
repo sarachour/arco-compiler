@@ -165,6 +165,10 @@ struct
         ()
     else
       ()
+ 
+  let n_used (sln:sln) = 
+          let x : int = MAP.fold sln.comps (fun k (cset,n) r -> r + (SET.size cset)  ) 0 in
+          x
 
   let usecomp (sln:sln) id =
     if MAP.has sln.comps id = false then error "usecomp" ("the following doesn't exist:"^UnivLib.unodeid2name id) else
@@ -182,9 +186,12 @@ struct
         let maxuses = Shim.max4unodeid s id in
         if maxuses > nuses then true else false
 
+
   let usecomp_mark (s:sln) id (i:int) =
-    let _ = if MAP.has s.comps id = false then
-      let _ = mkcomp s id in () else () in
+    let _ = if MAP.has s.comps id = false 
+      then let _ = mkcomp s id in () 
+      else () 
+    in
     let lst,n = MAP.get s.comps id in
     let lst = SET.add lst i in
     let new_n = MATH.max (i+1) n in 

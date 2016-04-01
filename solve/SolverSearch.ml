@@ -17,11 +17,12 @@ struct
 
   higher score is better
   *)
-
+  let triv_cost = 0.01;;
+  
   let score_goal_complexity ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let score_goal (g:goal) =
       let r : urel = GoalStubLib.unwrap_goal g in
-      if GoalStubLib.is_trivial tbl r then 0.05 else
+      if GoalStubLib.is_trivial tbl r then triv_cost else
         let cplx = (UnivLib.goal2complexity r) in
         let score = cplx in
         score
@@ -31,11 +32,17 @@ struct
     let state = -.pscore in
     let delta = 0. in
     SearchLib.mkscore state delta
+  
+  let score_goal_complexity_and_comps_used ((slvenv,tbl):slvr*gltbl) (s:sstep list) = 
+        let base = score_goal_complexity (slvenv,tbl) s  in 
+        let comps_used = SlnLib.n_used tbl.sln in 
+        let newstate = base.state +. (float_of_int comps_used)*.0.5 in
+        SearchLib.mkscore newstate (base.delta+.0.2)
 
   let score_goal_complexity_and_depth ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let score_goal (g:goal) =
       let r : urel = GoalStubLib.unwrap_goal g in
-      if GoalStubLib.is_trivial tbl r then 0.05 else
+      if GoalStubLib.is_trivial tbl r then triv_cost  else
         let cplx = (UnivLib.goal2complexity r) in
         let score = cplx in
         score
@@ -84,6 +91,7 @@ struct
     | "ngoals" -> score_ngoals
     | "goal-complexity" -> score_goal_complexity
     | "goal-complexity-and-depth" -> score_goal_complexity_and_depth
+    | "goal-complexity-and-used-comps" -> score_goal_complexity_and_comps_used
     | _ ->
       error "best_path_function" "path selector doesn't exist"
 

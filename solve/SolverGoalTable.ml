@@ -48,7 +48,7 @@ struct
     match SET.filter t.goals (fun x -> is_var x vr) with
     | [h] -> Some(h)
     | [] -> None
-    | _ -> error "get_goal_from_var" "impossible"
+    | _ -> error "get_goal_from_var" "multiple goals with the same identifier"
 
   let get_actionable_goals (t:gltbl) =
     let act = SET.filter t.goals (fun x -> SET.has t.blacklist x = false) in
