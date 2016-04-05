@@ -540,7 +540,10 @@ struct
     let extract_exprs ast =
       let _extract (node:a ast) vlst: (a*a ast) list =
         match node with
-        | OpN(Func(_), [Term(lhs);rhs]) -> ((lhs,rhs)::vlst)
+        | OpN(Func("F"), [OpN(Func("LHS"),[Term(lhs)]);rhs]) -> 
+            ((lhs,rhs)::vlst)
+        | OpN(Func("DF"), [OpN(Func("LHS"),[Term(lhs)]);rhs]) -> 
+            ((lhs,rhs)::vlst)
         | _ -> vlst
       in
       ASTLib.fold ast _extract []
@@ -548,7 +551,7 @@ struct
     let _ = _print_debug "<!> found assigns" in
     let assign_map = MAP.make () in
     let rest = SET.make_dflt () in
-    let solved_targs = SET.from_list (MAP.to_list targs) in 
+    let solved_targ_map = MAP.copy targs in 
     let unused_templ_vars = SET.from_list (MAP.keys templs) in 
     let _ = List.iter (fun ((l,r):symvar*symexpr) ->
         if is_rest l then
@@ -557,7 +560,7 @@ struct
                 let _ = _print_debug ("templ-rest-expr: "^(ASTLib.ast2str ar a2sym)) in
                 let ignored = extract_exprs ar in
                 (*let _ = List.iter (fun x -> return (SET.add rest x) ()) ignored in*)
-                let _ = List.iter (fun x -> return (SET.rm solved_targs x) ()) ignored in
+                let _ = List.iter (fun (x,rhs) -> return (MAP.rm solved_targ_map x) ()) ignored in
                 ()
         else if is_rest2 l then
                 let ar : a ast = ASTLib.from_symcaml (clean_rest_var r) sym2a in 
@@ -576,6 +579,7 @@ struct
         let nrhs : a ast = ASTLib.sub rhs assign_map in
         (vr, nrhs)   
     ) in
+    let solved_targs = SET.from_list (MAP.to_list solved_targ_map) in 
     let _ = SET.iter solved_targs (fun (x,y) -> _print_debug ("solved:"^(a2sym x)^(ASTLib.ast2str y a2sym))) in
     let _ = List.iter (fun (lhs,rhs) -> _print_debug ("unused-templ:"^(a2sym lhs))) unused_templs in
     let _ = MAP.iter assign_map (fun k v -> _print_debug ("assign: "^(a2sym k)^" = "^(ASTLib.ast2str v a2sym))) in
