@@ -25,6 +25,8 @@ let _ = MAP.put glbls "uast-restrict-fraction-set-prop" (GlblPropFloat 2.0)
 let _ = MAP.put glbls "uast-restrict-fraction-ban-prop" (GlblPropFloat 0.50)
 let _ = MAP.put glbls
 
+let _ = MAP.put glbls "multi-force-value-to-port" (GlblPropBool true)
+
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
 let _ = MAP.put glbls "eqn-selector-branch" (GlblPropString "uniform")
 let _ = MAP.put glbls "eqn-selector-goal" (GlblPropString "uniform")

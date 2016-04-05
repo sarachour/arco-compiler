@@ -262,14 +262,17 @@ struct
         let ihwid = UnivLib.lclid2glblid inst_id (HwId ihwid) in
         let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
         let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
+        let valbind = if get_global_bool "multi-force-value-to-port" = true then 
+            [SAddGoal(NonTrivialGoal (UFunction(whwid,ohwid)))]
+          else
+            [SAddGoal(NonTrivialGoal (UFunction(whwid,vv)))]
+        in
         let vv = valassign2ast wlabel in
-        let steps= [
+        let steps= valbind @ [
           SSolUseNode(cmpid,inst_id);
           SAddNodeRel(cmpid,inst_id,UFunction(ohwid,vv));
-          (*add the nontrivialgoal*)
-          SAddGoal(NonTrivialGoal (UFunction(whwid,vv)));
           (*label of var*)
-          SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);
+          (*SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);*)
           SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
         ] in
         steps @ rest
