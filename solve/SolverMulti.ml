@@ -32,7 +32,7 @@ let error n m = raise (SolverMultiError (n^":"^m))
 
 
 
-let m_print_debug : string -> unit = print_debug 1 "multi"
+let _print_debug : string -> unit = print_debug 1 "multi"
 let m_menu = menu 1
 let m_print_inter = print_inter 1
 
@@ -44,7 +44,7 @@ struct
     | MSGlobalApp(key,i) -> "#global "^(key)^"  : "^(string_of_int i)
 
   let apply_step (env:mutbl) (x:mustep) : mutbl =
-    let _ = m_print_debug ("apply "^step2str x) in
+    let _ = _print_debug ("apply "^step2str x) in
     match x with
     | MSPartialApp(id,i) ->
       let _ = SET.add env.local(id,i) in
@@ -57,7 +57,7 @@ struct
       env
     
   let unapply_step (env:mutbl) (x:mustep) : mutbl =
-    let _ = m_print_debug ("unapply "^step2str x) in
+    let _ = _print_debug ("unapply "^step2str x) in
     match x with
     | MSPartialApp(id,i) ->
       let _ = SET.rm env.local (id,i) in
@@ -167,7 +167,7 @@ struct
       let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
       match olabels with
       | [(owire,oprop,olabel)] ->
-        let _ = m_print_debug "noted! we found an output label. Let's connect all inputs." in
+        let _ = _print_debug ("local variable "^name^" is tagged on an output wire. Let's connect it to all inputs.") in
         let ohwid = UnivLib.wire2uid hwenv owire oprop in
         let omid = UnivLib.label2uid olabel in
         (*lets create goals for the tableau to map*)
@@ -184,7 +184,7 @@ struct
         in
         remove_existing_goal @ connect_ports
       | [] ->
-        let _ = m_print_debug "this local variable is not bound yet, so we're not going to loop back." in
+        let _ = _print_debug ("local variable "^(name)^" is not bound yet, so we're not going to loop back.") in
         []
       | h::t -> error "proc_local" ("cannot have more than one output variable: "^name)
 
@@ -194,7 +194,7 @@ struct
       let olabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
       match olabels with
       | [(wwire,wprop,wlabel)] ->
-        let _ = m_print_debug "found the output label" in
+        let _ = _print_debug "found the output label" in
         let cmpname,ihwid,ohwid = HwLib.getout hwenv wprop in
         let cmpid = UnivLib.name2unodeid cmpname in
         let inst_id : int = SlnLib.usecomp tbl.sln cmpid  in
@@ -214,16 +214,16 @@ struct
         in
         steps
     | [] ->
-      let _ = m_print_debug ("no bindings yet: "^name) in
+      let _ = _print_debug ("local/output variable "^name^" has no bindings.") in
       []
     | h::t ->
-      error "proc_out_bar" ("multiple bindings: "^name)
+      error "proc_out_var" ("multiple bindings: "^name)
     in
     (*process a strict input*)
     let proc_in_var (name:string) =
       let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
       let res : sstep list = LIST.fold ilabels (fun (wwire,wprop,wlabel) rest ->
-        let _ = m_print_debug "found the input label" in
+        let _ = _print_debug ("input variable "^name^" has an input label") in
         let cmpname,ihwid,ohwid = HwLib.getin hwenv wprop in
         let cmpid = UnivLib.name2unodeid cmpname in
         let inst_id : int = SlnLib.usecomp tbl.sln cmpid  in
@@ -254,7 +254,7 @@ struct
       in
       let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> k = HNInput) (fun k v -> false) in
       let res : sstep list = LIST.fold ilabels (fun (wwire,wprop,wlabel) rest ->
-        let _ = m_print_debug "found the input label" in
+        let _ = _print_debug "found the input label" in
         let cmpname,ihwid,ohwid = HwLib.getin hwenv wprop in
         let cmpid = UnivLib.name2unodeid cmpname in
         let inst_id : int = SlnLib.usecomp tbl.sln cmpid  in
@@ -262,12 +262,12 @@ struct
         let ihwid = UnivLib.lclid2glblid inst_id (HwId ihwid) in
         let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
         let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
-        let valbind = if get_global_bool "multi-force-value-to-port" = true then 
-            [SAddGoal(NonTrivialGoal (UFunction(whwid,ohwid)))]
+        let vv = valassign2ast wlabel in
+        let valbind = if get_glbl_bool "multi-force-value-to-port" = true then 
+            [SAddGoal(TrivialGoal (UFunction(whwid,Term ohwid)))]
           else
             [SAddGoal(NonTrivialGoal (UFunction(whwid,vv)))]
         in
-        let vv = valassign2ast wlabel in
         let steps= valbind @ [
           SSolUseNode(cmpid,inst_id);
           SAddNodeRel(cmpid,inst_id,UFunction(ohwid,vv));
@@ -388,23 +388,23 @@ struct
       let _ = List.iter (fun x -> populate_id_allocator x) ctx in
       let _ = List.iter (fun x -> populate_id_mapper x) partial_steps in
       let new_partial_steps = List.map (fun x -> trans_lcl x) partial_steps in
-      let _ = m_print_debug "=== Mappings ===" in
+      let _ = _print_debug "=== Mappings ===" in
       let _ = MAP.iter idmapper (fun (uid,i) (fi) ->
-        let  _ = m_print_debug (" "^(UnivLib.unodeid2name uid)^" "^(string_of_int i)^" -> "^(string_of_int fi)^"\n") in
+        let  _ = _print_debug (" "^(UnivLib.unodeid2name uid)^" "^(string_of_int i)^" -> "^(string_of_int fi)^"\n") in
         ()
       ) in
-      let _ = m_print_debug "=== Normalized Partial Solution ===" in
+      let _ = _print_debug "=== Normalized Partial Solution ===" in
       let _ = List.iter (fun x ->
-        let _ = m_print_debug ("  "^(SlvrSearchLib.step2str x)) in
+        let _ = _print_debug ("  "^(SlvrSearchLib.step2str x)) in
         ()
       ) new_partial_steps in
-      let _ = m_print_debug "================" in
+      let _ = _print_debug "================" in
       new_partial_steps 
 
 
 
   let build_partials_steps ms (ids:(unid*int) set) : sstep list =
-    let _ = m_print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
+    let _ = _print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
     let steps = SET.fold ids (fun (id,i) steps -> steps @ (build_partial_steps ms steps id i)) [] in
     steps
 
@@ -422,9 +422,9 @@ struct
     (*if this table already exists*)
     if MAP.has ms.state.globals key = false then
       let steps = build_global_steps ms in
-      let _ = m_print_debug "======= Global Steps =======" in
-      let _ = List.iter (fun x -> m_print_debug ("   "^(SlvrSearchLib.step2str x))) steps in
-      let _ = m_print_debug "============================" in
+      let _ = _print_debug "======= Global Steps =======" in
+      let _ = List.iter (fun x -> _print_debug ("   "^(SlvrSearchLib.step2str x))) steps in
+      let _ = _print_debug "============================" in
       let _ = GoalTableLib.mkroot ms.state.slvr tbl steps in
       let _ = MAP.put ms.state.globals key tbl.search in
       tbl
@@ -448,7 +448,7 @@ struct
   let get_existing_global_solution (ms:musearch) (key:string) (id:int) : sln =
     let gtree = MAP.get ms.state.globals key in
     let ptbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in 
-    let _ = m_print_debug ("=> Global Solution: "^key^" :: "^(string_of_int id)) in 
+    let _ = _print_debug ("=> Global Solution: "^key^" :: "^(string_of_int id)) in 
     let slnnode = SearchLib.id2node gtree id in 
     let _ = SearchLib.move_cursor gtree (ms.state.slvr,ptbl) slnnode in  
     ptbl.sln
@@ -462,7 +462,7 @@ struct
         let bansteps = List.map (fun x -> SMakeGoalPassive(x)) blacklist in
         let goalsteps = SET.map ms.goals (fun g -> SAddGoal(g)) in
         let _ = GoalTableLib.mkroot ms.state.slvr tbl (bansteps @ goalsteps) in
-        let _ = m_print_debug "made a partial tree" in
+        let _ = _print_debug "made a partial tree" in
         let _ = MAP.put ms.state.partials id tbl.search in
         ()
     in
@@ -483,16 +483,16 @@ struct
     (*original solution set*)
     let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
     let is_new q = List.length (LIST.filter (fun x -> q.id = x.id) orig) = 0 in
-    let _ = m_print_debug "find a partial solution" in
+    let _ = _print_debug "find a partial solution" in
     let depth = get_glbl_int "slvr-partial-depth" in
     let _ = set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-partial") in
-    let _ = m_print_debug "== Finding Local Solution ==" in
-    let _ = m_print_debug ("== # Current: "^(string_of_int currsols)) in
-    let _ = m_print_debug ("== # New: "^(string_of_int nslns)) in
+    let _ = _print_debug "== Finding Local Solution ==" in
+    let _ = _print_debug ("== # Current: "^(string_of_int currsols)) in
+    let _ = _print_debug ("== # New: "^(string_of_int nslns)) in
     let _ = musr () in
     let r : ((sstep snode) list) option = SolverEqn.solve slvr ptbl (nslns+currsols) depth in
     let _ = SearchLib.clear_cursor ptbl.search in
-    let _ = m_print_debug "found partial solutions" in
+    let _ = _print_debug "found partial solutions" in
     match r with
     | None -> None
     | Some(nw) ->
@@ -511,6 +511,7 @@ struct
         | SRemoveGoal(g) ->
           let lhs = Shim.goal2lhs g in
           if QUEUE.has ms.order lhs then
+            let _ = _print_debug (">> Solved Var: "^(UnivLib.unid2str lhs)) in 
             SearchLib.add_step ms.search (MSSolveVar(lhs))
         | _ -> ()
       in
@@ -541,32 +542,32 @@ struct
       in
       (*attempt to add a new solution*)
       let add_solution (sln:sstep snode) =
-        let _ = m_print_debug "== Finding Global Solution ==" in
+        let _ = _print_debug "== Finding Global Solution ==" in
         let partial_node = add_lcl_sln curs sln pvar in 
         let _ = musr () in
         match find_global_solution ms 1 with
         | Some(slns) ->
-          let _ = m_print_debug (">> Found # Global Solutions: "^(string_of_int (List.length slns))) in
+          let _ = _print_debug (">> Found # Global Solutions: "^(string_of_int (List.length slns))) in
           let _ = List.iter (fun sln -> add_glbl_sln partial_node sln) slns in 
           () 
         | None ->
-          let _ = m_print_debug (">> Found NO Solutions") in
+          let _ = _print_debug (">> Found NO Solutions") in
           let _ = SearchLib.deadend ms.search partial_node in
           ()
       in
       match slns with
       | Some(cslns) ->
-        let _ = m_print_debug "found some partial solutions. Will add partial solution node and global" in
+        let _ = _print_debug "found some partial solutions. Will add partial solution node and global" in
         let _ = List.iter (fun x -> add_solution x) cslns in
         slns
       | None ->
-        let _ = m_print_debug "could not find any more partial solutions." in
+        let _ = _print_debug "could not find any more partial solutions." in
         slns
 
     let augment_with_new_partial_sln (ms:musearch) (pvar) (nslns) =
-      let _ = m_print_debug "finding new partial solution" in
+      let _ = _print_debug "finding new partial solution" in
       let slns : (sstep snode list) option = find_partial_solution ms pvar nslns in
-      let _ = m_print_debug "done with search" in
+      let _ = _print_debug "done with search" in
       let res : 'a option = augment_with_partial_solution ms pvar slns in
       res
 
@@ -609,7 +610,7 @@ struct
             let _ = _msolve() in
             ()
           | None ->
-            let _ = m_print_debug "[search_tree] is exhausted" in
+            let _ = _print_debug "[search_tree] is exhausted" in
             let r = OPTION.force_conc (SearchLib.root ms.search) in
             let _ = SearchLib.move_cursor ms.search ms.state r in
             let _ = _msolve() in
@@ -617,26 +618,26 @@ struct
         in
         let cnode = SearchLib.cursor ms.search in
         let cnumslns = SearchLib.num_solutions ms.search None in
-        let _ = m_print_debug ("# Found "^(string_of_int cnumslns)^", Required: "^(string_of_int nslns)) in 
+        let _ = _print_debug ("# Found "^(string_of_int cnumslns)^", Required: "^(string_of_int nslns)) in 
         if cnumslns >= nslns then
-           let _ = m_print_debug "[DONE] found enough solutions" in
+           let _ = _print_debug "[DONE] found enough solutions" in
            ()
         else
            match get_unsolved_var ms with
            (*no variables left, mark a sa solution*)
            | None ->
-                let _ = m_print_debug ("need more solutions. find another solution") in
+                let _ = _print_debug ("need more solutions. find another solution") in
                 let _ = _msolve () in
                 ()
            | Some(id) ->
-                let _ = m_print_debug ("solving target: "^(UnivLib.unid2var id)) in
+                let _ = _print_debug ("solving target: "^(UnivLib.unid2var id)) in
                 if SearchLib.is_exhausted ms.search None then
-                        let _ = m_print_debug ("search tree is exhausted. adding new.") in
+                        let _ = _print_debug ("search tree is exhausted. adding new.") in
                         let _ = _msolve_new id in
                         let _ = _msolve_next () in
                         ()
                 else
-                        let _ = m_print_debug ("search tree is not exhausted. adding existing:"^(UnivLib.unid2var id)) in
+                        let _ = _print_debug ("search tree is not exhausted. adding existing:"^(UnivLib.unid2var id)) in
                         (*try and augment with existing partials*)
                         let _ = if augment_with_existing_partial_sln ms id = None then
                                 _msolve_new id
@@ -646,10 +647,10 @@ struct
         
       in
       let _ = _msolve () in
-      let _ = m_print_debug "===== Getting Solutions =====" in
+      let _ = _print_debug "===== Getting Solutions =====" in
       let _ = musr () in
       let snodes = SearchLib.get_solutions ms.search None in
-      let _ = m_print_debug ("Number of Solutions:"^(string_of_int (List.length  snodes))) in
+      let _ = _print_debug ("Number of Solutions:"^(string_of_int (List.length  snodes))) in
       let slns = List.fold_right (fun (x:mustep snode) (rest:sln list) ->
         let _ = SearchLib.move_cursor ms.search ms.state x in
         match ms.state.global with 

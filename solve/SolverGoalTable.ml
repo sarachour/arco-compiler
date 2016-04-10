@@ -81,7 +81,8 @@ struct
     let proc_goal g v =
       let is_disabled : bool = SET.has tbl.blacklist g in
       if is_disabled then
-        v^"\n[X]"^(goal2str g)
+        (*v^"\n[X]"^(goal2str g)*)
+        v
       else
         v^"\n"^(goal2str g)
     in

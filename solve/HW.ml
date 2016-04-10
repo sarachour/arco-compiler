@@ -228,6 +228,12 @@ struct
         error "getunit" ("unit does not exist for param "^propname)
     | _ -> error "getunit" "param doesn't have type unit."
 
+  let var2kind (id:hwvid) =
+    match id with
+    | HNPort(knd, _,_,_,_) -> knd
+    | _ -> error "getunit" "param doesn't have type unit."
+
+
   let getkind e (cname:string) pname =
     let p = getvar e cname pname in
     match p.typ with

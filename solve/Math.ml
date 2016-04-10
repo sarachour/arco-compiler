@@ -53,7 +53,8 @@ sig
   val mkrel : menv -> string -> mid ast -> menv
   val isvar : mvar -> bool
   val isvar : menv -> string -> bool
-
+  val isparam : menv -> string -> bool
+  val getparam :menv -> string -> number
 end =
 struct
   let refl x y = (x = y)
@@ -156,6 +157,18 @@ struct
     | MNVar(_,_,u) -> u
     | MNParam(_,_,u) -> u
     | MNTime(u) -> u
+  
+  let isparam e name = 
+    let n = getvar e name in 
+    match n.typ with 
+    | MNParam(_) -> true
+    | _ -> false 
+
+  let getparam e name = 
+    let n = getvar e name in 
+    match n.typ with 
+    | MNParam(_,n,u) -> n
+    | _ -> error "getparam" "variable is not a param"
 
   let mktime e name un : menv =
     if MAP.has (e.vars) name then

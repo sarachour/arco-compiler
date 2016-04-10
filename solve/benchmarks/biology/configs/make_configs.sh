@@ -9,4 +9,5 @@ make_config () {
 }
 
 make_config debug.cfg 2 3
-make_config prod.cfg 0 2
+make_config eq.cfg 1 2 
+make_config prod.cfg 0 3 

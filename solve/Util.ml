@@ -778,6 +778,7 @@ struct
     let parents = parents g n in
     children @ parents
 
+  
   (*get disjoint graph nodes*)
   let disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =
     let rec get_subset (s:a set) (n:a) : a set =
@@ -800,7 +801,20 @@ struct
     in
     let disj = build_subset remaining_nodes in
     disj
-
+   
+  let reachable (type a) (type b) (g:(a,b) graph) (src:a) (dest:a) (nhops:int) : bool = 
+    let rec try_reach (path:a list) (curr:a) (hops:int): bool =
+      if curr = dest then true
+      else if (LIST.has path curr) then false
+      else if nhops >= 0 && hops >= nhops then false
+      else
+        let chld = children g curr in
+        let npath = curr:: path in 
+        let result = LIST.fold chld (fun x r -> r || (try_reach npath x (hops+1) ) ) false in
+        result
+    in
+    try_reach [] src 0
+    
   (*subtrees *)
   let subtrees (type a) (type b) (g:(a,b) graph) (roots:(a list) option): (a set) list =
     let roots : a list = if roots = None

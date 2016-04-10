@@ -1,4 +1,5 @@
 open Util
+open Common
 
 open ASTUnifyData
 open ASTUnify
@@ -118,7 +119,7 @@ struct
     else
     let rel2info (rel:urel) : unid rarg =
       match rel with
-      | UState(lhs,rhs,t,ic) -> (lhs,rhs,RKDeriv)
+      | UState(lhs,rhs,ic,t) -> (lhs,rhs,RKDeriv(Term ic))
       | UFunction(lhs,rhs) -> (lhs,rhs,RKFunction)
     in
     let goal2info (g:goal) =
@@ -147,6 +148,20 @@ struct
                let _ = _print_debug "<@> warning... goal listed in fuse not found" in 
                []
           end
+        | USAssign(HwId(lhs),Term(HwId(rhs))) ->
+            let rel : urel = match HwLib.var2kind lhs, HwLib.var2kind rhs with 
+            | (HNOutput, HNInput)  -> 
+               mkfxn inst (HwId rhs) (Term(HwId lhs)) (fun l r -> UFunction(l,r))             
+            | (HNInput, HNOutput) -> 
+               mkfxn inst (HwId lhs) (Term(HwId rhs)) (fun l r -> UFunction(l,r))
+            | (HNInput, HNInput) ->           
+                error "unify_rels" ("cannot connect INPUT ports: "^(HwLib.hwvid2str lhs)^" <-> "^(HwLib.hwvid2str rhs))
+            | _ -> 
+                error "unify_rels" ("cannot connect OUTPUT ports: "^(HwLib.hwvid2str lhs)^" <-> "^(HwLib.hwvid2str rhs))
+            in
+            let goal = GoalTableLib.wrap_goal gtbl rel in 
+            [SAddGoal(goal)] 
+                
 
         | USAssign(lhs,rhs) ->
           let rel = mkfxn inst lhs rhs (fun l r -> UFunction(l,r)) in
@@ -263,6 +278,17 @@ struct
     else ()
 
 
+  let mark_if_solution (s:slvr) (v:gltbl) (curr:(sstep snode)) = 
+    let _ = _print_debug "[mark-if-solution] testing if solution." in
+    let _ = SearchLib.move_cursor v.search (s,v) curr in
+    let is_conn_cons = SlnLib.mkconn_cons s v.sln in
+    let is_usecomp_cons = SlnLib.usecomp_cons s v.sln in
+    if is_conn_cons && is_usecomp_cons then 
+      SearchLib.solution v.search curr
+    else
+      SearchLib.deadend v.search curr 
+
+
 
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
   let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) (depth:int)=
@@ -274,24 +300,14 @@ struct
       let _ = SearchLib.deadend v.search c in
       false
     else
-      if SlnLib.usecomp_cons s v.sln  then
-      if SlnLib.mkconn_cons s v.sln then
         (*determine if there are any goals left*)
         if (GoalTableLib.num_actionable_goals v) = 0 then
           (*found all goals*)
           let _ = _print_debug "[test-node-validity] found a valid solution" in
-          let _ = SearchLib.solution v.search c in
+          let _ = mark_if_solution s v c in 
           true
         else
           true
-      else
-        let _ = _print_debug "[test-node-validity] impossible set of connections" in
-        let _ = SearchLib.deadend v.search c in
-        false
-      else
-        let _ = _print_debug "[test-node-validity] impossible set of component uses" in
-        let _ = SearchLib.deadend v.search c in
-        false
     in
     let _ = SearchLib.move_cursor v.search (s,v) old_cursor in
     is_valid
@@ -347,8 +363,7 @@ struct
   let no_more_nodes (v:gltbl) (head:(sstep snode) option) =
     (List.length (SearchLib.get_paths v.search head))
 
-  (*solve a goal*)
-
+    (*solve a goal*)
   let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
    let downgrade_enable = get_glbl_bool "downgrade-trivial" in 
    let solve_goal (g:goal) =
@@ -378,9 +393,16 @@ struct
         (*test the validity of the trival node*)
         let _ = SearchLib.move_cursor v.search (s,v) triv in
         (**)
-        if SlnLib.usecomp_cons s v.sln && SlnLib.mkconn_cons s v.sln then
+        let is_usecomp_cons = SlnLib.usecomp_cons s v.sln in
+        let is_conn_cons = if get_glbl_bool "eqn-smt-defer" then
+          SlnLib.mkconn_cons_shallow s v.sln 
+        else
+          SlnLib.mkconn_cons s v.sln
+        in  
+        if is_usecomp_cons && is_conn_cons then
+          let _ = _print_debug "[search_tree] no goals left. Testing if trivial solution is successful: " in
           let _ = if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
-            return (SearchLib.solution v.search triv) () else ()
+            return (mark_if_solution s v triv) () else ()
           in
           let _ = _print_debug "[search_tree] trivial solution is successful: " in
           let _ = musr () in
@@ -403,15 +425,15 @@ struct
     let mint,musr = mkmenu s v (None) in
     let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
-      if SearchLib.is_exhausted v.search (Some root) then
-        let _ = _print_debug "[search_tree] is exhausted" in
-        let _ = musr () in
-        ()
-      else
-        if SearchLib.num_solutions v.search (Some root) >= nslns then
+      if SearchLib.num_solutions v.search (Some root) >= nslns then
          let _ = _print_debug "[search_tree] Found enough solutions" in
          let _ = musr () in
          ()
+      else
+        if SearchLib.is_exhausted v.search (Some root) then
+          let _ = _print_debug "[search_tree] is exhausted" in
+          let _ = musr () in
+          ()
         else
           (*get the next node*)
           let maybe_next_node = get_best_valid_node s v (Some root) depth in
@@ -432,13 +454,18 @@ struct
       let _ = musr () in
       let r = SearchLib.root v.search in
       let _ = SearchLib.move_cursor v.search (s,v) (OPTION.force_conc r) in
+      let _ = _print_debug "[search-tree] positioned cursor" in
       if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
-        let _ = SearchLib.solution v.search root in
+        let _ = mark_if_solution s v root in 
+        let _ = _print_debug "[search-tree] begin search" in
         let _ = rec_solve_subtree root in
         ()
       else
+        let _ = _print_debug "[search-tree] get best valid goal" in
         let next_goal = get_best_valid_goal v in
+        let _ = _print_debug "[search-tree] solve the best valid goal" in
         let _ = solve_goal next_goal in
+        let _ = _print_debug "[search-tree] begin search" in
         let _ = rec_solve_subtree root in
         ()
 

@@ -4,8 +4,8 @@ open SymCaml
 open SymCamlData
 open SearchData
 
-type rkind =
-| RKDeriv
+type 'a rkind =
+| RKDeriv of 'a ast
 | RKFunction
 
 type unifytype = UTypTempl| UTypTarg
@@ -58,7 +58,7 @@ type 'a rstate = {
 (*the data for each variable*)
 type 'a rdata = {
   rhs : 'a ast;
-  kind: rkind;
+  kind: 'a rkind;
 }
 
 type 'a rinfo = {
@@ -98,4 +98,4 @@ type 'a runify = {
 }
 
 (*the data necessary for the unification*)
-type 'a rarg = 'a*('a ast)*rkind
+type 'a rarg = 'a*('a ast)*('a rkind)

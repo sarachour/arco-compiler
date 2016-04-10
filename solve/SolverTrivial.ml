@@ -62,8 +62,14 @@ struct
 
   let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (q:mid) (knd:hwvkind) =
     let nlbl = LBindVar(knd,q) in
-    let mknd = MathLib.getkind slvr.prob (MathLib.mid2name q) in
-    match knd,(OPTION.force_conc mknd) with
+    let qname = (MathLib.mid2name q) in
+    if MathLib.isparam slvr.prob qname then
+      let vl = MathLib.getparam slvr.prob qname in 
+      let stps = [SSolAddLabel(wire,prop,LBindValue(knd,vl))] in 
+      stps
+    else
+    let mknd = OPTION.force_conc (MathLib.getkind slvr.prob qname) in
+    match knd,mknd with
     (*impossible to map an output to a value*)
     | (HNOutput,MOutput) ->
       let stps = [SSolAddLabel(wire,prop,nlbl)] in

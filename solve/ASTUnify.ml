@@ -207,7 +207,7 @@ struct
         let _ = SET.add uses use_var_dup in
         _break_cycles ()
     in
-    let unbreak_cycles tabl subt : ((a,a ast) map)*((a set) list) = 
+    let unbreak_cycles (tabl:(a,a ast) map) subt : ((a,a ast) map)*((a set) list) = 
         let subs = MAP.make () in 
         let ntabl = MAP.make () in
         let nsubt = [] in
@@ -250,7 +250,7 @@ struct
     (nodep_info,breaks,subt)
 
   (*make search tree*)
-  let mksearch (type a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
+  let mksearch (type a) (targ_var: a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
     (is_wc: a->bool) (cnv:a->symvar) (icnv:symvar -> a) (freshvar:int->unifytype->a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
     (*make the data for each variable*)
     let mkdata ifo relinfo =
@@ -269,6 +269,17 @@ struct
         repls = MAP.make ();
         subtrees = [];
       }
+    in
+    let prune_unrelated_vars (map:(a,a rdata) map) (v:a) = 
+      let mathexprs:(a*a ast) list = MAP.map map (fun k v -> (k,v.rhs)) in 
+      let graph : (a,unit) graph = ASTLib.mk_dep_graph mathexprs cnv in
+      let max_hops = get_glbl_int "uast-prune-unrelated-hops" in 
+      let _ = MAP.iter map (fun k info -> 
+        if v = k || GRAPH.reachable graph v k max_hops || GRAPH.reachable graph k v max_hops then () 
+        else 
+         ret (MAP.rm map k) () 
+      ) in
+     () 
     in
     (*create environment*)
     let state = {
@@ -291,6 +302,9 @@ struct
     let targ_info = mkinfo() in
     let _ = List.iter  (fun x -> mkdata tmpl_info x) templs_e in
     let _ = List.iter  (fun x -> mkdata targ_info x) targs_e in
+    let _ = if get_glbl_bool "uast-prune-unrelated" then
+      prune_unrelated_vars targ_info.info targ_var 
+    in
     (*make the search tree*)
     let tree = GRAPH.make (fun x y -> x = y) in
     let tbl = {
@@ -453,36 +467,44 @@ struct
     (*actual conversion routine*)
     let scratch_targ = MAP.make () and scratch_templ = MAP.make () in
     let sym_vars = SET.make_dflt () and wc_vars = SET.make_dflt () in
-    let add_vars lhs (rhs:a ast) (iswc:bool)=
+    let add_vars lhs (rhs:a ast) kind (iswc:bool)=
       let addvar q = if iswc && (s.tbl.env).is_wc q
         then add_wild wc_vars q
         else add_sym sym_vars q
       in
       let _ = addvar lhs in
       let _ = List.iter (fun q -> addvar q) (ASTLib.get_vars rhs) in
+      let _ = match kind with 
+      | RKDeriv(Term(v)) -> addvar v 
+      | _ -> ()
+      in 
       ()
     in
     (*add exprs*)
-    let add_expr scratch v rhs (iswc:bool) (addvars:bool)=
-      let _ = if addvars then add_vars v rhs iswc else () in
+    let add_expr scratch v rhs (kind:a rkind) (iswc:bool) (addvars:bool)= 
+      let _ = if addvars then add_vars v rhs kind iswc else () in
       let _ = MAP.put scratch v (rhs) in
       let _ = spy_print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
       ()
     in
     (*define default values*)
     (*add original variables*)
-    let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs false true) in
-    let _ = MAP.iter (g_info s.tbl UTypTempl).nodep (fun v data ->add_expr scratch_templ v data.rhs true true) in
+    let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs data.kind  false true) in
+    let _ = MAP.iter (g_info s.tbl UTypTempl).nodep (fun v data ->add_expr scratch_templ v data.rhs data.kind true true) in
     (*declare variables*)
     let _ = SET.iter sym_vars (fun x -> decl_sym s x) in
     let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild s x bans) in
     (scratch_templ,scratch_targ)
 
   let is_deriv (type a) (s:a runify) (v:a) =
+    let get_deriv k = match k with 
+    |RKDeriv(ic) -> Some(ic)
+    | _ -> None
+    in
     if MAP.has s.tbl.templ.info v then
-      (MAP.get s.tbl.templ.info v).kind = RKDeriv
+      get_deriv (MAP.get s.tbl.templ.info v).kind 
     else
-      (MAP.get s.tbl.targ.info v).kind = RKDeriv
+      get_deriv (MAP.get s.tbl.targ.info v).kind 
 
   let compute_vars s templs =
     let outvars = SET.make_dflt () in
@@ -542,7 +564,7 @@ struct
         match node with
         | OpN(Func("F"), [OpN(Func("LHS"),[Term(lhs)]);rhs]) -> 
             ((lhs,rhs)::vlst)
-        | OpN(Func("DF"), [OpN(Func("LHS"),[Term(lhs)]);rhs]) -> 
+        | OpN(Func("DF"), [OpN(Func("LHS"),[Term(lhs)]);rhs;ic]) -> 
             ((lhs,rhs)::vlst)
         | _ -> vlst
       in
@@ -602,10 +624,11 @@ struct
         (*all the rels but this one*)
         let rhsexpr :symexpr = ASTLib.to_symcaml rhs a2sym in
         (*TODO: create one with substitutions, one without*)
-        let fxn : symexpr= if is_deriv s lhs then
-                OpN(Function(dfunvar()),[lhsexpr;rhsexpr])
-          else
-                OpN(Function(funvar()),[lhsexpr;rhsexpr])
+        let fxn : symexpr= match  is_deriv s lhs with
+        | Some(init_cond) ->
+            let icexpr = ASTLib.to_symcaml init_cond a2sym in 
+            OpN(Function(dfunvar()),[lhsexpr;rhsexpr;icexpr])
+        | None -> OpN(Function(funvar()),[lhsexpr;rhsexpr])
         in
         fxn
       in
@@ -733,11 +756,11 @@ struct
           ()
     in
     let _ = _solve () in
-    let _ = sysmenu "t" in
+    (*let _ = sysmenu "t" in*)
     ()
 
 
-  let build_tree (type a) (s:a runify) (root: a rnode) (gl: a option): unit =
+  let build_tree (type a) (s:a runify) (root: a rnode): unit =
     let curs = root in
     let _ = List.iter (fun subst ->
       let _ = SearchLib.start s.search in
@@ -796,9 +819,9 @@ struct
     (tostr:a->string)
      =
     (*make the search tree*)
-    let root,smeta = mksearch tmpl targ iswc cnv icnv freshvar tostr in
+    let root,smeta = mksearch targvar tmpl targ iswc cnv icnv freshvar tostr in
     (*build a tree for the particular set of goals*)
-    let _ = build_tree smeta root (Some targvar) in
+    let _ = build_tree smeta root  in
     (*let _ = build_tree smeta root (None) in*)
     (*solve a thing*)
     let _ = solve smeta root targvar n in

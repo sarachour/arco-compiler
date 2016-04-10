@@ -58,6 +58,11 @@ struct
     res
   *)
 
+  let mkconn_cons_shallow (v:slvr) (s:sln) : bool =
+    let res = HwConnRslvr.is_valid_shallow v s in
+    res
+
+
   let mkconn_cons (v:slvr) (s:sln) : bool =
     let res = HwConnRslvr.is_valid v s in
     res

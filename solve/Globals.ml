@@ -16,6 +16,8 @@ let _ = MAP.put glbls "downgrade-trivial-partial" (GlblPropBool false)
 let _ = MAP.put glbls "interactive" (GlblPropInt 0)
 let _ = MAP.put glbls "debug" (GlblPropInt 0)
 
+let _ = MAP.put glbls "uast-prune-unrelated" (GlblPropBool true)
+let _ = MAP.put glbls "uast-prune-unrelated-hops" (GlblPropInt 2)
 let _ = MAP.put glbls "uast-selector-branch" (GlblPropString "uniform")
 let _ = MAP.put glbls "uast-depth" (GlblPropInt 8)
 let _ = MAP.put glbls "uast-duplicates" (GlblPropInt 1)
@@ -27,9 +29,11 @@ let _ = MAP.put glbls
 
 let _ = MAP.put glbls "multi-force-value-to-port" (GlblPropBool true)
 
+let _ = MAP.put glbls "eqn-smt-defer" (GlblPropBool true)
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
 let _ = MAP.put glbls "eqn-selector-branch" (GlblPropString "uniform")
 let _ = MAP.put glbls "eqn-selector-goal" (GlblPropString "uniform")
+let _ = MAP.put glbls "eqn-concretize-only-when-finished" (GlblPropBool false)
 
 let _ = MAP.put glbls "slvr-solutions" (GlblPropInt 1)
 let _ = MAP.put glbls "slvr-partial-depth" (GlblPropInt 32)
@@ -48,7 +52,7 @@ let upd_glbl key v =
   if MAP.has glbls key then
     set_glbl key v
   else
-    error "upd_glbl" "no global with that name"
+    error "upd_glbl" ("no global with the name: "^key)
 
 let get_glbl key =
   if MAP.has glbls key then
