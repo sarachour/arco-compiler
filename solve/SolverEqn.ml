@@ -186,6 +186,7 @@ struct
     in
     (*determine if this is a filler nodes*)
     let comp_info : (unode*int*(sstep snode)*(unit->unit)) option=
+      (*specific instance*)
       if iid <> None then
         (*get the concrete nodes*)
         let inst_id = OPTION.force_conc iid in
@@ -196,7 +197,8 @@ struct
         let curs = SearchLib.commit gtbl.search (s,gtbl) in
         let cleanup () = () in
         Some(node,inst_id,curs,cleanup)
-      else
+    (*non-specific instance*)  
+    else
         (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
         if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then
           None
@@ -211,7 +213,8 @@ struct
           (*the cursor associated with the component*)
           let curs : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
           let cleanup () =
-            let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in ()
+            let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in 
+            ()
           in
           Some(node,inst_id,curs,cleanup)
     in
@@ -242,6 +245,7 @@ struct
         let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
         let nslns = SET.size slns in
         if nslns = 0 then
+          let _ = _print_debug ("no solutions for comp...") in 
           let _ = SearchLib.rm gtbl.search comp_cursor in
           let _ = cleanup () in
           None
@@ -255,7 +259,7 @@ struct
 
   let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
     let goal_cursor = SearchLib.cursor tbl.search in
-    let handle_component id inst status : bool =
+    let handle_component (id:unodeid) (inst: int option) (status:bool) : bool =
       let _ = SearchLib.move_cursor tbl.search (slvenv,tbl) goal_cursor in
       let results = apply_component slvenv tbl g id inst in
       match results with
@@ -292,6 +296,7 @@ struct
 
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
   let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) (depth:int)=
+    let _ = _print_debug ("-> testing validity: "^(string_of_int c.id)) in
     let old_cursor = SearchLib.cursor v.search in
     let _ = SearchLib.move_cursor v.search (s,v) c in
     let currdepth =  List.length (TREE.get_path v.search.tree c) in
@@ -315,10 +320,7 @@ struct
 
   (*get the best valid node. If there is no valid node, return none *)
   let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option) (depth:int)  : (sstep snode) option =
-    let collate_score (o:sscore) (n:sscore) : sscore =
-      SearchLib.mkscore n.state (o.delta +. n.delta)
-    in
-    match SearchLib.select_best_node v.search collate_score root with
+    match SearchLib.select_best_node v.search root with
     | Some(newnode) ->
         if test_node_validity s v newnode depth then
           Some(newnode)
@@ -392,6 +394,7 @@ struct
         let triv = mknode ((SRemoveGoal g)::mktrv) curr in
         (*test the validity of the trival node*)
         let _ = SearchLib.move_cursor v.search (s,v) triv in
+        let _ = SearchLib.visited v.search curr in 
         (**)
         let is_usecomp_cons = SlnLib.usecomp_cons s v.sln in
         let is_conn_cons = if get_glbl_bool "eqn-smt-defer" then
@@ -425,11 +428,13 @@ struct
     let mint,musr = mkmenu s v (None) in
     let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
-      if SearchLib.num_solutions v.search (Some root) >= nslns then
+      let currslns = SearchLib.num_solutions v.search (Some root) in 
+      if currslns >= nslns then
          let _ = _print_debug "[search_tree] Found enough solutions" in
          let _ = musr () in
          ()
       else
+        let _ = _print_debug ("[search_tree] found "^(string_of_int currslns)^" / "^(string_of_int nslns)) in 
         if SearchLib.is_exhausted v.search (Some root) then
           let _ = _print_debug "[search_tree] is exhausted" in
           let _ = musr () in

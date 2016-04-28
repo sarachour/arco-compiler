@@ -14,9 +14,9 @@ exception SearchException of (string)
 let error n msg = raise (SearchException(n^": "^msg))
 
 
-let lcl_print_debug = print_debug 2 "search"
-let lcl_menu = menu 2
-let lcl_print_inter = print_inter 2
+let _print_debug = print_debug 2 "search"
+let _menu = menu 2
+let _print_inter = print_inter 2
 
 
 module SStatLib =
@@ -107,14 +107,15 @@ struct
   let is_solution (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
     SStatLib.is_solution sr.st n
 
-  let visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
-    SStatLib.visited sr.st n
+  let is_visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
+    SStatLib.is_visited sr.st n
 
   let _steps2str (type a) (type b) (indent: int) (sr:(a,b) ssearch) (n:a snode) =
     let spcs = STRING.repeat "  " indent  in
     let id = (
       if is_deadend sr n then "[XX]"
       else if is_solution sr n then "[SL]"
+      else if is_visited sr n then "[V]"
       else "[  ]")^(string_of_int n.id) in
     let prefix = match sr.curs with
     | Some(c) -> if c = n then "{{C}}"^id else id
@@ -138,7 +139,7 @@ struct
 
   let mknode (type a) (type b) (sr:(a,b) ssearch)=
     let _ = (sr.cnt <- sr.cnt + 1) in
-    Some {s=[]; id=sr.cnt}
+    Some {s=[]; id=sr.cnt; score=0.}
 
   let mkscore state delta : sscore =
     {state=state; delta=delta}
@@ -196,6 +197,8 @@ struct
     | Some(v) -> if v = n then () else ()
     | None -> ()
     in
+    let _ = _print_debug ("remove node "^(string_of_int n.id)) in 
+    let _ = ORDSET.rm sr.frontier (REF.mk n) in 
     let _ = TREE.rmnode sr.tree n in
     let _ = SStatLib.rm sr.st n in
     sr
@@ -209,11 +212,18 @@ struct
 
   let deadend (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : unit =
     let _ : unit = SStatLib.deadend sr.st n in
+    let _ = ORDSET.rm sr.frontier (REF.mk n) in
     ()
 
   let solution (type a) (type b) (sr:(a,b) ssearch) (n:a snode)  : unit =
     let _ : unit = SStatLib.solution sr.st n in
+    let _ = ORDSET.rm sr.frontier (REF.mk n) in
     ()
+
+
+  let visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
+    let _ = ORDSET.rm sr.frontier (REF.mk n) in 
+    SStatLib.visited sr.st n
 
 
   let get_solutions  (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : (a snode) list=
@@ -243,13 +253,31 @@ struct
     | Some(c) -> c
     | None -> error "cursor" "expected cursor."
 
+  let score_path (type a) (type b) (sr:(a,b) ssearch) (endnode:a snode) : float=
+      (*pass through node*)
+      let score_node (e:a snode) (r:sscore) : sscore = r in
+      (*pass through edge*)
+      let combine x y = mkscore (y.state) (x.delta +. y.delta) in
+      let score_edge src snk (n:sscore) (old:sscore) : sscore = combine old n in
+      let init_score : sscore = mkscore 0. 0. in
+      let score = TREE.fold_to_node score_node score_edge sr.tree endnode init_score in
+      let _ = _print_debug ("node "^(string_of_int endnode.id)^": "^(score2str score)) in 
+      let total = score.state +. score.delta in
+      total
+
   let upd_score (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
-    if TREE.hasnode sr.tree node = false then () else
+    if TREE.hasnode sr.tree node = false then 
+      error "upd_score" "node doesn't exist in tree"   
+    else
     let score : sscore = sr.score env node.s in
     let par : (a snode) option = TREE.parent sr.tree node in
-    let _ = if par <> None then
-      let par = OPTION.force_conc par in
-      let _ = TREE.updedge sr.tree par node score in ()
+    let _ = 
+      if par <> None then
+        let par = OPTION.force_conc par in
+        let _ = TREE.updedge sr.tree par node score in
+        let cum_score = score_path sr node in
+        let _ = (node.score <- cum_score) in 
+        () 
       else ()
     in
     ()
@@ -263,7 +291,7 @@ struct
 
 
   let wrap_node (type a) (s:a list) : a snode =
-    {id=(-1); s=s}
+    {id=(-1); s=s; score=0.}
 
   let unapply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
       (*let _ = upd_score sr env node in*)
@@ -275,9 +303,16 @@ struct
   let clear_cursor (type a) (type b) (sr:(a,b) ssearch) =
       let _ = (sr.curs <- None) in
       ()
+
   let move_cursor (type a) (type b) (sr:(a,b) ssearch) (env:b) (next:a snode)  =
+    if TREE.hasnode sr.tree next = false then
+      error "move_cursor" ("\n\n the node of id "^(string_of_int next.id)^" to move to does not exist.")
+    else
     let nenv = match sr.curs with
     | Some(old) ->
+      if TREE.hasnode sr.tree old = false then
+        error "move_cursor" ("the cursor of id "^(string_of_int next.id)^" is not found.") 
+      else
       let anc = TREE.ancestor sr.tree next old in
       let to_anc = LIST.sublist (LIST.rev (TREE.get_path sr.tree old)) old anc in
       let from_anc = LIST.sublist (TREE.get_path sr.tree next) anc next in
@@ -299,13 +334,14 @@ struct
     | Some(node), Some(cursor) ->
       let _ = TREE.mknode sr.tree node in
       let _ = TREE.mkedge sr.tree cursor node (mkscore 0. 0.) in
+      let _ = _print_debug ("added node "^(string_of_int node.id)) in
       let _ = sr.scratch <- None in
       (*move the cursor to the created node*)
       let _ = move_cursor sr state node in
-      let score : sscore = sr.score state node.s in
       let _ = upd_score sr state node in
       (*move back*)
       let _ = move_cursor sr state cursor in
+      let _ = ORDSET.add sr.frontier (REF.mk node) in
       node
     | Some(_), None ->
       error "commit" "cannot commit new step with no parent."
@@ -328,11 +364,19 @@ struct
   let root (type a) (type b) (sr:(a,b) ssearch ) =
     let n = TREE.root sr.tree in
     n
-
+ 
   let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b) (order:a->a->int) (score:b->a list->sscore) (tostr:a->string) =
-    let g = TREE.make (fun x y -> x.id=y.id) (fun x y -> x = y) in
+    let g = TREE.make (fun x -> x.id) (fun x y -> x = y) in
+    let frontier_order (_x:a snode ref) (_y:a snode ref): ord_dir =
+      let x = REF.dr _x in 
+      let y = REF.dr _y in 
+      if x.id == y.id then SameAs else
+      if x.score > y.score then Before 
+      else After
+    in
     let srch = {
         tree=g;
+        frontier=ORDSET.make(frontier_order);
         scratch=None;
         cnt=0;
         curs=None;
@@ -377,31 +421,12 @@ struct
 
 
   (*select best node, given a criteria*)
-  let select_best_node (type a) (type b) (sr:(a,b) ssearch) (conv:sscore->sscore->sscore) (root:(a snode) option) : (a snode) option =
-    let currnode = cursor sr in
-    let score_path (endnode:a snode) : float =
-      (*pass through node*)
-      let score_node (e:a snode) (r:sscore) : sscore =
-        r
-      in
-      (*pass through edge*)
-      let score_edge src snk (n:sscore) (old:sscore) : sscore =
-        conv old n
-      in
-      let init_score : sscore = mkscore 0. 0. in
-      let score = TREE.fold_to_node score_node score_edge sr.tree endnode init_score in
-      (*let _ = lcl_print_debug ("node "^(string_of_int endnode.id)^": "^(score2str score)) in *)
-      score.state +. score.delta
-    in
-    (*get all the paths for teh root node*)
-    let leaves = get_paths sr root in
-    match leaves with
-    | [] -> None
-    | h::t ->
-      (*look at everything but the current node*)
-      let leaves = LIST.filter (fun x -> x <> currnode) leaves in
-      if List.length leaves = 0 then Some(currnode) else
-        let _,best = LIST.max (fun x -> score_path x) leaves in
-        Some(best)
-
+  let select_best_node (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : (a snode) option =
+    let _ = _print_debug ("FRONTIER: "^(string_of_int( ORDSET.length sr.frontier)) ) in 
+    match ORDSET.front sr.frontier with
+    | Some(q) -> 
+        let dq = REF.dr q in 
+        Some(dq)
+    | None -> None
+    
 end

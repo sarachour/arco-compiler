@@ -9,6 +9,7 @@ If the node
 *)
 type 'a snode = {
   mutable s :'a list;
+  mutable score: float;
   id : int;
 }
 
@@ -36,6 +37,7 @@ type ('a,'b) ssearch = {
   (*search tree*)
   tree: ('a snode, sscore) tree;
   mutable scratch: ('a snode) option;
+  mutable frontier: ('a snode ref) ord_set;
   (*the total number of step bundles*)
   mutable curs: ('a snode,sscore) cursor option;
   mutable st: sstats;

@@ -715,10 +715,7 @@ struct
     FUN.iter_n proc_one 1
 
   let rec get_best_valid_node (type a) (sr:a runify) (root:(a rnode) option)  : (a rnode) option =
-    let collate_score (o:sscore) (score:sscore) : sscore =
-      SearchLib.mkscore score.state  (score.delta +. o.delta)
-    in
-    let nnode =  SearchLib.select_best_node sr.search collate_score root in
+    let nnode =  SearchLib.select_best_node sr.search root in
     nnode
 
   (*select the next node to solve*)
@@ -824,7 +821,8 @@ struct
     let _ = build_tree smeta root  in
     (*let _ = build_tree smeta root (None) in*)
     (*solve a thing*)
-    let _ = solve smeta root targvar n in
+    let ncmp = n*(List.length tmpl) in 
+    let _ = solve smeta root targvar ncmp in
     let _ = _print_debug "=== Done with Relation Search ===" in
     let slns = get_slns smeta in
     let rep = print_fusions 1 smeta.tbl.tostr slns in

@@ -163,22 +163,24 @@ struct
     let hwenv : hwenv=  ms.state.slvr.hw  in
     (*process a local variable*)
     let proc_local_var name =
+      (*all output port labels with the mathid name*)
       let olabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
+      (*all input labels with the mathid name*)
       let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
       match olabels with
       | [(owire,oprop,olabel)] ->
         let _ = _print_debug ("local variable "^name^" is tagged on an output wire. Let's connect it to all inputs.") in
-        let ohwid = UnivLib.wire2uid hwenv owire oprop in
-        let omid = UnivLib.label2uid olabel in
+        let output_wire_hwid = UnivLib.wire2uid hwenv owire oprop in
+        let output_math_id = UnivLib.label2uid olabel in
         (*lets create goals for the tableau to map*)
         let connect_ports : sstep list = List.map (fun (iwire,iprop,ilbl) ->
-          let ihwid = UnivLib.wire2uid hwenv iwire iprop in
-          let rel = UFunction(ohwid,Term(ihwid)) in
+          let input_wire_hwid = UnivLib.wire2uid hwenv iwire iprop in
+          let rel = UFunction(input_wire_hwid,Term(output_wire_hwid)) in
           let goal = UnivLib.wrap_goal tbl rel in
           (*this is the connection goal*)
           SAddGoal(goal)
         ) ilabels in
-        let remove_existing_goal = match GoalTableLib.get_goal_from_var tbl omid with
+        let remove_existing_goal = match GoalTableLib.get_goal_from_var tbl output_math_id with
          | Some(v) -> [SRemoveGoal(v)]
          | _ -> []
         in
@@ -586,17 +588,15 @@ struct
 
     (*get the best valid node. If there is no valid node, return none *)
     let rec get_best_valid_node (ms:musearch)  : (mustep snode) option =
-      let collate_score (o:sscore) (n:sscore) : sscore =
-        SearchLib.mkscore n.state (o.delta +. n.delta)
-      in
-      SearchLib.select_best_node ms.search collate_score None
+      SearchLib.select_best_node ms.search None
 
 
 
     let msolve sl (ms:musearch) (nslns:int): (sln list) option =
       let mint,musr = mkmenu ms in
       let _msolve_new id =
-          let res  = augment_with_new_partial_sln ms id 1 in
+          let nnewslns = get_glbl_int "multi-num-partial-solutions" in
+          let res  = augment_with_new_partial_sln ms id nnewslns in
           ()
       in
 

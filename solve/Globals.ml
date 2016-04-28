@@ -25,9 +25,9 @@ let _ = MAP.put glbls "uast-duplicates" (GlblPropInt 1)
 let _ = MAP.put glbls "uast-selector-restrict" (GlblPropString "single")
 let _ = MAP.put glbls "uast-restrict-fraction-set-prop" (GlblPropFloat 2.0)
 let _ = MAP.put glbls "uast-restrict-fraction-ban-prop" (GlblPropFloat 0.50)
-let _ = MAP.put glbls
 
 let _ = MAP.put glbls "multi-force-value-to-port" (GlblPropBool true)
+let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 5)
 
 let _ = MAP.put glbls "eqn-smt-defer" (GlblPropBool true)
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)

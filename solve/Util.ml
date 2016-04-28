@@ -29,10 +29,11 @@ type ('a,'b) graph = {
 }
 
 type ('a,'b) tree = {
-  mutable adj : ('a,(('a,'b) map)*('a option)) map;
-  mutable root : 'a option;
-  vcmp : 'b -> 'b -> bool;
-  ncmp : 'a -> 'a -> bool;
+  mutable id2n : (int,'a) map;
+  mutable adj : (int,((int,'b) map)*(int option)) map;
+  mutable root : int option;
+  n2id : 'a -> int;
+  vcmp : 'b -> 'b -> bool
 }
 
 let return x b = let _ = x in begin
@@ -478,6 +479,183 @@ struct
     List.nth s i
 end
 
+type 'a ord_set_node = {
+  d:'a;
+  mutable prev:'a ord_set_node ref;
+  mutable next:'a ord_set_node ref;
+}
+
+type 'a _ord_set = {
+  mutable start_node: 'a ord_set_node ref;
+  mutable end_node: 'a ord_set_node ref;
+}
+
+type ord_dir = Before | After | SameAs
+type 'a ord_set = {
+  mutable lst: 'a _ord_set option;
+  cmp: 'a -> 'a -> ord_dir;
+  mutable len : int;
+}
+
+
+module ORDSET = 
+struct
+  let make (type a) (cmp:a->a->ord_dir) = {
+    lst = None;
+    cmp = cmp; 
+    len = 0;
+  }
+  let _make_node (type a) (x:a) = 
+    let rec n = {
+      d=x;
+      prev=ref n;
+      next=ref n;
+    }
+    in
+    n
+  
+  let length (type a) (s:a ord_set) = 
+    s.len 
+
+  let _insert_before (type a) (s:a _ord_set) (n:a ord_set_node) (x:a) =
+    let xn = _make_node x in 
+    let xn_ref = REF.mk xn in
+    let n_ref = REF.mk n in  
+    if n == REF.dr s.start_node then
+      let _ = n.prev <- xn_ref in
+      let _ = xn.next <-n_ref in
+      let _ = s.start_node <- xn_ref in 
+      ()
+    else
+      let pr = REF.dr n.prev in 
+      let _ = pr.next <- xn_ref in
+      let _ = xn.prev <- n.prev in 
+      let _ = xn.next <- n_ref in 
+      let _ = n.prev <- xn_ref in 
+      ()
+  
+  let _insert_after (type a) (s:a _ord_set) (n:a ord_set_node) (x:a) = 
+    let xn = _make_node x in 
+    let xn_ref = REF.mk xn in 
+    let n_ref = REF.mk n in 
+    if n == REF.dr s.end_node then 
+      let _ = n.next <- xn_ref in 
+      let _ = xn.prev <- n_ref in 
+      let _ = s.end_node <- xn_ref in 
+      ()
+    else
+      let next = REF.dr n.next in
+      let _ = n.next <- xn_ref in
+      let _ = xn.prev <- n_ref in 
+      let _ = next.prev <- n_ref in 
+      let _ = xn.next = n.next in 
+      ()
+  
+  let _fold_node (type a) (type b) (s:a _ord_set) (fxn:a ord_set_node -> b -> b) (n:a ord_set_node ref) (vl:b) : b=
+    let rec __fold_node (n:a ord_set_node ref) (vl:b) : b=
+      let  n_dat = REF.dr n in 
+      let new_vl : b= fxn n_dat vl in 
+      if n_dat.next == n then
+       new_vl
+      else
+       __fold_node (n_dat.next) new_vl
+    in 
+    __fold_node n vl
+
+  let rec _fold (type a) (type b) (s:a _ord_set) (fxn:a -> b -> b) (n:a ord_set_node ref) (vl:b) : b = 
+    _fold_node s (fun x y -> fxn x.d y) n vl 
+
+  let iter (type a) (s:a ord_set) (fxn:a->unit) = match s.lst with 
+  | Some(root) ->
+      _fold root (fun x b -> fxn(x) ) root.start_node ()
+  | None -> ()
+  
+  let fold (type a) (type b) (s:a ord_set) (fxn:a->b->b) (vl:b) = match s.lst with 
+  | Some(root) -> 
+    _fold root fxn root.start_node vl
+  | None ->
+      vl
+ 
+  let _rm (type a) (s: a _ord_set) (x:a) : bool = 
+    let sn_ref = s.start_node in 
+    let en_ref = s.end_node in 
+    let sn = REF.dr sn_ref in 
+    let en = REF.dr en_ref in 
+    if sn.d = x then 
+      let _ = s.start_node <- sn.next in 
+      let snn = REF.dr sn.next in 
+      let _ = snn.prev <- sn.next in 
+      true
+    else if en.d = x then 
+      let _ = s.end_node <- en.prev in 
+      let enp = REF.dr en.prev in 
+      let _ = enp.next <- en.prev in 
+      true
+    else
+      _fold_node s (fun node removed ->
+        if node.d = x then  
+          let prev_ref = node.prev in 
+          let prev = REF.dr prev_ref in 
+          let next_ref = node.next in 
+          let next = REF.dr next_ref in 
+          let _ = prev.next <- next_ref in
+          let _ = next.prev <- prev_ref in
+          true
+        else removed
+      ) s.start_node false
+      
+      
+  
+  let front (type a) (s:a ord_set) :a option = match s.lst with 
+  | Some(root) -> Some ((REF.dr root.start_node).d)
+  | None -> None
+  
+  let back (type a) (s:a ord_set) :a option = match s.lst with 
+  | Some(root) -> Some ((REF.dr root.end_node).d)
+  | None -> None
+  
+  let rm s x = match s.lst with 
+  | Some(root) ->
+   
+      if _rm root x then
+        let _ = s.len <- s.len - 1 in 
+        if s.len == 0 then
+          let _ = s.lst <- None in 
+          ()
+        else
+          ()
+      else
+        ()
+  | None -> ()
+
+  let add s x =  match s.lst with
+  | Some(root) ->
+    let cmp = s.cmp x in 
+    let some_post = _fold_node root (fun curr cnode -> 
+      let choice : ord_dir = cmp curr.d in 
+      if choice = Before || choice = SameAs then Some curr else cnode) root.start_node None
+    in 
+    begin 
+    match some_post with 
+    | Some(node) -> 
+        if cmp node.d = SameAs then () 
+        else 
+          let _ = s.len <- s.len + 1 in 
+          _insert_before root node x 
+    | None -> 
+        let _ = s.len <- s.len + 1 in 
+        _insert_after root (REF.dr root.end_node) x
+    end
+  | None ->
+    let xn = _make_node x in 
+    let xn_ref = REF.mk xn in 
+    let _ = s.len <- s.len + 1 in 
+    let _ = s.lst <- Some({start_node=xn_ref;end_node=xn_ref}) in  
+    ()
+
+end
+
+
 module MAP =
 struct
   let max = 25;;
@@ -910,61 +1088,74 @@ type ('a,'b) cursor = 'a
 module TREE =
 struct
 
-  let make ncmp ecmp  =
+  let make n2id vcmp =
     {
+      id2n = MAP.make();
       adj= MAP.make();
       root= None;
-      vcmp= ecmp;
-      ncmp = ncmp
+      n2id = n2id;
+      vcmp = vcmp;
+   }
+ 
+  let i2n g i = 
+      MAP.get g.id2n i
 
-    }
-  let leaves g =
-    MAP.fold g.adj (fun k (v,p) r -> if MAP.size v = 0 then k::r else r) []
+  let n2i g n = g.n2id n
 
-  let root g =
-    g.root
 
+  let leaves (type a) (type b) (g:(a,b) tree) : a list =
+    MAP.fold g.adj (fun k (v,p) r -> if MAP.size v = 0 then (i2n g k)::r else r) []
+
+  let root (type a) (type b) (g:(a,b) tree) : a option =
+    match g.root with 
+    | Some(x) -> Some (i2n g x) 
+    | None -> None 
+ 
   let filter_nodes (type a) (type b) (g:(a,b) tree) (flt:a->bool) : a list =
-    let cands = MAP.filter g.adj (fun k v -> flt k)  in
-    List.map (fun (k,v) -> k) cands
+    let cands = MAP.filter g.adj (fun k v -> flt (i2n g k))  in
+    List.map (fun (k,v) -> i2n g k) cands
 
   let edge (type a) (type b) (g:(a,b) tree) (x:a) (y:a) : b =
-    let chld,_ = MAP.get g.adj x in
-    match MAP.filter chld (fun n e -> n = y)  with
+    let yid = n2i g y in
+    let xid = n2i g x in 
+    let chld,_ = MAP.get g.adj xid in
+    match MAP.filter chld (fun n e -> n = yid)  with
     | [(snk,edj)] -> edj
     | _ -> error "edge" "does not exist"
 
 
   let children (type a) (type b) (g:(a,b) tree) (n:a) : a list =
-    let chld,_ = MAP.get g.adj n in
-    MAP.map chld (fun n e -> n)
+    let chld,_ = MAP.get g.adj (n2i g n) in
+    MAP.map chld (fun n e -> i2n g n)
 
   let has_child (type a) (type b) (g:(a,b) tree) (n:a) (c:a) : bool =
-    let children,_ = MAP.get g.adj n in
-    MAP.has children c
+    let children,_ = MAP.get g.adj (n2i g n) in
+    MAP.has children (n2i g c)
 
   let parent  (type a) (type b) (g:(a,b) tree) (n:a) : a option =
-    let _,p = MAP.get g.adj n in
-    p
+    let _,p = MAP.get g.adj (n2i g n) in
+    match p with 
+    | Some(id) -> Some (i2n g id)
+    | None -> None 
 
   let hasnode (type a) (type b) (g) (n:a) : bool =
-    MAP.has (g.adj) n
+    MAP.has (g.adj) (n2i g n)
 
 
   let hasedge (type a) (type b) (g:(a,b) tree) (s:a) (e:a) (v:b) : bool =
     if hasnode g s == false || hasnode g e == false then
       false
     else
-      let chld,_ = MAP.get (g.adj) s in
-      MAP.has chld e && g.vcmp (MAP.get chld e) v
+      let chld,_ = MAP.get (g.adj) (n2i g s) in
+      MAP.has chld (n2i g e) && g.vcmp (MAP.get chld (n2i g e)) v
 
   let getconn (type a) (type b) (g:(a,b) tree) (s:a) (e:a) : (a*b) option =
     if hasnode g s = false || hasnode g e = false then
       None
     else
-      let chld,_ = MAP.get (g.adj) s in
-      if MAP.has chld e then
-        Some (e,MAP.get chld e)
+      let chld,_ = MAP.get (g.adj) (n2i g s) in
+      if MAP.has chld (n2i g e) then
+        Some (e,MAP.get chld (n2i g e))
       else
         None
 
@@ -972,7 +1163,8 @@ struct
     if hasnode g n then
       error "mknode" "node already exists"
     else
-      let _ = MAP.put (g.adj) n (MAP.make (), None) in
+      let _ = MAP.put (g.id2n) (n2i g n) n in 
+      let _ = MAP.put (g.adj) (n2i g n) (MAP.make (), None) in
       g
 
   let mkedge (type a) (type b) (g) (src:a) (snk:a) (v:b) : (a,b) tree =
@@ -982,24 +1174,20 @@ struct
       error "mkedge" "sink node doesn't exist"
     else
     (* edges *)
-    let edges,_ = MAP.get g.adj src in
-    let _ = MAP.put edges snk v in
-    let edges,old = MAP.get g.adj snk in
+    let edges,_ = MAP.get g.adj (n2i g src) in
+    let _ = MAP.put edges (n2i g snk) v in
+    let edges,old = MAP.get g.adj (n2i g snk) in
     match old with
     | Some(q) ->
-      if q = src then g
+      if q = n2i g src then g
       else error "mkedge" "node already has a parent."
     | None ->
-      let _ = MAP.put g.adj snk (edges,Some src) in
+      let _ = MAP.put g.adj (n2i g snk) (edges,Some (n2i g src)) in
       g
 
   let updedge (type a) (type b) g (src:a) (snk:a) (v:b) : (a,b) tree =
-    let edges,back = MAP.get g.adj src in
-    let _ = match getconn g src snk with
-      | Some(conn) -> let _ = MAP.rm edges snk in ()
-      | None -> ()
-    in
-    let _ = mkedge g src snk v in
+    let edges,back = MAP.get g.adj (n2i g src) in
+    let _ = MAP.upd edges (fun _ -> v) (n2i g snk) in 
     g
 
   let rmnode (type a) (type b) (g) (n:a) : (a,b) tree =
@@ -1007,15 +1195,17 @@ struct
       if hasnode g n = false then
         error "rmnode" "node does not exist"
       else
-        let chld,_ = MAP.get (g.adj) n in
-        let _ = MAP.iter chld (fun x v -> _rmnode x) in
-        let _ = MAP.rm (g.adj) n in
+        let chld,_ = MAP.get (g.adj) (n2i g n) in
+        let _ = MAP.iter chld (fun x v -> _rmnode (i2n g x)) in
+        let _ = MAP.rm (g.adj) (n2i g n) in
+        let _ = MAP.rm (g.id2n) (n2i g n) in
         ()
     in
     let _ = match parent g n with
       | Some(par) ->
-        let parchld,parpar = MAP.get g.adj par in
-        let _ = if MAP.has parchld n then return (MAP.rm parchld n) () in
+        let parchld,parpar = MAP.get g.adj (n2i g par) in
+        let _ = if MAP.has parchld (n2i g n) then 
+          return (MAP.rm parchld (n2i g n)) () in
         ()
       | None -> ()
     in
@@ -1085,7 +1275,7 @@ struct
 
   let setroot (type a) (type b) (g:(a,b) tree) (src:a) =
     if g.root = None then
-      let _ = g.root <- Some src in
+      let _ = g.root <- Some (n2i g src) in
       g
     else
       error "setroot" "already exists"
@@ -1093,6 +1283,9 @@ struct
 
 
   let depth (type a) (type b) (g: (a,b) tree) (node:a)  : int =
+    if hasnode g node = false then 
+      error "depth" ("node doesn't exist.")
+    else
     fold_path (fun x v -> 1+v) (fun src snk v r -> r ) g node 0
 
 
@@ -1102,16 +1295,16 @@ struct
         error "graph/traverse" "node doesn't exist"
       else
         let res = nfx src res in
-        let chldrn,_  = MAP.get (g.adj) (src) in
-        let proc_chld snk e x =
-          let x = efx src snk e x in
-          let x = _traverse snk x in
+        let chldrn,_  = MAP.get (g.adj) (n2i g src) in
+        let proc_chld (snk:int) e x =
+          let x = efx src (i2n g snk) e x in
+          let x = _traverse (i2n g snk) x in
           x
         in
         MAP.fold chldrn proc_chld res
     in
       match g.root with
-      |Some(root) ->  _traverse root ic
+      |Some(root) ->  _traverse (i2n g root) ic
       |None -> ic
 
 
