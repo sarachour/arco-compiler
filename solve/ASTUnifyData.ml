@@ -38,7 +38,7 @@ type 'a asgn_state  = {
 
 type 'a rstep =
         (*solution assign*)
-       | RSetState of 'a asgn_state 
+        | RSetState of 'a asgn_state 
         (*ban an assignment*)
         | RBanAssign of 'a*('a ast)
         | RTemplSubgraph of 'a set

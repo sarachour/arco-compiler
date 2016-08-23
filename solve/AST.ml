@@ -64,6 +64,7 @@ module ASTLib
     val pattern : ('a ast) -> ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a -> bool-> ('a -> symvar)-> symdecl) -> int -> ('a symassign) list option
     val simpl : ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a-> ('a -> symvar)-> symdecl) -> 'a ast
     val sub : ('a ast) -> (('a,'a ast) map) -> 'a ast
+    val subs : ('a ast) -> ((('a,'a ast) map) list) -> 'a ast
 end*)
 
 = struct
@@ -328,6 +329,13 @@ end*)
     | _ -> None
     in
     trans expr tf
+  
+  let subs (type a) (expr:a ast) (subs : (a,a ast) map list) : a ast = 
+    let rec _subs e s = match s with
+    | h::t -> _subs (sub e h) t
+    | [] -> e
+    in
+    _subs expr subs
 
   let sub_one (type a) (expr:a ast) (lhs:a) (rhs:a ast) : a ast =
     let v = MAP.make () in

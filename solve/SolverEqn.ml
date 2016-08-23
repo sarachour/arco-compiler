@@ -3,6 +3,7 @@ open Common
 
 open ASTUnifyData
 open ASTUnify
+open ASTXUnify
 
 open AST
 open Interactive
@@ -235,7 +236,8 @@ struct
         let vgl,_,_ = goal2info g in
         let nunify = Globals.get_glbl_int "eqn-unifications" in
         let slns : (unid fusion) set =
-          ASTUnifier.multipattern templ targ vgl nunify
+          (*Hint: Unification routine here*)
+          ASTXUnify.ASTUnifier.multipattern templ targ vgl nunify
           (testwc)
           (UnivLib.unid2var)
           (UnivLib.var2unid (s))

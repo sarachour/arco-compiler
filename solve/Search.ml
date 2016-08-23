@@ -136,6 +136,11 @@ struct
     in
     TREE.tostr sr.tree (fun i x -> (_steps2str i sr x)) (fun i y -> _score2str i y)
 
+  let print_frontier sr =
+    let prefix = "Frnt "^(string_of_int( ORDSET.length sr.frontier))^":"  in 
+    let front_str = ORDSET.ord2str sr.frontier (fun _x -> let x = REF.dr _x in (string_of_int x.id)^":"^(string_of_float x.score)) in 
+    let _ = _print_debug (prefix^front_str) in 
+    ()
 
   let mknode (type a) (type b) (sr:(a,b) ssearch)=
     let _ = (sr.cnt <- sr.cnt + 1) in
@@ -197,7 +202,6 @@ struct
     | Some(v) -> if v = n then () else ()
     | None -> ()
     in
-    let _ = _print_debug ("remove node "^(string_of_int n.id)) in 
     let _ = ORDSET.rm sr.frontier (REF.mk n) in 
     let _ = TREE.rmnode sr.tree n in
     let _ = SStatLib.rm sr.st n in
@@ -261,7 +265,6 @@ struct
       let score_edge src snk (n:sscore) (old:sscore) : sscore = combine old n in
       let init_score : sscore = mkscore 0. 0. in
       let score = TREE.fold_to_node score_node score_edge sr.tree endnode init_score in
-      let _ = _print_debug ("node "^(string_of_int endnode.id)^": "^(score2str score)) in 
       let total = score.state +. score.delta in
       total
 
@@ -334,7 +337,6 @@ struct
     | Some(node), Some(cursor) ->
       let _ = TREE.mknode sr.tree node in
       let _ = TREE.mkedge sr.tree cursor node (mkscore 0. 0.) in
-      let _ = _print_debug ("added node "^(string_of_int node.id)) in
       let _ = sr.scratch <- None in
       (*move the cursor to the created node*)
       let _ = move_cursor sr state node in
@@ -367,12 +369,14 @@ struct
  
   let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b) (order:a->a->int) (score:b->a list->sscore) (tostr:a->string) =
     let g = TREE.make (fun x -> x.id) (fun x y -> x = y) in
-    let frontier_order (_x:a snode ref) (_y:a snode ref): ord_dir =
-      let x = REF.dr _x in 
-      let y = REF.dr _y in 
-      if x.id == y.id then SameAs else
-      if x.score > y.score then Before 
-      else After
+    let frontier_order (_curr:a snode ref) (_next:a snode ref): ord_dir =
+      let curr = REF.dr _curr in 
+      let next = REF.dr _next in 
+      if curr.id == next.id then SameAs else
+      if curr.score >= next.score then 
+        Before 
+      else 
+        After
     in
     let srch = {
         tree=g;
@@ -419,10 +423,8 @@ struct
     else
       false
 
-
   (*select best node, given a criteria*)
   let select_best_node (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : (a snode) option =
-    let _ = _print_debug ("FRONTIER: "^(string_of_int( ORDSET.length sr.frontier)) ) in 
     match ORDSET.front sr.frontier with
     | Some(q) -> 
         let dq = REF.dr q in 

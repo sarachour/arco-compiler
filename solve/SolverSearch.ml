@@ -81,7 +81,7 @@ struct
     let state = 0. in
     let delta = 0. in
     SearchLib.mkscore state delta
-
+  
   let score_step () =
     let typ = get_glbl_string "eqn-selector-branch" in
     match typ with

@@ -6,6 +6,11 @@ exception UtilError of string
 
 let error n m = raise (UtilError (n^":"^m))
 
+let warn fxn msg = 
+  Printf.printf "[WARN][%s] %s\n" fxn msg;
+  flush_all ();
+  ()
+
 type range = float*float
 type irange = int*int
 
@@ -101,6 +106,9 @@ struct
   let round x : float =
     let v = snd (modf (x +. copysign 0.5 x)) in
     v
+  
+  let round_up x : float = 
+    ceil x 
 
   let float_is_int (x:float) =
     let xt : float = round x in
@@ -138,6 +146,11 @@ struct
   let rand_int n =
     let i = Random.int(n) in
     i
+  
+  let rand_boolean () = 
+    match Random.int(1) with
+    | 0 -> true
+    | 1 -> false
 
   let rand_norm () =
     let i = Random.float(1.) in
@@ -322,7 +335,8 @@ module LIST =
 struct
   type sortorder =
     SortAscending | SortDescending
-
+  
+ 
   let has lst n =
       List.length (List.filter (fun x -> n = x) lst) > 0
 
@@ -477,6 +491,25 @@ struct
     let n = List.length s in
     let i = Random.int(n) in
     List.nth s i
+
+  (*select a random subset*)
+  let random_subset lst nelems =
+    let rec _random_subset lst nelems unused = 
+        if nelems > 0 then
+         match lst with
+         | h::t -> if RAND.rand_boolean ()
+            then h::(_random_subset t (nelems - 1) unused)
+            else _random_subset t (nelems) (h::unused)       
+         | [] ->
+            _random_subset unused nelems [] 
+        else
+        []
+    in
+    if List.length lst <= nelems then
+      lst
+    else
+      _random_subset lst nelems [] 
+
 end
 
 type 'a ord_set_node = {
@@ -517,53 +550,54 @@ struct
   let length (type a) (s:a ord_set) = 
     s.len 
 
-  let _insert_before (type a) (s:a _ord_set) (n:a ord_set_node) (x:a) =
-    let xn = _make_node x in 
-    let xn_ref = REF.mk xn in
-    let n_ref = REF.mk n in  
-    if n == REF.dr s.start_node then
-      let _ = n.prev <- xn_ref in
-      let _ = xn.next <-n_ref in
-      let _ = s.start_node <- xn_ref in 
+  let _insert_before (type a) (s:a _ord_set) (curr_ref:a ord_set_node ref) (x:a) =
+    let ins = _make_node x in 
+    let ins_ref = REF.mk ins in
+    let curr = REF.dr curr_ref in  
+    if curr_ref == s.start_node then
+      let _ = curr.prev <- ins_ref in
+      let _ = ins.next <-curr_ref in
+      let _ = s.start_node <- ins_ref in 
       ()
     else
-      let pr = REF.dr n.prev in 
-      let _ = pr.next <- xn_ref in
-      let _ = xn.prev <- n.prev in 
-      let _ = xn.next <- n_ref in 
-      let _ = n.prev <- xn_ref in 
+      let before = REF.dr curr.prev in 
+      let before_ref = curr.prev in 
+      let _ = before.next <- ins_ref in
+      let _ = ins.prev <- before_ref in 
+      let _ = ins.next <- curr_ref in 
+      let _ = curr.prev <- ins_ref in 
       ()
   
-  let _insert_after (type a) (s:a _ord_set) (n:a ord_set_node) (x:a) = 
-    let xn = _make_node x in 
-    let xn_ref = REF.mk xn in 
-    let n_ref = REF.mk n in 
-    if n == REF.dr s.end_node then 
-      let _ = n.next <- xn_ref in 
-      let _ = xn.prev <- n_ref in 
-      let _ = s.end_node <- xn_ref in 
+  let _insert_after (type a) (s:a _ord_set) (curr_ref:a ord_set_node ref) (x:a) = 
+    let ins = _make_node x in 
+    let ins_ref = REF.mk ins in 
+    let curr = REF.dr curr_ref   in 
+    if curr_ref == s.end_node then 
+      let _ = curr.next <- ins_ref in 
+      let _ = ins.prev <- curr_ref in 
+      let _ = s.end_node <- ins_ref in 
       ()
     else
-      let next = REF.dr n.next in
-      let _ = n.next <- xn_ref in
-      let _ = xn.prev <- n_ref in 
-      let _ = next.prev <- n_ref in 
-      let _ = xn.next = n.next in 
+      let after = REF.dr curr.next in
+      let after_ref = curr.next in
+      let _ = curr.next <- ins_ref in
+      let _ = ins.prev <- curr_ref in 
+      let _ = after.prev <- curr_ref in 
+      let _ = ins.next <- after_ref in 
       ()
   
-  let _fold_node (type a) (type b) (s:a _ord_set) (fxn:a ord_set_node -> b -> b) (n:a ord_set_node ref) (vl:b) : b=
+  let _fold_node (type a) (type b) (s:a _ord_set) (fxn:a ord_set_node ref -> b -> b) (n:a ord_set_node ref) (vl:b) : b=
     let rec __fold_node (n:a ord_set_node ref) (vl:b) : b=
-      let  n_dat = REF.dr n in 
-      let new_vl : b= fxn n_dat vl in 
-      if n_dat.next == n then
+      let new_vl : b= fxn n vl in 
+      if  n == s.end_node then
        new_vl
       else
-       __fold_node (n_dat.next) new_vl
+       __fold_node ((REF.dr n).next) new_vl
     in 
     __fold_node n vl
 
   let rec _fold (type a) (type b) (s:a _ord_set) (fxn:a -> b -> b) (n:a ord_set_node ref) (vl:b) : b = 
-    _fold_node s (fun x y -> fxn x.d y) n vl 
+    _fold_node s (fun x y -> fxn (REF.dr x).d y) n vl 
 
   let iter (type a) (s:a ord_set) (fxn:a->unit) = match s.lst with 
   | Some(root) ->
@@ -575,35 +609,47 @@ struct
     _fold root fxn root.start_node vl
   | None ->
       vl
+  
+  let ord2str (type a) (type b) (s:a ord_set) (fxn:a->string) = match s.lst with 
+  | Some(root) -> 
+    _fold root (fun x r -> r^" "^(fxn x) ) root.start_node ""
+  | None ->
+      ""
  
-  let _rm (type a) (s: a _ord_set) (x:a) : bool = 
+
+  let _rm (type a) (ord : a ord_set) (s: a _ord_set) (x:a) : bool = 
     let sn_ref = s.start_node in 
     let en_ref = s.end_node in 
     let sn = REF.dr sn_ref in 
     let en = REF.dr en_ref in 
-    if sn.d = x then 
-      let _ = s.start_node <- sn.next in 
-      let snn = REF.dr sn.next in 
-      let _ = snn.prev <- sn.next in 
+    if ord.cmp sn.d x = SameAs then 
+      let new_sn = REF.dr sn.next in 
+      let new_sn_ref = sn.next in
+      let _ = s.start_node <- new_sn_ref in 
+      let _ = new_sn.prev <- new_sn_ref in 
       true
-    else if en.d = x then 
-      let _ = s.end_node <- en.prev in 
-      let enp = REF.dr en.prev in 
-      let _ = enp.next <- en.prev in 
+    else if ord.cmp en.d x = SameAs then 
+      let new_en = REF.dr en.prev in 
+      let new_en_ref = en.prev in 
+      let _ = s.end_node <- new_en_ref in 
+      let _ = new_en.next <- new_en_ref in 
       true
     else
-      _fold_node s (fun node removed ->
-        if node.d = x then  
-          let prev_ref = node.prev in 
+      let rec remove_node curr_ref =
+       let curr = REF.dr curr_ref in
+       if ord.cmp curr.d x = SameAs then 
+          let prev_ref = curr.prev in 
+          let next_ref = curr.next in 
           let prev = REF.dr prev_ref in 
-          let next_ref = node.next in 
           let next = REF.dr next_ref in 
           let _ = prev.next <- next_ref in
           let _ = next.prev <- prev_ref in
           true
-        else removed
-      ) s.start_node false
-      
+       else
+        if curr_ref == s.end_node then false
+        else remove_node curr.next   
+      in
+      remove_node sn_ref
       
   
   let front (type a) (s:a ord_set) :a option = match s.lst with 
@@ -615,9 +661,8 @@ struct
   | None -> None
   
   let rm s x = match s.lst with 
-  | Some(root) ->
-   
-      if _rm root x then
+  | Some(root) -> 
+      if _rm s root x then
         let _ = s.len <- s.len - 1 in 
         if s.len == 0 then
           let _ = s.lst <- None in 
@@ -630,21 +675,27 @@ struct
 
   let add s x =  match s.lst with
   | Some(root) ->
-    let cmp = s.cmp x in 
-    let some_post = _fold_node root (fun curr cnode -> 
-      let choice : ord_dir = cmp curr.d in 
-      if choice = Before || choice = SameAs then Some curr else cnode) root.start_node None
-    in 
-    begin 
-    match some_post with 
-    | Some(node) -> 
-        if cmp node.d = SameAs then () 
+      let cmp floating node  = s.cmp floating node in
+      let rec find_node curr_ref =
+        let curr = REF.dr curr_ref in 
+        match cmp x curr.d with
+        | Before -> Some curr_ref
+        | SameAs-> Some curr_ref 
+        | After ->
+            if curr_ref == root.end_node then
+              None
+            else find_node curr.next
+      in
+      begin 
+      match find_node root.start_node with 
+      | Some(node) -> 
+        if cmp x (REF.dr node).d = SameAs then () 
         else 
           let _ = s.len <- s.len + 1 in 
           _insert_before root node x 
-    | None -> 
+      | None -> 
         let _ = s.len <- s.len + 1 in 
-        _insert_after root (REF.dr root.end_node) x
+        _insert_after root root.end_node x
     end
   | None ->
     let xn = _make_node x in 
@@ -757,6 +808,11 @@ struct
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
     mp
   
+  let merge (type a) (type b) (x:((a,b) map) list) : (a,b) map = 
+      let newm = make () in 
+      List.iter (fun m -> iter m (fun k v ->  let _ =put newm k v in ())) x;
+      newm
+
   let filter_map (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (a,b) map = 
     from_list (filter x f)
 
@@ -768,7 +824,7 @@ struct
 
   let singleton (type a) (type b) (x:(a,b) map): (a*b) =
     if size x != 1 then
-      error "MAP.singleton" "must have exactly one element."
+      error "MAP.singleton" ("must have exactly one element. has ["^(string_of_int (size x))^"] elements")
     else
       let r = match fold x (fun x y r -> Some(x,y)) None with
         | Some(v) -> v
@@ -876,7 +932,10 @@ struct
     let n = size s in
     let i = Random.int(n) in
     List.nth (MAP.keys s) i
-
+  
+  let singleton (type a) (s: a set) : a =
+    let x,_ = MAP.singleton s in
+    x 
 end
 
 

@@ -153,101 +153,21 @@ struct
     let delta = RAND.rand_norm () in
     let state = RAND.rand_norm () in
     SearchLib.mkscore delta state
+                      
+  let score_bans env steps : sscore = 
+    let delta = LIST.fold steps (fun x r -> match x with
+                              | RBanAssign(_) -> 1+r
+                              | _ -> r
+                    ) 0
+    in
+    let state = 0. in
+    SearchLib.mkscore (float_of_int delta) state
 
   let get_score ()  =
     match get_glbl_string "uast-selector-branch" with
     | "uniform" -> score_uniform
     | "random" -> score_random
-
-  (*
-  break any cycles in a set of equations
-  *)
-  let rec gen_nodep (type a) (s:a runify) (ginfo:(a,a rdata) map) : (((a, a rdata) map)*((a,a set) map)*((a set) list))  =
-    let sym2a : symvar -> a = g_iconv s.tbl in
-    let a2sym : a -> symvar = g_conv s.tbl in
-    (*create the set of replacements *)
-    let breaks : (a, a set) map = MAP.make () in
-    (*create the equation table*)
-    let tabl : (a, a ast) map = MAP.make () in
-    let _ = MAP.iter ginfo (fun k d -> return (MAP.put tabl k d.rhs) ()) in
-    (*create the allocation routines*)
-    let nallocs : int ref = REF.mk 1 in
-    let freshvar () =
-      let v = s.tbl.env.freshvar (REF.dr nallocs) UTypTempl in
-      let _ = REF.upd nallocs (fun x -> x + 1) in
-      v
-    in
-    (*breaking teh cycles*)
-    let rec _break_cycles () =
-      let _ = _print_debug "==== Breaking Cycles =====" in
-      let cycle2str lst : string = List.fold_right (fun x r -> r^"->"^(a2sym x)) lst "" in
-      let graph : (a,unit) graph = ASTLib.mk_dep_graph (MAP.to_list tabl) a2sym in
-      let cycs : (a list) set = GRAPH.cycles graph in
-      if SET.empty cycs then
-        let _ = _print_debug ("[DEP] ----> No Cycles Left!") in
-        tabl
-      else
-        let _ = _print_debug("[DEP] Cycles :\n") in
-        let _ = SET.iter cycs (fun x -> _print_debug ("::> "^(cycle2str x))) in
-        let cyc = SET.rand cycs in
-        let use_var : a = LIST.from_end cyc 1 in
-        let def_var : a = LIST.from_end cyc 0 in
-        let use_var_dup :a = freshvar () in
-        let _ = _print_debug ("@ repl "^(a2sym use_var)^" with "^(a2sym use_var_dup)^" in "^(a2sym def_var)) in
-        (*replace the uses of the use var*)
-        let _ = if MAP.has breaks use_var = false then
-          return (MAP.put breaks use_var (SET.make ())) ()
-        in
-        let uses : a set = MAP.get breaks use_var in
-        let rhs = MAP.get tabl def_var in
-        let replmap = MAP.make () in
-        let _ = MAP.put replmap use_var (Term(use_var_dup)) in
-        let nrhs = ASTLib.sub rhs replmap in
-        let _ = MAP.put tabl def_var nrhs in
-        let _ = SET.add uses use_var_dup in
-        _break_cycles ()
-    in
-    let unbreak_cycles (tabl:(a,a ast) map) subt : ((a,a ast) map)*((a set) list) = 
-        let subs = MAP.make () in 
-        let ntabl = MAP.make () in
-        let nsubt = [] in
-        let repl (x:a) : a = if MAP.has subs x then MAP.get subs x else x in 
-        (* create a substitution map *)
-        let _ = MAP.iter breaks (fun orig repls -> SET.iter repls (fun repl -> return (MAP.put subs repl orig) () )) in
-        let esubs : (a,a ast) map = MAP.map_vals subs (fun repl orig -> Term(orig)) in  
-        let _ =  MAP.iter tabl (fun lhs rhs -> return (MAP.put ntabl (repl lhs) (ASTLib.sub rhs esubs)) () ) in 
-        let nsubt :(a set) list = List.map (fun st -> SET.from_list (SET.map st (fun el -> repl el))) subt in
-        ntabl, nsubt 
-    in
-    (*break all the cycles by performing replacements*)
-    let _ = _break_cycles () in
-    (*
-     * make the dependency graph
-     *)
-    let graph : (a,unit) graph = ASTLib.mk_dep_graph (MAP.to_list tabl) a2sym in
-    let outputs =  MAP.keys tabl in
-    let _ = _print_debug ("Dependency Graph:\n"^(GRAPH.tostr graph)^"\n------") in
-    (*construct disjoint, cycle sets*)
-    let subt : (a set) list = GRAPH.subtrees graph (Some outputs) in
-    (*
-     undo the substitution, now that the relations are flat
-    *)
-    let tabl,subt = unbreak_cycles tabl subt in
-    (*create a no dependency table *) 
-    let nodep_info = MAP.make () in
-    let mkdata lhs rhs = {
-      kind = (MAP.get ginfo lhs).kind;
-      rhs = rhs;
-    } in
-    let _ = MAP.iter tabl (fun lhs rhs -> return (MAP.put nodep_info lhs (mkdata lhs rhs)) () ) in
-    (*
-     *  printing data
-    *)
-    let subt2str lst = SET.fold lst (fun  x r -> r^" "^(a2sym x)) "" in
-    let _ = _print_debug("\n[DEP] Subtrees :\n") in
-    let _ = List.iter (fun x -> _print_debug ("  "^(subt2str x))) subt in
-    (*return the info with no dependencies, the breaks made, and the subtree*)
-    (nodep_info,breaks,subt)
+    | "bans" -> score_bans
 
   (*make search tree*)
   let mksearch (type a) (targ_var: a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
@@ -270,17 +190,6 @@ struct
         subtrees = [];
       }
     in
-    let prune_unrelated_vars (map:(a,a rdata) map) (v:a) = 
-      let mathexprs:(a*a ast) list = MAP.map map (fun k v -> (k,v.rhs)) in 
-      let graph : (a,unit) graph = ASTLib.mk_dep_graph mathexprs cnv in
-      let max_hops = get_glbl_int "uast-prune-unrelated-hops" in 
-      let _ = MAP.iter map (fun k info -> 
-        if v = k || GRAPH.reachable graph v k max_hops || GRAPH.reachable graph k v max_hops then () 
-        else 
-         ret (MAP.rm map k) () 
-      ) in
-     () 
-    in
     (*create environment*)
     let state = {
             state = None; 
@@ -302,9 +211,6 @@ struct
     let targ_info = mkinfo() in
     let _ = List.iter  (fun x -> mkdata tmpl_info x) templs_e in
     let _ = List.iter  (fun x -> mkdata targ_info x) targs_e in
-    let _ = if get_glbl_bool "uast-prune-unrelated" then
-      prune_unrelated_vars targ_info.info targ_var 
-    in
     (*make the search tree*)
     let tree = GRAPH.make (fun x y -> x = y) in
     let tbl = {
@@ -323,24 +229,15 @@ struct
         tbl=tbl;
       }
     in
-    let mknodep (s:a runify) (x:a rinfo) =
-      let ndep_tbl, ndep_repl, ndep_subt = gen_nodep s x.info in
-      let _ = x.nodep <- ndep_tbl in
-      let _ = x.repls <- ndep_repl in
-      let _ = x.subtrees <- ndep_subt in
-      ()
-    in
-    let mkdummy (s:a runify) (x:a rinfo) =
-      let meqs = MAP.make () in
-      let _ = MAP.iter x.info (fun k d -> return (MAP.put meqs k d.rhs) ()) in
-      let graph : (a,unit) graph = ASTLib.mk_dep_graph (MAP.to_list meqs) tostr in
-      let ndep_subt = GRAPH.subtrees graph (Some (MAP.keys meqs)) in
-      let _ = x.subtrees <- ndep_subt in
+    let mkverb (s:a runify) (x:a rinfo) =
+      let mvars : (a set) set= SET.make () in
+      let _ = MAP.iter x.info (fun k d -> return (SET.add mvars (SET.from_list [k])) ()) in
+      let _ = x.subtrees <- SET.to_list mvars in
       let _ = x.nodep <- x.info in
       ()
     in
-    let _ = mknodep strct strct.tbl.templ in
-    let _ = mkdummy strct strct.tbl.targ in
+    mkverb strct strct.tbl.templ;
+    mkverb strct strct.tbl.targ;
     let root, _ = SearchLib.setroot search tbl [] in
     (root,strct)
 
@@ -359,6 +256,7 @@ struct
 
 
   (*proposing restrictions*)
+(*
   let propose_bans_uniform (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
     let proposal =  MAP.fold assigns (fun k v r -> [RBanAssign(k,v)]::r) [] in
     proposal
@@ -382,51 +280,7 @@ struct
         r
     in
     make_bans 0 []
-
-  let propose_bans_common (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
-    [[]]
-
-  let propose_bans_all_rhs (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
-    let lhses : a list = MAP.to_keys assigns in
-    let cplx_rhs x = match x with Term(_) -> false | Integer(_) -> false | Decimal(_) -> false | _ -> true in
-    let choose_ban lhs rhs r =
-      if cplx_rhs rhs then
-        let bans : a rstep list = List.map (fun clhs -> RBanAssign(clhs,rhs)) lhses in
-        bans::r
-      else
-        [RBanAssign(lhs,rhs)]::r
-    in
-    let bans : (a rstep list) list = MAP.fold assigns (fun k v r -> choose_ban k v r) [] in
-    bans
-
-  let propose_bans (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list =
-    match get_glbl_string "uast-selector-restrict" with
-    | "single" ->
-      propose_bans_uniform s n assigns
-    | "fraction" ->
-      propose_bans_fraction s n assigns
-    | "all-rhs" ->
-      propose_bans_all_rhs s n assigns
-    | "common" ->
-      propose_bans_common s n assigns
-
-  (*don't ban anything*)
-  let add_restrictions (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : unit =
-    let bans = propose_bans s n assigns in
-    let curs = SearchLib.cursor s.search in
-    let add_bans (bans:a rstep list) =
-      let _ = SearchLib.move_cursor s.search s.tbl curs in
-      let _ = SearchLib.start s.search in
-      let _ = SearchLib.add_steps s.search bans in
-      let _ = SearchLib.commit s.search s.tbl in
-      ()
-    in
-    let _ = List.iter (fun x -> add_bans x) bans in
-    ()
-
-
-
-
+ *)
 
   (*calculate how many bound switches you have*)
   let decl_wild s v bans =
@@ -496,16 +350,29 @@ struct
     let _ = SET.iter sym_vars (fun x -> decl_sym s x) in
     let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild s x bans) in
     (scratch_templ,scratch_targ)
+  
+  (*determine if a variable is a derivative of not*)
+  type 'a rel_type = 
+    | RTDerivValue of ('a ast)*float
+    | RTDerivVar of ('a ast)*'a
+    | RTFunct of 'a ast
+    | RTNoRel 
 
-  let is_deriv (type a) (s:a runify) (v:a) =
-    let get_deriv k = match k with 
-    |RKDeriv(ic) -> Some(ic)
-    | _ -> None
+  let get_var_kind (type a) (s:a runify) (v:a) : bool*(a rel_type) =
+    let _get_var_kind k r = match k with 
+    |RKDeriv(Decimal(ic)) -> true,RTDerivValue(r,ic)
+    |RKDeriv(Term(prt)) -> true,RTDerivVar(r,prt)
+    |RKDeriv(_) -> error "get_var_kind" "must be a constant value"
+    | _ -> false,RTFunct(r)
     in
     if MAP.has s.tbl.templ.info v then
-      get_deriv (MAP.get s.tbl.templ.info v).kind 
+      let var_info = MAP.get s.tbl.templ.info v in
+      _get_var_kind var_info.kind var_info.rhs
+    else if MAP.has s.tbl.targ.info v then
+      let var_info = MAP.get s.tbl.targ.info v in 
+      _get_var_kind var_info.kind var_info.rhs
     else
-      get_deriv (MAP.get s.tbl.targ.info v).kind 
+      false,RTNoRel 
 
   let compute_vars s templs =
     let outvars = SET.make_dflt () in
@@ -527,187 +394,288 @@ struct
     in
     (outvars,invars,localvars)
 
-  let restvar () =
-    "REST_TEMPL"
-
-  let restvar2 () = 
-    "REST_TARG"
-
-  let is_rest v : bool =
-    "REST_TEMPL" = v
-
-  let is_rest2 v : bool =
-    "REST_TARG" = v
-
-  let funvar () =
-    "F"
-
-  let dfunvar () =
-    "DF"
-
-  let lhsfunvar () =
-    "LHS"
-
   (*Extract the state of the solution from the assigns*)
-  let assigns2state (type a) (s:a runify) (templs:(a,a ast) map) (targs:(a,a ast) map) (assigns:(string*symexpr) list) =
-    let sym2a (x:symvar) : a = (g_iconv s.tbl) x in
-    let a2sym : a -> symvar = g_conv s.tbl in
-    let clean_rest_var (exp:symexpr) : symexpr = 
-       let repls : (symexpr*symexpr) list= [
-               (Symbol(restvar2()),Integer(0)); 
-               (Symbol(restvar()),Integer(0))
-       ] in
-       let nexp = SymCaml.subs (g_sym s.tbl) exp repls in 
-       nexp     
-    in
-    let extract_exprs ast =
-      let _extract (node:a ast) vlst: (a*a ast) list =
-        match node with
-        | OpN(Func("F"), [OpN(Func("LHS"),[Term(lhs)]);rhs]) -> 
-            ((lhs,rhs)::vlst)
-        | OpN(Func("DF"), [OpN(Func("LHS"),[Term(lhs)]);rhs;ic]) -> 
-            ((lhs,rhs)::vlst)
-        | _ -> vlst
-      in
-      ASTLib.fold ast _extract []
-    in
-    let _ = _print_debug "<!> found assigns" in
-    let assign_map = MAP.make () in
-    let rest = SET.make_dflt () in
-    let solved_targ_map = MAP.copy targs in 
-    let unused_templ_vars = SET.from_list (MAP.keys templs) in 
-    let _ = List.iter (fun ((l,r):symvar*symexpr) ->
-        if is_rest l then
-                (*determine the rest variables*)
-                let ar : a ast = ASTLib.from_symcaml (clean_rest_var r) sym2a in
-                let _ = _print_debug ("templ-rest-expr: "^(ASTLib.ast2str ar a2sym)) in
-                let ignored = extract_exprs ar in
-                (*let _ = List.iter (fun x -> return (SET.add rest x) ()) ignored in*)
-                let _ = List.iter (fun (x,rhs) -> return (MAP.rm solved_targ_map x) ()) ignored in
-                ()
-        else if is_rest2 l then
-                let ar : a ast = ASTLib.from_symcaml (clean_rest_var r) sym2a in 
-                let _ = _print_debug ("targ-rest-expr: "^(ASTLib.ast2str ar a2sym)) in 
-                ()
-        else
-                let alhs : a = sym2a l in
-                let _ = SET.rm unused_templ_vars alhs in 
-                let arhs : a ast = ASTLib.from_symcaml r sym2a in
-                let _ = MAP.put assign_map alhs arhs in
-                ()
-    ) assigns
-    in
-    let unused_templs : (a*(a ast)) list = SET.map unused_templ_vars (fun vr -> 
-        let rhs : a ast = MAP.get templs vr in
-        let nrhs : a ast = ASTLib.sub rhs assign_map in
-        (vr, nrhs)   
-    ) in
-    let solved_targs = SET.from_list (MAP.to_list solved_targ_map) in 
-    let _ = SET.iter solved_targs (fun (x,y) -> _print_debug ("solved:"^(a2sym x)^(ASTLib.ast2str y a2sym))) in
-    let _ = List.iter (fun (lhs,rhs) -> _print_debug ("unused-templ:"^(a2sym lhs))) unused_templs in
-    let _ = MAP.iter assign_map (fun k v -> _print_debug ("assign: "^(a2sym k)^" = "^(ASTLib.ast2str v a2sym))) in
-    let _ = _print_debug "--------------------\n" in
+  (*
+  let assigns2state (type a) (s:a runify) (templs:(a,a ast) map) (templvar:a) (targs:(a,a ast) map) (targvar:a) (assigns:(string*symexpr) list) =
     (*return the unsolved state variables, as well as the unused hw vars *)
-    (assign_map,solved_targs,unused_templs)
+    let sym2a : symvar -> a = g_iconv s.tbl in
+    let assign_map = MAP.make () in
+    let unused_templs = MAP.keys templs in 
+    LIST.iter assigns (fun (v,expr) ->
+      let sym : a = sym2a v in
+      let expr : a ast = ASTLib.map sym2a expr in
+      if MAP.has sym templs then
+            
+    );
+    (*mapped a single target variable*)
+    (assign_map,SET.singleton targvar,unused_templs)
+  *)
 
+
+  type 'a initial_assign = 
+    | INVarAssign of 'a*'a
+    | INExprAssign of 'a*('a ast)
+    | INTNoAssign
 
 
 
   (*unify the two components*)
-  let unify (type a) (s:a runify) (templs:(a, a ast) map) (targs:(a,a ast) map) (targvar:a) : (((a,a ast) map)*((a*a ast) list)*((a*a ast) list)) option =
+  let unify_term (type a) (s:a runify) (assigns:((a,a ast) map) list) (templ_expr: a ast) (targ_expr:a ast) (asgns:a initial_assign list):((a,a ast) map) option =
+      (*convenience functions*)
+      let v2str = s.tbl.tostr in
+      let e2str x = ASTLib.ast2str x v2str in
       let sym2a : symvar -> a = g_iconv s.tbl in
       let a2sym : a -> symvar = g_conv s.tbl in
-      let tolhsexpr lh : symexpr =
-        OpN(Function(lhsfunvar()), [Symbol(lh)] )
+      (**
+       *
+       **)
+      (*make the initial set of assigns*)
+      let nassigns = MAP.make () in
+      let add_one_initial_assign asgn = 
+        match asgn with 
+        | INVarAssign(templvar,targvar) -> MAP.put nassigns templvar (Term targvar)
+        | INExprAssign(templvar,targexpr) -> MAP.put nassigns templvar (targ_expr)
       in
-      let gen_subexpr (lhs:a) (rhs:a ast): symexpr =
-        let lhsexpr :symexpr = tolhsexpr (a2sym lhs) in
-        (*all the rels but this one*)
-        let rhsexpr :symexpr = ASTLib.to_symcaml rhs a2sym in
-        (*TODO: create one with substitutions, one without*)
-        let fxn : symexpr= match  is_deriv s lhs with
-        | Some(init_cond) ->
-            let icexpr = ASTLib.to_symcaml init_cond a2sym in 
-            OpN(Function(dfunvar()),[lhsexpr;rhsexpr;icexpr])
-        | None -> OpN(Function(funvar()),[lhsexpr;rhsexpr])
-        in
-        fxn
-      in
-      (*declare intermediate functions*)
-      let _ = decl_func s (funvar()) in
-      let  _ = decl_func s (dfunvar()) in
-      let _ = decl_func s (lhsfunvar()) in
-      (*ban the target expression from the rest variable*)
-      let bantargexpr : symexpr list= [tolhsexpr (a2sym targvar)] in
-      let banmvexpr : symexpr list = MAP.fold targs (fun lhs rhs lst -> (tolhsexpr (a2sym lhs))::lst) [] in   
-      let _ = _print_debug (">rest: in templ ban-expr: "^(LIST.tostr SymCaml.expr2str " "bantargexpr)) in
-      let _ = _print_debug (">rest: in targ ban-expr: "^(LIST.tostr SymCaml.expr2str " "banmvexpr)) in
-      let _ = decl_wild s (restvar2()) banmvexpr in 
-      let _ = decl_wild s (restvar()) bantargexpr in
-      (*determine input and output vars*)
-      let outs,ins,locals = compute_vars s templs in
-      (*create assignment*)
-      let gen_asgn (v:a) : symexpr =
-          let rhs = MAP.get templs v in
-          gen_subexpr v rhs
-      in
+      List.map add_one_initial_assign asgns;
+      (*convert to an expression with all the assignments applied*)
+      let aexp2symexp (e:a ast) : symexpr = ASTLib.to_symcaml (ASTLib.subs e (nassigns::assigns)) a2sym in 
+      (*get the constrained templ and targ expressions*)
+      let templ_expr : symexpr = aexp2symexp (templ_expr) in 
+      let targ_expr : symexpr = aexp2symexp (targ_expr) in 
       (*generate the experssion for unification*)
-      let gen_overall_expr (rels:(a, a ast) map) is_templ : symexpr=
-        (*get args an enables *)
-        let rels = MAP.fold rels (fun (lhs:a) (rhs:a ast) (rexpr) ->
-          (*if it is a target expression generation, or part of the subset *)
-            if SET.has (g_subset s) lhs || is_templ = false then
-                let expr = gen_subexpr lhs rhs in
-                   expr::rexpr
-          (*if not, skip this element*)
-          else
-                rexpr
-        ) []
-        in
-        if is_templ then
-          OpN(Add,Symbol(restvar())::rels)
-        else
-          (*the assigns are the hardware relations*)
-          let asgns = SET.map locals (fun v -> gen_asgn v) in
-          (*OpN(Add,Symbol(restvar2())::rels)*)
-          OpN(Add,rels)
-      in
-      let _ = _print_debug ("ALLOWED VARS: "^(SET.tostr (g_subset s) a2sym "; ")) in
-      let templ_expr = gen_overall_expr templs true in
-      let targ_expr = gen_overall_expr targs false in
-      let _ = _print_debug ("#unify <"^(a2sym targvar)^">\n  templ:\n"^(SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n") in
-      
+      let _ = _print_debug ("#unify <?>\n  templ:\n"^(SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n") in
+      (*attempt unification*)
       let maybe_assigns = try 
               SymCaml.pattern (g_sym s.tbl) targ_expr templ_expr 
               with PyCamlWrapperException(_) -> None 
       in
-      match maybe_assigns with
-      | Some(assigns) ->
-        let assigns,solved,remaining = assigns2state s templs targs  assigns in
-        Some(assigns,SET.to_list solved,remaining)
-      | None ->
-        let _ = _print_debug "no assigns found" in
-        None
+        (*convert the assignments to canonical assignments*)
+        match maybe_assigns with 
+        |Some(lst) ->
+            LIST.iter (fun ((l,r):string*symexpr) -> 
+                        ret (MAP.put nassigns (sym2a l) (ASTLib.from_symcaml r sym2a)) ()) lst;
+            _print_debug (MAP.str nassigns v2str e2str);
+            Some(nassigns)
+        |None -> 
+            _print_debug "<no solution>";
+            None 
+  
+ 
+  (*an entanglement*)
+  type 'a entanglement = {
+      templ_var : 'a;
+      targ_expr : 'a ast;
+      targ_var : 'a;
+      templ_expr: 'a ast;
+      assignments: 'a initial_assign list;
+  }
+  (*resolved entanglement*)
+  type 'a resolution = {
+      templ_var : 'a;
+      targ_expr : 'a ast;
+      templ_expr: 'a ast; 
+  }
+ 
+  let mk_entanglement templ_var targ_var templ_expr targ_expr assignments =
+    {
+      templ_var = templ_var;
+      templ_expr = templ_expr;
+      targ_var=targ_var;
+      targ_expr=targ_expr;
+      assignments=assignments
+    }
+  
+  let mk_tvar_entanglement templs templ_var targ_var_maybe asgn_rhs assignments = 
+    let templ_expr = MAP.get templs templ_var in 
+    mk_entanglement templ_var targ_var_maybe templ_expr asgn_rhs assignments
 
-  let add_assignment_node (type a) (s:a runify) curs (assigns:(a,a ast) map) (solved: (a*a ast) list) (unused:(a*(a ast)) list) =
-    let _ = SearchLib.move_cursor s.search s.tbl curs in
-    let _ = SearchLib.start s.search in
-    let _ = SearchLib.add_step s.search (RSetState(mkstate assigns solved unused)) in
+  let resolution_of_entanglement (type a) (e:a entanglement) : a resolution =
+    {templ_var = e.templ_var; templ_expr = e.templ_expr; targ_expr = e.targ_expr}
+  
+  (*Convert the set of assignments to a set of goals. They should be all input assignment 
+  goals or output goals. You can either add a fact over an output port or a goal over an
+  input port.*)
+  let goals_of_assignments (type a) s (templs:(a,a ast) map) (targs:(a,a ast) map) (assigns:(a,a ast) map list) = 
+    ()
+
+  (*find if there are any entanglements, and if there are, resolve them*)  
+  (*an entanglement is an assignment whose left hand side (and sometimes right hand side)
+   is already defined*)
+  let find_entanglements (type a) s (templs:(a,a ast) map) (targs:(a,a ast) map) (assigns:(a,a ast) map list) 
+                         (new_assigns:(a,a ast) map) (resolved:a resolution list) =
+    let assign_list : a initial_assign list= LIST.fold assigns 
+                        (fun assign lst -> MAP.fold assign (fun lhs rhs l-> INExprAssign(lhs,rhs)::l) lst) 
+                        []
+    in 
+    (* check if a new assignment triggers a new entanglement *)
+    let is_already_resolved lhs rhs = 
+      let matches = 
+        List.filter (fun rslvd -> lhs = rslvd.templ_var && rslvd.targ_expr = rhs) resolved
+      in
+      List.length matches > 0
+    in
+    let get_maybe_entangled asgn_lhs asgn_rhs : bool*(a entanglement option) = 
+      (*if the dynamics of the template variable is defined*)
+      let templ_succ,templ_kind = get_var_kind s asgn_lhs in
+      let templ_lhs : a= asgn_lhs in 
+      if templ_succ == false then
+        begin  
+          warn "find_entanglements.get_maybe_entangled" "failed to get the kind of relation for tempate variable";
+          false,None
+        end 
+      else 
+      (*if the template expression has dynamics, and is not a dangling input*) 
+      match asgn_rhs with
+         (*if it's a variable-variable assignment*)
+         | Term(targ_var_lhs) -> 
+            let targ_succ,targ_kind = get_var_kind s targ_var_lhs in
+            if targ_succ == false then
+              begin
+                warn "find_entanglements.get_maybe_entangled" "find to get the kind of relation for target variable";
+                false,None
+              end
+            else
+            begin
+            match templ_kind, targ_kind with
+            (*the template and the target are both derivatives, 
+            and the assignment is an x=y assignment*)
+            | RTDerivVar(templ_rhs,templ_ic),RTDerivValue(targ_rhs,targ_ic) -> 
+               (*the template and target are both defined, and the assignment
+               is an x = y assignment. This is a conflict*)
+               (*this invocation creates an entanglement between v and the lhs and initial assignemnts *)
+               true,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
+                   (INExprAssign(templ_ic,Decimal(targ_ic))::INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
+            | RTFunct(templ_rhs), RTFunct(targ_rhs) -> 
+               (*the template var is an input port, and the target var is an input*)
+               true,Some(mk_entanglement templ_lhs targ_var_lhs asgn_rhs targ_rhs 
+                   (INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
+            (*input var, input port. Simple assignment with no entanglements.*)
+            | RTNoRel, RTNoRel -> 
+               true,None
+            (*the template var is an input port, and the target var is an 
+            output. no conflict. Can either rebuild expression or link variable*)
+            | RTNoRel, RTFunct(targ_rhs) -> 
+               true,None
+            (*the template var is an input port, and the target var is a derivative. 
+            no conflict. The variable must be linked from the definition*)
+            | RTNoRel, RTDerivValue(targ_rhs,targ_ic) -> 
+               true,None
+            (*the template variable is an output port, and the target var 
+            is an input. unresolvable.*)
+            | _,RTNoRel -> 
+               false,None 
+            (*misassigning derivatives to functions*)
+            | _ -> 
+               false,None
+            end
+            (*if the assigned variable is an output variable, unifying the variable is sufficient*)
+         | asgn_rhs -> 
+            begin 
+            match templ_kind with 
+            (*If there is a straight line function that defines the template variable dynamics, unifiable*)
+            | RTFunct(templ_rhs) ->
+               true,Some(mk_entanglement asgn_lhs templ_lhs templ_rhs asgn_rhs
+                 (INExprAssign(templ_lhs,asgn_rhs)::assign_list))
+            (*cannot unify function variable with state variable*)
+            | RTDerivVar(_,_) ->
+               false,None
+            end 
+    in
+    let resolvable,entangles = MAP.fold new_assigns (fun lhs rhs (rslv,tngl) ->  
+           let resolvable, entanglement = get_maybe_entangled lhs rhs in
+           let new_rslv = resolvable && rslv in
+           match entanglement with 
+           | Some(entg) -> if is_already_resolved entg.templ_var entg.templ_expr 
+                           then new_rslv,tngl
+                           else new_rslv,entg::tngl
+           | None -> new_rslv,tngl
+    ) (true,[]) in  
+    (resolvable,entangles) 
+
+  (*resolve unification*)
+  let unify_terms (type a) (s:a runify) (templs:(a,a ast) map) (targs:(a,a ast) map) (templvar:a) (targvar:a) =
+    let rec _unify_terms (entanglements:(a entanglement) list) (assigns:((a,a ast) map) list) (resolved:((a resolution) list)) : ((a,a ast) map) option=
+          (*find an entanglement*)
+          match entanglements with
+          | entang::t -> 
+            (*attempt to resolve entanglement*)
+            let maybe_new_assigns : (a,a ast) map option = 
+              unify_term s assigns entang.templ_expr entang.targ_expr entang.assignments 
+            in 
+            begin 
+            (*if this entanglement is is unifiable*)
+            match maybe_new_assigns with
+            |Some(new_assigns) ->
+              (*resolve the entanglement*)
+              let new_resolved = (resolution_of_entanglement entang)::resolved in 
+              (*try and find any new entanglements*)
+              let is_valid,new_entangle = find_entanglements s templs targs assigns new_assigns new_resolved in
+              (*if there is an unresolvable entanglement, return no solution*)
+              if is_valid = false then None else
+              (*otherwise, recurseively resolve any entanglements*)
+              _unify_terms (t @ new_entangle)
+                             (new_assigns::assigns)
+                             new_resolved
+               
+            | None -> None
+            end   
+            (*no more entanglements left*)
+            | [] ->
+             Some (MAP.merge assigns)
+            
+    in
+      let templexpr = MAP.get templs templvar in 
+      let targexpr = MAP.get targs targvar in
+      _unify_terms [(mk_entanglement templvar targvar templexpr targexpr [INVarAssign(templvar,targvar)])] [] []
+
+  let add_assignment_node (type a) (s:a runify) curs (assigns:(a,a ast) map) (templs:(a,a ast)map) targs =
+    let solved : (a*(a ast)) set= SET.make_dflt () in 
+    let unused : (a*(a ast)) set= SET.make_dflt () in 
+    MAP.iter templs (fun v e -> return (SET.add unused (v,e)) ());
+    SearchLib.move_cursor s.search s.tbl curs;
+    SearchLib.start s.search;
+    MAP.iter assigns (fun (v:a) e ->
+      if MAP.has targs v then
+        let ve = MAP.get targs v in 
+        return (SET.add solved (v,ve)) ()
+     else if MAP.has templs v then
+        let ve = MAP.get templs v in
+        return (SET.rm unused (v,ve)) () 
+    );
+    let _ = SearchLib.add_step s.search (RSetState(mkstate assigns (SET.to_list solved) (SET.to_list unused))) in
     let node = SearchLib.commit s.search s.tbl in
     let _ = SearchLib.solution s.search node in
     ()
 
-  let solve_node (type a) (s:a runify) (tvar:a) =
+  (*add restrictions of different fractions*)
+  let add_restrictions (type a) (s:a runify) curs (assigns:(a,a ast) map) = 
+    let assign_list : (a*(a ast)) list = MAP.to_list assigns in
+    let root = SearchLib.cursor s.search in 
+    let add_assign (frac:float) = 
+      let n = int_of_float (MATH.round_up (frac*.(float_of_int (List.length assign_list)))) in 
+      let subset = LIST.random_subset assign_list n in 
+      SearchLib.move_cursor s.search s.tbl root;
+      SearchLib.start s.search;
+      List.map (fun (lhs,rhs) -> SearchLib.add_step s.search (RBanAssign(lhs,rhs))) subset;
+      SearchLib.commit s.search s.tbl;
+    in
+    add_assign 0.75;
+    add_assign 0.50;
+    add_assign 0.25;
+    add_assign 0.;
+    ()
+
+  let solve_node (type a) (s:a runify) (targvar:a) (templvar:a) =
     let v2str = s.tbl.tostr in
     let e2str x = ASTLib.ast2str x v2str in
     let curs = SearchLib.cursor s.search in
     let templs,targs = apply_state s in
     let proc_one () =
-      match unify s templs targs tvar with
-      | Some(assigns,solved,unused) ->
-        if LIST.empty solved then () else
+      match unify_terms s templs targs templvar targvar with
+      | Some(assigns) ->
+        (*if LIST.empty solved then () else*)
         let _ = add_restrictions s curs assigns in
-        let _ = add_assignment_node s curs assigns solved unused in
+        let _ = add_assignment_node s curs assigns templs targs in
         ()
       | None ->
         let _ = SearchLib.deadend s.search curs in
@@ -722,17 +690,16 @@ struct
   (*select the next node to solve*)
   let solve (type a) (sr:a runify) (root:a rnode) (targvar:a) (n:int) =
     let sysmenu,usrmenu = mkmenu sr in
-    let rec _solve () =
-      let _mnext () =
+    let _mnext () =
         let maybe_next_node = get_best_valid_node sr (Some root) in
         match maybe_next_node with
         | Some(next_node) ->
             (*if we're going really deep*)
             let _ = SearchLib.move_cursor sr.search sr.tbl next_node in
-            let _ = _solve () in
-            ()
-        | None -> ()
-      in
+            true 
+        | None ->false 
+    in
+    let rec _solve () =
       let curs = SearchLib.cursor sr.search in
       let depth : int =  SearchLib.depth sr.search curs in
       if depth >= get_glbl_int "uast-depth" then
@@ -747,23 +714,29 @@ struct
          let _ = _print_debug "[search_tree] Found Solutions" in
          ()
         else
-          let _ = solve_node sr targvar in
-          let _ = _print_debug "== Solution Node ==" in
-          let _ = usrmenu () in
-          let _ = _mnext () in
+          let templvar = SET.singleton sr.tbl.st.subset in 
+          solve_node sr targvar templvar;
+          _print_debug "== Solution Node ==";
+         usrmenu ();
+         if _mnext () then
+          _solve () 
+         else 
           ()
     in
+    let _ = _mnext () in
     let _ = _solve () in
     (*let _ = sysmenu "t" in*)
     ()
-
+  
 
   let build_tree (type a) (s:a runify) (root: a rnode): unit =
+    let v2str = s.tbl.tostr in
     let curs = root in
     let _ = List.iter (fun subst ->
-      let _ = SearchLib.start s.search in
-      let steps = SearchLib.add_step s.search (RTemplSubgraph subst) in
-      let n = SearchLib.commit s.search s.tbl in
+      SearchLib.start s.search;
+      _print_debug ("subset : "^(SET.tostr subst v2str ""));
+      SearchLib.add_step s.search (RTemplSubgraph subst);
+      SearchLib.commit s.search s.tbl;
       ()
     ) s.tbl.templ.subtrees
     in
