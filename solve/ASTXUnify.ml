@@ -358,12 +358,12 @@ struct
     | RTFunct of 'a ast
     | RTNoRel 
 
-  let get_var_kind (type a) (s:a runify) (v:a) : bool*(a rel_type) =
+  let get_var_kind (type a) (s:a runify) (v:a) : (a rel_type) =
     let _get_var_kind k r = match k with 
-    |RKDeriv(Decimal(ic)) -> true,RTDerivValue(r,ic)
-    |RKDeriv(Term(prt)) -> true,RTDerivVar(r,prt)
+    |RKDeriv(Decimal(ic)) -> RTDerivValue(r,ic)
+    |RKDeriv(Term(prt)) -> RTDerivVar(r,prt)
     |RKDeriv(_) -> error "get_var_kind" "must be a constant value"
-    | _ -> false,RTFunct(r)
+    | _ -> RTFunct(r)
     in
     if MAP.has s.tbl.templ.info v then
       let var_info = MAP.get s.tbl.templ.info v in
@@ -372,7 +372,7 @@ struct
       let var_info = MAP.get s.tbl.targ.info v in 
       _get_var_kind var_info.kind var_info.rhs
     else
-      false,RTNoRel 
+      RTNoRel 
 
   let compute_vars s templs =
     let outvars = SET.make_dflt () in
@@ -516,25 +516,13 @@ struct
     in
     let get_maybe_entangled asgn_lhs asgn_rhs : bool*(a entanglement option) = 
       (*if the dynamics of the template variable is defined*)
-      let templ_succ,templ_kind = get_var_kind s asgn_lhs in
+      let templ_kind = get_var_kind s asgn_lhs in
       let templ_lhs : a= asgn_lhs in 
-      if templ_succ == false then
-        begin  
-          warn "find_entanglements.get_maybe_entangled" "failed to get the kind of relation for tempate variable";
-          false,None
-        end 
-      else 
       (*if the template expression has dynamics, and is not a dangling input*) 
       match asgn_rhs with
          (*if it's a variable-variable assignment*)
          | Term(targ_var_lhs) -> 
-            let targ_succ,targ_kind = get_var_kind s targ_var_lhs in
-            if targ_succ == false then
-              begin
-                warn "find_entanglements.get_maybe_entangled" "find to get the kind of relation for target variable";
-                false,None
-              end
-            else
+            let targ_kind = get_var_kind s targ_var_lhs in
             begin
             match templ_kind, targ_kind with
             (*the template and the target are both derivatives, 
@@ -579,6 +567,9 @@ struct
             (*cannot unify function variable with state variable*)
             | RTDerivVar(_,_) ->
                false,None
+            (*expression assign to an input port*)
+            | RTNoRel ->
+               true,None
             end 
     in
     let resolvable,entangles = MAP.fold new_assigns (fun lhs rhs (rslv,tngl) ->  
