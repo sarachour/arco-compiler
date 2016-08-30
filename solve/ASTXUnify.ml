@@ -281,32 +281,32 @@ struct
     in
     make_bans 0 []
  *)
-
-  (*calculate how many bound switches you have*)
-  let decl_wild s v bans =
-    let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in ()
-
-  let decl_sym s v = let _ =
-    SymCaml.define_symbol (g_sym s.tbl) v in ()
-
-  let decl_func s x =
-    let _ = SymCaml.define_function (g_sym s.tbl) x in ()
-  
+ 
   (*apply the state to syncaml*)
   let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
-    let _ = spy_print_debug "ENV == STATE ===" in
+    let var2symvar = g_conv s.tbl in
+    let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s.tbl) in
+    (*calculate how many bound switches you have*)
+    let decl_wild (v:symvar) (bans:symexpr list) =
+        let ban_str = LIST.fold bans (fun x str -> str^","^(SymExpr.expr2str x)) v in 
+        let _ = spy_print_debug ("[env][decl] wild "^(v)^" != "^ban_str) in
+        let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in ()
+    in
+    let decl_sym (v:symvar) = let _ =
+        let _ = spy_print_debug ("[env][decl] sym "^(v)) in
+        SymCaml.define_symbol (g_sym s.tbl) v in ()
+    in
+    let decl_func x =
+        let _ = SymCaml.define_function (g_sym s.tbl) x in ()
+    in
+    let _ = spy_print_debug "[env] == state ===" in
     let _ = SymCaml.clear (g_sym s.tbl) in
     (*let _ = SymCaml.set_debug (g_sym s.tbl) true in*)
     (*create replacement tables*)
-    let var2symvar = g_conv s.tbl in
-    let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s.tbl) in
     let add_wild (set:(symvar*(symexpr list)) set) (v:a) =
       let bans =
         if MAP.has (g_bans s.tbl) v then
-          let bans = SET.map (MAP.get (g_bans s.tbl) v) (fun x ->
-            let _ = spy_print_debug ("ENV ban: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str x s.tbl.tostr)^"") in
-            x
-          ) in
+          let bans = SET.map (MAP.get (g_bans s.tbl) v) (fun x -> x) in
           bans
         else []
       in
@@ -347,8 +347,8 @@ struct
     let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs data.kind  false true) in
     let _ = MAP.iter (g_info s.tbl UTypTempl).nodep (fun v data ->add_expr scratch_templ v data.rhs data.kind true true) in
     (*declare variables*)
-    let _ = SET.iter sym_vars (fun x -> decl_sym s x) in
-    let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild s x bans) in
+    let _ = SET.iter sym_vars (fun x -> decl_sym  x) in
+    let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild  x bans) in
     (scratch_templ,scratch_targ)
   
   (*determine if a variable is a derivative of not*)
@@ -443,21 +443,25 @@ struct
       let templ_expr : symexpr = aexp2symexp (templ_expr) in 
       let targ_expr : symexpr = aexp2symexp (targ_expr) in 
       (*generate the experssion for unification*)
-      let _ = _print_debug ("#unify <?>\n  templ:\n"^(SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n") in
+      (*SymCaml.set_debug (g_sym s.tbl) true;*) 
+      _print_debug ("#unify <?>\n  templ:\n"^
+               (SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n");
       (*attempt unification*)
       let maybe_assigns = try 
               SymCaml.pattern (g_sym s.tbl) targ_expr templ_expr 
-              with PyCamlWrapperException(_) -> None 
+              with PyCamlWrapperException(_) -> 
+                let _ = warn "[unify_term][exception] python exception" in
+                None 
       in
         (*convert the assignments to canonical assignments*)
         match maybe_assigns with 
         |Some(lst) ->
             LIST.iter (fun ((l,r):string*symexpr) -> 
                         ret (MAP.put nassigns (sym2a l) (ASTLib.from_symcaml r sym2a)) ()) lst;
-            _print_debug (MAP.str nassigns v2str e2str);
+            _print_debug ("---assigns---\n"^(MAP.str nassigns v2str e2str));
             Some(nassigns)
         |None -> 
-            _print_debug "<no solution>";
+            _print_debug "[unify_term][pattern]: <no solution>";
             None 
   
  
@@ -539,6 +543,7 @@ struct
                    (INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
             (*input var, input port. Simple assignment with no entanglements.*)
             | RTNoRel, RTNoRel -> 
+
                true,None
             (*the template var is an input port, and the target var is an 
             output. no conflict. Can either rebuild expression or link variable*)
