@@ -228,7 +228,7 @@ struct
           let lk = getkind ((getvar e name).typ) in
           let lhs : mid ast= (Deriv(Term(lu),Term(tu))) in
           if true then
-            let icname = (name^"_0") in
+            let icname : string = (name^"_0") in
             let ictype = mid2unit lu in
             let _ = mkparam e icname ic ictype in
             let _ = dat.rel <- MRState(lu,rhs,MNParam(icname,ic,ictype)) in

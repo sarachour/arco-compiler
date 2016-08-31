@@ -19,9 +19,13 @@ type unid =
   |MathId of mid
   |HwId of hwvid
 
+type 'a init_cond = 
+  | ICVar of 'a
+  | ICVal of number 
+
 type urel =
   | UFunction of unid*(unid ast)
-  | UState of unid*(unid ast)*(unid)*unid
+  | UState of unid*(unid ast)*(unid init_cond)*unid
 
 
 type unodeid =

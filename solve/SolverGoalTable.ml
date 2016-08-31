@@ -132,7 +132,12 @@ struct
         | HRFunction(l,r) -> UFunction(h2u l, tf r)
         | HRState(l,r,i) ->
           let time = HNTime(HCMLocal(c.name),c.time) in
-          UState(h2u l, tf r, h2u i, h2u time)
+          let (ic) : unid init_cond = match h2u i with 
+            | MathId(MNParam(n,v,u)) -> ICVal(v)
+            | HwId(HNParam(c,n,v,p)) -> ICVal(v)
+            | var -> ICVar(var)
+          in 
+          UState(h2u l, tf r, ic, h2u time)
         | _ -> error "math2goal.comp2node" "impossible"
       in
       let nrels = List.map var2urel nvars in
@@ -164,8 +169,8 @@ struct
   let mkgoalroot s tbl =
     let fltmath x = x.rel <> MRNone in
     let math2goal (x:mvar) : goal =
-      let m2u = UnivLib.mid2unid in
-      let tf x =
+      let m2u : mid -> unid = UnivLib.mid2unid in
+      let tf (x:mid ast) : unid ast =
         let t = ASTLib.trans (ASTLib.map x m2u) _rm_pars in
         t
       in
@@ -173,9 +178,10 @@ struct
       | MRFunction(l,r) ->
         let rel = UFunction(m2u l, tf r) in
         if tbl.is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
-      | MRState(l,r,x) ->
+      | MRState(l,r, MNParam(icname,ic,ictype) ) ->
         let time = (MathLib.getvar s.prob (OPTION.force_conc s.prob.time)).typ in
-        let rel = UState(m2u l, tf r, m2u x, m2u time) in
+        let ic_cnd : unid init_cond = ICVal(ic) in 
+        let rel = UState(m2u l, tf r, ic_cnd, m2u time) in
         if tbl.is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
       | MRNone -> error "math2goal" "impossible."
     in

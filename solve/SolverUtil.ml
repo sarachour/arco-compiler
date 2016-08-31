@@ -93,14 +93,25 @@ struct
   let  glbl2lcl (a:unid ast) : unid ast =
     let mp x = glblid2lclid x in
     ASTLib.map a mp
+  
+  let ic_glbl2lcl (g:unid init_cond) : unid init_cond = 
+    match g with 
+    | ICVar(h) -> ICVar(glblid2lclid h)
+    | ICVal(v) -> ICVal(v)
+ 
+  let ic_lcl2glbl (i:int) (g:unid init_cond) : unid init_cond= 
+    match g with 
+    | ICVar(h) -> ICVar(lclid2glblid i h)
+    | ICVal(v) -> ICVal(v)
+
 
   let rel_glbl2lcl (g:urel) : urel = match g with
   |  UFunction(l,r) -> UFunction(glblid2lclid l, glbl2lcl r)
-  |  UState(l,r,ic,t) -> UState(glblid2lclid l, glbl2lcl r, glblid2lclid ic, glblid2lclid t)
+  |  UState(l,r,ic,t) -> UState(glblid2lclid l, glbl2lcl r, ic_glbl2lcl ic, glblid2lclid t)
 
   let rel_lcl2glbl  (i:int)  (g:urel): urel = match g with
   |  UFunction(l,r) -> UFunction(lclid2glblid i l, lcl2glbl i r)
-  |  UState(l,r,ic,t) -> UState(lclid2glblid i l, lcl2glbl i r, lclid2glblid i ic, lclid2glblid i t)
+  |  UState(l,r,ic,t) -> UState(lclid2glblid i l, lcl2glbl i r, ic_lcl2glbl i ic, lclid2glblid i t)
 
   let rel2lhs (g:urel) : unid =  match g with
   |  UFunction(l,r) -> l
@@ -297,10 +308,14 @@ struct
     else
       id
   in
+  let sub_ic ic : unid init_cond = match ic with 
+    | ICVar(v) -> ICVar(sid v)
+    | ICVal(v) -> ICVal(v)
+  in
   let conc_rel x =
     match x with
     | UFunction(l,r) -> UFunction(sid l,ASTLib.sub r assigns)
-    | UState(l,r,i,t) -> UState(sid l,ASTLib.sub r assigns,sid i,sid t)
+    | UState(l,r,i,t) -> UState(sid l,ASTLib.sub r assigns,sub_ic i,sid t)
   in
   let nr = SET.map node.rels (fun x -> conc_rel x) in
   node

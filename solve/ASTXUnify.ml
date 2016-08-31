@@ -22,6 +22,7 @@ let error n msg = raise (ASTUnifierException(n^": "^msg))
 
 let spy_print_debug = print_debug 4 "sympy"
 let _print_debug = print_debug 3 "uni"
+let debug : string -> unit =_print_debug  
 let auni_menu = menu 3
 
 module ASTUnifier =
@@ -330,7 +331,7 @@ struct
       let _ = addvar lhs in
       let _ = List.iter (fun q -> addvar q) (ASTLib.get_vars rhs) in
       let _ = match kind with 
-      | RKDeriv(Term(v)) -> addvar v 
+      | RKDeriv(ICVar(v)) -> addvar v 
       | _ -> ()
       in 
       ()
@@ -353,16 +354,19 @@ struct
   
   (*determine if a variable is a derivative of not*)
   type 'a rel_type = 
-    | RTDerivValue of ('a ast)*float
-    | RTDerivVar of ('a ast)*'a
+    | RTDeriv of ('a ast)*('a init_cond)
     | RTFunct of 'a ast
     | RTNoRel 
+  
+  let rel_type_to_str (type a) (rel: a rel_type) = match rel with 
+    | RTDeriv(_,ICVal(_)) -> "deriv_value"
+    | RTDeriv(_,ICVar(_)) -> "deriv_var"
+    | RTFunct(_) -> "fxn"
+    | RTNoRel(_) -> "rel" 
 
   let get_var_kind (type a) (s:a runify) (v:a) : (a rel_type) =
     let _get_var_kind k r = match k with 
-    |RKDeriv(Decimal(ic)) -> RTDerivValue(r,ic)
-    |RKDeriv(Term(prt)) -> RTDerivVar(r,prt)
-    |RKDeriv(_) -> error "get_var_kind" "must be a constant value"
+    |RKDeriv(ic) -> RTDeriv(r,ic)
     | _ -> RTFunct(r)
     in
     if MAP.has s.tbl.templ.info v then
@@ -477,6 +481,7 @@ struct
   type 'a resolution = {
       templ_var : 'a;
       targ_expr : 'a ast;
+      targ_var : 'a;
       templ_expr: 'a ast; 
   }
  
@@ -494,8 +499,12 @@ struct
     mk_entanglement templ_var targ_var_maybe templ_expr asgn_rhs assignments
 
   let resolution_of_entanglement (type a) (e:a entanglement) : a resolution =
-    {templ_var = e.templ_var; templ_expr = e.templ_expr; targ_expr = e.targ_expr}
+    {templ_var = e.templ_var; templ_expr = e.templ_expr; targ_var = e.targ_var; targ_expr = e.targ_expr}
   
+  let resolves_entanglement (type a) (rslv:a resolution) (entang:a entanglement) =
+    rslv.templ_var == entang.templ_var && rslv.targ_var == entang.targ_var &&
+    rslv.templ_expr == entang.templ_expr && rslv.targ_expr == entang.targ_expr 
+
   (*Convert the set of assignments to a set of goals. They should be all input assignment 
   goals or output goals. You can either add a fact over an output port or a goal over an
   input port.*)
@@ -511,12 +520,28 @@ struct
                         (fun assign lst -> MAP.fold assign (fun lhs rhs l-> INExprAssign(lhs,rhs)::l) lst) 
                         []
     in 
+    let v2str : a -> string= s.tbl.tostr in
+    let e2str x :string = ASTLib.ast2str x v2str in
+    let report_entangle av ae tv te : string = 
+        (v2str av)^"="^(e2str ae)^" & "^(v2str tv)^"="^(e2str te)
+    in
     (* check if a new assignment triggers a new entanglement *)
-    let is_already_resolved lhs rhs = 
+    let is_already_resolved entang = 
       let matches = 
-        List.filter (fun rslvd -> lhs = rslvd.templ_var && rslvd.targ_expr = rhs) resolved
+        List.filter (fun rslvd -> resolves_entanglement rslvd entang) resolved
       in
-      List.length matches > 0
+      debug ("> [RSLV?] Resolution Check"^
+               "\n  "^(report_entangle entang.templ_var entang.templ_expr entang.targ_var entang.targ_expr)^
+               "\n  "^
+               (string_of_int (List.length matches))^"/"^
+               (string_of_int (List.length resolved))^" existing resolutions");
+      if List.length matches > 0 then
+        begin
+        debug ("[RSLV] Resolved! Ignoring conflict...\n");
+        true
+        end
+      else
+        false
     in
     let get_maybe_entangled asgn_lhs asgn_rhs : bool*(a entanglement option) = 
       (*if the dynamics of the template variable is defined*)
@@ -531,35 +556,89 @@ struct
             match templ_kind, targ_kind with
             (*the template and the target are both derivatives, 
             and the assignment is an x=y assignment*)
-            | RTDerivVar(templ_rhs,templ_ic),RTDerivValue(targ_rhs,targ_ic) -> 
+            | RTDeriv(templ_rhs,ICVar(templ_ic)),RTDeriv(targ_rhs,ICVal(targ_ic)) -> 
                (*the template and target are both defined, and the assignment
                is an x = y assignment. This is a conflict*)
                (*this invocation creates an entanglement between v and the lhs and initial assignemnts *)
+               begin
+                 let targ_ic_node : a ast = match targ_ic with
+                   | Integer(i) -> Integer(i)
+                   | Decimal(d) -> Decimal(d)
+                 in
+                 debug ("> [CONFLICT] variable-variable conflict between derivatives"^
+                        "\n  "^(report_entangle templ_lhs templ_rhs targ_var_lhs targ_rhs)^"");
                true,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
-                   (INExprAssign(templ_ic,Decimal(targ_ic))::INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
+                   (INExprAssign(templ_ic,targ_ic_node)::INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
+               end
             | RTFunct(templ_rhs), RTFunct(targ_rhs) -> 
                (*the template var is an input port, and the target var is an input*)
-               true,Some(mk_entanglement templ_lhs targ_var_lhs asgn_rhs targ_rhs 
+               begin
+               debug ("[CONFLICT] variable-variable conflict between functions"^
+                        "\n  "^(report_entangle templ_lhs templ_rhs targ_var_lhs targ_rhs)^"");
+               true,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
                    (INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
+               end
             (*input var, input port. Simple assignment with no entanglements.*)
             | RTNoRel, RTNoRel -> 
-
+               begin
+               debug ("[OK] no conflict between input-input"^
+                        "\n  "^(v2str templ_lhs)^" & "^(v2str targ_var_lhs)^") --");
                true,None
+               end
             (*the template var is an input port, and the target var is an 
             output. no conflict. Can either rebuild expression or link variable*)
             | RTNoRel, RTFunct(targ_rhs) -> 
+               begin
+               debug ("[OK] no conflict between input port and output targ var"^
+                      "\n  "^(v2str templ_lhs)^" & "^(v2str targ_var_lhs)^"="^(e2str targ_rhs)^"");
                true,None
+               end
             (*the template var is an input port, and the target var is a derivative. 
             no conflict. The variable must be linked from the definition*)
-            | RTNoRel, RTDerivValue(targ_rhs,targ_ic) -> 
+            | RTNoRel, RTDeriv(targ_rhs,ICVal(targ_ic)) -> 
+               begin
+               debug ("[OK] no conflict between input port and output targ var(deriv)"^
+                      "\n  "^(v2str templ_lhs)^" & "^(v2str targ_var_lhs)^"="^(e2str targ_rhs)^"");
                true,None
+               end
             (*the template variable is an output port, and the target var 
             is an input. unresolvable.*)
-            | _,RTNoRel -> 
+            | RTFunct(_),RTNoRel -> 
+               begin
+               debug ("[UNFIXABLE] unfixable conflict between output port fxn and input targ var"^
+                        "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
                false,None 
+               end
+            | RTDeriv(_,ICVar(_)),RTNoRel -> 
+               begin
+               debug ("[UNFIXABLE] unfixable conflict between output port deriv and input targ var"^
+                        "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
+               false,None 
+               end
+
             (*misassigning derivatives to functions*)
-            | _ -> 
+            | RTFunct(_),RTDeriv(_,ICVal(_)) -> 
+               begin
+               debug ("[UNFIXABLE] unfixable conflict between port variable function and derivative"^
+                        "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
                false,None
+               end
+            (*misassigning derivatives to functions*)
+            | RTDeriv(_,ICVar(_)),RTFunct(_) -> 
+               begin
+               debug ("[UNFIXABLE] unfixable conflict between port variable derivative and function"^
+                        "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
+               false,None
+               end
+            | RTDeriv(_,ICVar(ica)),RTDeriv(_,ICVar(icb)) ->
+               error "find_entanglements" ("[UNHANDLED] cannot have two variable initial conds "^
+                                             "var "^(v2str templ_lhs)^" has ic "^(v2str ica)^" and "^
+                                             "var "^(v2str targ_var_lhs)^" has ic "^(v2str icb))
+
+            | a,b ->
+               error "find_entanglements" ("[UNHANDLED] "^
+                                             "var "^(v2str templ_lhs)^" has type "^(rel_type_to_str a)^" and "^
+                                             "var "^(v2str targ_var_lhs)^" has type "^(rel_type_to_str b))
             end
             (*if the assigned variable is an output variable, unifying the variable is sufficient*)
          | asgn_rhs -> 
@@ -567,22 +646,34 @@ struct
             match templ_kind with 
             (*If there is a straight line function that defines the template variable dynamics, unifiable*)
             | RTFunct(templ_rhs) ->
+               begin
+               debug ("[CONFLICT] conflict between port expression and target variable"^
+                      "\n  "^(report_entangle asgn_lhs asgn_rhs templ_lhs templ_rhs)^"");
                true,Some(mk_entanglement asgn_lhs templ_lhs templ_rhs asgn_rhs
                  (INExprAssign(templ_lhs,asgn_rhs)::assign_list))
+               end
             (*cannot unify function variable with state variable*)
-            | RTDerivVar(_,_) ->
+            | RTDeriv(_,ICVar(_)) ->
+               begin
+               debug ("[UNFIXABLE] unfixable conflict between function expression and port state variable"^
+                      "\n  "^(v2str templ_lhs));
                false,None
+               end
             (*expression assign to an input port*)
             | RTNoRel ->
+               begin
+               debug ("[OK] no conflict between input port and expression"^
+                        "\n  "^(v2str templ_lhs));
                true,None
+               end
             end 
     in
     let resolvable,entangles = MAP.fold new_assigns (fun lhs rhs (rslv,tngl) ->  
            let resolvable, entanglement = get_maybe_entangled lhs rhs in
            let new_rslv = resolvable && rslv in
            match entanglement with 
-           | Some(entg) -> if is_already_resolved entg.templ_var entg.templ_expr 
-                           then new_rslv,tngl
+           | Some(entg) -> if is_already_resolved entg 
+                           then rslv,tngl
                            else new_rslv,entg::tngl
            | None -> new_rslv,tngl
     ) (true,[]) in  

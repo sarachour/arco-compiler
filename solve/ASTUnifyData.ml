@@ -3,9 +3,10 @@ open Util
 open SymCaml
 open SymCamlData
 open SearchData
+open SolverData
 
 type 'a rkind =
-| RKDeriv of 'a ast
+| RKDeriv of 'a init_cond
 | RKFunction
 
 type unifytype = UTypTempl| UTypTarg

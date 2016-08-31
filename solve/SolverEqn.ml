@@ -120,7 +120,8 @@ struct
     else
     let rel2info (rel:urel) : unid rarg =
       match rel with
-      | UState(lhs,rhs,ic,t) -> (lhs,rhs,RKDeriv(Term ic))
+      | UState(lhs,rhs,ICVar(v),t) -> (lhs,rhs,RKDeriv(ICVar(v)))
+      | UState(lhs,rhs,ICVal(v),t) -> (lhs,rhs,RKDeriv(ICVal(v)))
       | UFunction(lhs,rhs) -> (lhs,rhs,RKFunction)
     in
     let goal2info (g:goal) =

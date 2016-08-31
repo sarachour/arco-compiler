@@ -362,8 +362,10 @@ struct
       let trans_urel (u:urel) =
         match u with
         | UFunction(rhs,lhs) -> UFunction(trans_unid rhs, ASTLib.map lhs trans_unid)
-        | UState(rhs,lhs,deriv,time) -> UState(trans_unid rhs, ASTLib.map lhs trans_unid,
-            trans_unid deriv, trans_unid time)
+        | UState(lhs,rhs,ICVal(ic),time) -> UState(trans_unid lhs, ASTLib.map rhs trans_unid,
+            ICVal(ic), trans_unid time)
+        | UState(lhs,rhs,ICVar(ic),time) -> UState(trans_unid lhs, ASTLib.map rhs trans_unid,
+            ICVar(trans_unid ic), trans_unid time)
       in
       let trans_goal (g:goal) =
         (UnivLib.wrap_goal_fun ms.is_trivial (trans_urel (UnivLib.unwrap_goal g)))

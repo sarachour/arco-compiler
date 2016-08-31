@@ -476,7 +476,7 @@ struct
       let _ = addvar lhs in
       let _ = List.iter (fun q -> addvar q) (ASTLib.get_vars rhs) in
       let _ = match kind with 
-      | RKDeriv(Term(v)) -> addvar v 
+      | RKDeriv(ICVar(v)) -> addvar v 
       | _ -> ()
       in 
       ()
@@ -626,8 +626,8 @@ struct
         let rhsexpr :symexpr = ASTLib.to_symcaml rhs a2sym in
         (*TODO: create one with substitutions, one without*)
         let fxn : symexpr= match  is_deriv s lhs with
-        | Some(init_cond) ->
-            let icexpr = ASTLib.to_symcaml init_cond a2sym in 
+        | Some(ICVar(init_cond)) ->
+            let icexpr = ASTLib.to_symcaml (Term init_cond) a2sym in 
             OpN(Function(dfunvar()),[lhsexpr;rhsexpr;icexpr])
         | None -> OpN(Function(funvar()),[lhsexpr;rhsexpr])
         in
