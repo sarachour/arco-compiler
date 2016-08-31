@@ -11,6 +11,9 @@ let warn fxn msg =
   flush_all ();
   ()
 
+let noop x = x; ()
+let ret x r = x; r
+
 type range = float*float
 type irange = int*int
 
@@ -148,7 +151,7 @@ struct
     i
   
   let rand_boolean () = 
-    match Random.int(1) with
+    match Random.int(2) with
     | 0 -> true
     | 1 -> false
 

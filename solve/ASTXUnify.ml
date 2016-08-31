@@ -680,8 +680,13 @@ struct
     (resolvable,entangles) 
 
   (*resolve unification*)
+  type 'a unification_status =
+    | USTUnified of ('a,'a ast) map*'a resolution list
+    | USTUnresolvable of ('a,'a ast) map
+    | USTUnUnifiable
+
   let unify_terms (type a) (s:a runify) (templs:(a,a ast) map) (targs:(a,a ast) map) (templvar:a) (targvar:a) =
-    let rec _unify_terms (entanglements:(a entanglement) list) (assigns:((a,a ast) map) list) (resolved:((a resolution) list)) : ((a,a ast) map) option=
+    let rec _unify_terms (entanglements:(a entanglement) list) (assigns:((a,a ast) map) list) (resolved:((a resolution) list)) : a unification_status=
           (*find an entanglement*)
           match entanglements with
           | entang::t -> 
@@ -698,58 +703,63 @@ struct
               (*try and find any new entanglements*)
               let is_valid,new_entangle = find_entanglements s templs targs assigns new_assigns new_resolved in
               (*if there is an unresolvable entanglement, return no solution*)
-              if is_valid = false then None else
+              if is_valid = false then USTUnresolvable(MAP.merge (new_assigns::assigns)) else
               (*otherwise, recurseively resolve any entanglements*)
               _unify_terms (t @ new_entangle)
                              (new_assigns::assigns)
                              new_resolved
                
-            | None -> None
+            | None -> USTUnUnifiable
             end   
             (*no more entanglements left*)
             | [] ->
-             Some (MAP.merge assigns)
+             USTUnified(MAP.merge assigns,resolved)
             
     in
       let templexpr = MAP.get templs templvar in 
       let targexpr = MAP.get targs targvar in
       _unify_terms [(mk_entanglement templvar targvar templexpr targexpr [INVarAssign(templvar,targvar)])] [] []
 
-  let add_assignment_node (type a) (s:a runify) curs (assigns:(a,a ast) map) (templs:(a,a ast)map) targs =
+  let add_assignment_node (type a) (s:a runify) curs
+      (assigns:(a,a ast) map) (templs:(a,a ast)map) (targs:(a,a ast) map) (resolved:a resolution list) =
     let solved : (a*(a ast)) set= SET.make_dflt () in 
     let unused : (a*(a ast)) set= SET.make_dflt () in 
     MAP.iter templs (fun v e -> return (SET.add unused (v,e)) ());
     SearchLib.move_cursor s.search s.tbl curs;
     SearchLib.start s.search;
-    MAP.iter assigns (fun (v:a) e ->
-      if MAP.has targs v then
-        let ve = MAP.get targs v in 
-        return (SET.add solved (v,ve)) ()
-     else if MAP.has templs v then
-        let ve = MAP.get templs v in
-        return (SET.rm unused (v,ve)) () 
-    );
-    let _ = SearchLib.add_step s.search (RSetState(mkstate assigns (SET.to_list solved) (SET.to_list unused))) in
+    List.iter (fun (rslv:a resolution) ->
+        if MAP.has targs rslv.targ_var then
+          noop (SET.add solved (rslv.targ_var,MAP.get targs rslv.targ_var));
+        if MAP.has templs rslv.templ_var then
+          noop (SET.rm unused (rslv.templ_var,MAP.get templs rslv.templ_var));
+        ()
+    ) resolved;
+    SearchLib.add_step s.search (RSetState(mkstate assigns (SET.to_list solved) (SET.to_list unused)));
     let node = SearchLib.commit s.search s.tbl in
-    let _ = SearchLib.solution s.search node in
+    SearchLib.solution s.search node;
     ()
 
   (*add restrictions of different fractions*)
   let add_restrictions (type a) (s:a runify) curs (assigns:(a,a ast) map) = 
     let assign_list : (a*(a ast)) list = MAP.to_list assigns in
     let root = SearchLib.cursor s.search in 
-    let add_assign (frac:float) = 
-      let n = int_of_float (MATH.round_up (frac*.(float_of_int (List.length assign_list)))) in 
-      let subset = LIST.random_subset assign_list n in 
-      SearchLib.move_cursor s.search s.tbl root;
+    let add_assign (frac:float) =
+      let total = List.length assign_list in 
+      let n = int_of_float (MATH.round_up (frac*.(float_of_int total))) in 
+      noop (debug ("[restrict] adding "^(string_of_int n)^"/"^(string_of_int total)^" restrictions")); 
+      let subset = LIST.random_subset assign_list n in
+      noop (SearchLib.move_cursor s.search s.tbl root);
       SearchLib.start s.search;
-      List.map (fun (lhs,rhs) -> SearchLib.add_step s.search (RBanAssign(lhs,rhs))) subset;
-      SearchLib.commit s.search s.tbl;
+      noop (List.iter (fun (lhs,rhs) -> SearchLib.add_step s.search (RBanAssign(lhs,rhs))) subset);
+      noop (SearchLib.commit s.search s.tbl);
+      ()
     in
-    add_assign 0.75;
     add_assign 0.50;
     add_assign 0.25;
-    add_assign 0.;
+    add_assign 0.25;
+    add_assign 0.01;
+    add_assign 0.01;
+    add_assign 0.01;
     ()
 
   let solve_node (type a) (s:a runify) (targvar:a) (templvar:a) =
@@ -759,13 +769,19 @@ struct
     let templs,targs = apply_state s in
     let proc_one () =
       match unify_terms s templs targs templvar targvar with
-      | Some(assigns) ->
+      | USTUnified(assigns,resolved) ->
         (*if LIST.empty solved then () else*)
         let _ = add_restrictions s curs assigns in
-        let _ = add_assignment_node s curs assigns templs targs in
+        let _ = add_assignment_node s curs assigns templs targs resolved in
+        debug "[SUCCESS] successfully unified component and relation";
         ()
-      | None ->
+      | USTUnresolvable(assigns) ->
+        let _ = add_restrictions s curs assigns in
+        debug "[UNRESOLVABLE] failed to unify component and relation";
+        ()
+      | USTUnUnifiable ->
         let _ = SearchLib.deadend s.search curs in
+        debug "[UNUNIFIABLE] failed to unify component and relation";
         ()
     in
     FUN.iter_n proc_one 1
