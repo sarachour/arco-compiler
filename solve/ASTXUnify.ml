@@ -113,7 +113,7 @@ struct
     let _ = SET.add bans rhs in
     ()
 
-  let rm_ban (type a) (s:a rtbl) (lhs:a) (rhs:a ast) =
+  let rm_ban (type a) (s:a rtbl) (lhs :a) (rhs:a ast) =
     let bans = (g_bans s) in
     if MAP.has bans lhs = false then
       error "unapply_step" "cannot remove a non-existent ban"
@@ -511,6 +511,12 @@ struct
   let goals_of_assignments (type a) s (templs:(a,a ast) map) (targs:(a,a ast) map) (assigns:(a,a ast) map list) = 
     ()
 
+  (*resolve unification*)
+  type 'a unification_status =
+    | USTUnified of ('a,'a ast) map*'a resolution list
+    | USTUnresolvable of ('a,'a ast) map
+    | USTUnUnifiable
+
   (*find if there are any entanglements, and if there are, resolve them*)  
   (*an entanglement is an assignment whose left hand side (and sometimes right hand side)
    is already defined*)
@@ -543,7 +549,7 @@ struct
       else
         false
     in
-    let get_maybe_entangled asgn_lhs asgn_rhs : bool*(a entanglement option) = 
+    let get_maybe_entangled asgn_lhs asgn_rhs : ((a*a ast) option)*(a entanglement option) = 
       (*if the dynamics of the template variable is defined*)
       let templ_kind = get_var_kind s asgn_lhs in
       let templ_lhs : a= asgn_lhs in 
@@ -567,7 +573,7 @@ struct
                  in
                  debug ("> [CONFLICT] variable-variable conflict between derivatives"^
                         "\n  "^(report_entangle templ_lhs templ_rhs targ_var_lhs targ_rhs)^"");
-               true,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
+               None,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
                    (INExprAssign(templ_ic,targ_ic_node)::INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
                end
             | RTFunct(templ_rhs), RTFunct(targ_rhs) -> 
@@ -575,7 +581,7 @@ struct
                begin
                debug ("[CONFLICT] variable-variable conflict between functions"^
                         "\n  "^(report_entangle templ_lhs templ_rhs targ_var_lhs targ_rhs)^"");
-               true,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
+               None,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
                    (INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
                end
             (*input var, input port. Simple assignment with no entanglements.*)
@@ -583,7 +589,7 @@ struct
                begin
                debug ("[OK] no conflict between input-input"^
                         "\n  "^(v2str templ_lhs)^" & "^(v2str targ_var_lhs)^") --");
-               true,None
+               None,None
                end
             (*the template var is an input port, and the target var is an 
             output. no conflict. Can either rebuild expression or link variable*)
@@ -591,7 +597,7 @@ struct
                begin
                debug ("[OK] no conflict between input port and output targ var"^
                       "\n  "^(v2str templ_lhs)^" & "^(v2str targ_var_lhs)^"="^(e2str targ_rhs)^"");
-               true,None
+               None,None
                end
             (*the template var is an input port, and the target var is a derivative. 
             no conflict. The variable must be linked from the definition*)
@@ -599,7 +605,7 @@ struct
                begin
                debug ("[OK] no conflict between input port and output targ var(deriv)"^
                       "\n  "^(v2str templ_lhs)^" & "^(v2str targ_var_lhs)^"="^(e2str targ_rhs)^"");
-               true,None
+               None,None
                end
             (*the template variable is an output port, and the target var 
             is an input. unresolvable.*)
@@ -607,13 +613,13 @@ struct
                begin
                debug ("[UNFIXABLE] unfixable conflict between output port fxn and input targ var"^
                         "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
-               false,None 
+               Some(asgn_lhs,asgn_rhs),None 
                end
             | RTDeriv(_,ICVar(_)),RTNoRel -> 
                begin
                debug ("[UNFIXABLE] unfixable conflict between output port deriv and input targ var"^
                         "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
-               false,None 
+               Some(asgn_lhs,asgn_rhs),None 
                end
 
             (*misassigning derivatives to functions*)
@@ -621,14 +627,14 @@ struct
                begin
                debug ("[UNFIXABLE] unfixable conflict between port variable function and derivative"^
                         "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
-               false,None
+               Some(asgn_lhs,asgn_rhs),None
                end
             (*misassigning derivatives to functions*)
             | RTDeriv(_,ICVar(_)),RTFunct(_) -> 
                begin
                debug ("[UNFIXABLE] unfixable conflict between port variable derivative and function"^
                         "\n  "^(v2str templ_lhs)^" with "^(v2str targ_var_lhs));
-               false,None
+               Some(asgn_lhs,asgn_rhs),None
                end
             | RTDeriv(_,ICVar(ica)),RTDeriv(_,ICVar(icb)) ->
                error "find_entanglements" ("[UNHANDLED] cannot have two variable initial conds "^
@@ -649,7 +655,7 @@ struct
                begin
                debug ("[CONFLICT] conflict between port expression and target variable"^
                       "\n  "^(report_entangle asgn_lhs asgn_rhs templ_lhs templ_rhs)^"");
-               true,Some(mk_entanglement asgn_lhs templ_lhs templ_rhs asgn_rhs
+               None,Some(mk_entanglement asgn_lhs templ_lhs templ_rhs asgn_rhs
                  (INExprAssign(templ_lhs,asgn_rhs)::assign_list))
                end
             (*cannot unify function variable with state variable*)
@@ -657,33 +663,27 @@ struct
                begin
                debug ("[UNFIXABLE] unfixable conflict between function expression and port state variable"^
                       "\n  "^(v2str templ_lhs));
-               false,None
+               Some(asgn_lhs,asgn_rhs),None
                end
             (*expression assign to an input port*)
             | RTNoRel ->
                begin
                debug ("[OK] no conflict between input port and expression"^
                         "\n  "^(v2str templ_lhs));
-               true,None
+               None,None
                end
             end 
     in
-    let resolvable,entangles = MAP.fold new_assigns (fun lhs rhs (rslv,tngl) ->  
-           let resolvable, entanglement = get_maybe_entangled lhs rhs in
-           let new_rslv = resolvable && rslv in
+    let unfixable,entangled = MAP.fold new_assigns (fun lhs rhs (unfix,tngl) ->  
+           let unfixable, entanglement = get_maybe_entangled lhs rhs in
+           let new_unfix = if unfixable = None then unfix else (OPTION.force_conc unfixable)::unfix in
            match entanglement with 
            | Some(entg) -> if is_already_resolved entg 
-                           then rslv,tngl
-                           else new_rslv,entg::tngl
-           | None -> new_rslv,tngl
-    ) (true,[]) in  
-    (resolvable,entangles) 
-
-  (*resolve unification*)
-  type 'a unification_status =
-    | USTUnified of ('a,'a ast) map*'a resolution list
-    | USTUnresolvable of ('a,'a ast) map
-    | USTUnUnifiable
+                           then unfix,tngl
+                           else new_unfix,entg::tngl
+           | None -> new_unfix,tngl
+    ) ([],[]) in
+    (unfixable,entangled) 
 
   let unify_terms (type a) (s:a runify) (templs:(a,a ast) map) (targs:(a,a ast) map) (templvar:a) (targvar:a) =
     let rec _unify_terms (entanglements:(a entanglement) list) (assigns:((a,a ast) map) list) (resolved:((a resolution) list)) : a unification_status=
@@ -701,11 +701,11 @@ struct
               (*resolve the entanglement*)
               let new_resolved = (resolution_of_entanglement entang)::resolved in 
               (*try and find any new entanglements*)
-              let is_valid,new_entangle = find_entanglements s templs targs assigns new_assigns new_resolved in
+              let unfixable,new_entangles = find_entanglements s templs targs assigns new_assigns new_resolved in
               (*if there is an unresolvable entanglement, return no solution*)
-              if is_valid = false then USTUnresolvable(MAP.merge (new_assigns::assigns)) else
+              if List.length unfixable > 0 then USTUnresolvable(MAP.from_list unfixable) else
               (*otherwise, recurseively resolve any entanglements*)
-              _unify_terms (t @ new_entangle)
+              _unify_terms (t @ new_entangles)
                              (new_assigns::assigns)
                              new_resolved
                
@@ -742,17 +742,37 @@ struct
   (*add restrictions of different fractions*)
   let add_restrictions (type a) (s:a runify) curs (assigns:(a,a ast) map) = 
     let assign_list : (a*(a ast)) list = MAP.to_list assigns in
-    let root = SearchLib.cursor s.search in 
+    let root = SearchLib.cursor s.search in
+    (*add an assignment node *)
+    let except lst (el,er) : (a*a ast) list= List.filter (fun (l,r) -> l != el && r != er) lst in
+    let node_is_subset (subset:(a*a ast) list) (steps:a rstep list) =
+        let node_restrict = LIST.fold steps
+        (fun (step:a rstep) (lst:(a*a ast) list) -> match step with
+        | RBanAssign(lhs,rhs) -> (lhs,rhs)::lst
+        | _ -> lst) [] in
+        if LIST.same_membership node_restrict subset then true else false
+    in
+    let rec make_subset nelems ntries =
+      if ntries == 0 then None else
+      let subset = LIST.random_weighted_subset (fun (lhs,rhs) -> ASTLib.size rhs) assign_list nelems in
+      if List.length (SearchLib.filter_nodes s.search (fun n -> node_is_subset subset n = true)) > 0 then
+        make_subset nelems (ntries-1)
+      else Some subset
+    in
     let add_assign (frac:float) =
       let total = List.length assign_list in 
       let n = int_of_float (MATH.round_up (frac*.(float_of_int total))) in 
       noop (debug ("[restrict] adding "^(string_of_int n)^"/"^(string_of_int total)^" restrictions")); 
-      let subset = LIST.random_subset assign_list n in
-      noop (SearchLib.move_cursor s.search s.tbl root);
-      SearchLib.start s.search;
-      noop (List.iter (fun (lhs,rhs) -> SearchLib.add_step s.search (RBanAssign(lhs,rhs))) subset);
-      noop (SearchLib.commit s.search s.tbl);
-      ()
+      match make_subset n 10 with None -> ()
+        |Some(subset) ->
+        noop (debug ("[restrict]   -> success!"));                           
+        SearchLib.move_cursor s.search s.tbl root;
+        SearchLib.start s.search;
+        List.iter (fun (lhs,rhs) ->
+          begin SearchLib.add_step s.search (RBanAssign(lhs,rhs)); () end
+        ) subset;
+        SearchLib.commit s.search s.tbl;
+        ()
     in
     add_assign 0.50;
     add_assign 0.25;
@@ -774,6 +794,7 @@ struct
         let _ = add_restrictions s curs assigns in
         let _ = add_assignment_node s curs assigns templs targs resolved in
         debug "[SUCCESS] successfully unified component and relation";
+          _print_debug "--> Found Solution Node <--";
         ()
       | USTUnresolvable(assigns) ->
         let _ = add_restrictions s curs assigns in
@@ -806,25 +827,35 @@ struct
       let curs = SearchLib.cursor sr.search in
       let depth : int =  SearchLib.depth sr.search curs in
       if depth >= get_glbl_int "uast-depth" then
-        let _ =  SearchLib.deadend sr.search curs in
-        let _ = _mnext () in
-        ()
+        begin
+        SearchLib.deadend sr.search curs; 
+        if _mnext () then
+          begin
+            _solve();
+            ()
+          end
+        else
+          ()
+        end  
       else
         (*get the next node*)
         let nslns = SearchLib.num_solutions sr.search (Some root) in
         let _ = _print_debug ("# solutions: "^(string_of_int nslns)) in
         if nslns >= n then
-         let _ = _print_debug "[search_tree] Found Solutions" in
+         let _ = _print_debug "!--> Found Enough Solutions, Exiting <--!" in
          ()
         else
           let templvar = SET.singleton sr.tbl.st.subset in 
           solve_node sr targvar templvar;
-          _print_debug "== Solution Node ==";
-         usrmenu ();
-         if _mnext () then
-          _solve () 
-         else 
-          ()
+          usrmenu ();
+          if _mnext () then
+            begin
+            debug "--> Continuing Search <--";
+            _solve () 
+            end
+          else
+           debug "--> Finishing AST Search <--";
+           ()
     in
     let _ = _mnext () in
     let _ = _solve () in

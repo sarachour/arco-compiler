@@ -65,7 +65,8 @@ module ASTLib
     val simpl : ('a ast) -> ('a -> symvar) -> (symvar -> 'a)  ->  ('a-> ('a -> symvar)-> symdecl) -> 'a ast
     val sub : ('a ast) -> (('a,'a ast) map) -> 'a ast
     val subs : ('a ast) -> ((('a,'a ast) map) list) -> 'a ast
-end*)
+    
+  end*)
 
 = struct
 
@@ -206,7 +207,7 @@ end*)
       match trans a tf with
       | Decimal(x) -> Some(x)
       | _ -> None
-
+               
     let size (type x) (a:x ast) : int =
       fold a (fun pt n -> n + 1) 0
 

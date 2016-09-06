@@ -513,6 +513,25 @@ struct
     else
       _random_subset lst nelems [] 
 
+  let random_weighted_subset (type a) (fxn:a->int) (lst:a list) (nelems:int) : a list=
+    let total (lst:a list) : int= List.fold_left (fun r a -> (fxn a) + r) 0 lst  in
+    let except lst el =List.filter (fun q -> q != el) lst in
+    let rec compute_el v lst = match lst with
+      | h::t -> let wt = fxn h in
+        if v <= wt then h else compute_el (v-wt) t
+      | [] -> error "random_weighted_subset" "must not exceed total"
+    in
+    let rec _random_subset lst nelems =
+      if nelems == 0 then [] else
+      let el = compute_el (RAND.rand_int (total lst)) lst in
+      el::(_random_subset (except lst el) (nelems-1))
+    in 
+    _random_subset lst nelems
+
+  let same_membership lst other =
+    let lst_minus_other = List.filter (fun x -> has other x = false) lst in
+    let other_minus_lst = List.filter (fun x -> has lst x = false) other in
+    List.length lst_minus_other == 0 && List.length other_minus_lst == 0
 end
 
 type 'a ord_set_node = {

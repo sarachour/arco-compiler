@@ -149,6 +149,8 @@ struct
   let mkscore state delta : sscore =
     {state=state; delta=delta}
 
+  let filter_nodes (type a) (type b) (sr:(a,b) ssearch) (fxn:a list -> bool) : (a snode) list=
+    TREE.filter_nodes sr.tree (fun (n:a snode) -> fxn n.s)
 
 
   let fold_path (type a) (type b) (type r) (sr:(a,b) ssearch) (n:a snode) (fxn: a -> r -> r) (ic:r): r =
