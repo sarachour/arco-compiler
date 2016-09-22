@@ -8,7 +8,7 @@ make_config () {
   echo "int interactive $IACTIVE" >> $TARG
 }
 
-make_config debug.cfg 3 5 
+make_config debug.cfg 3 4
 make_config debug_eq.cfg 2 3
 make_config eq.cfg 1 2 
 make_config prod.cfg 0 3 

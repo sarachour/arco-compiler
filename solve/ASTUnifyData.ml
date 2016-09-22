@@ -30,11 +30,34 @@ fill in target var: fill in a target variable
 fill in a templ var: fill in a template variable
 
 *)
+(*an entanglement*)
+
+type 'a initial_assign = 
+  | INVarAssign of 'a*'a
+  | INExprAssign of 'a*('a ast)
+  | INTNoAssign
+
+
+type 'a entanglement = {
+    templ_var : 'a;
+    targ_expr : 'a ast;
+    targ_var : 'a;
+    templ_expr: 'a ast;
+    assignments: 'a initial_assign list;
+}
+(*resolved entanglement*)
+type 'a resolution = {
+    templ_var : 'a;
+    targ_expr : 'a ast;
+    targ_var : 'a;
+    templ_expr: 'a ast; 
+}
 
 type 'a asgn_state  = {
         mutable assigns: ('a, 'a ast) map;
-        mutable solved: ('a*'a ast) list;
-        mutable unused: ('a*('a ast)) list;
+        mutable solved: ('a,('a ast)*('a rkind)) map;
+        mutable unused: ('a,('a ast)*('a rkind)) map;
+        mutable resolved: ('a resolution) list;
 }
 
 type 'a rstep =
@@ -47,7 +70,7 @@ type 'a rstep =
 type 'a rvstats = {
   nconflicts: ('a*('a ast), int) map
 }
-(*the stateful part of teh tableau*)
+(*the stateful part of the tableau*)
 type 'a rstate = {
   (*templ to targ assigns *)
   mutable state : 'a asgn_state option;

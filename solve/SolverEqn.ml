@@ -280,8 +280,7 @@ struct
     ) has_results in
     (* failed to find any solutions.. *)
     if has_results = false then
-      let _ =  SearchLib.deadend tbl.search goal_cursor in
-      ()
+      begin SearchLib.deadend tbl.search goal_cursor (slvenv,tbl); () end
     else ()
 
 
@@ -293,33 +292,39 @@ struct
     if is_conn_cons && is_usecomp_cons then 
       SearchLib.solution v.search curr
     else
-      SearchLib.deadend v.search curr 
+      begin SearchLib.deadend v.search curr (s,v); () end
+       
 
 
 
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
-  let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) (depth:int)=
-    let _ = _print_debug ("-> testing validity: "^(string_of_int c.id)) in
+  let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) (depth:int) : bool=
+  begin
     let old_cursor = SearchLib.cursor v.search in
-    let _ = SearchLib.move_cursor v.search (s,v) c in
     let currdepth =  List.length (TREE.get_path v.search.tree c) in
-    let is_valid = if currdepth >= depth then
-      let _ = _print_debug "[test-node-validity] hit max depth:" in
-      let _ = SearchLib.deadend v.search c in
-      false
-    else
-        (*determine if there are any goals left*)
-        if (GoalTableLib.num_actionable_goals v) = 0 then
+    _print_debug ("-> testing validity: "^(string_of_int c.id));
+    SearchLib.move_cursor v.search (s,v) c;
+    let is_valid : bool =
+      if currdepth >= depth then
+        begin
+          (*determine if there are any goals left*)
+          _print_debug "[test-node-validity] hit max depth:";
+          SearchLib.deadend v.search c (s,v);
+          false
+        end
+      else if (GoalTableLib.num_actionable_goals v) = 0 then
+        begin
           (*found all goals*)
-          let _ = _print_debug "[test-node-validity] found a valid solution" in
-          let _ = mark_if_solution s v c in 
+          _print_debug "[test-node-validity] found a valid solution";
+          mark_if_solution s v c;
           true
-        else
-          true
+        end
+      else
+        true
     in
-    let _ = SearchLib.move_cursor v.search (s,v) old_cursor in
+    SearchLib.move_cursor v.search (s,v) old_cursor;
     is_valid
-
+  end
 
   (*get the best valid node. If there is no valid node, return none *)
   let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option) (depth:int)  : (sstep snode) option =
@@ -415,7 +420,7 @@ struct
           ()
         else
           (*this trivial resolution does not work*)
-          let _ = SearchLib.deadend v.search triv in
+          let _ = SearchLib.deadend v.search triv (s,v) in
           let _ = _print_debug "[search_tree] FAILURE trivial solution not resolved." in
           (*downgrade goal*)
           let _ = if downgrade_enable then 

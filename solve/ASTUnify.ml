@@ -85,17 +85,18 @@ struct
                 ) ""
         in
         let unused: string =
-                LIST.fold a.unused (fun ((lhs,rhs):(a*a ast)) (rest:string) -> 
+                MAP.fold a.unused (fun (lhs:a) (rhs,_) (rest:string) -> 
                         rest^(tostr lhs)^":="^(ASTLib.ast2str rhs tostr)^"  "
                 ) ""
         in
         let slved : string = 
-                LIST.fold a.solved (fun (x,y) rest -> rest^" "^(tostr x)^"="^(ASTLib.ast2str y tostr)) " "
+          MAP.fold a.solved (fun lhs (rhs,kind) rest ->
+              rest^" "^(tostr lhs)^"="^(ASTLib.ast2str rhs tostr)) " "
         in
         assgn^unused^slved
   
   let mkstate (type a) asgns solved unused = 
-        {assigns=asgns; solved=solved; unused=unused}
+        {assigns=asgns; resolved=[]; solved=solved; unused=unused}
 
   let step2str (type a) (tostr:a -> string) (a:a rstep) = match a with
   | RSetState(state) ->
@@ -549,7 +550,7 @@ struct
     "LHS"
 
   (*Extract the state of the solution from the assigns*)
-  let assigns2state (type a) (s:a runify) (templs:(a,a ast) map) (targs:(a,a ast) map) (assigns:(string*symexpr) list) =
+  let assigns2state (type a) (s:a runify) (templs:(a,a ast) map) (targs:(a,a ast) map) (assigns:(string*symexpr) list) : (a,a ast) map*((a*(a ast*a rkind)) list)*((a*(a ast*a rkind)) list) =
     let sym2a (x:symvar) : a = (g_iconv s.tbl) x in
     let a2sym : a -> symvar = g_conv s.tbl in
     let clean_rest_var (exp:symexpr) : symexpr = 
@@ -561,18 +562,18 @@ struct
        nexp     
     in
     let extract_exprs ast =
-      let _extract (node:a ast) vlst: (a*a ast) list =
+      let _extract (node:a ast) vlst: (a*(a ast)) list =
         match node with
         | OpN(Func("F"), [OpN(Func("LHS"),[Term(lhs)]);rhs]) -> 
-            ((lhs,rhs)::vlst)
+          ((lhs,(rhs))::vlst)
         | OpN(Func("DF"), [OpN(Func("LHS"),[Term(lhs)]);rhs;ic]) -> 
-            ((lhs,rhs)::vlst)
+            ((lhs,(rhs))::vlst)
         | _ -> vlst
       in
       ASTLib.fold ast _extract []
     in
     let _ = _print_debug "<!> found assigns" in
-    let assign_map = MAP.make () in
+    let assign_map :(a, a ast) map= MAP.make () in
     let rest = SET.make_dflt () in
     let solved_targ_map = MAP.copy targs in 
     let unused_templ_vars = SET.from_list (MAP.keys templs) in 
@@ -597,13 +598,14 @@ struct
                 ()
     ) assigns
     in
-    let unused_templs : (a*(a ast)) list = SET.map unused_templ_vars (fun vr -> 
+    let unused_templs : (a*(a ast*a rkind)) list = SET.map unused_templ_vars (fun vr -> 
         let rhs : a ast = MAP.get templs vr in
         let nrhs : a ast = ASTLib.sub rhs assign_map in
-        (vr, nrhs)   
+        (vr, (nrhs,RKFunction))   
     ) in
-    let solved_targs = SET.from_list (MAP.to_list solved_targ_map) in 
-    let _ = SET.iter solved_targs (fun (x,y) -> _print_debug ("solved:"^(a2sym x)^(ASTLib.ast2str y a2sym))) in
+    let solved_targs : (a*(a ast*a rkind)) list=
+      List.map (fun (lhs,rhs) -> (lhs,(rhs,RKFunction))) (MAP.to_list solved_targ_map) in
+    let _ = List.iter (fun (x,(y,_)) -> _print_debug ("solved:"^(a2sym x)^(ASTLib.ast2str y a2sym))) solved_targs in
     let _ = List.iter (fun (lhs,rhs) -> _print_debug ("unused-templ:"^(a2sym lhs))) unused_templs in
     let _ = MAP.iter assign_map (fun k v -> _print_debug ("assign: "^(a2sym k)^" = "^(ASTLib.ast2str v a2sym))) in
     let _ = _print_debug "--------------------\n" in
@@ -614,7 +616,8 @@ struct
 
 
   (*unify the two components*)
-  let unify (type a) (s:a runify) (templs:(a, a ast) map) (targs:(a,a ast) map) (targvar:a) : (((a,a ast) map)*((a*a ast) list)*((a*a ast) list)) option =
+  let unify (type a) (s:a runify) (templs:(a, a ast) map) (targs:(a,a ast) map) (targvar:a) :
+    (((a,a ast) map)*((a*(a ast*a rkind)) list)*((a*(a ast*a rkind)) list)) option =
       let sym2a : symvar -> a = g_iconv s.tbl in
       let a2sym : a -> symvar = g_conv s.tbl in
       let tolhsexpr lh : symexpr =
@@ -684,15 +687,16 @@ struct
       match maybe_assigns with
       | Some(assigns) ->
         let assigns,solved,remaining = assigns2state s templs targs  assigns in
-        Some(assigns,SET.to_list solved,remaining)
+        Some(assigns,solved,remaining)
       | None ->
         let _ = _print_debug "no assigns found" in
         None
 
-  let add_assignment_node (type a) (s:a runify) curs (assigns:(a,a ast) map) (solved: (a*a ast) list) (unused:(a*(a ast)) list) =
+  let add_assignment_node (type a) (s:a runify) curs (assigns:(a,a ast) map)
+      (solved: (a*(a ast*a rkind)) list) (unused:(a*(a ast*a rkind)) list) =
     let _ = SearchLib.move_cursor s.search s.tbl curs in
     let _ = SearchLib.start s.search in
-    let _ = SearchLib.add_step s.search (RSetState(mkstate assigns solved unused)) in
+    let _ = SearchLib.add_step s.search (RSetState(mkstate assigns (MAP.from_list solved) (MAP.from_list unused))) in
     let node = SearchLib.commit s.search s.tbl in
     let _ = SearchLib.solution s.search node in
     ()
@@ -710,7 +714,7 @@ struct
         let _ = add_assignment_node s curs assigns solved unused in
         ()
       | None ->
-        let _ = SearchLib.deadend s.search curs in
+        SearchLib.deadend s.search curs s.tbl;
         ()
     in
     FUN.iter_n proc_one 1
@@ -736,7 +740,7 @@ struct
       let curs = SearchLib.cursor sr.search in
       let depth : int =  SearchLib.depth sr.search curs in
       if depth >= get_glbl_int "uast-depth" then
-        let _ =  SearchLib.deadend sr.search curs in
+        let _ =  SearchLib.deadend sr.search curs sr.tbl in
         let _ = _mnext () in
         ()
       else
@@ -775,8 +779,8 @@ struct
       let state = OPTION.force_conc s.tbl.st.state in
       let arr = [] in
       let arr = MAP.fold state.assigns (fun lhs rhs q -> USAssign(lhs,rhs)::q)  arr in
-      let arr = LIST.fold state.solved (fun (lhs,rhs) q -> USRmGoal(lhs,rhs)::q) arr in 
-      let arr = LIST.fold state.unused (fun (lhs,rhs) q -> USAddRel(lhs,rhs)::q) arr in 
+      let arr = MAP.fold state.solved (fun lhs (rhs,_) q -> USRmGoal(lhs,rhs)::q) arr in 
+      let arr = MAP.fold state.unused (fun lhs (rhs,_) q -> USAddRel(lhs,rhs)::q) arr in 
       arr
       (*add all assignments in fusion.*)
     in

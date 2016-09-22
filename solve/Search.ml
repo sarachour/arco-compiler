@@ -138,8 +138,9 @@ struct
 
   let print_frontier sr =
     let prefix = "Frnt "^(string_of_int( ORDSET.length sr.frontier))^":"  in 
-    let front_str = ORDSET.ord2str sr.frontier (fun _x -> let x = REF.dr _x in (string_of_int x.id)^":"^(string_of_float x.score)) in 
-    let _ = _print_debug (prefix^front_str) in 
+    let front_str =
+      ORDSET.ord2str sr.frontier (fun _x -> let x = REF.dr _x in (string_of_int x.id)^":"^(string_of_float x.score))
+    in 
     ()
 
   let mknode (type a) (type b) (sr:(a,b) ssearch)=
@@ -175,7 +176,8 @@ struct
   let id2node (type a) (type b) (sr:(a,b) ssearch) (x:int) =
     match TREE.filter_nodes sr.tree (fun q -> q.id = x) with
     | [x] -> x
-    | _ -> error "id2node" "no node with that id exists."
+    | [] -> error "id2node" ("no node id "^(string_of_int x)^" exists")
+    | _ -> error "id2node" ("more than one node with id "^(string_of_int x)^" exists.")
 
   let add_step (type a) (type b) (sr:(a,b) ssearch) (s:a) =
     match sr.scratch with
@@ -208,28 +210,127 @@ struct
     let _ = TREE.rmnode sr.tree n in
     let _ = SStatLib.rm sr.st n in
     sr
+  let apply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
+    let steps = List.sort (sr.order) node.s in
+    let nenv = List.fold_right (fun x b -> let nb = sr.apply b x in nb) steps env in
+    (*let _ = upd_score sr env node in*)
+    (*recompute score*)
+    nenv
 
-  let cleanup (type a) (type b) (sr:(a,b) ssearch)=
+
+  let wrap_node (type a) (s:a list) : a snode =
+    {id=(-1); s=s; score=0.}
+
+  let unapply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
+      (*let _ = upd_score sr env node in*)
+      let steps = List.sort (sr.order) node.s in
+      let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) steps env in
+      nenv
+
+
+  let clear_cursor (type a) (type b) (sr:(a,b) ssearch) =
+      let _ = (sr.curs <- None) in
+      ()
+
+  let move_cursor (type a) (type b) (sr:(a,b) ssearch) (env:b) (next:a snode)  =
+    if TREE.hasnode sr.tree next = false then
+      error "move_cursor" ("the node of id "^(string_of_int next.id)^" to move to does not exist.")
+    else
+    let nenv = match sr.curs with
+    | Some(old) ->
+      if TREE.hasnode sr.tree old = false then
+        error "move_cursor" ("the cursor of id "^(string_of_int next.id)^" is not found.") 
+      else
+      let anc = TREE.ancestor sr.tree next old in
+      let to_anc = LIST.sublist (LIST.rev (TREE.get_path sr.tree old)) old anc in
+      let from_anc = LIST.sublist (TREE.get_path sr.tree next) anc next in
+      let _ = List.iter (fun x -> let _ = unapply_node sr env x in ()) to_anc in
+      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) from_anc in
+      let _ = (sr.curs <- Some next) in
+      env
+    | None ->
+      let to_node = TREE.get_path sr.tree next in
+      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) to_node in
+      let _ = (sr.curs <- Some next) in
+      env
+    in
+    env
+
+  let get_node_by_id (type a) (type b) (sr:(a,b) ssearch) (id:int) : a snode option=
+    let nodes : a snode list = TREE.filter_nodes sr.tree (fun q -> q.id = id) in
+          if List.length nodes = 1 then
+            Some (List.nth nodes 0)
+          else if List.length nodes = 0 then
+            None
+          else
+            error "cleanup" "more than one nodes with the same id."
+ 
+  (*cleaning*)
+  let cleanup (type a) (type b) (sr:(a,b) ssearch) (env:b)=
+    let new_env = match sr.curs,sr.tree.root with
+    | Some(cursor),Some(root_id) ->
+      if is_deadend sr cursor then
+        begin match get_node_by_id sr root_id with
+          | Some(root) -> begin move_cursor sr env root end
+          | None -> error "cleanup" "root node does not exist."
+        end
+      else env
+    | None,_ -> env
+    in
+    _print_debug "== CLEANUP ROUTINE ==";
     let deadends : int list = SStatLib.get_deadends sr.st in
-    let id2node (x:int) : a snode = List.nth (TREE.filter_nodes sr.tree (fun q -> q.id = x)) 0 in
-    let _ = List.iter (fun (xid:int) -> let _ = rm sr (id2node xid) in ()) deadends in
-    let _ = SStatLib.clear_deadends sr.st in
-    ()
+    List.iter (fun (xid:int) ->
+        begin match get_node_by_id sr xid with
+          |Some(node) -> begin _print_debug ("<cleanup> removing node "^(string_of_int xid)); rm sr node; () end
+          |None -> ()
+        end
+      ) deadends;
+    SStatLib.clear_deadends sr.st;
+    new_env
 
-  let deadend (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : unit =
-    let _ : unit = SStatLib.deadend sr.st n in
-    let _ = ORDSET.rm sr.frontier (REF.mk n) in
+
+  let murder_branch (type a) (type b) (sr:(a,b) ssearch) (leaf:a snode) : unit =
+    let rec _kill_branch n =
+      match TREE.parent sr.tree n with
+      | Some(par) ->
+        let siblings : a snode list = (TREE.children sr.tree par) in
+        let live_siblings = LIST.filter (fun node ->
+            is_visited sr node = false && is_deadend sr node = false && is_solution sr node = false) siblings in
+        (*the children are fully explored*)
+        if List.length live_siblings = 0 then
+          let sln_siblings = LIST.filter (fun node -> is_visited sr node || is_solution sr node) siblings in
+          ORDSET.rm sr.frontier (REF.mk par);
+          begin
+          if List.length sln_siblings > 0 then SStatLib.visited sr.st par 
+          else SStatLib.deadend sr.st par;
+          end;
+           _kill_branch par
+        else
+          ()
+      | None -> ()
+    in
+    _kill_branch leaf;
     ()
 
   let solution (type a) (type b) (sr:(a,b) ssearch) (n:a snode)  : unit =
-    let _ : unit = SStatLib.solution sr.st n in
-    let _ = ORDSET.rm sr.frontier (REF.mk n) in
+    SStatLib.solution sr.st n;
+    ORDSET.rm sr.frontier (REF.mk n); 
+    murder_branch sr n;
     ()
 
 
-  let visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
-    let _ = ORDSET.rm sr.frontier (REF.mk n) in 
-    SStatLib.visited sr.st n
+  let visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : unit =
+    SStatLib.visited sr.st n;
+    ORDSET.rm sr.frontier (REF.mk n);
+    murder_branch sr n;
+    ()
+
+  let deadend (type a) (type b) (sr:(a,b) ssearch) (node_to_kill:a snode) (env:b): b =
+    SStatLib.deadend sr.st node_to_kill;
+    ORDSET.rm sr.frontier (REF.mk node_to_kill);
+    murder_branch sr node_to_kill;
+    cleanup sr env
+    
 
 
   let get_solutions  (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : (a snode) list=
@@ -287,51 +388,6 @@ struct
     in
     ()
 
-  let apply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
-    let steps = List.sort (sr.order) node.s in
-    let nenv = List.fold_right (fun x b -> let nb = sr.apply b x in nb) steps env in
-    (*let _ = upd_score sr env node in*)
-    (*recompute score*)
-    nenv
-
-
-  let wrap_node (type a) (s:a list) : a snode =
-    {id=(-1); s=s; score=0.}
-
-  let unapply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
-      (*let _ = upd_score sr env node in*)
-      let steps = List.sort (sr.order) node.s in
-      let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) steps env in
-      nenv
-
-
-  let clear_cursor (type a) (type b) (sr:(a,b) ssearch) =
-      let _ = (sr.curs <- None) in
-      ()
-
-  let move_cursor (type a) (type b) (sr:(a,b) ssearch) (env:b) (next:a snode)  =
-    if TREE.hasnode sr.tree next = false then
-      error "move_cursor" ("\n\n the node of id "^(string_of_int next.id)^" to move to does not exist.")
-    else
-    let nenv = match sr.curs with
-    | Some(old) ->
-      if TREE.hasnode sr.tree old = false then
-        error "move_cursor" ("the cursor of id "^(string_of_int next.id)^" is not found.") 
-      else
-      let anc = TREE.ancestor sr.tree next old in
-      let to_anc = LIST.sublist (LIST.rev (TREE.get_path sr.tree old)) old anc in
-      let from_anc = LIST.sublist (TREE.get_path sr.tree next) anc next in
-      let _ = List.iter (fun x -> let _ = unapply_node sr env x in ()) to_anc in
-      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) from_anc in
-      let _ = (sr.curs <- Some next) in
-      env
-    | None ->
-      let to_node = TREE.get_path sr.tree next in
-      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) to_node in
-      let _ = (sr.curs <- Some next) in
-      env
-    in
-    env
 
   let commit (type a) (type b) (sr:(a,b) ssearch) (state:b) : a snode=
     match sr.scratch, sr.curs with
@@ -354,15 +410,16 @@ struct
 
 
   let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
-    let _ = start sr in
-    let _ = add_steps sr sts in
+    start sr;
+    add_steps sr sts;
     match sr.scratch with
     |Some(sb) ->
-      let _ = TREE.mknode sr.tree (sb) in
-      let _ = TREE.setroot sr.tree (sb) in
-      let _ = (sr.scratch <- None) in
+      begin
+      TREE.setroot sr.tree (sb);
+      sr.scratch <- None;
       let tbl = move_cursor sr env sb in
       sb,sr
+      end
     |None -> error "mkbuf" "impossible to not have initial step"
 
   let root (type a) (type b) (sr:(a,b) ssearch ) =

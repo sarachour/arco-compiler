@@ -191,6 +191,13 @@ struct
   | MathId(m) -> "m:"^(mid2var m)
   | HwId(h) -> "h:"^(hwid2var h)
 
+  let icond2str (type a) (ic:a init_cond) (a2str:a->string) : string = match ic with
+    | ICVar(q) -> a2str q
+    | ICVal(q) -> string_of_number q
+
+  let unid_icond2str (ic:unid init_cond) =
+    icond2str ic unid2var
+
   let hwid2prop hwid : propid = match hwid with
   | HNPort(_,_,_,p,_) -> p
   | _ -> error "hwid2wire" "no property"

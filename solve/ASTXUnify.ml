@@ -79,6 +79,11 @@ struct
   | UTypTempl -> "templ"
   | UTypTarg -> "targ"
 
+
+  let kind2str (type a) (tostr:a->string) (k:a rkind) = match k with
+    |RKFunction -> "fxn"
+    |RKDeriv(q) -> "state("^(UnivLib.icond2str q tostr)^")"
+
   let state2str (type a) (tostr:a ->string) (a:a asgn_state) = 
         let assgn : string =
                 MAP.fold a.assigns (fun lhs rhs (rest:string) -> 
@@ -86,17 +91,19 @@ struct
                 ) ""
         in
         let unused: string =
-                LIST.fold a.unused (fun ((lhs,rhs):(a*a ast)) (rest:string) -> 
-                        rest^(tostr lhs)^":="^(ASTLib.ast2str rhs tostr)^"  "
+          MAP.fold a.unused (fun lhs (rhs,knd) (rest:string) -> 
+                     rest^(kind2str tostr knd )^" "^(tostr lhs)^":="^(ASTLib.ast2str rhs tostr)^" "
                 ) ""
         in
         let slved : string = 
-                LIST.fold a.solved (fun (x,y) rest -> rest^" "^(tostr x)^"="^(ASTLib.ast2str y tostr)) " "
+          MAP.fold a.solved (fun (lhs:a) ((rhs,knd):(a ast)*(a rkind)) rest ->
+              rest^(kind2str tostr knd )^" "^(tostr lhs)^"="^(ASTLib.ast2str rhs tostr)^" "
+            ) ""
         in
         assgn^unused^slved
   
-  let mkstate (type a) asgns solved unused = 
-        {assigns=asgns; solved=solved; unused=unused}
+  let mkstate (type a) asgns solved resolved unused = 
+        {assigns=asgns; solved=solved; resolved=resolved; unused=unused}
 
   let step2str (type a) (tostr:a -> string) (a:a rstep) = match a with
   | RSetState(state) ->
@@ -113,13 +120,14 @@ struct
     let _ = SET.add bans rhs in
     ()
 
-  let rm_ban (type a) (s:a rtbl) (lhs :a) (rhs:a ast) =
+
+ let rm_ban (type a) (s:a rtbl) (lhs :a) (rhs:a ast) =
     let bans = (g_bans s) in
     if MAP.has bans lhs = false then
       error "unapply_step" "cannot remove a non-existent ban"
     else
       let bans = MAP.get bans lhs in
-      let _ = SET.rm bans rhs in
+      SET.rm bans rhs;
       ()
 
   let apply_step (type a) (s:a rtbl) (st:a rstep) =
@@ -157,7 +165,7 @@ struct
                       
   let score_bans env steps : sscore = 
     let delta = LIST.fold steps (fun x r -> match x with
-                              | RBanAssign(_) -> 1+r
+                              | RBanAssign(lhs,rhs) -> 1+(ASTLib.size rhs)+r
                               | _ -> r
                     ) 0
     in
@@ -257,34 +265,9 @@ struct
 
 
   (*proposing restrictions*)
-(*
-  let propose_bans_uniform (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
-    let proposal =  MAP.fold assigns (fun k v r -> [RBanAssign(k,v)]::r) [] in
-    proposal
-
-  let propose_bans_fraction (type a) (s:a runify) (n:a rnode) (assigns:(a,a ast) map) : (a rstep list) list  =
-    let frac = get_glbl_float "uast-restrict-fraction-ban-prop" in
-    let fracsets = get_glbl_float "uast-restrict-fraction-set-prop" in
-    let n = int_of_float ((float_of_int (MAP.size assigns))*.fracsets) in
-    let choose_ban k v r =
-      if RAND.rand_norm () <= frac then
-        RBanAssign(k,v)::r
-      else
-        r
-    in
-    let rec make_bans i r =
-      let bans : a rstep list = MAP.fold assigns (fun k v r -> choose_ban k v r) [] in
-      let r = if List.length bans > 0 then bans::r else r in
-      if i < n then
-        make_bans (i+1) r
-      else
-        r
-    in
-    make_bans 0 []
- *)
  
   (*apply the state to syncaml*)
-  let apply_state (type a) (s: a runify) : ((a, a ast) map)*((a, a ast) map) =
+  let apply_state (type a) (s: a runify) : ((a, a ast*a rkind) map)*((a, a ast*a rkind) map) =
     let var2symvar = g_conv s.tbl in
     let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s.tbl) in
     (*calculate how many bound switches you have*)
@@ -296,9 +279,6 @@ struct
     let decl_sym (v:symvar) = let _ =
         let _ = spy_print_debug ("[env][decl] sym "^(v)) in
         SymCaml.define_symbol (g_sym s.tbl) v in ()
-    in
-    let decl_func x =
-        let _ = SymCaml.define_function (g_sym s.tbl) x in ()
     in
     let _ = spy_print_debug "[env] == state ===" in
     let _ = SymCaml.clear (g_sym s.tbl) in
@@ -339,7 +319,7 @@ struct
     (*add exprs*)
     let add_expr scratch v rhs (kind:a rkind) (iswc:bool) (addvars:bool)= 
       let _ = if addvars then add_vars v rhs kind iswc else () in
-      let _ = MAP.put scratch v (rhs) in
+      let _ = MAP.put scratch v (rhs,kind) in
       let _ = spy_print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
       ()
     in
@@ -398,54 +378,53 @@ struct
     in
     (outvars,invars,localvars)
 
-  (*Extract the state of the solution from the assigns*)
-  (*
-  let assigns2state (type a) (s:a runify) (templs:(a,a ast) map) (templvar:a) (targs:(a,a ast) map) (targvar:a) (assigns:(string*symexpr) list) =
-    (*return the unsolved state variables, as well as the unused hw vars *)
-    let sym2a : symvar -> a = g_iconv s.tbl in
-    let assign_map = MAP.make () in
-    let unused_templs = MAP.keys templs in 
-    LIST.iter assigns (fun (v,expr) ->
-      let sym : a = sym2a v in
-      let expr : a ast = ASTLib.map sym2a expr in
-      if MAP.has sym templs then
-            
-    );
-    (*mapped a single target variable*)
-    (assign_map,SET.singleton targvar,unused_templs)
-  *)
-
-
-  type 'a initial_assign = 
-    | INVarAssign of 'a*'a
-    | INExprAssign of 'a*('a ast)
-    | INTNoAssign
 
 
 
   (*unify the two components*)
   let unify_term (type a) (s:a runify) (assigns:((a,a ast) map) list) (templ_expr: a ast) (targ_expr:a ast) (asgns:a initial_assign list):((a,a ast) map) option =
+      let decl_fxn x =
+        let _ = SymCaml.define_function (g_sym s.tbl) x in ()
+      in
       (*convenience functions*)
       let v2str = s.tbl.tostr in
       let e2str x = ASTLib.ast2str x v2str in
       let sym2a : symvar -> a = g_iconv s.tbl in
       let a2sym : a -> symvar = g_conv s.tbl in
+      let aexp2symexp (e:a ast) : symexpr = ASTLib.to_symcaml (ASTLib.subs e (assigns)) a2sym in 
+      let avar2symexp (v:a) : symexpr = aexp2symexp (Term v) in
       (**
        *
        **)
       (*make the initial set of assigns*)
-      let nassigns = MAP.make () in
-      let add_one_initial_assign asgn = 
+      let assertions_templ :symexpr set= SET.make_dflt() in
+      let assertions_targ :symexpr set= SET.make_dflt() in
+      let add_one_initial_assign asgn : unit =
+        let fxnid :symvar= "IA"^(string_of_int (SET.size assertions_templ)) in
+        decl_fxn fxnid;
         match asgn with 
-        | INVarAssign(templvar,targvar) -> MAP.put nassigns templvar (Term targvar)
-        | INExprAssign(templvar,targexpr) -> MAP.put nassigns templvar (targ_expr)
+        | INVarAssign(templvar,targvar) ->
+          begin
+            SET.add assertions_templ (OpN(Function(fxnid),[avar2symexp templvar]));
+            SET.add assertions_targ (OpN(Function(fxnid),[avar2symexp targvar]));
+            ()
+          end
+        | INExprAssign(templvar,targexpr) ->
+          begin
+          SET.add assertions_templ (OpN(Function(fxnid),[avar2symexp templvar]));
+          SET.add assertions_targ (OpN(Function(fxnid),[aexp2symexp targexpr]));
+          ()
+          end
       in
-      List.map add_one_initial_assign asgns;
+      List.iter (fun asgn -> add_one_initial_assign asgn) asgns;
+      let fxnid = "MTCH" in
+      decl_fxn fxnid;
+      SET.add assertions_templ (OpN(Function(fxnid),[aexp2symexp templ_expr]));
+      SET.add assertions_targ (OpN(Function(fxnid),[aexp2symexp targ_expr]));
       (*convert to an expression with all the assignments applied*)
-      let aexp2symexp (e:a ast) : symexpr = ASTLib.to_symcaml (ASTLib.subs e (nassigns::assigns)) a2sym in 
       (*get the constrained templ and targ expressions*)
-      let templ_expr : symexpr = aexp2symexp (templ_expr) in 
-      let targ_expr : symexpr = aexp2symexp (targ_expr) in 
+      let templ_expr : symexpr = OpN(Add,SET.to_list assertions_templ) in 
+      let targ_expr : symexpr = OpN(Add,SET.to_list assertions_targ) in 
       (*generate the experssion for unification*)
       (*SymCaml.set_debug (g_sym s.tbl) true;*) 
       _print_debug ("#unify <?>\n  templ:\n"^
@@ -457,6 +436,7 @@ struct
                 let _ = warn "[unify_term][exception] python exception" in
                 None 
       in
+      let nassigns = MAP.make() in
         (*convert the assignments to canonical assignments*)
         match maybe_assigns with 
         |Some(lst) ->
@@ -469,21 +449,6 @@ struct
             None 
   
  
-  (*an entanglement*)
-  type 'a entanglement = {
-      templ_var : 'a;
-      targ_expr : 'a ast;
-      targ_var : 'a;
-      templ_expr: 'a ast;
-      assignments: 'a initial_assign list;
-  }
-  (*resolved entanglement*)
-  type 'a resolution = {
-      templ_var : 'a;
-      targ_expr : 'a ast;
-      targ_var : 'a;
-      templ_expr: 'a ast; 
-  }
  
   let mk_entanglement templ_var targ_var templ_expr targ_expr assignments =
     {
@@ -501,9 +466,13 @@ struct
   let resolution_of_entanglement (type a) (e:a entanglement) : a resolution =
     {templ_var = e.templ_var; templ_expr = e.templ_expr; targ_var = e.targ_var; targ_expr = e.targ_expr}
   
-  let resolves_entanglement (type a) (rslv:a resolution) (entang:a entanglement) =
-    rslv.templ_var == entang.templ_var && rslv.targ_var == entang.targ_var &&
-    rslv.templ_expr == entang.templ_expr && rslv.targ_expr == entang.targ_expr 
+  let resolves_entanglement (type a) s (rslv:a resolution) (entang:a entanglement) =
+    let v2str : a -> string= s.tbl.tostr in
+    let e2str x :string = ASTLib.ast2str x v2str in
+    debug ("resolution "^(v2str rslv.templ_var)^"="^(e2str rslv.templ_expr)^" with "^
+          (v2str rslv.targ_var)^"="^(e2str rslv.targ_expr));
+    rslv.templ_var = entang.templ_var && rslv.targ_var = entang.targ_var &&
+    rslv.templ_expr = entang.templ_expr && rslv.targ_expr = entang.targ_expr 
 
   (*Convert the set of assignments to a set of goals. They should be all input assignment 
   goals or output goals. You can either add a fact over an output port or a goal over an
@@ -520,8 +489,9 @@ struct
   (*find if there are any entanglements, and if there are, resolve them*)  
   (*an entanglement is an assignment whose left hand side (and sometimes right hand side)
    is already defined*)
-  let find_entanglements (type a) s (templs:(a,a ast) map) (targs:(a,a ast) map) (assigns:(a,a ast) map list) 
-                         (new_assigns:(a,a ast) map) (resolved:a resolution list) =
+  let find_entanglements (type a) s (templs:(a,a ast*a rkind) map) (targs:(a,a ast*a rkind) map) (assigns:(a,a ast) map list) 
+      (new_assigns:(a,a ast) map) (resolved:a resolution list) :
+    ((a*a ast) list)*(a entanglement list)=
     let assign_list : a initial_assign list= LIST.fold assigns 
                         (fun assign lst -> MAP.fold assign (fun lhs rhs l-> INExprAssign(lhs,rhs)::l) lst) 
                         []
@@ -534,7 +504,7 @@ struct
     (* check if a new assignment triggers a new entanglement *)
     let is_already_resolved entang = 
       let matches = 
-        List.filter (fun rslvd -> resolves_entanglement rslvd entang) resolved
+        List.filter (fun rslvd -> resolves_entanglement s rslvd entang) resolved
       in
       debug ("> [RSLV?] Resolution Check"^
                "\n  "^(report_entangle entang.templ_var entang.templ_expr entang.targ_var entang.targ_expr)^
@@ -563,16 +533,17 @@ struct
             (*the template and the target are both derivatives, 
             and the assignment is an x=y assignment*)
             | RTDeriv(templ_rhs,ICVar(templ_ic)),RTDeriv(targ_rhs,ICVal(targ_ic)) -> 
-               (*the template and target are both defined, and the assignment
+              (*the template and target are both defined, and the assignment
                is an x = y assignment. This is a conflict*)
                (*this invocation creates an entanglement between v and the lhs and initial assignemnts *)
-               begin
+              begin
                  let targ_ic_node : a ast = match targ_ic with
                    | Integer(i) -> Integer(i)
                    | Decimal(d) -> Decimal(d)
                  in
                  debug ("> [CONFLICT] variable-variable conflict between derivatives"^
                         "\n  "^(report_entangle templ_lhs templ_rhs targ_var_lhs targ_rhs)^"");
+                 (*return a new entanglement  as well as new assignments*)
                None,Some(mk_entanglement templ_lhs targ_var_lhs templ_rhs targ_rhs 
                    (INExprAssign(templ_ic,targ_ic_node)::INVarAssign(asgn_lhs,targ_var_lhs)::assign_list))
                end
@@ -675,17 +646,25 @@ struct
             end 
     in
     let unfixable,entangled = MAP.fold new_assigns (fun lhs rhs (unfix,tngl) ->  
-           let unfixable, entanglement = get_maybe_entangled lhs rhs in
-           let new_unfix = if unfixable = None then unfix else (OPTION.force_conc unfixable)::unfix in
-           match entanglement with 
-           | Some(entg) -> if is_already_resolved entg 
-                           then unfix,tngl
-                           else new_unfix,entg::tngl
-           | None -> new_unfix,tngl
-    ) ([],[]) in
+           match get_maybe_entangled lhs rhs with
+           | None,Some(new_entg) -> if is_already_resolved new_entg = true
+             then unfix,tngl
+             else unfix,new_entg::tngl
+           | Some(new_unfix),Some(new_entg) -> if is_already_resolved new_entg = true
+             then new_unfix::unfix,tngl
+             else new_unfix::unfix,new_entg::tngl
+           | Some(new_unfix),None -> new_unfix::unfix,tngl
+           | None,None -> unfix, tngl
+      ) ([],[]) in
+    LIST.iter (fun (entang:a entanglement)  ->
+        MAP.rm new_assigns entang.templ_var; ()) entangled;
     (unfixable,entangled) 
 
-  let unify_terms (type a) (s:a runify) (templs:(a,a ast) map) (targs:(a,a ast) map) (templvar:a) (targvar:a) =
+  let unify_terms (type a) (s:a runify) (templs:(a,a ast*a rkind) map) (targs:(a,a ast*a rkind) map) (templvar:a) (targvar:a) =
+    let ban_list :(a*a ast) list = MAP.fold s.tbl.st.bans (fun (lhs:a) (rhs_set:a ast set) (lst:(a*a ast) list) ->
+        SET.fold rhs_set (fun rhs _lst -> (lhs,rhs)::_lst) lst
+      ) []
+    in
     let rec _unify_terms (entanglements:(a entanglement) list) (assigns:((a,a ast) map) list) (resolved:((a resolution) list)) : a unification_status=
           (*find an entanglement*)
           match entanglements with
@@ -701,46 +680,93 @@ struct
               (*resolve the entanglement*)
               let new_resolved = (resolution_of_entanglement entang)::resolved in 
               (*try and find any new entanglements*)
-              let unfixable,new_entangles = find_entanglements s templs targs assigns new_assigns new_resolved in
-              (*if there is an unresolvable entanglement, return no solution*)
-              if List.length unfixable > 0 then USTUnresolvable(MAP.from_list unfixable) else
-              (*otherwise, recurseively resolve any entanglements*)
-              _unify_terms (t @ new_entangles)
-                             (new_assigns::assigns)
-                             new_resolved
-               
-            | None -> USTUnUnifiable
+              let (unfixable,new_entangles) : ((a*a ast) list)*(a entanglement list)=
+                find_entanglements s templs targs assigns new_assigns new_resolved
+              in
+              (*if we have no unfixable relations, recursively solve. If we are unfixable and haven't
+              resolved anything, declare ununifiable. Otherwise declare unresolvable and add violations*)
+              begin
+              match List.length unfixable, List.length resolved with
+              | 0,_ ->
+                begin
+                  debug "----------- Recursive Solve --------------";
+                  _unify_terms (t @ new_entangles)
+                              (new_assigns::assigns)
+                              new_resolved
+                end
+              | _,0 ->
+                begin
+                  debug "----------- Terminal: Unfixable (nothing resolved) ------------";
+                  USTUnUnifiable
+                end
+              | _,_ ->
+                  if LIST.is_subset (ban_list) (unfixable) then
+                    begin
+                      debug "----------- Terminal: Unresolvable (already banned) -------";
+                      USTUnUnifiable
+                   end 
+                  else
+                    begin
+                       debug "----------- Terminal: Unresolvable (learn from resolution history) ------------";
+                       USTUnresolvable(MAP.from_list unfixable)
+                    end
+              end                
+            | None ->
+              begin
+                debug "----------- Terminal: Unfixable (ununifiable) ------------";
+                USTUnUnifiable
+              end
             end   
             (*no more entanglements left*)
             | [] ->
              USTUnified(MAP.merge assigns,resolved)
             
     in
-      let templexpr = MAP.get templs templvar in 
-      let targexpr = MAP.get targs targvar in
+      let templexpr,_ = MAP.get templs templvar in 
+      let targexpr,_ = MAP.get targs targvar in
       _unify_terms [(mk_entanglement templvar targvar templexpr targexpr [INVarAssign(templvar,targvar)])] [] []
 
   let add_assignment_node (type a) (s:a runify) curs
-      (assigns:(a,a ast) map) (templs:(a,a ast)map) (targs:(a,a ast) map) (resolved:a resolution list) =
-    let solved : (a*(a ast)) set= SET.make_dflt () in 
-    let unused : (a*(a ast)) set= SET.make_dflt () in 
-    MAP.iter templs (fun v e -> return (SET.add unused (v,e)) ());
+      (assigns:(a,a ast) map) (templs:(a,a ast*a rkind)map) (targs:(a,a ast*a rkind) map) (resolved:a resolution list) =
+    let is_assignment_node_equivalent (steps:a rstep list) : bool =
+      List.fold_left  (fun  (is_equiv:bool) (x:a rstep) -> match x with
+          |RSetState(state) -> (MAP.same_membership state.assigns assigns) 
+          | _ -> is_equiv
+        ) false steps 
+    in
+    let solution_nodes : a rstep snode list = SearchLib.get_solutions s.search None in
+    let matched_solution_nodes = List.filter (fun (n:a rstep snode) -> is_assignment_node_equivalent n.s) solution_nodes in
+    let solved : (a,(a ast*a rkind)) map= MAP.make () in
+    let unused : (a,(a ast*a rkind)) map= MAP.make () in 
+    MAP.iter templs (fun v (e,k) -> return (MAP.put unused v (e,k)) ());
     SearchLib.move_cursor s.search s.tbl curs;
     SearchLib.start s.search;
     List.iter (fun (rslv:a resolution) ->
+        (*remove math goals that are resolved by a resolution*)
         if MAP.has targs rslv.targ_var then
-          noop (SET.add solved (rslv.targ_var,MAP.get targs rslv.targ_var));
+          noop (MAP.put solved rslv.targ_var (MAP.get targs rslv.targ_var));
+        (*mark expressions as used*)
         if MAP.has templs rslv.templ_var then
-          noop (SET.rm unused (rslv.templ_var,MAP.get templs rslv.templ_var));
+          noop (SET.rm unused rslv.templ_var);
         ()
     ) resolved;
-    SearchLib.add_step s.search (RSetState(mkstate assigns (SET.to_list solved) (SET.to_list unused)));
+    SearchLib.add_step s.search (RSetState(mkstate assigns solved resolved unused));
     let node = SearchLib.commit s.search s.tbl in
-    SearchLib.solution s.search node;
-    ()
+    if List.length matched_solution_nodes > 0 then
+      begin
+        debug "this solution already exists in the tree. Terminating.";
+        SearchLib.deadend s.search node s.tbl;
+        ()
+      end
+    else
+      SearchLib.solution s.search node;
+      ()
 
   (*add restrictions of different fractions*)
-  let add_restrictions (type a) (s:a runify) curs (assigns:(a,a ast) map) = 
+  let add_restrictions (type a) (s:a runify) curs (assigns:(a,a ast) map) (branch_factor:float) : int = 
+    let n_restrictions_added : int ref = REF.mk 0 in
+    let frac_int x f = int_of_float (MATH.round_up (f*.(float_of_int x))) in
+    let n_assigns :int = MAP.size assigns in
     let assign_list : (a*(a ast)) list = MAP.to_list assigns in
     let root = SearchLib.cursor s.search in
     (*add an assignment node *)
@@ -760,50 +786,66 @@ struct
       else Some subset
     in
     let add_assign (frac:float) =
-      let total = List.length assign_list in 
-      let n = int_of_float (MATH.round_up (frac*.(float_of_int total))) in 
-      noop (debug ("[restrict] adding "^(string_of_int n)^"/"^(string_of_int total)^" restrictions")); 
-      match make_subset n 10 with None -> ()
+      let n = frac_int n_assigns  frac in 
+      noop (debug ("[restrict] adding "^(string_of_int n)^"/"^(string_of_int n_assigns)^" restrictions")); 
+      match make_subset n 10 with
+        |None ->
+          noop (debug ("[restrict]   -> failure."));                           
+          ()
         |Some(subset) ->
-        noop (debug ("[restrict]   -> success!"));                           
-        SearchLib.move_cursor s.search s.tbl root;
-        SearchLib.start s.search;
-        List.iter (fun (lhs,rhs) ->
-          begin SearchLib.add_step s.search (RBanAssign(lhs,rhs)); () end
-        ) subset;
-        SearchLib.commit s.search s.tbl;
-        ()
+          noop (debug ("[restrict]   -> success!"));                           
+          SearchLib.move_cursor s.search s.tbl root;
+          SearchLib.start s.search;
+          List.iter (fun (lhs,rhs) ->
+              begin SearchLib.add_step s.search (RBanAssign(lhs,rhs)); () end
+          ) subset;
+          SearchLib.commit s.search s.tbl;
+          REF.upd n_restrictions_added (fun q -> q+1);
+          ()
     in
-    add_assign 0.50;
-    add_assign 0.25;
-    add_assign 0.25;
-    add_assign 0.01;
-    add_assign 0.01;
-    add_assign 0.01;
-    ()
+    let nbranches_1 = frac_int (MAP.size assigns) (branch_factor*.0.50) in
+    let nbranches_25 = frac_int (MAP.size assigns) (branch_factor*.0.15) in 
+    let nbranches_50 = frac_int (MAP.size assigns) (branch_factor*.0.35) in 
+    debug ("[restricting] adding the following branches: 1%="^(string_of_int nbranches_1)^", "
+           ^"25%="^(string_of_int nbranches_25)^" 50%="^(string_of_int nbranches_50)^".");
+    MATH.countdown nbranches_1 (fun x -> add_assign 0.01);
+    MATH.countdown nbranches_25 (fun x -> add_assign 0.25);
+    MATH.countdown nbranches_50 (fun x -> add_assign 0.5);
+    REF.dr n_restrictions_added
 
   let solve_node (type a) (s:a runify) (targvar:a) (templvar:a) =
     let v2str = s.tbl.tostr in
     let e2str x = ASTLib.ast2str x v2str in
     let curs = SearchLib.cursor s.search in
     let templs,targs = apply_state s in
+    let branching_factor = Globals.get_glbl_float "uast-branch" in
     let proc_one () =
       match unify_terms s templs targs templvar targvar with
       | USTUnified(assigns,resolved) ->
         (*if LIST.empty solved then () else*)
-        let _ = add_restrictions s curs assigns in
-        let _ = add_assignment_node s curs assigns templs targs resolved in
-        debug "[SUCCESS] successfully unified component and relation";
+        begin
+        let nrestrictions = add_restrictions s curs assigns branching_factor in
+        add_assignment_node s curs assigns templs targs resolved;
+        debug ("[SUCCESS] successfully unified component and relation "^
+        " and added "^(string_of_int nrestrictions)^" restrictions");
           _print_debug "--> Found Solution Node <--";
         ()
+        end
       | USTUnresolvable(assigns) ->
-        let _ = add_restrictions s curs assigns in
-        debug "[UNRESOLVABLE] failed to unify component and relation";
-        ()
+        (*add restrictions. If there are no restrictions*)
+        let nrestrict = add_restrictions s curs assigns branching_factor in
+        begin
+            assert(nrestrict > 0);
+            debug ("=== [SOLVE-NODE][UNRESOLVABLE] failed to unify component and relation. "^
+                   "Added "^(string_of_int nrestrict)^" restrictions");
+            ()
+        end
       | USTUnUnifiable ->
-        let _ = SearchLib.deadend s.search curs in
-        debug "[UNUNIFIABLE] failed to unify component and relation";
+        begin
+        SearchLib.deadend s.search curs s.tbl;
+        debug "== [SOLVE_NODE][UNUNIFIABLE] failed to unify component and relation";
         ()
+        end
     in
     FUN.iter_n proc_one 1
 
@@ -828,7 +870,7 @@ struct
       let depth : int =  SearchLib.depth sr.search curs in
       if depth >= get_glbl_int "uast-depth" then
         begin
-        SearchLib.deadend sr.search curs; 
+        SearchLib.deadend sr.search curs sr.tbl; 
         if _mnext () then
           begin
             _solve();
@@ -879,11 +921,17 @@ struct
   (*also fill in unused*)
   let get_slns (type a) (s:a runify) : a fusion set =
     let env2fuses (s:a runify) : (a fuse) list =
-      let state = OPTION.force_conc s.tbl.st.state in
-      let arr = [] in
-      let arr = MAP.fold state.assigns (fun lhs rhs q -> USAssign(lhs,rhs)::q)  arr in
-      let arr = LIST.fold state.solved (fun (lhs,rhs) q -> USRmGoal(lhs,rhs)::q) arr in 
-      let arr = LIST.fold state.unused (fun (lhs,rhs) q -> USAddRel(lhs,rhs)::q) arr in 
+      let state : a asgn_state= OPTION.force_conc s.tbl.st.state in
+      let arr : a fuse list = [] in
+      let cassigns = MAP.copy state.assigns in
+      let arr = LIST.fold state.resolved (fun (rslv:a resolution) (q:a fuse list) ->
+                                           MAP.rm cassigns rslv.templ_var;
+                                           USAddRel(rslv.templ_var,rslv.targ_expr)::
+                                           USAddRel(rslv.templ_var,Term(rslv.targ_var))::q
+      ) arr in  
+      let arr = MAP.fold cassigns (fun lhs rhs q -> USAssign(lhs,rhs)::q)  arr in
+      let arr = MAP.fold state.solved (fun lhs (rhs,kind) q -> USRmGoal(lhs,rhs)::q) arr in 
+      let arr = MAP.fold state.unused (fun lhs (rhs,kind) q -> USAddRel(lhs,rhs)::q) arr in 
       arr
       (*add all assignments in fusion.*)
     in
@@ -894,7 +942,6 @@ struct
         let _ = SET.add_all fsn (env2fuses s) in
         let fsns : a fusion = SET.to_list fsn in
         fsns
-
     in
     let slns  = SearchLib.get_solutions s.search None in
     let allslns = List.map (fun n -> node2fusion n) slns in
@@ -924,19 +971,21 @@ struct
     (tostr:a->string)
      =
     (*make the search tree*)
-    let root,smeta = mksearch targvar tmpl targ iswc cnv icnv freshvar tostr in
+    let root,stree = mksearch targvar tmpl targ iswc cnv icnv freshvar tostr in
     (*build a tree for the particular set of goals*)
-    let _ = build_tree smeta root  in
+    build_tree stree root;
     (*let _ = build_tree smeta root (None) in*)
     (*solve a thing*)
     let ncmp = n*(List.length tmpl) in 
-    let _ = solve smeta root targvar ncmp in
-    let _ = _print_debug "=== Done with Relation Search ===" in
-    let slns = get_slns smeta in
-    let rep = print_fusions 1 smeta.tbl.tostr slns in
-    let _ = _print_debug "=== SOLUTIONS ===" in
-    let _ = _print_debug rep in
-    let _ = _print_debug "=================" in
+    solve stree root targvar ncmp;
+    _print_debug "=== Done with Relation Search ===";
+    let _,usrmenu = mkmenu stree in
+    usrmenu ();
+    let slns = get_slns stree in
+    let rep = print_fusions 1 stree.tbl.tostr slns in
+    _print_debug "=== SOLUTIONS ===";
+    _print_debug rep;
+    _print_debug "=================";
     slns
 
 end

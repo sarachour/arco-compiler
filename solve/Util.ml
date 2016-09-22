@@ -129,6 +129,10 @@ struct
     let diff = abs_float(f1 -. f2) in
     diff < eps
 
+  let rec countdown (n:int) (fxn: int -> unit) : unit =
+    match n with
+    | 0 -> ()
+    | x -> fxn x; countdown (x-1) fxn
 end
 
 module IO =
@@ -380,6 +384,10 @@ struct
       | [] -> []
     in
     _prod a
+
+  let is_subset (type a) (super: a list) (sub:a list): bool =
+    List.fold_right (fun x members -> (has super x)&&members) sub true
+      
 
   let shuffle lst =
     let rec extract acc n = function
@@ -855,6 +863,12 @@ struct
       in
       r
 
+  let same_membership (type a) (type b) (x:(a,b) map) (y:(a,b) map): bool =
+    if LIST.same_membership (keys x) (keys y) = false then false
+    else
+    fold x (fun k v eq -> ((get y k) = v) && eq)  true
+      
+
 end
 
 module SET =
@@ -1178,8 +1192,10 @@ struct
       vcmp = vcmp;
    }
  
-  let i2n g i = 
-      MAP.get g.id2n i
+  let i2n (type a) (type b) (g:(a,b) tree) i : a = 
+    if MAP.has g.id2n i 
+        then MAP.get g.id2n i
+        else error "i2n" ("tree does not have id "^(string_of_int i))
 
   let n2i g n = g.n2id n
 
@@ -1244,8 +1260,8 @@ struct
     if hasnode g n then
       error "mknode" "node already exists"
     else
-      let _ = MAP.put (g.id2n) (n2i g n) n in 
-      let _ = MAP.put (g.adj) (n2i g n) (MAP.make (), None) in
+      MAP.put (g.id2n) (n2i g n) n;
+      MAP.put (g.adj) (n2i g n) (MAP.make (), None);
       g
 
   let mkedge (type a) (type b) (g) (src:a) (snk:a) (v:b) : (a,b) tree =
@@ -1276,21 +1292,28 @@ struct
       if hasnode g n = false then
         error "rmnode" "node does not exist"
       else
-        let chld,_ = MAP.get (g.adj) (n2i g n) in
-        let _ = MAP.iter chld (fun x v -> _rmnode (i2n g x)) in
-        let _ = MAP.rm (g.adj) (n2i g n) in
-        let _ = MAP.rm (g.id2n) (n2i g n) in
-        ()
+        let n_id : int = n2i g n in
+        let chld,_ = MAP.get (g.adj) n_id in
+        begin
+        MAP.iter chld (fun x v -> _rmnode (i2n g x));
+        MAP.rm (g.adj) (n2i g n);
+        MAP.rm (g.id2n) (n2i g n);
+        match g.root with
+        | Some(root_id) -> if root_id = n_id then
+            g.root <- None; ()
+        | None -> ()
+        end
     in
-    let _ = match parent g n with
+    begin
+    match parent g n with
       | Some(par) ->
         let parchld,parpar = MAP.get g.adj (n2i g par) in
         let _ = if MAP.has parchld (n2i g n) then 
           return (MAP.rm parchld (n2i g n)) () in
         ()
       | None -> ()
-    in
-    let _ = _rmnode n in
+    end;
+    _rmnode n;
     g
 
   let fold_path (type a) (type b) (type c) (nf:a->c->c) (ef:a->a->b->c->c) (g:(a,b) tree) (node:a) (ic:c) =
@@ -1356,8 +1379,11 @@ struct
 
   let setroot (type a) (type b) (g:(a,b) tree) (src:a) =
     if g.root = None then
-      let _ = g.root <- Some (n2i g src) in
-      g
+      begin
+        g.root <- Some (n2i g src);
+        mknode g src;
+        g
+      end
     else
       error "setroot" "already exists"
 
@@ -1385,8 +1411,8 @@ struct
         MAP.fold chldrn proc_chld res
     in
       match g.root with
-      |Some(root) ->  _traverse (i2n g root) ic
-      |None -> ic
+      | Some(root) ->  _traverse (i2n g root) ic
+      | None -> ic
 
 
   let tostr (type a) (type b) (g:(a,b) tree) (a2str:int->a->string) (b2str:int->b->string) =
