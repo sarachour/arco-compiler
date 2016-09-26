@@ -21,7 +21,7 @@ struct
   
   let score_goal_complexity ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let score_goal (g:goal) =
-      let r : urel = GoalStubLib.unwrap_goal g in
+      let r : uvar = GoalStubLib.unwrap_goal g in
       if GoalStubLib.is_trivial tbl r then triv_cost else
         let cplx = (UnivLib.goal2complexity r) in
         let score = cplx in
@@ -41,7 +41,7 @@ struct
 
   let score_goal_complexity_and_depth ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
     let score_goal (g:goal) =
-      let r : urel = GoalStubLib.unwrap_goal g in
+      let r : uvar = GoalStubLib.unwrap_goal g in
       if GoalStubLib.is_trivial tbl r then triv_cost  else
         let cplx = (UnivLib.goal2complexity r) in
         let score = cplx in
@@ -101,7 +101,7 @@ struct
   | SRemoveGoal(v) -> "rm "^(UnivLib.goal2str v)
   | SAddNodeRel(id,i,rel) ->
     (*)"SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")*)
-    "s.addnode "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^" :=: "^(UnivLib.urel2str rel)
+    "s.addnode "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^" :=: "^(UnivLib.uvar2str rel)
   | SSolUseNode(id,i) -> "s.use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
   | SSolAddConn(src,snk) -> "s.mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
   | SSolAddLabel(w,p,l) -> "s.mklbl "^(SlnLib.wire2str w)^"."^p^" -> "^(SlnLib.label2str l)

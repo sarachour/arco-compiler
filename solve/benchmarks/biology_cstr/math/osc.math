@@ -1,0 +1,82 @@
+% oscillator
+% https://www.ebi.ac.uk/biomodels-main/BIOMD0000000035
+% six diffeqs
+
+% oscillator. Fill in later.
+% Depth 20, pattern 3
+
+type s
+
+local A : none %2
+local C : none %3
+local DA : none %4
+local DAp : none %5
+local DR : none%6
+local DRp : none %7
+local MA : none %8
+local MR : none %9
+local R : none %10
+
+
+local rxn1 : none
+local rxn2 : none
+local rxn3 : none
+local rxn4 : none
+local rxn5 : none
+local rxn6 : none
+local rxn7 : none
+local rxn8 : none
+local rxn9 : none
+local rxn10 : none
+local rxn11 : none
+local rxn12 : none
+local rxn13 : none
+local rxn14 : none
+local rxn15 : none
+local rxn16 : none
+
+param r1_gamma : none = 50
+param r2_delta : none = 1
+param r3_delta : none = 1
+param r4_delta : none = 0.2
+param r5_gamma : none = 1.0
+param r6_theta:none = 50.0
+param r7_alpha:none = 50
+param r8_alpha:none = 500
+param r9_delta : none = 10.0
+param r10_beta : none= 50.0
+param r11_gamma : none = 1.0
+param r12_theta : none = 100.0
+param r13_alpha : none = 0.01
+param r14_alpha : none = 50
+param r15_delta : none = 0.5
+param r16_beta : none = 5.0
+
+rel rxn1 = A*R*r1_gamma
+rel rxn2 = A*r2_delta
+rel rxn3 = C*r3_delta
+rel rxn4 = R*r4_delta
+rel rxn5 = A*DA*r5_gamma
+rel rxn6 = r6_theta*DAp
+rel rxn7 = r7_alpha*DA
+rel rxn8 = r8_alpha*DAp
+rel rxn9 = MA*r9_delta
+rel rxn10 = MA*r10_beta
+rel rxn11 = A*DR*r11_gamma
+rel rxn12 = DRp*r12_theta
+rel rxn13 = r13_alpha*DR
+rel rxn14 = DRp*r14_alpha
+rel rxn15 = MR*r15_delta
+rel rxn16 = MR*r16_beta
+
+time t : s
+
+rel deriv(A,t) =  (rxn6 + rxn10 + rxn11 + rxn12)- (rxn1 + rxn2 + rxn5) with A(0) = 0
+rel deriv(C,t) = rxn1 - rxn3 with C(0) = 0
+rel deriv(DA,t) = (rxn6 +rxn7)-(rxn5 + rxn7) with DA(0) = 0
+rel deriv(DAp,t) = (rxn5+rxn8)-(rxn6+rxn8) with DAp(0) = 0
+rel deriv(DR,t) = (rxn12+rxn13)-(rxn11+rxn13) with DR(0) = 0
+rel deriv(DRp,t) = (rxn11 + rxn14) - (rxn14 + rxn12) with DRp(0) = 0
+rel deriv(MA,t) = (rxn7+rxn8+rxn10)-(rxn10+rxn9) with MA(0) = 0
+rel deriv(MR,t) = (rxn13 + rxn14 +rxn16) - (rxn15 + rxn16) with MR(0) = 0
+rel deriv(R,t) =  (rxn3 + rxn16) - (rxn4 + rxn1) with R(0) = 0

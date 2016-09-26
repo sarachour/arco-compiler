@@ -34,7 +34,9 @@ rule env = parse
   | ")"                     {CPARAN}
   | "["                     {OBRAC}
   | "]"                     {CBRAC}
-  | "spice"                 {SPICE}
+  | "{"                     {OBRACE}
+  | "}"                     {CBRACE}
+  | "sim"                   {SIM}
   | "none"                  {NONE}
   | "let"                   {LET}
   | "type"                  {TYPE}
@@ -51,9 +53,9 @@ rule env = parse
   | "in"                    {IN}
   | "rel"                   {REL}
 
-  | "ensure"                {ENSURE}
-  | "assume"                {ASSUME}
   | "mag"                   {MAG}
+  | "cstr"                  {CSTR}
+  | "sample"                {SAMPLE}
   | "err"                   {ERR}
 
   | "copy"                  {COPY}
@@ -62,7 +64,6 @@ rule env = parse
   | "inst"                  {INST}
   | "conn"                  {CONN}
 
-  | "every"                 {EVERY}
   | "digital"               {DIGITAL}
   | "sample"                {SAMPLE}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}

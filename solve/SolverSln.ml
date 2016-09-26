@@ -3,8 +3,8 @@ open SolverData
 
 open Common
 open HWData
-open HW
-open Math
+open HWLib
+open MathLib
 open SolverUtil
 open Unit
 open SolverRslv
@@ -74,7 +74,7 @@ struct
   let usecomp_cons (s:slvr) (sln:sln) : bool =
     let prop id (lst,n) (r:bool) : bool =
       let nuses = SET.size lst in
-      let maxuses = Shim.max4unodeid s id in
+      let maxuses : int = UnivLib.max4unodeid s id in
       if maxuses >= nuses then
         r
       else
@@ -108,7 +108,7 @@ struct
     else
       error "mkconn_undo" ("cannot undo connection that doesn't exist: "^(wire2str src)^"->"^(wire2str snk))
 
-  let mklabel (sln:sln) (id:wireid) (prop:propid) (v:label) =
+  let mklabel (sln:sln) (id:wireid) (prop:string) (v:label) =
     let prps = if MAP.has sln.labels id = false then
         let pmap = MAP.make () in
         let _ = MAP.put sln.labels id pmap in
@@ -126,7 +126,7 @@ struct
     let _ = SET.add pset v in
     ()
 
-  let get_labels (sln:sln) (fxn:(wireid->propid->label->bool)) =
+  let get_labels (sln:sln) (fxn:(wireid->string->label->bool)) =
     let lbls = MAP.fold sln.labels (fun w pl lst1 ->
       MAP.fold pl (fun pr lbls lst2 ->
         SET.fold lbls (fun lb lst3 -> if fxn w pr lb then
@@ -135,7 +135,7 @@ struct
     ) [] in
     lbls
 
-  let wires_of_label (sln:sln) (prop:propid) (v:label -> bool) : wireid list option=
+  let wires_of_label (sln:sln) (prop:string) (v:label -> bool) : wireid list option=
     let check_label cwire cproplabels =
       if MAP.has cproplabels prop then
         let lbls = MAP.get cproplabels prop in
@@ -161,7 +161,7 @@ struct
     in
     connected
 
-  let mklabel_undo (sln:sln) (id:wireid) (prop:propid) (v:label) =
+  let mklabel_undo (sln:sln) (id:wireid) (prop:string) (v:label) =
     if MAP.has sln.labels id then
       let props = MAP.get sln.labels id in
       if MAP.has props prop then
@@ -188,7 +188,7 @@ struct
       else
         let lst,_ = (MAP.get sln.comps id)  in
         let nuses = SET.size lst in
-        let maxuses = Shim.max4unodeid s id in
+        let maxuses = UnivLib.max4unodeid s id in
         if maxuses > nuses then true else false
 
 
@@ -274,10 +274,10 @@ struct
         let handle = prp^" of "^(UnivLib.unodeid2name sname)^" "^(string_of_int sid)^" "^sport in
         let cmd = match lbl with
         | LBindValue(k,f) -> "bind value "^handle^" :: "^(string_of_number f)
-        | LBindVar(HNInput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
-        | LBindVar(HNOutput,MNVar(_,n,_)) -> "bind var "^handle^" :: "^"var "^n
+        | LBindVar(HNInput,MNVar(_,n)) -> "bind var "^handle^" :: "^"var "^n
+        | LBindVar(HNOutput,MNVar(_,n)) -> "bind var "^handle^" :: "^"var "^n
         | LBindVar(HNInput,MNTime(_)) -> "bind time "^handle
-        | LBindVar(HNInput,MNParam(n,p,u)) -> "bind value "^handle^" :: "^(string_of_number p)
+        | LBindVar(HNInput,MNParam(n,p)) -> "bind value "^handle^" :: "^(string_of_number p)
         | _ -> "%unsupported label"
         in
         os (cmd^"\n")

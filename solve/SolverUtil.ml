@@ -1,10 +1,12 @@
 open Common
 
-open HW
+open HWLib
 open HWData
-open HWCstr
+open HWCstrLib
+open HWInstLib
 
-open Math
+open MathData
+open MathLib
 open MathCstr
 
 open AST
@@ -12,54 +14,24 @@ open Util
 open Unit
 open SolverData
 
-module Shim =
+module UnivLib =
 struct
-  let wrap_goal (v:gltbl) (u:urel) : goal =
+  let wrap_goal (v:gltbl) (u:uvar) : goal =
     if v.is_trivial u then
       TrivialGoal(u)
     else
       NonTrivialGoal(u)
 
 
-  let wrap_goal_fun (v:urel->bool) (u:urel) : goal =
+  let wrap_goal_fun (v:uvar->bool) (u:uvar) : goal =
     if v u then
       TrivialGoal(u)
     else
       NonTrivialGoal(u)
 
-  let unwrap_goal (g:goal) : urel = match g with
+  let unwrap_goal (g:goal) : uvar = match g with
   | TrivialGoal(v) -> v
   | NonTrivialGoal(v) -> v
-
-  let unt s uid : unt =
-    match uid with
-    | MathId(MNVar(_,_,u)) -> u
-    | MathId(MNTime(u)) -> u
-    | MathId(MNParam(_,_,u)) -> u
-    | HwId(HNParam(_,_,_,u)) -> u
-    | HwId(HNPort(_,_,_,_,u)) -> UExpr (Term u)
-    | HwId(HNTime(_,u)) -> u
-
-  let mag s uid : range option =
-    match uid with
-    | HwId(HNPort(k,HCMLocal(cname),name,prop,un)) ->
-      HwCstrLib.mag s.hw.cstr cname name prop
-    | HwId(HNPort(k,HCMGlobal(cname,_),name,prop,un)) ->
-      HwCstrLib.mag s.hw.cstr cname name prop
-    | MathId(MNVar(k,v,u)) ->
-      MathCstrLib.mag s.prob.cstr v
-    |_ -> None
-
-  let tc s uid : range option =
-    match uid with
-    | HwId(HNPort(k,HCMLocal(cname),name,prop,un)) ->
-      HwCstrLib.mag s.hw.cstr cname name prop
-    | HwId(HNPort(k,HCMGlobal(cname,_),name,prop,un)) ->
-      HwCstrLib.mag s.hw.cstr cname name prop
-    | MathId(MNVar(k,v,u)) ->
-      MathCstrLib.mag s.prob.cstr v
-    |_ -> None
-
 
   let comp s name =
     let c = HwLib.getcomp s.hw name in
@@ -67,24 +39,15 @@ struct
 
   let lclid2glblid iid x =
     match x with
-    | HwId(HNPort(k,HCMLocal(c),p,prop,un)) ->
-      HwId(HNPort(k,HCMGlobal(c,iid),p,prop,un))
-    | HwId(HNParam(HCMLocal(c), name, vl, u)) ->
-      HwId(HNParam(HCMGlobal(c,iid),name,vl,u))
-    | HwId(HNTime(HCMLocal(c),u)) ->
-      HwId(HNTime(HCMGlobal(c,iid),u))
+    | HwId(hvar) -> HwId (HwLib.hwid_map_comp hvar (fun q -> match q with
+        | HCMLocal(c) -> HCMGlobal(c,iid))) 
     | _ -> x
 
   let glblid2lclid x =
     match x with
-    | HwId(HNPort(k,HCMGlobal(c,i),p,prop,un)) ->
-      HwId(HNPort(k,HCMLocal(c),p,prop,un))
-    | HwId(HNParam(HCMGlobal(c,i), name, vl, u)) ->
-      HwId(HNParam(HCMLocal(c),name,vl,u))
-    | HwId(HNTime(HCMGlobal(c,i),u)) ->
-      HwId(HNTime(HCMLocal(c),u))
+    | HwId(hvar) -> HwId (HwLib.hwid_map_comp hvar (fun q -> match q with
+        | HCMGlobal(c,_) -> HCMLocal(c))) 
     | _ -> x
-
 
   let  lcl2glbl iid (a:unid ast) : unid ast =
     let mp x = lclid2glblid iid x in
@@ -104,25 +67,44 @@ struct
     | ICVar(h) -> ICVar(lclid2glblid i h)
     | ICVal(v) -> ICVal(v)
 
+  let map_ic (g: unid init_cond) (fxn: unid -> unid) =
+    match g with
+    | ICVar(h) -> ICVar(fxn h)
+    | _ -> g
+    
+  let upd_uvar (g:uvar) (fxn:unid -> unid) : uvar =
+    begin match g.bhvr with
+      | UBhvVar(bhvr) ->
+        bhvr.rhs <- ASTLib.map bhvr.rhs fxn;
+        ()
+      | UBhvState(bhvr) ->
+        bhvr.rhs <- ASTLib.map bhvr.rhs fxn;
+        bhvr.ic <- map_ic bhvr.ic fxn;
+        ()
+    end;
+    g.lhs <- fxn g.lhs;
+    g
 
-  let rel_glbl2lcl (g:urel) : urel = match g with
-  |  UFunction(l,r) -> UFunction(glblid2lclid l, glbl2lcl r)
-  |  UState(l,r,ic,t) -> UState(glblid2lclid l, glbl2lcl r, ic_glbl2lcl ic, glblid2lclid t)
+  let get_rhs (g:uvar): unid ast =
+    begin match g.bhvr with
+      | UBhvVar(bhvr) -> bhvr.rhs
+      | UBhvState(bhvr) -> bhvr.rhs
+    end
 
-  let rel_lcl2glbl  (i:int)  (g:urel): urel = match g with
-  |  UFunction(l,r) -> UFunction(lclid2glblid i l, lcl2glbl i r)
-  |  UState(l,r,ic,t) -> UState(lclid2glblid i l, lcl2glbl i r, ic_lcl2glbl i ic, lclid2glblid i t)
 
-  let rel2lhs (g:urel) : unid =  match g with
-  |  UFunction(l,r) -> l
-  |  UState(l,r,ic,t) -> l
+ let rel_glbl2lcl (g:uvar) : uvar = upd_uvar g glblid2lclid
+
+ let rel_lcl2glbl  (i:int)  (g:uvar): uvar = upd_uvar g (lclid2glblid i)
+
+  
+ let rel2lhs (g:uvar) : unid = g.lhs
 
   let goal2lhs (g:goal) = rel2lhs (unwrap_goal g)
 
   let unid2wcsym cmpname ciid uid is_templ cnv= match uid, is_templ with
-  | (HwId(HNPort(k,HCMLocal(c),port,prop,u)), true) ->
+  | (HwId(HNPort(k,HCMLocal(c),port,prop)), true) ->
     error "unid2sym" ("no non-concretized port of name "^c^"."^port^" allowed.")
-  | (HwId(HNPort(k,HCMGlobal(c,i),port,prop,u)),true) ->
+  | (HwId(HNPort(k,HCMGlobal(c,i),port,prop)),true) ->
     if i = ciid && cmpname = c
     then WildcardVar(cnv uid,[])
     else SymbolVar(cnv uid)
@@ -130,28 +112,20 @@ struct
   | (MathId(v),_) -> SymbolVar(cnv uid)
 
   let unid2sym cmpname ciid uid cnv= match uid with
-  | HwId(HNPort(k,HCMLocal(c),port,prop,u)) ->
+  | HwId(HNPort(k,HCMLocal(c),port,prop)) ->
     error "unid2sym" ("no non-concretized port of name "^c^"."^port^" allowed.")
   | HwId(v) -> SymbolVar(cnv uid)
   | MathId(v) -> SymbolVar(cnv uid)
 
-  let max4unodeid s id =
-    let ginst x = HwCstrLib.getinsts s.hw.cstr x in
+  let max4unodeid s id : int =
+    let ginst x = HwInstLib.getinsts s.hw x in
     match id with
     | UNoComp(x) -> ginst x
     | UNoCopy(x) -> ginst (HwLib.copy_cid x)
     | UNoInput(x) -> ginst (HwLib.input_cid x)
     | UNoOutput(x) -> ginst (HwLib.output_cid x)
 
-end
 
-module UnivLib =
-struct
-
-  let wrap_goal = Shim.wrap_goal
-  let wrap_goal_fun = Shim.wrap_goal_fun
-  let unwrap_goal = Shim.unwrap_goal
-  let lclid2glblid = Shim.lclid2glblid
 
 
   let unodeid2name unodeid = match unodeid with
@@ -173,15 +147,15 @@ struct
     | HCMGlobal(v,i) -> "g:"^v^":"^(string_of_int i)
   in
   match hwid with
-  | HNPort(knd,cmp,name,prop,_) -> (proccmp cmp)^":"^name^":"^prop
-  | HNPort(knd,cmp,name,prop,_) -> (proccmp cmp)^":"^name^":"^prop
-  | HNParam(cmp,name,vl,_) -> (proccmp cmp)^":"^name
+  | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
+  | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
+  | HNParam(cmp,name) -> (proccmp cmp)^":"^name
   | HNTime(_) -> "t'"
 
-  let mid2var mid = match mid with
-  | MNVar(k,n,u) -> n
-  | MNParam(name,v,u) -> name
-  | MNTime(_) -> "t'"
+  let mid2var (mid:mid) : string = match mid with
+  | MNVar(k,n) -> n
+  | MNParam(name,v) -> name
+  | MNTime -> "t"
 
   let label2uid x = match x with
   | LBindVar(k,mid) -> MathId(mid)
@@ -198,55 +172,43 @@ struct
   let unid_icond2str (ic:unid init_cond) =
     icond2str ic unid2var
 
-  let hwid2prop hwid : propid = match hwid with
-  | HNPort(_,_,_,p,_) -> p
+  let hwid2prop hwid : string = match hwid with
+  | HNPort(_,_,_,p) -> p
   | _ -> error "hwid2wire" "no property"
 
-  let unid2prop u : propid = match u with
+  let unid2prop u : string = match u with
   | HwId(h) -> hwid2prop h
   | _ -> error "unid2prop" "error"
 
-  let hwvar2wire (nodeid:string) (v:hwvar) : wireid =
-      (name2unodeid nodeid,-1,v.name)
+  let hwvar2wire (v:hwvid hwportvar) : wireid =
+      (name2unodeid v.comp,-1,v.port)
 
   let hwid2wire hwid : wireid = match hwid with
-  | HNPort(_,HCMGlobal(c,i),v,_,_) -> (name2unodeid c,i,v)
+  | HNPort(_,HCMGlobal(c,i),v,_) -> (name2unodeid c,i,v)
   | _ -> error "hwid2wire" "cannot convert to wire"
 
   let unid2wire uid = match uid with
   | HwId(h) -> hwid2wire h
   | _ -> error "unid2wire" "cannot convert mid to wire"
 
-  let _var2mid s rst =  match rst with
-  | [v] -> let vv = MathLib.getvar s.prob v in vv.typ
+  let _var2mid s (rst:string list) : mid =  match rst with
+  | [v] -> MathLib.var_to_mid s.prob v 
   | _ -> error "apply_comp" "iconvmid encountered unexpected string"
 
-  let _var2hwid ((s):slvr) rst = match rst with
-   | ["l";cn;v;p] ->
-     let comp = Shim.comp s cn in
-     let vv = HwLib.getvar s.hw cn v in
-     HwLib.cv2hwid comp vv (Some p) (None)
-   | ["g";cn;istr;v;p] ->
-     let comp = Shim.comp s cn in
-     let i = int_of_string istr in
-     let vv = HwLib.getvar s.hw cn v in
-     HwLib.cv2hwid comp vv (Some p) (Some i)
+  let _var2hwid ((s):slvr) (rst:string list) = match rst with
+    | ["l";cn;v;p] ->
+      HwLib.comp_port_to_hwid s.hw cn v (None)
+   | ["g";cn;i;v;p] ->
+     let comp = comp s cn in
+     HwLib.comp_port_to_hwid s.hw cn v (Some (int_of_string i))
    | ["l";cn;"t"] ->
-     let comp = Shim.comp s cn in
-     HNTime(HCMLocal(cn),comp.time)
+     HNTime
    | ["g";cn;istr;"t"] ->
-     let comp = Shim.comp s cn in
-     let i = int_of_string istr in
-     HNTime(HCMGlobal(cn,i),comp.time)
+     HNTime
    | ["l";cn;v] ->
-     let comp = Shim.comp s cn in
-     let vv = HwLib.getvar s.hw cn v in
-     HwLib.cv2hwid comp vv None None
-   | ["g";cn;istr;v] ->
-     let comp = Shim.comp s cn in
-     let i = int_of_string istr in
-     let vv = HwLib.getvar s.hw cn v in
-     HwLib.cv2hwid comp vv None (Some i)
+     HwLib.comp_port_to_hwid s.hw cn v (None)
+   | ["g";cn;i;v] ->
+     HwLib.comp_port_to_hwid s.hw cn v (Some (int_of_string i))
    | _ -> error "apply_comp" "iconvhwid encountered unexpected hwid"
 
   let var2mid s mid = _var2mid (s) (STRING.split mid ":")
@@ -288,44 +250,46 @@ struct
     let xp = calc r in
     xp
 
-  let urel2complexity u = match u with
-  | UFunction(l,r) -> ast2complexity r
-  | UState(l,r,i,t) -> ast2complexity r
+  let uvar2complexity u = ast2complexity (get_rhs u)
 
-  let goal2complexity = urel2complexity
+  let goal2complexity = uvar2complexity
 
-  let urel2str uid = match uid with
-  | UFunction(l,r) -> (unid2str l)^"="^(ASTLib.ast2str r unid2str)
-  | UState(l,r,i,t) -> "ddt("^(unid2str l)^")="^(ASTLib.ast2str r unid2str)
-
+  let uvar2str uid : string = match uid.bhvr with
+  | UBhvVar(b) -> (unid2str uid.lhs)^"="^(ASTLib.ast2str b.rhs unid2str)
+  | UBhvState(b) -> "ddt("^(unid2str uid.lhs)^")="^(ASTLib.ast2str b.rhs unid2str)
+  | UBhvUndef -> (unid2str uid.lhs)^" = *"
   let goal2str n = match n with
-  | NonTrivialGoal(g) -> ""^(urel2str g)
-  | TrivialGoal(g) -> "@"^(urel2str g)
+  | NonTrivialGoal(g) -> ""^(uvar2str g)
+  | TrivialGoal(g) -> "@"^(uvar2str g)
 
   let uast2str uast : string=
     let conv (x:unid) : string = unid2str x in
     ASTLib.ast2str uast conv
 
   let conc_node node assigns =
-  let sid id : unid=
-    if MAP.has assigns id then
-      match MAP.get assigns id with
-      | Term(v) -> v
-      | _ -> error "conc node" "was expecting simple assignment to var"
-    else
-      id
-  in
-  let sub_ic ic : unid init_cond = match ic with 
-    | ICVar(v) -> ICVar(sid v)
-    | ICVal(v) -> ICVal(v)
-  in
-  let conc_rel x =
-    match x with
-    | UFunction(l,r) -> UFunction(sid l,ASTLib.sub r assigns)
-    | UState(l,r,i,t) -> UState(sid l,ASTLib.sub r assigns,sub_ic i,sid t)
-  in
-  let nr = SET.map node.rels (fun x -> conc_rel x) in
-  node
+    let sid id : unid=
+      if MAP.has assigns id then
+        match MAP.get assigns id with
+        | Term(v) -> v
+        | _ -> error "conc node" "was expecting simple assignment to var"
+      else
+        id
+    in
+    let sub_ic ic : unid init_cond = match ic with 
+      | ICVar(v) -> ICVar(sid v)
+      | ICVal(v) -> ICVal(v)
+    in
+    let conc_rel data  : uvar=
+      data.lhs <- sid data.lhs;
+      match data.bhvr with
+      | UBhvVar(bhv) -> bhv.rhs <- ASTLib.sub bhv.rhs assigns; data
+      | UBhvState(bhv) ->
+        bhv.rhs <- ASTLib.sub bhv.rhs assigns;
+        bhv.ic <- sub_ic bhv.ic;
+        data
+    in
+    MAP.upd_all node.rels (fun data -> List.map (fun el -> conc_rel el) data);
+    node
 
 
 
@@ -333,8 +297,7 @@ struct
     let cmpn,cmpid,name = wire in
     let cmpname = unodeid2name cmpn in
     let knd = HwLib.getkind he cmpname name in
-    let unt = HwLib.getunit he cmpname name prop in
-    HNPort(knd, HCMGlobal(cmpname,cmpid), name, prop, unt)
+    HNPort(knd, HCMGlobal(cmpname,cmpid), name, prop)
 
   let wire2hwid = wire2hid
 
@@ -367,27 +330,35 @@ struct
   let mk_partial_comp (t:gltbl) (id:unodeid) (i:int)=
     let cnode : unode= MAP.get t.nodes id in
     let cname : string = cnode.name in
-    let rels : urel set = SET.make_dflt() in
-    let cmp : unode = {name=cname;rels=rels} in
-    let _ = MAP.put t.used_nodes (id,i) cmp in
+    let cmp : unode = {
+      name=cname;
+      rels=MAP.make();
+      id=id;
+    } in
+    MAP.put t.used_nodes (id,i) cmp;
     ()
 
   let has_partial_comp (t:gltbl) (id:unodeid) (i:int) =
     MAP.has t.used_nodes (id,i)
 
-  let add_rel_to_partial_comp (t:gltbl) (id:unodeid) (i:int) (rr:urel) =
+  let add_rel_to_partial_comp (t:gltbl) (id:unodeid) (i:int) (rr:uvar) =
     let _ = if has_partial_comp t id i = false
       then mk_partial_comp t id i
       else ()
     in
     let node = MAP.get t.used_nodes (id,i) in
-    let _ = SET.add node.rels rr in
-    ()
+    if MAP.has node.rels rr.lhs = false then begin
+      MAP.put node.rels rr.lhs [];()
+   end else begin
+     let rels = MAP.get node.rels rr.lhs  in
+     MAP.put node.rels rr.lhs (rr::rels);
+     ()
+     end
 
-  let rm_rel_from_partial_comp (t:gltbl) (id:unodeid) (i:int) (rr:urel) =
+  let rm_rel_from_partial_comp (t:gltbl) (id:unodeid) (i:int) (rr:uvar) =
     if has_partial_comp t id i then
       let cmp = MAP.get t.used_nodes (id,i) in
-      let _ = SET.rm cmp.rels rr in
+      let _ = MAP.rm cmp.rels rr.lhs in
       ()
     else
       ()
@@ -405,10 +376,9 @@ struct
   let remove_partial_comp (t:gltbl) (id:unodeid) (i:int)  =
     MAP.rm t.used_nodes (id,i)
 
-  let is_trivial (t:gltbl) (r:urel) =
+  let is_trivial (t:gltbl) (r:uvar) =
     t.is_trivial r
 
-  let wrap_goal = Shim.wrap_goal
-  let unwrap_goal = Shim.unwrap_goal
-
+  let wrap_goal = UnivLib.wrap_goal
+  let unwrap_goal = UnivLib.unwrap_goal
 end

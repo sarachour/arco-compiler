@@ -4,81 +4,89 @@ open AST
 open Util
 
 
-type propid = string
 
-(* CSTR DATA*)
-type hevid =
-  | HENPort of hwvkind*compid*string*propid*untid
-  | HENPortErr of hwvkind*compid*string*propid*untid
-  | HENParam of string*number*unt
-  | HENTime of untid
-
-type herel =
-  | HERFunction of hevid ast
-  | HERState of hevid ast
-  | HERNoError
-
-type hcinst = int
-
-
-type hcmag =
-  | HCMagRange of range
-  | HCNoMag
 
 type hcconn =
   | HCCAll
   | HCCRange of irange
   | HCCIndiv of int
 
-type hcdigital =
-  | HCDigSample of string*string*float*untid
-
 (*port to port*)
 type connid = string*string
 
-type hwcstrs = {
-  conns: (connid, (connid,(hcconn*hcconn) set) map) map;
-  mags: (string*string*string,hcmag) map;
-  tcs: (string,hcmag) map;
-  errs: (string*string*string, herel) map;
-  digs: (string, hcdigital list) map;
-  insts: (string,hcinst) map;
-}
+type hw_mag_cstr =
+  | CMAGRange of number*number*untid
+  | CMAGNone
+
+type hw_sample_cstr =
+  | CSAMPFreq of number*untid
+  | CSAMPNone
+
+type hw_float_cstr =
+  | CFLTRepr of int*int*int
+  | CFLTNone
 
 (*General Data*)
 type hwvid =
-  | HNPort of hwvkind*compid*string*propid*untid
-  | HNParam of compid*string*number*unt
-  | HNTime of compid*unt
+  | HNPort of hwvkind*compid*string*string
+  | HNParam of compid*string
+  | HNTime 
 
-type hwrel =
-  | HRFunction of hwvid*(hwvid ast)
-  | HRState of hwvid*(hwvid ast)*(hwvid)
-  | HRNone
+(*support multiple parameters*)
+type hwparam = {
+  value : number list;
+  typ: unt;
+  name:string;
+  comp:string;
+}
 
+type 'a hwdvar = {
+  rhs : 'a ast;
+  mutable mag_cstr: hw_mag_cstr;
+  mutable sample_cstr: hw_sample_cstr;
+  mutable fltrepr_cstr:hw_float_cstr;
+}
+type 'a hwavar = {
+  rhs : 'a ast;
+  mutable mag_cstr: hw_mag_cstr;
+}
+type 'a hwaderiv = {
+  rhs : 'a ast;
+  ic:string*string;
+  mutable mag_cstr: hw_mag_cstr;
+}
+type 'a hwbhv =
+  | HWBhvDigital of 'a hwaderiv
+  | HWBhvAnalogVar of 'a hwavar
+  | HWBhvAnalogStateVar of 'a hwaderiv
+  | HWBhvUndef
 
-type hwtype =
-  | HPortType of hwvkind*((propid,untid) map)
-  | HParamType of number*unt
+type 'a hwportvar = {
+   mutable bhvr: 'a hwbhv;
+   typ:untid;
+   knd:hwvkind;
+   port:string;
+   prop:string;
+   comp:string;
+   
+}
 
-type hwvar = {
-  name: string;
-  mutable rel : hwrel;
-  typ: hwtype;
+type 'a hwcomp = {
+  vars: (string,'a hwportvar) map;
+  params: (string,hwparam) map;
+  insts: int;
+  name:string;
+  mutable sim: (string*(string list)) option;
 }
 
 
-type hwcomp = {
-  name : string;
-  mutable vars: (string,hwvar) map;
-  mutable time: unt;
-  mutable spice: (string*(string list)) option;
-}
-
-type hwenv = {
+type 'a hwenv = {
   mutable units : unt_env;
   mutable props : (string, untid set) map;
-  mutable comps : (string,hwcomp) map;
+  conns: (connid, (connid,(hcconn*hcconn) set) map) map;
+  mutable comps : (string,'a hwcomp) map;
   mutable time : (string*(untid set)) option;
-  mutable cstr : hwcstrs
 }
+
+
+

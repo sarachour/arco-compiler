@@ -5,7 +5,7 @@ open SolverData
 open SolverUtil
 open Z3Lib
 open Z3Data
-open HWCstr
+open HWConnLib
 open Interactive
 
 exception HwConnRslvrException of string
@@ -87,7 +87,7 @@ struct
     let dc,di,dp = dest in
     let sc : string = UnivLib.unodeid2name sc in
     let dc : string = UnivLib.unodeid2name dc in
-    let res = if HwCstrLib.valid_conn s.hw.cstr sc sp dc dp then
+    let res = if HwConnLib.valid_conn s.hw sc sp dc dp then
       true
     else
       let _ = report_noconns "no source <-> dest connection" sc si sp dc di dp in
@@ -98,7 +98,7 @@ struct
 
   let valid_smt_prob cfg sol : bool =
     let sol_conns : (wireid, wireid set) map = sol.conns in
-    let cstr_conns = cfg.hw.cstr.conns in
+    let cstr_conns = cfg.hw.conns in
     let test_conns  (src:wireid) (dest:wireid) : bool =
       valid_conn cfg src dest
     in
@@ -146,12 +146,14 @@ struct
     let mapc fn ic = MAP.fold km (fun name iinfo r -> SET.fold iinfo.cinsts (fun inst r -> fn name inst iinfo r) r) ic in
     let maps fn ic = MAP.fold km (fun name iinfo r -> SET.fold iinfo.sinsts (fun inst r -> fn name inst iinfo r) r) ic in
     let sol_conns : (wireid, wireid set) map = sol.conns in
-    let cstr_conns  = cfg.hw.cstr.conns in
+    let cstr_conns  = cfg.hw.conns in
     let sol_cmps : (unodeid,(int set)*int) map = sol.comps in
-    let cstr_cmps : (string,hcinst) map= cfg.hw.cstr.insts in
     (*declare solution and constraint variables*)
     let _ = MAP.iter sol_cmps (fun k (v,cnt) -> if SET.size v = 0 then () else SET.iter v (fun x  -> declvar km (UnivLib.unodeid2name k) x false) ) in
-    let _ = MAP.iter cstr_cmps (fun k q -> List.iter (fun x -> declvar km k x true) (LIST.mkrange 0 (q)  ) ) in
+    let _ = MAP.iter cfg.hw.comps (fun compname compdata ->
+        let compinsts = compdata.insts in 
+        List.iter (fun x -> declvar km compname x true) (LIST.mkrange 0 compinsts))
+    in
     (*decl conns helper routine*)
 
     let tosmt () : bool*z3doc =
@@ -165,10 +167,10 @@ struct
         let sc : string = UnivLib.unodeid2name sc in
         let dc : string = UnivLib.unodeid2name dc in
         (*get all possible connections*)
-        let res = if HwCstrLib.valid_conn cfg.hw.cstr sc sp dc dp then
+        let res = if HwConnLib.valid_conn cfg.hw sc sp dc dp then
             let src = tovar km sc (si) in
             let dest = tovar km dc (di) in
-            let conns : (hcconn*hcconn) set = (MAP.get (MAP.get cfg.hw.cstr.conns (sc,sp)) (dc,dp)) in
+            let conns : (hcconn*hcconn) set = (MAP.get (MAP.get cfg.hw.conns (sc,sp)) (dc,dp)) in
             let smtexpr = tosmtexprs conns src dest in
             Some smtexpr
           else

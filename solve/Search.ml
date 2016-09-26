@@ -427,7 +427,7 @@ struct
     n
  
   let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b) (order:a->a->int) (score:b->a list->sscore) (tostr:a->string) =
-    let g = TREE.make (fun x -> x.id) (fun x y -> x = y) in
+    let g : (a snode, sscore) tree = TREE.make (fun (x:a snode) -> x.id) (fun x y -> x = y) in
     let frontier_order (_curr:a snode ref) (_next:a snode ref): ord_dir =
       let curr = REF.dr _curr in 
       let next = REF.dr _next in 

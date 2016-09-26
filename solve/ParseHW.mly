@@ -1,11 +1,13 @@
 %{
-  open HW
-  open HWCstr
   open Util
   open Unit
   open Common
   open HWData
-
+  open HWLib
+  open HWConnLib
+  open HWInstLib
+  open HWCstrLib
+  
   open AST
   open CompileUtil
 
@@ -25,6 +27,7 @@
     | InstConn of string*(index list)
     | InstPortConn of string*(index list)*string
 
+
   type conntype = Input | Output
 
   type pid =  (string*string*int)
@@ -32,7 +35,7 @@
   let conn_iter (c:conn) (conntype:conntype) (fxn:(string*string)->index->unit)  =
     let conntype = if conntype = Input then HNInput else HNOutput in
     (*determine if this is what we're filtering against*)
-    let isconntype v = match v.typ with HPortType(k,_) -> k = conntype | _ -> false in
+    let isconntype v = v.knd = conntype in
     let itercmp cmp (idx:index option) =
       let gidx = if idx = None then IToEnd 0 else OPTION.force_conc idx in
       let _ = MAP.iter cmp.vars (fun vname vr -> if isconntype vr then fxn (cmp.name,vname) gidx else ()) in
@@ -63,12 +66,12 @@
       ()
 
   let idx2hcconn (c:string) (idx:index) : hcconn =
-    let insts = HwCstrLib.getinsts dat.cstr c in
+    let comp = HwLib.getcomp dat c in
     let res = match idx with
     | IIndex(i) -> HCCIndiv(i)
     | IRange(r) -> HCCRange(r)
     | IToStart(i) -> HCCRange(0,i)
-    | IToEnd(i) -> HCCRange(i,insts)
+    | IToEnd(i) -> HCCRange(i,comp.insts)
     in
     res
 
@@ -76,7 +79,7 @@
     let handle_conns sc sp sidx dc dp didx =
       let sconn = idx2hcconn sc sidx in
       let dconn = idx2hcconn dc didx in
-      let _ = HwCstrLib.mkconn dat.cstr sc sp dc dp sconn dconn in
+      let _ = HwConnLib.mkconn dat sc sp dc dp sconn dconn in
       ()
     in
     let _ = conn_iter src Output (fun (sc,sp) sconn ->
@@ -87,10 +90,6 @@
     ()
 
 
-  let mkdfl cname iname =
-    let defl p = HwCstrLib.dflport (HwLib.getcstr dat) cname iname p in
-    let _ = MAP.iter (dat.props) (fun k v -> defl k) in
-    ()
 
   exception ParseHwError of string*string
 
@@ -110,55 +109,57 @@
   let print_expr e =
     ASTLib.ast2str e (fun x -> HwLib.hwvid2str x)
 
-
-
+let mkdfl cname iname =
+    let mk p = HwConnLib.mk dat cname iname p in
+    MAP.iter (dat.props) (fun k v -> mk k); 
+    ()
 %}
 
 
 %token EOF EOL
-%token EQ COLON QMARK COMMA STAR ARROW OPARAN CPARAN OBRAC CBRAC DOT
+%token EQ COLON QMARK COMMA STAR ARROW OBRACE CBRACE OPARAN CPARAN OBRAC CBRAC DOT
 %token TYPE LET NONE INITIALLY IN WHERE
 
 %token PROP TIME
-%token COMP INPUT OUTPUT PARAM REL END SPICE
+%token COMP INPUT OUTPUT PARAM REL END SIM
 
-%token ENSURE ASSUME MAG ERR
+%token CSTR SAMPLE MAG ERR
 
 %token COPY
 
 %token SCHEMATIC INST CONN
 
-%token DIGITAL SAMPLE EVERY
+%token DIGITAL 
 
 %token <string> STRING TOKEN OP
 %token <float> DECIMAL
 %token <int> INTEGER
 
+%type<number list> numlist
 %type<string list> strlist
 %type <string> sexpr
 %type <range> rng
 %type <hwvid ast> expr
 %type <hevid ast> errexpr
 %type <unt> typ
-%type <(propid*untid) list> proptyplst
+%type <(string*untid) list> proptyplst
 %type <Util.number> number
 
 %type <index> ind
 %type <index list> inds
 %type <conn> connterm
 %type <string> compname
-%type <string*hwrel> rel
+%type <string*hwvid hwbhv> rel
 %type <unit> schem
 %type <unit> comp
 %type <unit> block
 %type <unit> st
 %type <unit> seq
-%type <HWData.hwenv option> env
+%type <HWData.hwvid HWData.hwenv option> env
 
 %start env
 
 %%
-
 strlist:
   | TOKEN                    {let e = $1 in [e]}
   | TOKEN COMMA strlist      {let lst = $3 and e = $1 in e::lst }
@@ -166,6 +167,14 @@ strlist:
 tokenlist:
   | TOKEN           {[$1]}
   | TOKEN tokenlist {$1::$2}
+
+number:
+  | DECIMAL   {let e = $1 in Decimal(e)}
+  | INTEGER   {let e = $1 in Integer(e)}
+
+numlist:
+  | number                    {let e = $1 in [e]}
+  | number COMMA numlist      {let lst = $3 and e = $1 in e::lst}
 
 sexpr:
   | OP          {let e = $1 in e}
@@ -185,9 +194,6 @@ sexpr:
   | sexpr OPARAN       {let rest = $1 in rest^"("}
   | sexpr CPARAN       {let rest = $1 in rest^")"}
 
-number:
-  | DECIMAL   {let e = $1 in Decimal(e)}
-  | INTEGER   {let e = $1 in Integer(e)}
 
 rng:
   | OPARAN number COMMA number CPARAN {(float_of_number $2,float_of_number $4)}
@@ -247,15 +253,17 @@ expr:
     let cname = get_cmpname() in
     let tname,ttypes = HwLib.gettime dat in
     let str2hwid x =
-      if x = tname then HNTime(HCMLocal(cname),UNone) else
-      let x = if HwLib.hasvar dat cname x
-        then HwLib.getvar dat cname x
-        else error "expr" ("variable "^x^" not found in "^cname)
-      in
-      let xn = x.name in
-      match x.typ with
-      | HPortType(k, _) -> HNPort(k,HCMLocal(cname),xn,"?","?")
-      | HParamType(vl, un) -> HNParam(HCMLocal(cname),xn,vl,un)
+      if x = tname then HNTime else
+      if HwLib.hasvar dat cname x
+        then
+          let v = HwLib.getvar dat cname x in
+          HNPort(v.knd,HCMLocal(cname),v.port,"?")
+        else if HwLib.hasparam dat cname x
+        then
+          let v = HwLib.getparam dat cname x in
+          HNParam(HCMLocal(cname),v.name)
+        else
+          error "expr" ("variable "^x^" not found in "^cname)
     in
     let getcmpid c =
       match c with
@@ -264,10 +272,9 @@ expr:
     in
     let hwid2propid x =
       match x with
-      | OpN(Func(nprop), [Term(HNPort(k,cmp,vname,prop,unt))]) ->
+      | OpN(Func(nprop), [Term(HNPort(k,cmp,vname,prop))]) ->
         begin
-        let nunt = HwLib.getunit dat (getcmpid cmp) vname nprop in
-        Some(Term(HNPort(k,cmp,vname,nprop,nunt)))
+        Some(Term(HNPort(k,cmp,vname,nprop)))
         end
       | OpN(Func(x),_) -> error "expr" ("cannot have function with name "^x)
       | Acc(_,_) -> error "expr" "cannot have accesses"
@@ -282,9 +289,12 @@ rel:
     | expr EQ expr {
       let lhs = $1 and rhs = $3 in
       match lhs with
-      | Term(HNPort(HNOutput,x,oname,z,w)) ->
-        let lhs = HNPort(HNOutput,x,oname,z,w) in
-        (oname,HRFunction(lhs,rhs))
+      | Term(HNPort(HNOutput,x,oname,z)) ->
+        let bhvr : hwvid hwavar = {
+            rhs=rhs;
+            mag_cstr=CMAGNone
+        } in
+        (oname,HWBhvAnalogVar(bhvr))
       | Deriv(_,_) -> error "fnrel" "must provide an initial condition for derivative."
       | _ -> error "fnrel" "left hand side is too complex."
     }
@@ -292,25 +302,36 @@ rel:
       let lhs = $1 and rhs = $3 and icn = $5 in
       let istime x = match x with HNTime(_) -> true | _ -> false in
       match lhs with
-      | Deriv(Term(HNPort(HNOutput,x,oname,z,w)), Term(r)) ->
-        let lhs = HNPort(HNOutput,x,oname,z,w) in
+      | Deriv(Term(HNPort(HNOutput,_,oname,oprop)), Term(r)) ->
         if istime r = false then
           error "strel" "derivative must be with respect to time."
         else
           begin
           match icn with
-          | Term(HNPort(HNInput,a,icname,c,d)) -> (oname,HRState(lhs,rhs,HNPort(HNInput,a,icname,c,d)))
+          | Term(HNPort(HNInput,_,icname,icprop)) ->
+            let bhvr : hwvid hwaderiv = {
+                rhs=rhs;
+                ic=(icname,icprop);
+                mag_cstr=CMAGNone
+            } in 
+          (oname,HWBhvAnalogStateVar(bhvr))
           | _ -> error "strel" ""
           end
       | Term(v) -> error "strel" "left hand side must by deriv if initial condition is specified."
       | _ -> error "strel" ("left hand side must be simple derivative or term of output: "^(print_expr lhs))
     }
 
-
 typ:
   | sexpr {UExpr(string_to_ast $1)}
   | NONE {UNone}
   | QMARK {UVariant}
+
+
+mag_expr:
+  | OBRAC numlist CBRAC TOKEN {match $2 with
+    |[min;max] -> CMAGRange(min,max,$4)
+    |_ -> error "mag_expr" "range expression has to be two elements"
+    }
 
 proptyplst:
   | TOKEN COLON TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
@@ -365,31 +386,30 @@ digital:
     let _ = HwLib.mkrel dat cname pname r in
     ()
   }
-  | digital ASSUME SAMPLE expr EVERY number TOKEN EOL {
-    let e = $4 in
-    let n = float_of_number $6 in
-    let u = $7 in
-    match e with
-    |Term(HNPort(_,c,v,p,_)) -> let cn = HwLib.compid2str c in
-      let cstr = HwLib.getcstr dat in
-      let _ = HwCstrLib.mkdigital cstr cn (HCDigSample (v,p,n,u)) in
-      ()
-  }
-  | digital ENSURE MAG expr IN rng COLON typ EOL {
-      let lhs = $4 and r = $6 and typ = $8 and c = HwLib.getcstr dat in
-      let cmpname,portname,prop = match lhs with
-      | Term(HNPort(_,HCMLocal(cmpname),portname,prop,_)) -> (cmpname,portname,prop)
-      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop,_)) -> (cmpname,portname,prop)
+  | digital CSTR MAG expr IN mag_expr EOL {
+      let lhs = $4 and cstr = $6 in
+      let cname,pname,prop = match lhs with
+      | Term(HNPort(_,HCMLocal(cmpname),portname,prop)) -> (cmpname,portname,prop)
+      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop)) -> (cmpname,portname,prop)
       | _ -> error "magparse" "unknown term to constrain."
       in
-      HwCstrLib.mkmag c cmpname portname prop r
+      HwCstrLib.mk_mag_cstr dat cname pname prop cstr
   }
-
-  | digital SPICE TOKEN tokenlist EOL {
+  | digital CSTR SAMPLE expr IN DECIMAL TOKEN EOL {
+      let lhs = $4 and cstr = $6 and typ = $7 in
+      let cmpname,portname,prop = match lhs with
+      | Term(HNPort(_,HCMLocal(cmpname),portname,prop)) -> (cmpname,portname,prop)
+      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop)) -> (cmpname,portname,prop)
+      | _ -> error "magparse" "unknown term to constrain."
+      in
+      let cstr = CSAMPFreq(Decimal cstr,typ) in
+      HwCstrLib.mk_sample_cstr dat cmpname portname prop cstr
+  }
+  | digital SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
       let spname = $3 in
       let args = $4 in
-      let _ = HwLib.mkspice dat cname spname args in
+      let _ = HwLib.mksim dat cname spname args in
       ()
   }
 
@@ -425,12 +445,12 @@ comp:
     let _ = mkdfl cname iname in
     ()
   }
-  | comp PARAM TOKEN COLON typ EQ number EOL {
+  | comp PARAM TOKEN COLON typ EQ OBRACE numlist CBRACE EOL {
     let iname = $3 in
     let typ = $5 in
-    let vl = $7 in
+    let vls = $8 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkparam dat cname iname vl typ in
+    let _ = HwLib.mkparam dat cname iname vls typ in
     ()
   }
   | comp REL rel EOL {
@@ -438,45 +458,20 @@ comp:
     let _ = HwLib.mkrel dat cname pname r in
     ()
   }
-  | comp ASSUME TIME number TOKEN EQ number TOKEN EOL {
-      let lv :float = float_of_number $4 and ln :string = $5 in
-      let rv :float = float_of_number $7 and rn : string = $8 and cname = get_cmpname() in
-      let ratio = rv /. lv in
-      let tname,_ =  HwLib.gettime dat in
-      if ln = tname then
-        let _ = HwLib.mkcompspd dat cname (OpN(Mult,[Decimal(ratio);Term(rn)])) in
-        ()
-      else
-        error "parseasmtime" "must define a speed assumption on time only."
-  }
-  | comp ENSURE MAG expr IN rng COLON typ EOL {
-      let lhs = $4 and r = $6 and typ = $8 and c = HwLib.getcstr dat in
+  | comp CSTR MAG expr IN mag_expr typ EOL {
+      let lhs = $4 and cstr = $6 and typ = $8 in
       let cmpname,portname,prop = match lhs with
-      | Term(HNPort(_,HCMLocal(cmpname),portname,prop,_)) -> (cmpname,portname,prop)
-      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop,_)) -> (cmpname,portname,prop)
+      | Term(HNPort(_,HCMLocal(cmpname),portname,prop)) -> (cmpname,portname,prop)
+      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop)) -> (cmpname,portname,prop)
       | _ -> error "magparse" "unknown term to constrain."
       in
-      HwCstrLib.mkmag c cmpname portname prop r
+      HwCstrLib.mk_mag_cstr dat cmpname portname prop cstr
   }
-  | comp ASSUME ERR erel COLON typ EOL {
-      let (cmpid,portname,propname),rhs = $4 and typ = $6 and c = HwLib.getcstr dat in
-      let cmpname : string = match cmpid with
-      | HCMLocal(cmpname) -> cmpname
-      | HCMGlobal(cmpname,_) -> cmpname
-      in
-      let _ = HwCstrLib.mkerr c cmpname portname propname rhs in
-      ()
-  }
-  | comp ENSURE TIME IN rng COLON TOKEN EOL {
-      let r = $5 and cname = get_cmpname() and c = HwLib.getcstr dat in
-      let _ = HwCstrLib.mktc c cname r in
-      ()
-  }
-  | comp SPICE TOKEN tokenlist EOL {
+  | comp SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
       let spname = $3 in
       let args = $4 in
-      let _ = HwLib.mkspice dat cname spname args in
+      let _ = HwLib.mksim dat cname spname args in
       ()
   }
   | comp EOL   {}
@@ -521,23 +516,13 @@ schem:
     ()
   }
   | schem INST compname COLON INTEGER EOL {
-    let cname = $3 and amt = ($5) and c = HwLib.getcstr dat in
-    let _ = HwCstrLib.mkinst c cname amt in
+    let cname = $3 and amt = ($5) in
+    let _ = HwInstLib.mkinst dat cname amt in
     ()
   }
   | schem CONN connterm ARROW connterm EOL {
     let src = $3 and snk = $5 in
     let _ = add_conns src snk in
-    ()
-  }
-  | schem ENSURE MAG TOKEN IN rng COLON TOKEN {
-    let pname = $4 and r = $6 and c = HwLib.getcstr dat in
-    let _ = HwCstrLib.mkglblmag c pname r in
-    ()
-  }
-  | schem ENSURE TIME IN rng COLON TOKEN {
-    let r = $5 and c = HwLib.getcstr dat in
-    let _ = HwCstrLib.mkglbltc c r in
     ()
   }
   | schem EOL {

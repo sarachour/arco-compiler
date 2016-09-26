@@ -1,15 +1,20 @@
 open Util
-open HW
-open Math
 open AST
 open Unit
 open Common
+
+
 open HWData
+open HWLib
+
+open MathLib
+open MathData
+
 open SearchData
 
 type slvr =  {
-  hw: hwenv;
-  prob: menv;
+  hw: hwvid hwenv;
+  prob: mid menv;
   cnt: int;
 }
 
@@ -23,26 +28,40 @@ type 'a init_cond =
   | ICVar of 'a
   | ICVal of number 
 
-type urel =
-  | UFunction of unid*(unid ast)
-  | UState of unid*(unid ast)*(unid init_cond)*unid
-
-
 type unodeid =
   | UNoInput of string
   | UNoOutput of string
   | UNoCopy of string
   | UNoComp of string
 
+
+type unode_fxn = {
+  mutable rhs : unid ast;
+}
+type unode_deriv = {
+  mutable rhs : unid ast;
+  mutable ic : unid init_cond;
+}
+type ubhv =
+  |UBhvVar of unode_fxn
+  |UBhvState of unode_deriv
+
+type uvar = {
+  bhvr: ubhv;
+  mutable lhs: unid;
+}
+
+(*abstract hardware resources*)
 type unode = {
-  mutable rels : urel set;
+  mutable rels: (unid,uvar list) map;
   name : string;
+  id: unodeid;
 }
 
 (*A particular goal to strive for*)
 type goal =
-  | TrivialGoal of urel
-  | NonTrivialGoal of urel
+  | TrivialGoal of uvar
+  | NonTrivialGoal of uvar
 
 type wireid = unodeid*int*string
 
@@ -65,15 +84,15 @@ type sln = {
 type sstep =
   | SSolUseNode of unodeid*int
   | SSolAddConn of wireid*wireid
-  | SSolAddLabel of wireid*propid*label
-  | SSolRemoveLabel of wireid*propid*label
+  | SSolAddLabel of wireid*string*label
+  | SSolRemoveLabel of wireid*string*label
   | SRemoveGoal of goal
   | SAddGoal of goal
   | SMakeGoalPassive of goal
   | SMakeGoalActive of goal
   (*add a relation for a node*)
-  | SAddNodeRel of unodeid*int*(urel)
-  | SRemoveNodeRel of unodeid*int*(urel)
+  | SAddNodeRel of unodeid*int*(uvar)
+  | SRemoveNodeRel of unodeid*int*(uvar)
 
 
 type gltbl = {
@@ -81,7 +100,7 @@ type gltbl = {
   mutable blacklist : goal set;
   mutable nodes : (unodeid, unode) map;
   mutable used_nodes : (unodeid*int,unode) map;
-  is_trivial: urel->bool;
+  is_trivial: uvar->bool;
   mutable search: (sstep,slvr*gltbl) ssearch;
   mutable sln: sln;
 }

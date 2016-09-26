@@ -767,6 +767,7 @@ struct
     let vap = f va in
     put x k vap
 
+  
   let size (type a) (type b) (x:(a,b) map) =
     Hashtbl.length x
 
@@ -799,6 +800,10 @@ struct
 
   let str (type a) (type b) (x:(a,b) map) (kf: a -> string) (vf: b->string):string =
     Hashtbl.fold (fun k v r -> r^(kf k)^" = "^(vf v)^"\n") x ""
+
+  let upd_all (type a) (type b) (x:(a,b) map) (f:b->b)  : (a,b) map =
+      iter x (fun k v -> let _ =upd x f k in ());
+      x
 
 
   let repl (type a) (type b) (type c)  (x:(a,b) map) (f: a -> b -> b) : (a,b) map =

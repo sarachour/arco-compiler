@@ -2,11 +2,10 @@
 open Common
 open Globals
 
-open HW
+open HWLib
 open HWData
-open HWCstr
 
-open Math
+open MathLib
 open MathCstr
 
 open AST
@@ -41,9 +40,11 @@ struct
   let get_partial_comp = GoalStubLib.get_partial_comp
 
   let get_goal_from_rel (t:gltbl) (clhs:unid) (crhs:unid ast): goal option =
-    let is_var (x:goal) = match unwrap_goal x with
-      |UFunction(lhs,rhs) -> clhs = lhs && crhs = rhs
-      |UState(lhs,rhs,_,_) -> clhs = lhs && crhs = rhs
+    let is_var (x:goal) =
+      let vr = unwrap_goal x in 
+      match vr.bhvr with
+      |UBhvVar(bhv) -> vr.lhs = clhs && crhs = bhv.rhs 
+      |UBhvState(bhv) -> vr.lhs = clhs && crhs =bhv.rhs 
     in
     match SET.filter t.goals (fun x -> is_var x ) with
     | [h] -> Some(h)
@@ -54,10 +55,7 @@ struct
 
 
   let get_goal_from_var (t:gltbl) (vr:unid) : goal option =
-    let is_var (x:goal) (v:unid) = match unwrap_goal x with
-      |UFunction(lhs,rhs) -> v = lhs
-      |UState(lhs,rhs,_,_) -> v = lhs
-    in
+    let is_var (x:goal) (v:unid) = (unwrap_goal x).lhs =v  in
     match SET.filter t.goals (fun x -> is_var x vr) with
     | [h] -> Some(h)
     | [] -> None
@@ -88,7 +86,7 @@ struct
     in
     SET.fold gset proc_goal ""
 
-  let newtbl (s:slvr) (rf:gltbl) (gls:goal list) (triv:urel->bool):gltbl =
+  let newtbl (s:slvr) (rf:gltbl) (gls:goal list) (triv:uvar->bool):gltbl =
     let st =  SlvrSearchLib.mksearch () in
     let sln = SlnLib.mksln () in
     let nodetbl : (unodeid,unode) map = MAP.make () in
@@ -113,30 +111,25 @@ struct
     (v)
 
 
-  (* add all relations to the tableau of goals. *)
-  let _rm_pars x : unid ast option =
-    match x with
-    | Term(HwId(HNParam(c,n,v,p))) -> Some (ast_of_number (v))
-    | Term(MathId(MNParam(n,v,u))) ->Some (ast_of_number (v))
-    | _ -> None
-
-
   (*make an empty node without the goals*)
-  let mktbl s (is_trivial:urel->bool) : gltbl =
-    let comp2node (c:hwcomp) =
-      let nvars = List.filter (fun (x:hwvar) -> x.rel <> HRNone) (MAP.to_values (c.vars)) in
-      let var2urel (x:hwvar) =
-        let h2u = UnivLib.hwid2unid in
-        let tf x = ASTLib.trans (ASTLib.map x h2u) _rm_pars in
-        match x.rel with
-        | HRFunction(l,r) -> UFunction(h2u l, tf r)
-        | HRState(l,r,i) ->
-          let time = HNTime(HCMLocal(c.name),c.time) in
-          let (ic) : unid init_cond = match h2u i with 
-            | MathId(MNParam(n,v,u)) -> ICVal(v)
-            | HwId(HNParam(c,n,v,p)) -> ICVal(v)
+  let mktbl s (is_trivial:uvar->bool) : gltbl =
+    let comp2node (c:hwvid hwcomp) =
+      let nvars = List.filter (fun (x:hwvid hwportvar) ->
+          x.bhvr <> HWBhvUndef) (MAP.to_values (c.vars)) in
+      let hwvar2ic i = match h2u i with 
+            | MathId(MNParam(n,v)) -> ICVal(v)
+            | HwId(HNParam(c,n)) -> ICVal(v)
             | var -> ICVar(var)
-          in 
+      in 
+      let hwvar2urel (x:hwvid hwvar) =
+        let h2u = UnivLib.hwid2unid in
+        let new_lhs = h2u x.lhs in
+        let bhv = match x.bhv with
+        | HWBhvDigital(bhv) -> 
+        | HWBhvAnalogVar(bhv) -> 
+        | HWBhvAnalogStateVar(bhv) -> 
+          let time = HNTime(HCMLocal(c.name),c.time) in
+          
           UState(h2u l, tf r, ic, h2u time)
         | _ -> error "math2goal.comp2node" "impossible"
       in

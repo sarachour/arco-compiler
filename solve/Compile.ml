@@ -4,11 +4,11 @@ open AST
 
 open ParseMath
 open LexMath
-open Math
+open MathLib
 
 open CompileUtil
 
-open HW
+open HWLib
 (*
 open ParseHW
 open LexHW

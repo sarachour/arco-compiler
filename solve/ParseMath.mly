@@ -1,5 +1,6 @@
 %{
-  open Math
+  open MathData
+  open MathLib
   open MathCstr
   open Util
   open Unit
@@ -39,7 +40,7 @@
 %type <number> number
 %type <unit> seq
 %type <unit> st
-%type <Math.menv option> env
+%type <MathData.mid MathData.menv option> env
 
 %start env
 
@@ -64,11 +65,19 @@ expr:
     let s = $1 in
     let am = string_to_ast s in
     let ast2id x =
-      let t =  (MathLib.getvar dat x).typ in t
+      if MathLib.hasvar dat x then
+         let v = MathLib.getvar dat x in
+         MNVar(v.knd,v.name)
+      else if MathLib.isparam dat x then
+        let v = MathLib.getparam dat x in
+        MNParam(v.name,v.value)
+      else
+        MNTime
     in
-    let am = ASTLib.map am ast2id in
+    let am : mid ast = ASTLib.map am ast2id in
     am
   }
+
 errexpr:
   | expr {
     let s = $1 in
@@ -85,6 +94,7 @@ errexpr:
     let res = AST.trans (AST.map s mp) conv in
     res
   }
+
 number:
   | DECIMAL   {let e = $1 in Decimal(e)}
   | INTEGER   {let e = $1 in Integer(e)}
@@ -130,9 +140,9 @@ rel:
         error "rel_parse" "initial condition must be for t=0"
       else
       match lhs with
-      |Term(MNVar(_,name,_)) ->
+      |Term(MNVar(_,name)) ->
         error "rel_parse" ("stateless variable "^name^" is qualitifed with 'with' statement")
-      |Deriv(Term(MNVar(k,name,u)), Term(MNTime(uw))) ->
+      |Deriv(Term(MNVar(k,name)), Term(MNTime)) ->
         if icn <> name then
           error "rel_parse" ("name of variable "^name^" must match initial condition variable name")
         else
@@ -144,10 +154,10 @@ rel:
     let lhs = $1 in
     let rhs = $3 in
     match lhs with
-      | Term(MNVar(k, name, unt)) ->
+      | Term(MNVar(k, name)) ->
         if k = MInput then error "rel" "input cannot be on lhs." else
         MathLib.mkrel dat name rhs
-      | Deriv(Term(MNVar(_,name,_)),wrt) ->
+      | Deriv(Term(MNVar(_,name)),wrt) ->
         error "rel_parse" ("variable with state "^name^" missing the 'with V(0) = 0.001' clause")
       | _ -> error "rel_parse" ("disallowed left hand side.")
   }
@@ -200,26 +210,7 @@ st:
     MathLib.mktime dat name typ;
     ()
   }
-  | ASSUME MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let r = mkrng($6,$8) and name = $3 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkrng c name MCAssume r in
-    ()
-  }
-  | ENSURE MAG TOKEN IN OPARAN number COMMA number CPARAN COLON typ EOL {
-    let r = mkrng($6,$8) and name = $3 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkrng c name MCEnsure r in
-    ()
-  }
-  | ASSUME ERR erel COLON typ EOL {
-    let name,er = $3 and t = $5 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkerr c name MCAssume er in
-    ()
-  }
-  | ENSURE ERR erel COLON typ EOL {
-    let name,er = $3 and t = $5 and c = MathLib.cstrs dat in
-    let _ = MathCstrLib.mkerr c name MCEnsure er in
-    ()
-  }
+ 
   | REL rel EOL {
     ()
   }

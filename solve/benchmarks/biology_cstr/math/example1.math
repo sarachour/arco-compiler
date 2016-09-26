@@ -1,0 +1,28 @@
+
+type s
+type M
+
+input Q : M
+local E : M
+local S : M
+output ES : M
+
+param ETOT : M = 0.15
+param STOT : M = 0.11
+param kf : 1/s = 0.3
+param kf0 : 1/s = 20
+param kr : 1/s = 0.2
+param kcat : 1/s = 0.01
+
+time t : s
+
+
+assume mag E in (0,1) : M
+assume mag S in (0,1) : M
+assume mag ES in (0,1) : M
+
+ensure err E(ES) = 0.01 : M
+
+rel S = STOT - ES
+rel E = ETOT - ES
+rel deriv(ES,t) = (kf0*Q*E*S - kr*ES) + kf*Q*E*S with ES(0) = 0.423

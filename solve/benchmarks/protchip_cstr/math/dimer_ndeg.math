@@ -1,0 +1,14 @@
+
+output A : none
+output B : none
+
+param kr1 : none = 10
+param kr2 : none = 10
+param KDrv : none = 10
+
+time t : none
+
+%monomer
+rel deriv(A,t) = prod - kf*A*A*2 + kr*B*2 - degMonomer*A with A(0) = 0
+%dimer
+rel deriv(B,t) = kf*A*A - kr*B - degDimer* with B(0) = 0

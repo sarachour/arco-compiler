@@ -1,0 +1,33 @@
+% name "michaelis menten reaction"
+
+% en.wikipedia.org/wiki/Michaelis-Menten_kinetics
+% one diffeq, three equations
+% Depth 20, pattern 3
+
+type s
+type M
+
+local E : M
+local S : M
+output ES : M
+
+param ETOT : M = 0.15
+param STOT : M = 0.11
+param kf : 1/s = 1
+param kr : 1/s = 1
+param kcat : 1/s = 0.01
+
+time t : s
+
+
+mag E in [0,1] M
+mag S in [0,1] M
+mag ES in [0,1] M
+
+
+rel E = ETOT - ES
+rel S = STOT - ES
+
+rel deriv(ES,t) = (kf*E*S) - kr*ES with ES(0) = 0
+%prb deriv(ES,t) = ES*NORM(mu,sigma)
+
