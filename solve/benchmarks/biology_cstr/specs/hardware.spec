@@ -14,33 +14,32 @@ digital input I
   input X where D:bits
   output O where I:mA
   cstr mag I(O) in [0,1] mA
-  cstr mag D(X) in S(1)M(4)E(3)
-  cstr sample 0.0001 us
+  cstr repr D(X) in FLOAT(1,4,3)
+  cstr sample D(X) in 0.0001 us
   rel I(O) = D(X)
 end
 
 digital output I
   input X where I:mA
   output O where D:bits
-  cstr D(O) in S(1)M(4)E(3)
-  cstr I(X) in [0,1] mA
-  cstr sample 0.001 us
+  cstr repr D(O) in FLOAT(1,4,3)
+  cstr mag I(X) in [0,1] mA
+  cstr sample D(O) in 0.001 us
   rel D(O) = I(X)
 end
 
 comp copy I
   input X where I:mA
   output Y where I:mA
-  cstr I(X) in [0,1] mA
-  cstr I(Y) in [0,1] mA
-  cstr sample 0.001 us
+  cstr mag I(X) in [0,1] mA
+  cstr mag I(Y) in [0,1] mA
   rel I(Y) = I(X)
 end
 
 digital input V
   input X where D:bits
   output O where V:mV
-  cstr sample 0.001 us
+  cstr sample D(X) in 0.001 us
   rel V(O) = D(X)
 end
 
@@ -48,14 +47,14 @@ digital output V
   input X where V:mV
   output O where D:bits
   rel D(O) = V(X)
-  spice vout X O
+  sim vout X O
 end
 
 comp copy V
   input X where V:mV
   output Y where V:mV
 
-  spice vcopy X Y
+  sim vcopy X Y
 end
 
 % voltage add gain block with optional capacitor thingy
@@ -68,7 +67,7 @@ comp vgain
 
   rel V(P) = (V(X)/V(Y))*V(Z)*0.04
 
-  spice vgain X Y Z P
+  sim vgain X Y Z P
 
 end
 comp iadd
@@ -107,7 +106,7 @@ comp vtoi
   cstr mag I(Y) in [0,1] mA
   cstr mag V(K) in [1,4] mV
 
-  spice vtoi X K Y
+  sim vtoi X K Y
 
 end
 
@@ -118,7 +117,7 @@ comp itov
 
   rel V(Y) = (V(K))*I(X)
 
-  spice itov X K Y
+  sim itov X K Y
 end
 
 % Dynamic Systems Biology Modelling
@@ -126,17 +125,16 @@ end
 comp ihill
   input Vmax where I:mA
   input S where I:mA
-  input n where V : mV
+  param n : mV = {1,1.5,2,2.5,3,3.5}
   input Km where I:mA
   output STIM where I:mA
   output REP where I:mA
   
-  cstr V(n) in {1,1.5,2,2.5,3,3.5}
   % s^n/(s^n + k^n)
-  rel I(STIM) = I(Vmax)*(((I(S)/I(Km))^V(n))/( ((I(S)/I(Km))^V(n)) + 1 ) )
-  rel I(REP) = I(Vmax)*((I(Km)^V(n))/( ((I(S))^V(n)) + (I(Km)^V(n)) ) )
+  rel I(STIM) = I(Vmax)*(((I(S)/I(Km))^n)/( ((I(S)/I(Km))^n) + 1 ) )
+  rel I(REP) = I(Vmax)*((I(Km)^n)/( ((I(S))^n) + (I(Km)^n) ) )
 
-  spice ihill Vmax S n Km STM REP
+  sim ihill Vmax S n Km STM REP
 end
 
 comp igenebind
@@ -146,7 +144,7 @@ comp igenebind
   output GE where I: mA
 
   rel I(GE) = I(Vmax)*(1/(1+I(K)*I(TF)))
-  spice igenebind TF K Vmax GE
+  sim igenebind TF K Vmax GE
 end
 
 

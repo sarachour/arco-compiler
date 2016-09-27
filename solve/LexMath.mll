@@ -31,6 +31,9 @@ rule env = parse
   | "="                     {EQ}
   | "("                     {OPARAN}
   | ")"                     {CPARAN}
+  | "["                     {OBRAC}
+  | "]"                     {CBRAC}
+
   | ","                     {COMMA}
 
   | "name"                  {NAME}
@@ -44,8 +47,7 @@ rule env = parse
   | "param"                 {PARAM}
   | "time"                  {TIME}
 
-  | "ensure"                {ENSURE}
-  | "assume"                {ASSUME}
+  | "cstr"                   {CSTR}
   | "mag"                   {MAG}
   | "err"                   {ERR}
 

@@ -133,6 +133,8 @@ struct
     else
       error "mkvar" "type is invalid"
 
+  let set_mag e (name:string) (min:number) (max:number) (typ:unt) =
+    ()
 
   let mkvar e name knd un : mid menv =
     if isvar e name || isparam e name then

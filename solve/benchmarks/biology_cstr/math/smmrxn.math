@@ -20,9 +20,9 @@ param kcat : 1/s = 0.01
 time t : s
 
 
-mag E in [0,1] M
-mag S in [0,1] M
-mag ES in [0,1] M
+cstr mag E in [0,1] M
+cstr mag S in [0,1] M
+cstr mag ES in [0,1] M
 
 
 rel E = ETOT - ES

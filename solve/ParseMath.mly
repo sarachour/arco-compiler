@@ -21,9 +21,9 @@
     (float_of_number m,float_of_number x)
 %}
 
-%token EOF EOL COLON QMARK EQ OPARAN CPARAN COMMA
+%token EOF EOL COLON QMARK EQ OBRAC CBRAC OPARAN CPARAN COMMA
 
-%token ENSURE IN ASSUME MAG ERR
+%token CSTR IN MAG ERR
 
 %token NAME TYPE LET NONE
 %token INPUT OUTPUT LOCAL PARAM TIME
@@ -44,6 +44,8 @@
 %start env
 
 %%
+
+
 
 sexpr:
   | OPERATOR          {let e = $1 in e}
@@ -97,6 +99,11 @@ errexpr:
 number:
   | DECIMAL   {let e = $1 in Decimal(e)}
   | INTEGER   {let e = $1 in Integer(e)}
+
+numlist:
+  | number                    {let e = $1 in [e]}
+  | number COMMA numlist      {let lst = $3 and e = $1 in e::lst}
+
 
 typ:
   | sexpr {UExpr(string_to_ast $1)}
@@ -181,6 +188,17 @@ st:
     let typ : unt = ($4) in
     MathLib.mkvar dat name knd typ;
     ()
+  }
+  | CSTR MAG TOKEN IN OBRAC numlist CBRAC typ EOL {
+    let name : string= $3 in
+    let bounds = $6 in
+    if List.length bounds == 2 then
+       let min : number = List.nth bounds 0 in
+       let max : number = List.nth bounds 1 in
+       let typ : unt = $8 in 
+       MathLib.set_mag dat name min max typ
+    else
+       error "cstr mag" "bounds is more than two elements"
   }
   | OUTPUT TOKEN COLON typ EOL {
     let knd : mkind = MOutput in

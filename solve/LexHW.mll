@@ -57,6 +57,8 @@ rule env = parse
   | "cstr"                  {CSTR}
   | "sample"                {SAMPLE}
   | "err"                   {ERR}
+  | "FLOAT"                 {FLOAT}
+  | "repr"                  {REPR}
 
   | "copy"                  {COPY}
 

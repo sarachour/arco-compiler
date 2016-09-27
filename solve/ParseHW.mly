@@ -120,10 +120,10 @@ let mkdfl cname iname =
 %token EQ COLON QMARK COMMA STAR ARROW OBRACE CBRACE OPARAN CPARAN OBRAC CBRAC DOT
 %token TYPE LET NONE INITIALLY IN WHERE
 
-%token PROP TIME
+%token PROP TIME  
 %token COMP INPUT OUTPUT PARAM REL END SIM
 
-%token CSTR SAMPLE MAG ERR
+%token CSTR SAMPLE REPR FLOAT MAG ERR
 
 %token COPY
 
@@ -327,12 +327,6 @@ typ:
   | QMARK {UVariant}
 
 
-mag_expr:
-  | OBRAC numlist CBRAC TOKEN {match $2 with
-    |[min;max] -> CMAGRange(min,max,$4)
-    |_ -> error "mag_expr" "range expression has to be two elements"
-    }
-
 proptyplst:
   | TOKEN COLON TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
   | TOKEN COLON TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
@@ -386,15 +380,23 @@ digital:
     let _ = HwLib.mkrel dat cname pname r in
     ()
   }
-  | digital CSTR MAG expr IN mag_expr EOL {
-      let lhs = $4 and cstr = $6 in
+  | digital CSTR REPR expr IN FLOAT OPARAN numlist CPARAN EOL {
+
+  }
+
+  | digital CSTR MAG expr IN OBRAC numlist CBRAC TOKEN EOL {
+      let lhs = $4 and bound = $7 and typ = $9 in
       let cname,pname,prop = match lhs with
       | Term(HNPort(_,HCMLocal(cmpname),portname,prop)) -> (cmpname,portname,prop)
       | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop)) -> (cmpname,portname,prop)
       | _ -> error "magparse" "unknown term to constrain."
       in
-      HwCstrLib.mk_mag_cstr dat cname pname prop cstr
+      if List.length bound = 2 then
+         let min = List.nth bound 0 in
+         let max = List.nth bound 1 in 
+         HwCstrLib.mk_mag_cstr dat cname pname prop min max typ
   }
+
   | digital CSTR SAMPLE expr IN DECIMAL TOKEN EOL {
       let lhs = $4 and cstr = $6 and typ = $7 in
       let cmpname,portname,prop = match lhs with
@@ -402,10 +404,10 @@ digital:
       | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop)) -> (cmpname,portname,prop)
       | _ -> error "magparse" "unknown term to constrain."
       in
-      let cstr = CSAMPFreq(Decimal cstr,typ) in
-      HwCstrLib.mk_sample_cstr dat cmpname portname prop cstr
+      HwCstrLib.mk_sample_cstr dat cmpname portname prop (Decimal cstr) typ
   }
-  | digital SIM TOKEN tokenlist EOL {
+
+| digital SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
       let spname = $3 in
       let args = $4 in
@@ -458,14 +460,19 @@ comp:
     let _ = HwLib.mkrel dat cname pname r in
     ()
   }
-  | comp CSTR MAG expr IN mag_expr typ EOL {
-      let lhs = $4 and cstr = $6 and typ = $8 in
+  | comp CSTR MAG expr IN OBRAC numlist CBRAC typ EOL {
+      let lhs = $4 and bound = $7 and typ = $9 in
       let cmpname,portname,prop = match lhs with
-      | Term(HNPort(_,HCMLocal(cmpname),portname,prop)) -> (cmpname,portname,prop)
-      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop)) -> (cmpname,portname,prop)
+      | Term(HNPort(_,HCMLocal(cmpname),portname,prop)) ->
+        (cmpname,portname,prop)
+      | Term(HNPort(_,HCMGlobal(cmpname,_),portname,prop)) ->
+        (cmpname,portname,prop)
       | _ -> error "magparse" "unknown term to constrain."
       in
-      HwCstrLib.mk_mag_cstr dat cmpname portname prop cstr
+      if List.length bound =  2 then
+         let min = List.nth bound 0 in
+         let max = List.nth bound 1 in
+         HwCstrLib.mk_mag_cstr dat cmpname portname prop min max typ
   }
   | comp SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
