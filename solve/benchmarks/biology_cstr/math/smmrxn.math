@@ -19,11 +19,14 @@ param kcat : 1/s = 0.01
 
 time t : s
 
-
+% structural information
 cstr mag E in [0,1] M
 cstr mag S in [0,1] M
 cstr mag ES in [0,1] M
 
+% search constraints
+want sample ES at 0.0001 s
+% SOME FORMULATION OF NOISE / MAGNITUDE
 
 rel E = ETOT - ES
 rel S = STOT - ES

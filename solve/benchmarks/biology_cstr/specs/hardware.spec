@@ -15,7 +15,7 @@ digital input I
   output O where I:mA
   cstr mag I(O) in [0,1] mA
   cstr repr D(X) in FLOAT(1,4,3)
-  cstr sample D(X) in 0.0001 us
+  cstr sample D(X) at 0.0001 us
   rel I(O) = D(X)
 end
 
@@ -24,7 +24,7 @@ digital output I
   output O where D:bits
   cstr repr D(O) in FLOAT(1,4,3)
   cstr mag I(X) in [0,1] mA
-  cstr sample D(O) in 0.001 us
+  cstr sample D(O) at 0.001 us
   rel D(O) = I(X)
 end
 
@@ -40,7 +40,7 @@ digital input V
   input X where D:bits
   output O where V:mV
   cstr mag V(X) in [0,5] mV
-  cstr sample D(X) in 0.00001 us
+  cstr sample D(X) at 0.00001 us
   cstr repr D(X) in FLOAT(1,4,3)
   rel V(O) = D(X)
 end
@@ -49,7 +49,7 @@ digital output V
   input X where V:mV
   output O where D:bits
   cstr mag V(X) in [0,5] mV
-  cstr sample D(O) in 0.001 us
+  cstr sample D(O) at 0.001 us
   cstr repr D(O) in FLOAT(1,4,3)
   rel D(O) = V(X)
   sim vout X O

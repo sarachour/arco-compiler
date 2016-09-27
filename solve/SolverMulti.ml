@@ -160,8 +160,7 @@ struct
      TODO: Fix
      create global circuit from the partial solution buffer
   *)
-  let get_global_context ms tbl : sstep list = []
-  (*
+  let get_global_context (ms:musearch) tbl : sstep list = 
     let menv : mid menv = ms.state.slvr.prob in
     let hwenv : hwvid hwenv=  ms.state.slvr.hw  in
     (*process a local variable*)
@@ -176,12 +175,13 @@ struct
         let output_wire_hwid = UnivLib.wire2uid hwenv owire oprop in
         let output_math_id = UnivLib.label2uid olabel in
         (*lets create goals for the tableau to map*)
-        let connect_ports : sstep list = List.map (fun (iwire,iprop,ilbl) ->
-          let input_wire_hwid = UnivLib.wire2uid hwenv iwire iprop in
-          let rel = UFunction(input_wire_hwid,Term(output_wire_hwid)) in
-          let goal = UnivLib.wrap_goal tbl rel in
-          (*this is the connection goal*)
-          SAddGoal(goal)
+        let connect_ports : sstep list =
+          List.map (fun (iwire,iprop,ilbl) ->
+              let input_wire_hwid = UnivLib.wire2uid hwenv iwire iprop in
+              let vr = UnivLib.mkuvar_of_stub input_wire_hwid (UBHPortConn output_wire_hwid) in
+              let goal = UnivLib.wrap_goal tbl vr in
+              (*this is the connection goal*)
+              SAddGoal(goal)
         ) ilabels in
         let remove_existing_goal = match GoalTableLib.get_goal_from_var tbl output_math_id with
          | Some(v) -> [SRemoveGoal(v)]
@@ -207,11 +207,12 @@ struct
         let ihwid = UnivLib.lclid2glblid inst_id (HwId ihwid) in
         let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
         let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
+        let lbl_var = UnivLib.mkuvar_of_stub whwid (UBHPortConn ihwid) in 
         let steps= [
           (*node utilization*)
           SSolUseNode(cmpid,inst_id);
           (*wire connection*)
-          SAddGoal(UnivLib.wrap_goal tbl (UFunction(whwid,Term(ihwid))));
+          SAddGoal(UnivLib.wrap_goal tbl (lbl_var));
           (*label of var*)
           SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);
           SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
@@ -236,10 +237,11 @@ struct
         let ihwid = UnivLib.lclid2glblid inst_id (HwId ihwid) in
         let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
         let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
+        let lbl_var = UnivLib.mkuvar_of_stub whwid (UBHPortConn ohwid) in 
         let steps= [
           SSolUseNode(cmpid,inst_id);
           (*connection*)
-          SAddGoal(UnivLib.wrap_goal tbl (UFunction(whwid,Term(ohwid))));
+          SAddGoal(UnivLib.wrap_goal tbl lbl_var);
           (*label of var*)
           SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);
           SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
@@ -252,7 +254,7 @@ struct
     in
     (*iterate over values*)
     let proc_in_val () =
-      let valassign2ast wlabel : unid ast = match wlabel with
+      let valassign2ast wlabel : number = match wlabel with
       | LBindValue(_,Integer(i)) -> Integer(i)
       | LBindValue(_,Decimal(i)) -> Decimal(i)
       | _ -> error "valaasign2ast" "expected value assign"
@@ -268,14 +270,18 @@ struct
         let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
         let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
         let vv = valassign2ast wlabel in
-        let valbind = if get_glbl_bool "multi-force-value-to-port" = true then 
-            [SAddGoal(TrivialGoal (UFunction(whwid,Term ohwid)))]
+        let ovar_bind = UnivLib.mkuvar_of_stub ohwid (UBHPortVal vv) in 
+        let valbind =
+          if get_glbl_bool "multi-force-value-to-port" = true then
+            let wvar = UnivLib.mkuvar_of_stub whwid (UBHPortConn ohwid) in 
+            [SAddGoal(TrivialGoal (wvar))]
           else
-            [SAddGoal(NonTrivialGoal (UFunction(whwid,vv)))]
+            let wvar_bind = UnivLib.mkuvar_of_stub whwid (UBHPortVal vv) in 
+            [SAddGoal(NonTrivialGoal (wvar_bind))]
         in
         let steps= valbind @ [
           SSolUseNode(cmpid,inst_id);
-          SAddNodeRel(cmpid,inst_id,UFunction(ohwid,vv));
+          SAddNodeRel(cmpid,inst_id,ovar_bind);
           (*label of var*)
           (*SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);*)
           SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
@@ -290,27 +296,24 @@ struct
       if MathLib.isvar menv name then
         match MathLib.getkind menv name with
         (*input variable*)
-        | Some MInput ->
+        | MInput ->
           let insteps : sstep list = proc_in_var name in
           insteps @ rest
         (*output variable*)
-        | Some MOutput ->
+        | MOutput ->
           let lclsteps = proc_local_var name in
           let outsteps = proc_out_var name in
           lclsteps @ outsteps @ rest
         (*local variable*)
-        | Some MLocal ->
+        | MLocal ->
           let lclsteps = proc_local_var name in
           lclsteps @ rest
-        | None ->
-          error "var_steps" ("cannot find variable of : "^name)
       else
         rest
     ) []
     in
     let val_steps = proc_in_val () in
     val_steps @ var_steps
-    *)
 
 
     (*TODO Fix
@@ -606,7 +609,6 @@ struct
           let res  = augment_with_new_partial_sln ms id nnewslns in
           ()
       in
-
       let rec _msolve () =
         let _msolve_next () =
           let _ = musr () in

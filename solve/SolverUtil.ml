@@ -234,6 +234,9 @@ struct
 
   let uvar2complexity u = ast2complexity (get_rhs u)
 
+  let mkuvar_of_stub (vr:unid) (stub:ubhv_stub_kind) : uvar =
+    {bhvr=UBhvStub({knd=stub});lhs=vr}
+
   let goal2complexity = uvar2complexity
 
   let uvar2str uid : string = match uid.bhvr with

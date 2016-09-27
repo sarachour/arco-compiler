@@ -50,6 +50,14 @@ type u_fxn_var = {
   mutable rhs : unid ast;
 }
 
+type ubhv_stub_kind =
+  | UBHPortConn of unid
+  | UBHPortVal of number
+
+type u_stub_var = {
+  mutable knd: ubhv_stub_kind;
+}
+
 type ubhv_sk_math_state = unit 
 type ubhv_sk_analog_state = unit
 type ubhv_state_kind =
@@ -66,7 +74,9 @@ type u_state_var = {
 type ubhv =
   | UBhvVar of u_fxn_var
   | UBhvState of u_state_var
+  | UBhvStub of u_stub_var
   | UBhvUndef
+
 (*math *)
 type uvar = {
   bhvr: ubhv;
