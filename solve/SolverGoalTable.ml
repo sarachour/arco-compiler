@@ -151,7 +151,7 @@ struct
                             noop (MAP.put params par (hwpar2upar data)));
       MAP.iter c.vars (fun v data -> let ndat = hwvar2uvar data in
                         noop (MAP.put vars (ndat.lhs) [ndat]));
-      {vars=vars;params=params;name=c.name;id=UnivLib.name2unodeid c.name}
+      {vars=vars;params=params;name=c.name;comp_id=UnivLib.name2unodeid c.name}
     in
     let nodetbl : (unodeid,unode) map = MAP.make () in
     let sln = SlnLib.mksln () in

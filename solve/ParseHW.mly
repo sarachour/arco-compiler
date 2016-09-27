@@ -118,7 +118,7 @@ let mkdfl cname iname =
 
 %token EOF EOL
 %token EQ COLON QMARK COMMA STAR ARROW OBRACE CBRACE OPARAN CPARAN OBRAC CBRAC DOT
-%token TYPE LET NONE INITIALLY IN WHERE
+%token TYPE LET NONE INITIALLY AT IN WHERE
 
 %token PROP TIME  
 %token COMP INPUT OUTPUT PARAM REL END SIM
@@ -397,7 +397,7 @@ digital:
          HwCstrLib.mk_mag_cstr dat cname pname prop min max typ
   }
 
-  | digital CSTR SAMPLE expr IN DECIMAL TOKEN EOL {
+  | digital CSTR SAMPLE expr AT DECIMAL TOKEN EOL {
       let lhs = $4 and cstr = $6 and typ = $7 in
       let cmpname,portname,prop = match lhs with
       | Term(HNPort(_,HCMLocal(cmpname),portname,prop)) -> (cmpname,portname,prop)

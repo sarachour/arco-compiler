@@ -92,7 +92,7 @@ type unode = {
   mutable params: (string,uparam) map;
   mutable vars: (unid,(uvar) list) map;
   name : string;
-  id: unodeid;
+  comp_id: unodeid;
 }
 
 (*A particular goal to strive for*)

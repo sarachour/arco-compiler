@@ -157,7 +157,6 @@ struct
       results
 
   (*
-     TODO: Fix
      create global circuit from the partial solution buffer
   *)
   let get_global_context (ms:musearch) tbl : sstep list = 
@@ -318,7 +317,7 @@ struct
 
     (*TODO Fix
       normalize partial steps so there are no id conflicts *)
-  let build_partial_steps ms (ctx:sstep list) (tree_id:unid) (node_id:int) : sstep list = []                                                (*
+  let build_partial_steps ms (ctx:sstep list) (tree_id:unid) (node_id:int) : sstep list =
       let idalloc : (unodeid,int set) map = MAP.make () in
       let idmapper : (unodeid*int,int) map = MAP.make () in
       let populate_id_allocator s = match s with
@@ -366,16 +365,11 @@ struct
           HwId(HNPort(knd,HCMGlobal(c,ni),p,pr))
         | _ -> u
       in
-      let trans_urel (u:urel) =
-        match u with
-        | UFunction(rhs,lhs) -> UFunction(trans_unid rhs, ASTLib.map lhs trans_unid)
-        | UState(lhs,rhs,ICVal(ic),time) -> UState(trans_unid lhs, ASTLib.map rhs trans_unid,
-            ICVal(ic), trans_unid time)
-        | UState(lhs,rhs,ICVar(ic),time) -> UState(trans_unid lhs, ASTLib.map rhs trans_unid,
-            ICVar(trans_unid ic), trans_unid time)
+      let trans_uvar (u:uvar) : uvar =
+        UnivLib.upd_uvar u trans_unid
       in
       let trans_goal (g:goal) =
-        (UnivLib.wrap_goal_fun ms.is_trivial (trans_urel (UnivLib.unwrap_goal g)))
+        (UnivLib.wrap_goal_fun ms.is_trivial (trans_uvar (UnivLib.unwrap_goal g)))
       in
       let trans_lcl s = match s with
         | SSolUseNode(id,i) ->
@@ -389,7 +383,7 @@ struct
         | SMakeGoalPassive(g) -> SMakeGoalPassive(g)
         | SAddNodeRel(n,i,rs) ->
           let ni = MAP.get idmapper (n,i) in
-          SAddNodeRel(n,ni,trans_urel rs)
+          SAddNodeRel(n,ni,trans_uvar rs)
       in
       (*get the partial set*)
       let psearch = MAP.get ms.state.partials tree_id in
@@ -411,8 +405,6 @@ struct
       ) new_partial_steps in
       let _ = _print_debug "================" in
       new_partial_steps 
-                                                                                                                                         *)
-
 
   let build_partials_steps ms (ids:(unid*int) set) : sstep list =
     let _ = _print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
@@ -485,16 +477,14 @@ struct
     let _ = SearchLib.move_cursor tbl.search (ms.state.slvr,tbl) (OPTION.force_conc root) in
     tbl
 
-  (*TODO find a partial solution*)
-  let find_partial_solution (ms:musearch) (pvar) (nslns) : ((sstep snode) list) option = None
-(* 
+  let find_partial_solution (ms:musearch) (pvar) (nslns) : ((sstep snode) list) option = 
     let mint,musr = mkmenu ms in
     let slvr = ms.state.slvr in
     let ptbl = mk_partial_tbl ms pvar in
     let currsols : int = SearchLib.num_solutions ptbl.search None in
     (*original solution set*)
     let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
-    let is_new q = List.length (LIST.filter (fun x -> q.id = x.id) orig) = 0 in
+    let is_new q = List.length (LIST.filter (fun (x:sstep snode) -> q.id = x.id) orig) = 0 in
     let _ = _print_debug "find a partial solution" in
     let depth = get_glbl_int "slvr-partial-depth" in
     let _ = set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-partial") in
@@ -514,7 +504,7 @@ struct
       | [] -> None
       | h::t -> Some(h::t)
       end
-*)
+
     (*Find and add a new partial *)
     let augment_with_partial_solution (ms:musearch) (pvar) (slns: sstep snode list option) :  'a option =
       let mint,musr = mkmenu ms in

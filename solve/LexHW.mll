@@ -44,6 +44,7 @@ rule env = parse
   | "time"                  {TIME}
   | "comp"                  {COMP}
   | "end"                   {END}
+  | "at"                    {AT}
 
   | "input"                 {INPUT}
   | "output"                {OUTPUT}

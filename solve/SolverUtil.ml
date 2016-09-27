@@ -320,7 +320,7 @@ struct
       name=cname;
       vars=MAP.make();
       params=MAP.make();
-      id=id;
+      comp_id=id;
     } in
     MAP.put t.used_nodes (id,i) cmp;
     ()
