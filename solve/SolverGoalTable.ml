@@ -139,7 +139,7 @@ struct
           let ic_port,ic_prop = bhv.ic in
           let new_ic_var : unid = HwId(HNPort(HNInput,HCMLocal(c.name),ic_port,ic_prop)) in
           UBhvState({rhs=eh2u bhv.rhs;ic=ICVar(new_ic_var); knd=UBHAnalogStateVar()})
-        | _ -> error "math2goal.comp2node" "impossible"          
+        | _ -> UBhvUndef          
         in
         {lhs=new_lhs;bhvr=ubhv}
       in
