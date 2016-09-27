@@ -39,13 +39,18 @@ end
 digital input V
   input X where D:bits
   output O where V:mV
-  cstr sample D(X) in 0.001 us
+  cstr mag V(X) in [0,5] mV
+  cstr sample D(X) in 0.00001 us
+  cstr repr D(X) in FLOAT(1,4,3)
   rel V(O) = D(X)
 end
 
 digital output V
   input X where V:mV
   output O where D:bits
+  cstr mag V(X) in [0,5] mV
+  cstr sample D(O) in 0.001 us
+  cstr repr D(O) in FLOAT(1,4,3)
   rel D(O) = V(X)
   sim vout X O
 end
@@ -77,6 +82,10 @@ comp iadd
   input D where I:mA
   output OUT where I:mA
   cstr mag I(A) in [0,1] mA 
+  cstr mag I(B) in [0,1] mA 
+  cstr mag I(C) in [0,1] mA 
+  cstr mag I(D) in [0,1] mA
+  cstr mag I(OUT) in [0,1] mA
   rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
 
 end
@@ -90,9 +99,15 @@ comp vadd
 
   output OUT where V:mV
   output OUT2 where V:mV
+  % does not take inputs outside of this range
+  cstr mag I(A) in [0,5] mV
+  cstr mag I(B) in [0,5] mV 
+  cstr mag I(C) in [0,5] mV 
+  cstr mag I(D) in [0,5] mV
+  % only produces outputs in this range
+  cstr mag I(OUT) in [0,5] mV
+  cstr mag I(OUT2) in [0,5] mV
 
-  cstr mag I(OUT) in [0,1] mA
-  cstr mag I(OUT2) in [0,1] mA
   rel V(OUT) =  ((V(A) + V(B)) - V(C) - V(D))*0.1
   rel deriv(V(OUT2),t) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))*0.1  initially V(OUT2_0)
 end
@@ -102,10 +117,11 @@ comp vtoi
   input K where V:mV
   output Y where I:mA
 
-  rel I(Y) = (1/V(K))*V(X)
   cstr mag I(Y) in [0,1] mA
   cstr mag V(K) in [1,4] mV
 
+  rel I(Y) = (1/V(K))*V(X)
+  
   sim vtoi X K Y
 
 end
