@@ -1,0 +1,28 @@
+Comps:
+
+output.V | 1 = [19]
+vsqrt | 5 = [0]
+vpow | 4 = [0]
+vadd | 1 = [0]
+input.V | 3 = [19,18,17]
+vmult | 2 = [0]
+
+Conns:
+vadd[0].Y->vpow[0].P
+vadd[0].X->input.V[19].O
+vadd[0].P->output.V[19].X
+vsqrt[0].X->vmult[0].P
+vpow[0].X->vsqrt[0].P
+vmult[0].X->input.V[18].O
+vmult[0].Y->input.V[17].O
+
+Labels:
+V(input.V[18].O): bind C : input
+V(output.V[19].X): bind A : output
+V(vmult[0].Y): bind D : input
+V(vmult[0].X): bind C : input
+V(input.V[17].O): bind D : input
+V(vadd[0].P): bind A : output
+V(vadd[0].X): bind B : input
+V(input.V[19].O): bind B : input
+

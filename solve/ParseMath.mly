@@ -1,7 +1,6 @@
 %{
   open MathData
   open MathLib
-  open MathCstr
   open Util
   open Unit
   open Common

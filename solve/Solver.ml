@@ -6,7 +6,6 @@ open HWData
 
 open MathLib
 open MathData
-open MathCstr
 
 open AST
 open ASTUnifyData

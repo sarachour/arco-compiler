@@ -1,0 +1,31 @@
+
+*@input IPTG
+Vin_IPTG_16		33	0	DC	1.
+*
+*
+*
+* === Connectivity Schem ==== 
+Xswitch_0		19	3	0	0	switch
+XinputI_22		0	19	iin
+XinputI_18		0	31	iin
+XinputI_45		0	9	iin
+Xvadd_32		21	13	0	1	0	0	0	vadd
+Xvadd_20		15	25	0	17	0	0	0	vadd
+Xvtoi_1		7	29	0	vtoi
+Xihill_6		31	0	5	0	0	0	ihill
+Xihill_7		9	0	27	0	0	0	ihill
+XinputV_110		0	27	vin
+XinputV_48		0	15	vin
+XinputV_70		0	7	vin
+XinputV_42		0	25	vin
+XinputV_71		0	3	vin
+XinputV_30		0	13	vin
+XinputV_40		33	29	vin
+XinputV_54		0	5	vin
+XinputV_34		0	21	vin
+XinputV_3		0	17	vin
+XinputV_58		0	1	vin
+XinputV_121		0	11	vin
+XinputV_91		0	23	vin
+Xitov_17		0	23	0	itov
+Xitov_6		0	11	0	itov

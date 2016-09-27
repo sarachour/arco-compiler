@@ -21,3 +21,4 @@ solver: $(DEPS) $(COMP_DEPS)
 
 clean:
 	ocamlbuild -clean
+	rm *.swo *.swp

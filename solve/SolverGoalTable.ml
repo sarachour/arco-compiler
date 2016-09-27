@@ -7,7 +7,6 @@ open HWData
 
 open MathData
 open MathLib
-open MathCstr
 
 open AST
 open Util

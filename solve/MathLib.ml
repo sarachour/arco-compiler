@@ -2,7 +2,6 @@ open AST
 open Unit
 open Util
 open MathData
-open MathCstr
 open Common
 
 exception MathException of string

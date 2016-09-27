@@ -1,0 +1,39 @@
+Comps:
+
+switch | 0 = []
+vgain | 0 = []
+input.I | 0 = [22,45]
+output.V | 0 = [19]
+copy.V | 0 = []
+vadd | 0 = []
+igenebind | 0 = []
+vtoi | 0 = []
+ihill | 0 = []
+mm | 0 = [0]
+input.V | 0 = [18,82]
+iadd | 0 = []
+itov | 0 = []
+copy.I | 0 = []
+output.I | 0 = []
+
+Conns:
+mm[0].XY->output.V[19].X
+input.I[45].O->mm[0].kr
+input.I[22].O->mm[0].kf
+input.V[18].O->mm[0].Xtot
+input.V[82].O->mm[0].Ytot
+
+Labels:
+V(input.V[82].O): bind 0.11 : input
+V(input.V[18].O): bind 0.15 : input
+I(mm[0].kr): bind 1 : input
+V(output.V[19].X): bind ES : output
+V(mm[0].X): bind E : output
+I(mm[0].kf): bind 1 : input
+V(mm[0].Y): bind S : output
+I(input.I[22].O): bind 1 : input
+V(mm[0].Xtot): bind 0.15 : input
+V(mm[0].Ytot): bind 0.11 : input
+I(input.I[45].O): bind 1 : input
+V(mm[0].XY): bind ES : output
+

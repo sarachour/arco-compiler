@@ -1,0 +1,55 @@
+Comps:
+
+switch | 0 = []
+vgain | 4 = [39,8]
+input.I | 1 = [45]
+output.V | 0 = []
+copy.V | 0 = []
+vadd | 3 = [22,18,32]
+igenebind | 2 = [0]
+vtoi | 0 = []
+ihill | 0 = []
+mm | 0 = []
+input.V | 13 = [22,78,18,124,53,77,67,120,27,61,48,86,96]
+iadd | 0 = []
+itov | 3 = [19,17,8]
+copy.I | 0 = []
+output.I | 0 = []
+
+Conns:
+vgain[8].Z->input.V[61].O
+vadd[18].A->input.V[53].O
+vadd[22].B->input.V[22].O
+itov[17].K->input.V[48].O
+vadd[22].D->input.V[78].O
+itov[8].K->input.V[86].O
+vadd[32].A->input.V[18].O
+vgain[39].X->input.V[27].O
+vadd[22].C->input.V[96].O
+vgain[8].X->input.V[120].O
+igenebind[0].Vmax->input.I[45].O
+vadd[18].B->input.V[77].O
+vadd[32].D->input.V[67].O
+itov[19].K->input.V[124].O
+
+Labels:
+I(itov[8].X): bind ES : input
+V(itov[19].K): bind 31.54 : input
+V(vadd[32].D): bind 25.25 : input
+V(vadd[18].B): bind 0 : input
+I(igenebind[0].Vmax): bind 0 : input
+V(vgain[8].X): bind 1 : input
+V(vadd[22].C): bind 0 : input
+V(vgain[39].X): bind -788.5 : input
+I(itov[17].X): bind ES : input
+V(vadd[32].A): bind 0 : input
+V(itov[8].K): bind 2.1 : input
+V(vadd[22].D): bind 0 : input
+V(itov[17].K): bind -23.15 : input
+V(vgain[39].Z): bind E : input
+V(vadd[22].B): bind 0 : input
+V(vadd[18].A): bind 0 : input
+V(vgain[8].Z): bind 25 : input
+V(vgain[8].Y): bind S : input
+I(itov[19].X): bind E : input
+
