@@ -1,11 +1,11 @@
 open Common
 open Globals
 
-open HW
+open HWLib
 open HWData
-open HWCstr
 
-open Math
+open MathLib
+open MathData
 open MathCstr
 
 open AST
@@ -30,7 +30,6 @@ open SolverRslv
 open SolverGoalTable
 open SolverMulti
 
-open SpiceLib
 
 (*
 A solution is a set of connections  and components. A solution
@@ -53,7 +52,7 @@ struct
 end
 
 
-let canonicalize_sln (hw:hwenv) (s:sln) =
+let canonicalize_sln (hw:hwvid hwenv) (s:sln) =
   
   let newlabels = MAP.make () in
   let mklbl wire propmap =
@@ -75,7 +74,7 @@ let canonicalize_sln (hw:hwenv) (s:sln) =
   ()
 
 
-let solve (hw:hwenv) (prob:menv) (out:string) =
+let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   let _ = init_utils() in
   let sl = SolveLib.mkslv hw prob in
   let msearch = MultiSearch.mkmulti sl in
@@ -88,6 +87,7 @@ let solve (hw:hwenv) (prob:menv) (out:string) =
         (*canonicalize the solution*)
         let sln = SlnLib.conc_sln sl sln in 
         let _ = canonicalize_sln hw sln in
+        (*
         let _ = Printf.printf "===== Concretizing to Spice File ======\n" in
         let _ = try
           let sp = SpiceLib.to_spice sl sln in
@@ -95,6 +95,7 @@ let solve (hw:hwenv) (prob:menv) (out:string) =
         with
           | SpiceLibException(m) -> Printf.printf "ERROR: SPICE Generation Failed. %s" m
         in
+        *)
         let _ = Printf.printf "===== Concretizing to summary file =====\n" in
         let _ = IO.save (out^".summary."^(string_of_int i)) (SlnLib.tostr sln) in
         let _ = SlnLib.repr2file (out^".caml."^(string_of_int i)) sln in

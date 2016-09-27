@@ -49,29 +49,12 @@ struct
         | HCMGlobal(c,_) -> HCMLocal(c))) 
     | _ -> x
 
-  let  lcl2glbl iid (a:unid ast) : unid ast =
-    let mp x = lclid2glblid iid x in
-    ASTLib.map a mp
-
-  let  glbl2lcl (a:unid ast) : unid ast =
-    let mp x = glblid2lclid x in
-    ASTLib.map a mp
   
-  let ic_glbl2lcl (g:unid init_cond) : unid init_cond = 
-    match g with 
-    | ICVar(h) -> ICVar(glblid2lclid h)
-    | ICVal(v) -> ICVal(v)
- 
-  let ic_lcl2glbl (i:int) (g:unid init_cond) : unid init_cond= 
-    match g with 
-    | ICVar(h) -> ICVar(lclid2glblid i h)
-    | ICVal(v) -> ICVal(v)
-
   let map_ic (g: unid init_cond) (fxn: unid -> unid) =
     match g with
     | ICVar(h) -> ICVar(fxn h)
     | _ -> g
-    
+
   let upd_uvar (g:uvar) (fxn:unid -> unid) : uvar =
     begin match g.bhvr with
       | UBhvVar(bhvr) ->
@@ -258,6 +241,7 @@ struct
   | UBhvVar(b) -> (unid2str uid.lhs)^"="^(ASTLib.ast2str b.rhs unid2str)
   | UBhvState(b) -> "ddt("^(unid2str uid.lhs)^")="^(ASTLib.ast2str b.rhs unid2str)
   | UBhvUndef -> (unid2str uid.lhs)^" = *"
+
   let goal2str n = match n with
   | NonTrivialGoal(g) -> ""^(uvar2str g)
   | TrivialGoal(g) -> "@"^(uvar2str g)
@@ -288,7 +272,7 @@ struct
         bhv.ic <- sub_ic bhv.ic;
         data
     in
-    MAP.upd_all node.rels (fun data -> List.map (fun el -> conc_rel el) data);
+    MAP.upd_all node.vars (fun data -> List.map (fun el -> conc_rel el) data);
     node
 
 
@@ -332,7 +316,8 @@ struct
     let cname : string = cnode.name in
     let cmp : unode = {
       name=cname;
-      rels=MAP.make();
+      vars=MAP.make();
+      params=MAP.make();
       id=id;
     } in
     MAP.put t.used_nodes (id,i) cmp;
@@ -347,18 +332,18 @@ struct
       else ()
     in
     let node = MAP.get t.used_nodes (id,i) in
-    if MAP.has node.rels rr.lhs = false then begin
-      MAP.put node.rels rr.lhs [];()
+    if MAP.has node.vars rr.lhs = false then begin
+      MAP.put node.vars rr.lhs [];()
    end else begin
-     let rels = MAP.get node.rels rr.lhs  in
-     MAP.put node.rels rr.lhs (rr::rels);
+     let rels = MAP.get node.vars rr.lhs  in
+     MAP.put node.vars rr.lhs (rr::rels);
      ()
      end
 
   let rm_rel_from_partial_comp (t:gltbl) (id:unodeid) (i:int) (rr:uvar) =
     if has_partial_comp t id i then
       let cmp = MAP.get t.used_nodes (id,i) in
-      let _ = MAP.rm cmp.rels rr.lhs in
+      let _ = MAP.rm cmp.vars rr.lhs in
       ()
     else
       ()

@@ -27,5 +27,5 @@ type musearch = {
   mutable order: unid queue;
   mutable nodes : (unodeid, unode) map;
   mutable goals : goal set;
-  is_trivial: urel -> bool;
+  is_trivial: uvar -> bool;
 }

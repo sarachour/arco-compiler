@@ -5,6 +5,7 @@ open Globals
 open HWLib
 open HWData
 
+open MathData
 open MathLib
 open MathCstr
 
@@ -15,7 +16,7 @@ open Unit
 open SymCamlData
 
 open SearchData
-open Search
+open Search 
 
 open SolverData
 open SolverUtil
@@ -110,32 +111,48 @@ struct
     let _ = SearchLib.setroot st (s,v) steps in
     (v)
 
+  let _rm_pars (s:slvr) x : unid ast option =
+    match x with
+    | Term(HwId(HNParam(HCMLocal(c),n))) ->
+      let pars : number list = (HwLib.getparam s.hw c n).value in
+      begin match pars with
+        | [v] -> Some (ast_of_number (v))
+        | [] -> error "_rm_pars" "parameter is not set"
+        | _ -> None
+      end
+    | Term(MathId(MNParam(n,v))) ->
+      Some (ast_of_number (v))
+    | _ -> None
 
   (*make an empty node without the goals*)
-  let mktbl s (is_trivial:uvar->bool) : gltbl =
-    let comp2node (c:hwvid hwcomp) =
+  let mktbl (s:slvr) (is_trivial:uvar->bool) : gltbl =
+    let comp2node (c:hwvid hwcomp) : unode =
       let nvars = List.filter (fun (x:hwvid hwportvar) ->
           x.bhvr <> HWBhvUndef) (MAP.to_values (c.vars)) in
-      let hwvar2ic i = match h2u i with 
-            | MathId(MNParam(n,v)) -> ICVal(v)
-            | HwId(HNParam(c,n)) -> ICVal(v)
-            | var -> ICVar(var)
-      in 
-      let hwvar2urel (x:hwvid hwvar) =
-        let h2u = UnivLib.hwid2unid in
-        let new_lhs = h2u x.lhs in
-        let bhv = match x.bhv with
-        | HWBhvDigital(bhv) -> 
-        | HWBhvAnalogVar(bhv) -> 
-        | HWBhvAnalogStateVar(bhv) -> 
-          let time = HNTime(HCMLocal(c.name),c.time) in
-          
-          UState(h2u l, tf r, ic, h2u time)
-        | _ -> error "math2goal.comp2node" "impossible"
+      let h2u = UnivLib.hwid2unid in
+      let eh2u x = ASTLib.trans (ASTLib.map x h2u) (_rm_pars s) in 
+      let hwvar2uvar (x:hwvid hwportvar) : uvar =
+        let new_lhs = HwId(HNPort(x.knd,HCMLocal(c.name),x.port,x.prop)) in
+        let ubhv : ubhv= match x.bhvr with
+        | HWBhvDigital(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHDigitalVar()})
+        | HWBhvAnalogVar(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHAnalogVar()})
+        | HWBhvAnalogStateVar(bhv) ->
+          let ic_port,ic_prop = bhv.ic in
+          let new_ic_var : unid = HwId(HNPort(HNInput,HCMLocal(c.name),ic_port,ic_prop)) in
+          UBhvState({rhs=eh2u bhv.rhs;ic=ICVar(new_ic_var); knd=UBHAnalogStateVar()})
+        | _ -> error "math2goal.comp2node" "impossible"          
+        in
+        {lhs=new_lhs;bhvr=ubhv}
       in
-      let nrels = List.map var2urel nvars in
-      let n = {rels=SET.from_list nrels; name=c.name} in
-      n
+      let hwpar2upar (c:hwparam) : uparam =
+        {name=c.name;values=c.value}
+      in
+      let vars = MAP.make() and params = MAP.make() in
+      MAP.iter c.params (fun par data -> if List.length data.value == 1 then () else
+                            noop (MAP.put params par (hwpar2upar data)));
+      MAP.iter c.vars (fun v data -> let ndat = hwvar2uvar data in
+                        noop (MAP.put vars (ndat.lhs) [ndat]));
+      {vars=vars;params=params;name=c.name;id=UnivLib.name2unodeid c.name}
     in
     let nodetbl : (unodeid,unode) map = MAP.make () in
     let sln = SlnLib.mksln () in
@@ -159,24 +176,27 @@ struct
       } in
     tbl
 
-  let mkgoalroot s tbl =
-    let fltmath x = x.rel <> MRNone in
-    let math2goal (x:mvar) : goal =
+
+
+  
+  let mkgoalroot (s:slvr) (tbl:gltbl) =
+    let fltmath (x:mid mvar) = x.bhvr <> MBhvUndef in
+    let math2goal (x:mid mvar) : goal =
       let m2u : mid -> unid = UnivLib.mid2unid in
       let tf (x:mid ast) : unid ast =
-        let t = ASTLib.trans (ASTLib.map x m2u) _rm_pars in
+        let t = ASTLib.trans (ASTLib.map x m2u) (_rm_pars s) in
         t
       in
-      match x.rel with
-      | MRFunction(l,r) ->
-        let rel = UFunction(m2u l, tf r) in
-        if tbl.is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
-      | MRState(l,r, MNParam(icname,ic,ictype) ) ->
-        let time = (MathLib.getvar s.prob (OPTION.force_conc s.prob.time)).typ in
-        let ic_cnd : unid init_cond = ICVal(ic) in 
-        let rel = UState(m2u l, tf r, ic_cnd, m2u time) in
-        if tbl.is_trivial rel then TrivialGoal(rel) else NonTrivialGoal(rel)
-      | MRNone -> error "math2goal" "impossible."
+      let lhs : unid = MathId(MNVar(x.knd,x.name)) in
+      let bhvr : ubhv= match x.bhvr with
+        | MBhvVar(bhv) ->
+          UBhvVar ({rhs=(tf bhv.rhs); knd=UBMMathVar()})
+        | MBhvStateVar(bhv) ->
+          UBhvState ({rhs=(tf bhv.rhs); ic=ICVal(bhv.ic); knd=UBMMathStateVar()})
+        | MBhvUndef -> error "math2goal" "impossible."
+      in
+      let vrb:uvar = {lhs=lhs;bhvr=bhvr} in
+        if tbl.is_trivial vrb then TrivialGoal(vrb) else NonTrivialGoal(vrb)
     in
     let goals : goal list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
     let steps = List.map (fun x -> SAddGoal x) goals in

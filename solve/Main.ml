@@ -4,9 +4,11 @@ open Core
 
 (*Self Libraries*)
 open AST
-open Math
+open MathLib
+open MathData
 open Sym
-open HW
+open HWLib
+open HWData
 open Logic
 open Util
 

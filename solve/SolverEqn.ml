@@ -10,7 +10,9 @@ open Interactive
 open Globals
 
 open HWData
-open Math
+open HWLib
+
+open MathLib
 
 open Search
 open SearchData
@@ -22,7 +24,6 @@ open SolverRslv
 open SolverSln
 open SolverTrivial
 
-open HW
 
 exception SolverEqnError of string
 
@@ -80,17 +81,9 @@ struct
 
 
 
-  (*
-  let unify_exprs (s:slvr) (name:string) (inst_id:int) (gl:unid) (gr:unid ast) (nl:unid) (nr:unid ast) : ((unid,unid ast) map) list option =
-    (*declare event*)
-    let declwcunid = Shim.unid2wcsym name inst_id in
-    let n_tries = get_glbl_int "search_n_patterns_found" in
-    let res = ASTLib.pattern nr gr UnivLib.unid2var (UnivLib.var2unid (s)) declwcunid n_tries in
-    res
- *)
  (*TODO Fix*)
-
-  let feasible_component_goal_combo (s:slvr) (g:goal) (node_id:unodeid) =
+  let feasible_component_goal_combo (s:slvr) (g:goal) (node_id:unodeid) = false
+    (*
     let node_name = UnivLib.unodeid2name node_id in
     let test_conn (src:hwvid) (snk:hwvar) =
       let wsrc : wireid = UnivLib.hwid2wire src in
@@ -110,11 +103,11 @@ struct
     | NonTrivialGoal(UFunction(MathId(id),lhs)) -> true
     | NonTrivialGoal(UState(MathId(id),_,_,_)) -> true
     | _ -> error "feasible_component_goal_combo" "unexpected"
+*)
 
 
-
-  let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (iid:int option) : int option =
-    
+  let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (iid:int option) : int option = None
+   (* 
     if get_glbl_bool "test-component-reachability" && feasible_component_goal_combo s g node_id = false then
       None
     else
@@ -257,10 +250,11 @@ struct
           let _ = SET.iter slns (fun x -> add_unification comp_cursor x iid)  in
           Some(nslns)
     | None -> None
+*)
 
 
-
-  let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =
+  let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =()
+(*
     let goal_cursor = SearchLib.cursor tbl.search in
     let handle_component (id:unodeid) (inst: int option) (status:bool) : bool =
       let _ = SearchLib.move_cursor tbl.search (slvenv,tbl) goal_cursor in
@@ -282,7 +276,7 @@ struct
     if has_results = false then
       begin SearchLib.deadend tbl.search goal_cursor (slvenv,tbl); () end
     else ()
-
+*)
 
   let mark_if_solution (s:slvr) (v:gltbl) (curr:(sstep snode)) = 
     let _ = _print_debug "[mark-if-solution] testing if solution." in

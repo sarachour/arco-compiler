@@ -9,8 +9,9 @@ open Globals
 open AST
 
 open HWData
-open Math
-open HW
+open HWLib
+open MathData
+open MathLib
 
 open Search
 open SearchData
@@ -138,7 +139,7 @@ struct
         Some (List.nth left 0)
 
 
-  let get_labels tbl valfilt varfilt : (wireid*propid*label) list =
+  let get_labels tbl valfilt varfilt : (wireid*string*label) list =
     let results = MAP.fold tbl.sln.labels (fun wire pmap rest ->
         let rr = MAP.fold pmap (fun p xset rest ->
             let flt : label list = SET.filter xset (fun x ->
@@ -146,7 +147,7 @@ struct
               | LBindVar(knd,name) -> varfilt knd name
               | LBindValue(knd,v) -> valfilt knd v
             ) in
-            let res : (wireid*propid*label) list = List.map (fun x -> (wire,p,x)) flt in
+            let res : (wireid*string*label) list = List.map (fun x -> (wire,p,x)) flt in
             res @ rest
           ) []
         in
@@ -156,17 +157,19 @@ struct
       results
 
   (*
-    create global circuit from the partial solution buffer
+     TODO: Fix
+     create global circuit from the partial solution buffer
   *)
-  let get_global_context ms tbl : sstep list =
-    let menv : menv = ms.state.slvr.prob in
-    let hwenv : hwenv=  ms.state.slvr.hw  in
+  let get_global_context ms tbl : sstep list = []
+  (*
+    let menv : mid menv = ms.state.slvr.prob in
+    let hwenv : hwvid hwenv=  ms.state.slvr.hw  in
     (*process a local variable*)
     let proc_local_var name =
       (*all output port labels with the mathid name*)
-      let olabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
+      let olabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
       (*all input labels with the mathid name*)
-      let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
+      let ilabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
       match olabels with
       | [(owire,oprop,olabel)] ->
         let _ = _print_debug ("local variable "^name^" is tagged on an output wire. Let's connect it to all inputs.") in
@@ -193,7 +196,7 @@ struct
     in
     (*process a strict output*)
     let proc_out_var (name:string) =
-      let olabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
+      let olabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
       match olabels with
       | [(wwire,wprop,wlabel)] ->
         let _ = _print_debug "found the output label" in
@@ -223,7 +226,7 @@ struct
     in
     (*process a strict input*)
     let proc_in_var (name:string) =
-      let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
+      let ilabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
       let res : sstep list = LIST.fold ilabels (fun (wwire,wprop,wlabel) rest ->
         let _ = _print_debug ("input variable "^name^" has an input label") in
         let cmpname,ihwid,ohwid = HwLib.getin hwenv wprop in
@@ -254,7 +257,7 @@ struct
       | LBindValue(_,Decimal(i)) -> Decimal(i)
       | _ -> error "valaasign2ast" "expected value assign"
       in
-      let ilabels : (wireid*propid*label) list = get_labels tbl (fun k v -> k = HNInput) (fun k v -> false) in
+      let ilabels : (wireid*string*label) list = get_labels tbl (fun k v -> k = HNInput) (fun k v -> false) in
       let res : sstep list = LIST.fold ilabels (fun (wwire,wprop,wlabel) rest ->
         let _ = _print_debug "found the input label" in
         let cmpname,ihwid,ohwid = HwLib.getin hwenv wprop in
@@ -307,11 +310,12 @@ struct
     in
     let val_steps = proc_in_val () in
     val_steps @ var_steps
+    *)
 
 
-
-    (*normalize partial steps so there are no id conflicts *)
-    let build_partial_steps ms (ctx:sstep list) (tree_id:unid) (node_id:int) : sstep list =
+    (*TODO Fix
+      normalize partial steps so there are no id conflicts *)
+  let build_partial_steps ms (ctx:sstep list) (tree_id:unid) (node_id:int) : sstep list = []                                                (*
       let idalloc : (unodeid,int set) map = MAP.make () in
       let idmapper : (unodeid*int,int) map = MAP.make () in
       let populate_id_allocator s = match s with
@@ -353,10 +357,10 @@ struct
         (cid,ni,lc)
       in
       let trans_unid (u:unid) : unid = match u with
-        | HwId(HNPort(knd,HCMGlobal(c,i),p,pr,u)) ->
+        | HwId(HNPort(knd,HCMGlobal(c,i),p,pr)) ->
           let id = UnivLib.name2unodeid c in
           let ni = MAP.get idmapper (id,i) in
-          HwId(HNPort(knd,HCMGlobal(c,ni),p,pr,u))
+          HwId(HNPort(knd,HCMGlobal(c,ni),p,pr))
         | _ -> u
       in
       let trans_urel (u:urel) =
@@ -404,7 +408,7 @@ struct
       ) new_partial_steps in
       let _ = _print_debug "================" in
       new_partial_steps 
-
+                                                                                                                                         *)
 
 
   let build_partials_steps ms (ids:(unid*int) set) : sstep list =
@@ -462,7 +466,7 @@ struct
     let _ = if MAP.has ms.state.partials id = false then
         let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
         (*make passive bans*)
-        let blacklist = SET.filter ms.goals (fun g -> Shim.goal2lhs g <> id) in
+        let blacklist = SET.filter ms.goals (fun g -> UnivLib.goal2lhs g <> id) in
         let bansteps = List.map (fun x -> SMakeGoalPassive(x)) blacklist in
         let goalsteps = SET.map ms.goals (fun g -> SAddGoal(g)) in
         let _ = GoalTableLib.mkroot ms.state.slvr tbl (bansteps @ goalsteps) in
@@ -478,8 +482,9 @@ struct
     let _ = SearchLib.move_cursor tbl.search (ms.state.slvr,tbl) (OPTION.force_conc root) in
     tbl
 
-  (*find a partial solution*)
-  let find_partial_solution (ms:musearch) (pvar) (nslns) : ((sstep snode) list) option =
+  (*TODO find a partial solution*)
+  let find_partial_solution (ms:musearch) (pvar) (nslns) : ((sstep snode) list) option = None
+(* 
     let mint,musr = mkmenu ms in
     let slvr = ms.state.slvr in
     let ptbl = mk_partial_tbl ms pvar in
@@ -506,14 +511,14 @@ struct
       | [] -> None
       | h::t -> Some(h::t)
       end
-
+*)
     (*Find and add a new partial *)
     let augment_with_partial_solution (ms:musearch) (pvar) (slns: sstep snode list option) :  'a option =
       let mint,musr = mkmenu ms in
       let curs = SearchLib.cursor ms.search in
       let proc_step x = match x with
         | SRemoveGoal(g) ->
-          let lhs = Shim.goal2lhs g in
+          let lhs = UnivLib.goal2lhs g in
           if QUEUE.has ms.order lhs then
             let _ = _print_debug (">> Solved Var: "^(UnivLib.unid2str lhs)) in 
             SearchLib.add_step ms.search (MSSolveVar(lhs))
@@ -672,7 +677,7 @@ struct
     let _ = GoalTableLib.mkgoalroot slvr scratch  in
     (*create ordering*)
     let order = QUEUE.make () in
-    let _ =SET.iter scratch.goals (fun g -> let v = Shim.goal2lhs g in
+    let _ =SET.iter scratch.goals (fun g -> let v = UnivLib.goal2lhs g in
       return (QUEUE.enqueue order v) ()
     ) in
     (*initialize partial tree*)

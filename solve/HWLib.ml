@@ -64,7 +64,6 @@ struct
     in
     match e with
     | HNPort(_,c,v,prop) ->(c2str c)^prop^"{"^v^"}:"
-    | HNParam(c,v) -> (c2str c)
     | HNTime -> "t"
 
  let kind2str v =

@@ -9,18 +9,19 @@ open SolverSln
 
 open Common
 open HWData
-open Math
-open HW
+open MathData
+open HWLib
 
 exception TrivialException of (string)
 let error n msg = raise (TrivialException(n^": "^msg))
 
-
+(*TODO: Fill in after refactor*)
 module TrivialLib =
 struct
 
-  let is_trivial g =
-      match g with
+  let is_trivial g = false 
+(*
+    match g with
       | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Decimal(_)) -> true
       | UFunction(HwId(HNPort(HNInput,_,_,_,_)),Integer(_)) -> true
       | UFunction(MathId(_),Decimal(_)) -> true
@@ -30,8 +31,9 @@ struct
       | UFunction(MathId(v),Term(HwId(_))) -> true
       | UFunction(HwId(v),Term(MathId(_))) -> true
       | _ -> false
-
-  let if_nontrivial_possible g =
+*)
+  let if_nontrivial_possible g = true
+    (*
       match g with
       | UFunction(MathId(MNTime(_)),Term(HwId(HNTime(_)))) -> false
       | UFunction(HwId(HNTime(_)),Term(MathId(MNTime(_)))) -> false
@@ -42,13 +44,13 @@ struct
       | UFunction(MathId(v),Term(HwId(_))) -> false
       | UFunction(HwId(v),Term(MathId(_))) -> false
       | _ -> false
-
+*)
 
   let mkconn s t sw dw pr =
     if sw = dw then [] else
     [SSolAddConn(sw,dw)]
 
-  let rslv_value (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (valu:number) knd =
+  let rslv_value (slvr:slvr) (sln:sln) (wire:wireid) (prop:string) (valu:number) knd =
     let nlbl = LBindValue(knd,valu) in
     match knd with
     (*impossible to map an output to a value*)
@@ -60,7 +62,8 @@ struct
       let stps = [SSolAddLabel(wire,prop,nlbl)] in
       stps
 
-  let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:propid) (q:mid) (knd:hwvkind) =
+  let rslv_label (slvr:slvr) (sln:sln) (wire:wireid) (prop:string) (q:mid) (knd:hwvkind) = []
+(*
     let nlbl = LBindVar(knd,q) in
     let qname = (MathLib.mid2name q) in
     if MathLib.isparam slvr.prob qname then
@@ -88,8 +91,9 @@ struct
       let stps = [SSolAddLabel(wire,prop,nlbl)] in
       stps
     | (a,b)-> error "rslv_lbl" ("impossible label: hw "^(HwLib.kind2str a)^" := math "^(MathLib.kind2str b))
-
-  let resolve_trivial_step (s:slvr) (t:gltbl) g : sstep list =
+*)
+  let resolve_trivial_step (s:slvr) (t:gltbl) g : sstep list = []
+(*
     match GoalTableLib.unwrap_goal g with
       (*check for duplicates*)
     | UFunction(HwId(HNPort(k1,c1,v1,prop1,u1)),Term (HwId(HNPort(k2,c2,v2,prop2,u2))) )  ->
@@ -128,6 +132,6 @@ struct
         []
 
     | _ -> []
-
+*)
 
 end

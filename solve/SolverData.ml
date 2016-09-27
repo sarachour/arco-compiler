@@ -34,26 +34,53 @@ type unodeid =
   | UNoCopy of string
   | UNoComp of string
 
+(*Tableau Data*)
 
-type unode_fxn = {
+type ubhv_vk_analog_var = unit
+type ubhv_vk_digital_var = unit 
+type ubhv_vk_math_var = unit
+
+type ubhv_var_kind =
+  | UBHAnalogVar of ubhv_vk_analog_var
+  | UBHDigitalVar of ubhv_vk_digital_var
+  | UBMMathVar of ubhv_vk_math_var
+
+type u_fxn_var = {
+  mutable knd: ubhv_var_kind;
   mutable rhs : unid ast;
 }
-type unode_deriv = {
+
+type ubhv_sk_math_state = unit 
+type ubhv_sk_analog_state = unit
+type ubhv_state_kind =
+  | UBHAnalogStateVar of ubhv_sk_analog_state
+  | UBMMathStateVar of ubhv_sk_math_state
+
+type u_state_var = {
+  mutable knd : ubhv_state_kind;
   mutable rhs : unid ast;
   mutable ic : unid init_cond;
 }
-type ubhv =
-  |UBhvVar of unode_fxn
-  |UBhvState of unode_deriv
+(**)
 
+type ubhv =
+  | UBhvVar of u_fxn_var
+  | UBhvState of u_state_var
+  | UBhvUndef
+(*math *)
 type uvar = {
   bhvr: ubhv;
   mutable lhs: unid;
 }
-
-(*abstract hardware resources*)
+type uparam = {
+  name: string;
+  values: number list;
+}
+(*abstract hardware resources, including potentially
+partially set parameters and multiple relations.*)
 type unode = {
-  mutable rels: (unid,uvar list) map;
+  mutable params: (string,uparam) map;
+  mutable vars: (unid,(uvar) list) map;
   name : string;
   id: unodeid;
 }
