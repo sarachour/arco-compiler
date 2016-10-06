@@ -38,29 +38,41 @@ rule env = parse
   | "}"                     {CBRACE}
   | "sim"                   {SIM}
   | "none"                  {NONE}
-  | "let"                   {LET}
   | "type"                  {TYPE}
   | "prop"                  {PROP}
   | "time"                  {TIME}
   | "comp"                  {COMP}
   | "end"                   {END}
-  | "at"                    {AT}
 
+  | "shape"                 {SHAPE}
+  | "UNIFORM"               {UNIFORM}
+  | "GAUSS"                 {GAUSS}
+  | "POISS"                 {POISS}
+  
   | "input"                 {INPUT}
   | "output"                {OUTPUT}
-  | "initially"             {INITIALLY}
-  | "where"                 {WHERE}
   | "param"                 {PARAM}
-  | "in"                    {IN}
+  | "ddt"                   {DDT}
   | "rel"                   {REL}
+  | "var"                   {VAR}
+  | "init"                  {INIT}
 
+  | "def"                   {DEF}
   | "mag"                   {MAG}
-  | "cstr"                  {CSTR}
-  | "sample"                {SAMPLE}
-  | "err"                   {ERR}
-  | "FLOAT"                 {FLOAT}
-  | "repr"                  {REPR}
 
+  | "map"                   {MAP}
+  | "map-var"               {MAPVAR}
+  | "linear"                {LINEAR}
+  | "scale"                 {SCALE}
+  | "offset"                {OFFSET}
+
+  | "sample"                {SAMPLE}
+
+  | "repr"                  {REPR}
+  | "expo"                  {EXPO}
+  | "mantissa"              {MANTISSA}
+  | "sign"                  {SIGN}
+  
   | "copy"                  {COPY}
 
   | "schematic"             {SCHEMATIC}
@@ -68,7 +80,7 @@ rule env = parse
   | "conn"                  {CONN}
 
   | "digital"               {DIGITAL}
-  | "sample"                {SAMPLE}
+
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}
   | token as t              {TOKEN(t)}

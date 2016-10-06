@@ -7,46 +7,47 @@ prop D : bits
 time t: us
 
 digital input I
-    input X where D:bits
-    repr D(X) in FLOAT(1,4,3)
-    sample D(X) at 0.0001 us
+    def map-var A B
+
+    input X {D:bits}
+    def D(X) repr=SEEEMMMM
+    def D(X) sample=0.0001 us
 
 
-    output O where I:mA
-    mag I(O) in [0,1] mA
+    output O {I:mA}
+    def I(O) mag=[0,1] mA
+    %def I(O) map linear {scale=(A),offset=(B)}
+    
     rel I(O) = D(X)
-
     var I(O) = I(O)*0.00001 shape UNIFORM
 end
 
 digital output I
-    input X where I:mA
-    mag I(X) in [0,1] mA
-    scale I(X) with linear A B
+    input X {I:mA}
+    def I(X) mag=[0,1] mA
+    def I(X) map linear scale=A offset=B
 
-    output O where D:bits
-    repr D(O) in FLOAT(1,4,3)
-    sample D(O) at 0.001 us
+    output O {D:bits}
+    def D(O) repr=SEEEMMMM
+    def D(O) sample=0.001 us
 
     rel D(O) = I(X)
 end
 
 comp iadd
-    define-var A
-    define-var B1
-    define-var B2
+    map-var A B1 B2
 
     input X {I:mA}
-    prop I(X) mag=[0,1] mA
-    prop I(X) linear {scale=A, offset=B1}
+    def I(X) mag=[0,1] mA
+    def I(X) map linear scale=A offset=B1
 
     input Y {I:mA}
-    prop I(X) mag=[0,1] mA
-    prop I(X) linear {scale=A, offset=B2}
+    def I(X) mag=[0,1] mA
+    def I(X) map linear scale=A offset=B2
 
     output Z{I:mA}
-    prop I(Z) mag=[?] mA
-    prop I(Z) linear {scale=1/A, offset=(B1+B2)/A}
+    %def I(Z) mag=[?] mA
+    def I(Z) map linear scale=1/A offset=(B1+B2)/A
 
     rel I(Z) = I(X) + I(Y)
     var I(Z) = I(Z)*0.00001 shape GAUSS
@@ -54,46 +55,53 @@ end
 
 
 comp imul
-    define-var A1 A2 A3
+    map-var A1 A2 A3
 
     input X {I:mA}
-    prop I(X) mag=[0,1] mA
-    prop I(X) scaling {scale=A1}
+    def I(X) mag=[0,1] mA
+    def I(X) map scale A1
 
     input Y {I:mA}
-    prop I(Y) mag=[0,1] mA
-    prop I(Y) scaling {scale=A2}
+    def I(Y) mag=[0,1] mA
+    def I(Y) map scale A2
 
     input Z {I:mA}
-    prop I(Z) mag=[0,1] mA
-    prop I(Z) scaling {scale=A3}
+    def I(Z) mag=[0,1] mA
+    def I(Z) map scale A3
 
     input W {I:mA}
-    prop I(W) mag=[?] mA
-    prop I(W) scaling {scale=A3/(A1+A2)}
+    def I(W) mag=[?] mA
+    def I(W) map scale A3/(A1+A2)
 
-    rel I(W) = I(X)*I(Y)/I(Z)
-    var I(W) = I(W)*0.000001 shape GAUSS
+    var I(W) = (I(W))*0.000001 shape GAUSS
+    %rel I(W) = I(X)*I(Y)/I(Z)
+
 end 
 
 
 comp deriv_iadd
-    define-var A B
+    map-var A B
     input X {I:mA}
-    prop I(X) mag=[0,1] mA
-    prop I(X) linear {scale=A,offset=B}
+    def I(X) mag=[0,1] mA
+    def I(X) map linear scale=A offset=B
 
-    prop I(P) mag = [0,0.0001] mA
-    prop I(P) scaling {scale=A}
+    input P {I:mA}
+    def I(P) mag = [0,0.0001] mA
+    def I(P) map scale A
 
-    input Z {I:mA}
-    prop I(Z) mag = [0,1] mA
-    prop I(Z) linear {scale=1/A,offset=B/A}
-    prop deriv(I(Z),t) linear {scale=1/A,offset=B/A}
-    prop deriv(I(Z),t) mag= [?] mA
+    input Z0 {I:mA}
+    def I(Z0) mag = [0,1] mA
     
-    rel deriv(I(Z),t) = I(X) - I(P)*I(Z) init Z0
-    var deriv(I(Z),t) = I(Z)*0.00001 shape GAUSS
+    input Z {I:mA}
+    def I(Z) mag = [0,1] mA
+    def I(Z) map linear scale=1/A offset=B/A
+    
+    def ddt I(Z) mag= [?] mA
+    def ddt I(Z) map linear scale=1/A offset=B/A
+    
+    rel ddt I(Z) = I(X) - I(P)*I(Z) init I(Z0)
+    var ddt I(Z) = I(Z)*0.00001 shape GAUSS
+
 end
 
 
@@ -102,12 +110,11 @@ schematic
    inst output I : 10
    inst iadd  : 2
    inst imul : 4
-   int deriv_iadd: 1
+   inst deriv_iadd: 1
 
-   conn * <-> *
-
-
-
-
+   conn input(I) <-> iadd
+   %conn input(I) <-> imul 
+   %conn input(I) <-> deriv_iadd
+   %conn deriv_iadd <-> output(I)
 
 end
