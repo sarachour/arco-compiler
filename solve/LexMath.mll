@@ -24,7 +24,6 @@ rule env = parse
   | commentblock            {env lexbuf}
   | '\n'                    {Lexing.new_line lexbuf; EOL}
   | eof                     {EOF}
-  | "with"                  {WITH}
   | "rel"                   {REL}
 
   | ":"                     {COLON}
@@ -36,6 +35,11 @@ rule env = parse
 
   | ","                     {COMMA}
 
+  | "shape"                 {SHAPE}
+  | "GAUSS"                 {GAUSS}
+  | "UNIFORM"               {UNIFORM}
+  | "POISS"                 {POISS}
+
   | "name"                  {NAME}
   | "let"                   {LET}
   | "type"                  {TYPE}
@@ -46,11 +50,13 @@ rule env = parse
   | "local"                 {LOCAL}
   | "param"                 {PARAM}
   | "time"                  {TIME}
+  | "def"                   {DEF}
 
-  | "cstr"                   {CSTR}
   | "mag"                   {MAG}
-  | "err"                   {ERR}
-
+  | "var"                   {VAR}
+  | "ddt"                   {DDT}
+  | "init"                  {INIT}
+  
   | "none"                  {NONE}
   | "?"                     {QMARK}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}

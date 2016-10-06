@@ -9,14 +9,16 @@ input C: M
 input D: M
 output E: M
 
-prop A mag=[0,1] M
-prop B mag=[0,1] M
-prop C mag=[0,1] M
-prop D mag=[0,1] M
+time t : s 
 
-prop E mag=[0,1] M
-prop deriv(E,t)=[?] M
+def A mag=[0,1] M
+def B mag=[0,1] M
+def C mag=[0,1] M
+def D mag=[0,1] M
 
-rel deriv(E,t) = A*B + C*D - 0.001*E init 0
-var deriv(E,t) = E*0.00001 shape GAUSS
+def E mag=[0,1] M
+def ddt E mag=[?] M
+
+rel ddt E = (A*B + C*D) - (0.001*E) init 0
+var ddt E = E*0.00001 shape GAUSS
 

@@ -23,18 +23,19 @@
 
 %token EOF EOL COLON QMARK EQ OBRAC CBRAC OPARAN CPARAN COMMA
 
-%token CSTR IN MAG ERR
+%token DEF IN MAG VAR
 
 %token NAME TYPE LET NONE
 %token INPUT OUTPUT LOCAL PARAM TIME
-%token REL WITH
+%token REL INIT DDT  
 %token <string> STRING TOKEN OPERATOR
 %token <float> DECIMAL
 %token <int> INTEGER
 
+%token SHAPE GAUSS UNIFORM POISS
+
 %type <string> sexpr
 %type <mid ast> expr
-%type <meid ast> errexpr
 %type <unt> typ
 %type <number> number
 %type <unit> seq
@@ -79,23 +80,6 @@ expr:
     am
   }
 
-errexpr:
-  | expr {
-    let s = $1 in
-    let mp x =
-      match x with
-      |MVar(k,x,u) -> MEVar(k,x,u)
-      |MParam(x,v,u) -> MEParam(x,v,y)
-      |MTime(u) -> METime(u)
-    let conv x =
-      match x with
-      | Func("E",[Term(MEVar(k,x,u))]) -> Some(Term(MEError(k,x,u)))
-      | Func(_,_) -> error "errexp" "not expecting func"
-    in
-    let res = AST.trans (AST.map s mp) conv in
-    res
-  }
-
 number:
   | DECIMAL   {let e = $1 in Decimal(e)}
   | INTEGER   {let e = $1 in Integer(e)}
@@ -104,69 +88,14 @@ numlist:
   | number                    {let e = $1 in [e]}
   | number COMMA numlist      {let lst = $3 and e = $1 in e::lst}
 
-
+shape:
+  | GAUSS {()}
+  | UNIFORM {()}
+  | POISS {()}
 typ:
   | sexpr {UExpr(string_to_ast $1)}
   | NONE {UNone}
   | QMARK {UVariant}
-
-erel:
-  | expr EQ expr {
-    let lhs : mid ast = $1 in
-    let rhs : mid ast = $3 in
-    let map_hwerr (x:mid): meid =
-      match x with
-      | MNVar(k,n,u) -> MEVar(k, n, u)
-      | MNParam(n,v,u) -> MEParam(n,v,u)
-      | MNTime(u) -> METime(u)
-    in
-    let trans_hwerr (x:meid ast): (meid ast) option =
-      match x with
-      | OpN(Func("E"), [Term(MEVar(k,x,u))]) -> Some (Term(MEError(k,x,u)))
-      | OpN(Func(_), _) -> error "erel/trans_hwerr" "cannot have function"
-      | _ -> None
-    in
-    let lhs = ASTLib.trans (ASTLib.map lhs map_hwerr) trans_hwerr in
-    let rhs = ASTLib.trans (ASTLib.map rhs map_hwerr) trans_hwerr in
-    match lhs with
-    | Deriv(Term(MEError(knd,name,u)),Term(METime(ut))) -> (name,MEState(rhs))
-    | Term(MEError(knd,name,u)) -> (name,MEFunction(rhs))
-    | Deriv(Term(MEError(_,_,_)),_) -> error "erel" "unsupported time expression"
-    | Deriv(Term(_),Term(_)) -> error "erel" "unsupported terms in derivative"
-    | Deriv(_,_) -> error "erel" "unsupported derivative expression"
-    | _ -> error "erel" "unsupported left hand side."
-  }
-
-rel:
-  | expr EQ expr WITH TOKEN OPARAN INTEGER CPARAN EQ number {
-      let lhs = $1 in
-      let rhs = $3 in
-      let ic = $10 and lbr = $6 and rbr = $8 and tic : int = $7 and icn = $5 in
-      if tic <> 0 then
-        error "rel_parse" "initial condition must be for t=0"
-      else
-      match lhs with
-      |Term(MNVar(_,name)) ->
-        error "rel_parse" ("stateless variable "^name^" is qualitifed with 'with' statement")
-      |Deriv(Term(MNVar(k,name)), Term(MNTime)) ->
-        if icn <> name then
-          error "rel_parse" ("name of variable "^name^" must match initial condition variable name")
-        else
-          MathLib.mkstrel dat name rhs ic
-      | Deriv(_,_) -> error "rel_parse" "not a supported derivative"
-      | _ -> error "rel_parse" "could not parse relation."
-    }
-  | expr EQ expr {
-    let lhs = $1 in
-    let rhs = $3 in
-    match lhs with
-      | Term(MNVar(k, name)) ->
-        if k = MInput then error "rel" "input cannot be on lhs." else
-        MathLib.mkrel dat name rhs
-      | Deriv(Term(MNVar(_,name)),wrt) ->
-        error "rel_parse" ("variable with state "^name^" missing the 'with V(0) = 0.001' clause")
-      | _ -> error "rel_parse" ("disallowed left hand side.")
-  }
 
 
 st:
@@ -189,13 +118,36 @@ st:
     MathLib.mkvar dat name knd typ;
     ()
   }
-  | CSTR MAG TOKEN IN OBRAC numlist CBRAC typ EOL {
-    let name : string= $3 in
+  | DEF TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
+    ()
+  }
+  | DEF DDT TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
+    ()
+  }
+  | DEF TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
+    ()
+  }
+  | DEF TOKEN DDT MAG EQ OBRAC QMARK CBRAC typ EOL {
+    ()
+  }
+  | DEF TOKEN MAG EQ OBRAC numlist CBRAC typ EOL {
+    let name : string= $2 in
     let bounds = $6 in
     if List.length bounds == 2 then
        let min : number = List.nth bounds 0 in
        let max : number = List.nth bounds 1 in
        let typ : unt = $8 in 
+       MathLib.set_mag dat name min max typ
+    else
+       error "cstr mag" "bounds is more than two elements"
+  }
+  | DEF DDT TOKEN MAG EQ OBRAC numlist CBRAC typ EOL {
+    let name : string= $3 in
+    let bounds = $7 in
+    if List.length bounds == 2 then
+       let min : number = List.nth bounds 0 in
+       let max : number = List.nth bounds 1 in
+       let typ : unt = $9 in 
        MathLib.set_mag dat name min max typ
     else
        error "cstr mag" "bounds is more than two elements"
@@ -227,9 +179,30 @@ st:
     MathLib.mktime dat name typ;
     ()
   }
- 
-  | REL rel EOL {
-    ()
+  | VAR DDT TOKEN EQ expr SHAPE shape EOL {
+      let rhs = $5 in
+      let v = $3 in
+      ()
+  }
+
+  | VAR TOKEN EQ expr SHAPE shape EOL {
+      let rhs = $5 in
+      let v = $3 in
+      ()
+  }
+  | REL DDT TOKEN EQ expr INIT number EOL {
+      let rhs = $5 in
+      let v = $3 in
+      let ic = $7 in
+      MathLib.mkstrel dat v rhs ic;
+      ()
+  }
+
+  | REL TOKEN EQ expr EOL {
+      let rhs = $4 in
+      let v = $2 in 
+      MathLib.mkrel dat v rhs;
+      ()
   }
   | EOL  {
 
