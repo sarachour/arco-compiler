@@ -2,9 +2,8 @@ open Common
 open Unit
 open AST
 open Util
-
-
-
+open IntervalData
+open StochData
 
 type hcconn =
   | HCCAll
@@ -14,17 +13,6 @@ type hcconn =
 (*port to port*)
 type connid = string*string
 
-type hw_mag_cstr =
-  | CMAGRange of number*number*untid
-  | CMAGNone
-
-type hw_sample_cstr =
-  | CSAMPFreq of number*untid
-  | CSAMPNone
-
-type hw_float_cstr =
-  | CFLTRepr of int*int*int
-  | CFLTNone
 
 (*General Data*)
 type hwvid =
@@ -40,29 +28,52 @@ type hwparam = {
   comp:string;
 }
 
-type 'a hwdvar = {
-  rhs : 'a ast;
-  mutable mag_cstr: hw_mag_cstr;
-  mutable sample_cstr: hw_sample_cstr;
-  mutable fltrepr_cstr:hw_float_cstr;
+type port_prop = string*string
+
+type 'a hwastatedefs = {
+  mutable deriv_span: span;
+  mutable var_span: span;
+  mutable var_mapper:  mapper;
 }
-type 'a hwavar = {
+type 'a hwadefs = {
+  mutable span: span;
+  mutable mapper:  mapper;
+}
+type 'a hwddefs = {
+  mutable freq: number*untid;
+  mutable repr: int*int*int;
+}
+type 'a hwdinp = 'a hwddefs 
+type 'a hwainp = 'a hwadefs
+
+type 'a hwdout = {
   rhs : 'a ast;
-  mutable mag_cstr: hw_mag_cstr;
+}
+type 'a hwaout = {
+  rhs : 'a ast;
+  mutable stoch : 'a stoch;
 }
 type 'a hwaderiv = {
   rhs : 'a ast;
-  ic:string*string;
-  mutable mag_cstr: hw_mag_cstr;
+  mutable stoch: 'a stoch;
+  ic: port_prop;
 }
-type 'a hwbhv =
-  | HWBhvDigital of 'a hwaderiv
-  | HWBhvAnalogVar of 'a hwavar
-  | HWBhvAnalogStateVar of 'a hwaderiv
-  | HWBhvUndef
 
+type 'a hwbhv =
+  | HWBDigital of 'a hwdout  
+  | HWBAnalog of 'a hwaout
+  | HWBAnalogState of 'a hwaderiv
+  | HWBInput
+  | HWBUndef
+
+type 'a hwdefs =
+  | HWDAnalog of 'a hwadefs
+  | HWDDigital of 'a hwddefs
+  | HWDAnalogState of 'a hwastatedefs
+  
 type 'a hwportvar = {
    mutable bhvr: 'a hwbhv;
+   mutable defs: 'a hwdefs;
    typ:untid;
    knd:hwvkind;
    port:string;
@@ -72,9 +83,11 @@ type 'a hwportvar = {
 }
 
 type 'a hwcomp = {
-  vars: (string,'a hwportvar) map;
+  mutable vars: mapvar list;
+  outs: (string,'a hwportvar) map;
+  ins: (string,'a hwportvar) map;
   params: (string,hwparam) map;
-  insts: int;
+  mutable insts: int;
   name:string;
   mutable sim: (string*(string list)) option;
 }

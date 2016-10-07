@@ -1,6 +1,6 @@
 type mkind =   MInput | MOutput | MLocal
 
-type hwvkind = HNInput | HNOutput
+type hwvkind = HWKInput | HWKOutput
 
 type compid =
   | HCMLocal of string

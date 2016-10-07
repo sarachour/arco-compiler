@@ -7,9 +7,12 @@
   open HWConnLib
   open HWInstLib
   open HWCstrLib
+
   
   open AST
   open CompileUtil
+  open IntervalData
+  open StochData
 
   type parser_meta = {
     mutable comp : string option;
@@ -33,12 +36,15 @@
   type pid =  (string*string*int)
 
   let conn_iter (c:conn) (conntype:conntype) (fxn:(string*string)->index->unit)  =
-    let conntype = if conntype = Input then HNInput else HNOutput in
+    let conntype = if conntype = Input then HWKInput else HWKOutput in
     (*determine if this is what we're filtering against*)
     let isconntype v = v.knd = conntype in
     let itercmp cmp (idx:index option) =
       let gidx = if idx = None then IToEnd 0 else OPTION.force_conc idx in
-      let _ = MAP.iter cmp.vars (fun vname vr -> if isconntype vr then fxn (cmp.name,vname) gidx else ()) in
+      match conntype with
+      | HWKInput -> MAP.iter cmp.ins (fun vname vr -> fxn (cmp.name,vname) gidx)
+      | HWKOutput -> MAP.iter cmp.outs (fun vname vr -> fxn (cmp.name,vname) gidx)
+      ;
       ()
     in
     match c with
@@ -101,15 +107,19 @@
   let set_cmpname n =
     meta.comp <- Some(n)
 
+
   let get_cmpname () =
     match meta.comp with
     | Some(v) -> v
     | None -> error "get_cmpname" "no component name defined"
 
+  let get_comp () =
+    HwLib.getcomp dat (get_cmpname())
+
   let print_expr e =
     ASTLib.ast2str e (fun x -> HwLib.hwvid2str x)
 
-let mkdfl cname iname =
+  let mkdfl cname iname =
     let mk p = HwConnLib.mk dat cname iname p in
     MAP.iter (dat.props) (fun k v -> mk k); 
     ()
@@ -264,9 +274,9 @@ mag:
 | OBRAC QMARK CBRAC TOKEN {()}
 
 shape:
-  | GAUSS                                   {()}
-  | POISS                                   {()}
-  | UNIFORM                                 {()}
+  | GAUSS                                   {STCHGAUSS}
+  | POISS                                   {STCHPOISS}
+  | UNIFORM                                 {STCHUNIFORM}
 
 proptyplst:
   | TOKEN COLON TOKEN                      {let prop = $1 and unt = $3 in [(prop,unt)]}
@@ -292,7 +302,7 @@ digital:
     let iname = $3 in
     let typlst = $5 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HNInput iname typlst in
+    let _ = HwLib.mkport dat cname HWKInput iname typlst in
     let _ = mkdfl cname iname in
     ()
   }
@@ -300,33 +310,47 @@ digital:
     let iname = $3 in
     let typlst = $5 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HNOutput iname typlst in
+    let _ = HwLib.mkport dat cname HWKOutput iname typlst in
     let _ = mkdfl cname iname in
     ()
   }
   | digital INPUT TOKEN EOL {
     let iname = $3 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HNInput iname [] in
+    let _ = HwLib.mkport dat cname HWKInput iname [] in
     let _ = mkdfl cname iname in
     ()
   }
   | digital OUTPUT TOKEN EOL {
     let iname = $3 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HNOutput iname [] in
+    let _ = HwLib.mkport dat cname HWKOutput iname [] in
     let _ = mkdfl cname iname in
     ()
   }
   | digital REL portprop EQ expr EOL {
     let port,prop = $3 and expr = $5 and cname = get_cmpname() in
-    (*HwLib.mkrel dat cname port prop expr;*)
+    let bhv =
+      if prop == "D" then
+        HWBDigital ({
+            rhs=$5;
+          })
+      else
+        HWBAnalog ({
+            rhs=$5;
+            stoch=HwLib.mkstoch()
+          })
+    in
+    HwLib.mkrel dat cname port bhv;
     ()
   }
   | digital VAR portprop EQ expr SHAPE shape EOL {
     let port,prop = $3 and cname = get_cmpname() and expr=$6 in
-    (* HwLib.mkrel dat cname port prop expr;*)
-    ()
+    if prop != "D" then
+      let stoch : hwvid stoch= {shape=$7;std=$5} in 
+      HwLib.upd_bhv dat (fun b -> match b with
+          | HWBAnalog(b) -> b.stoch <- stoch) cname port;
+      ()
   }
   | digital DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and cname = get_cmpname() in
@@ -342,7 +366,14 @@ digital:
       HwCstrLib.mk_sample_cstr dat comp port prop (rate) typ
   }
   | digital DEF portprop REPR EQ TOKEN EOL {
-           ()
+      let repr = $6 and port,prop = $3 in
+      let sign = STRING.count repr "S" in
+      let exp = STRING.count repr "E" in
+      let mant = STRING.count repr "M" in
+      let cname = get_cmpname() in 
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDDigital(defs) -> defs.repr <- (sign,exp,mant)) cname port;
+         ()
   }
   | digital DEF MAPVAR tokenlist EOL {
          ()
@@ -378,7 +409,7 @@ comp:
     let iname = $3 in
     let typlst = $5 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HNInput iname typlst in
+    let _ = HwLib.mkport dat cname HWKInput iname typlst in
     let _ = mkdfl cname iname in
     ()
   }
@@ -386,7 +417,7 @@ comp:
     let iname = $3 in
     let typlst = $5 in
     let cname = get_cmpname() in
-    let _ = HwLib.mkport dat cname HNOutput iname typlst in
+    let _ = HwLib.mkport dat cname HWKOutput iname typlst in
     let _ = mkdfl cname iname in
     ()
   }
@@ -400,32 +431,49 @@ comp:
   }
   | comp VAR DDT portprop EQ expr SHAPE shape EOL {
     let port,prop = $4 and comp = get_cmpname() in
-    (*HwLib.mkrel dat cname pname r;*)
+    let expr = $6 and shape = $8 in
+    let stoch = {shape = $8; std = $6} in
+    HwLib.upd_bhv dat (fun b -> match b with
+        | HWBAnalogState(b) -> b.stoch <- stoch) comp port;
     ()
   }
   | comp VAR portprop EQ expr SHAPE shape EOL {
     let pname,r = $3 and cname = get_cmpname() in
-    (*HwLib.mkrel dat cname pname r*)
+    let stoch = {shape = $7; std = $5} in
+    HwLib.upd_bhv dat (fun b -> match b with
+        | HWBAnalog(b) -> b.stoch <- stoch) cname pname;
     ()
   }
   | comp REL DDT portprop EQ expr INIT portprop EOL {
     let port,prop = $4 and comp = get_cmpname() in
-    (*HwLib.mkrel dat cname pname r; *)
+    let bhv : hwvid hwaderiv= {
+      rhs=$6;
+      ic=$8;
+      stoch=HwLib.mkstoch();
+    } in
+    HwLib.mkrel dat comp prop (HWBAnalogState bhv);
     ()
   }
   | comp REL portprop EQ expr EOL {
-    let pname,r = $3 and cname = get_cmpname() in
-    (*HwLib.mkrel dat cname pname r;*)
+    let port,prop = $3 and comp = get_cmpname() in
+    let bhv = {
+      rhs=$5;
+      stoch=HwLib.mkstoch()
+    } in
+    HwLib.mkrel dat comp port (HWBAnalog bhv);
     ()
   }
   | comp MAPVAR tokenlist {
-    ();
+      let comp = get_comp() and vars = $3 in
+      comp.vars <- comp.vars @ vars ;
+      ()
   }
   | comp DEF portprop MAP map_strategy EOL {
-         ()
+     ()
   }
   | comp DEF DDT portprop MAP map_strategy EOL {
-         ()
+      let port,prop = $4 and mapper = $6 in
+      ()
   }
   
   | comp DEF portprop MAG EQ mag EOL {

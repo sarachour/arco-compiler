@@ -27,6 +27,7 @@ type 'a mbhv =
   | MBhvStateVar of 'a mderiv
   | MBhvVar of 'a mfxn
   | MBhvUndef
+
 type 'a mvar = {
   name: string;
   typ:unt;

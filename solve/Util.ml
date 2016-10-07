@@ -176,6 +176,9 @@ struct
     else
       ""
 
+  let count (s:string) (sub:string) : int=
+    (List.length (split s sub)) - 1
+
   let startswith (s:string) (p:string) : bool =
     Str.string_match (Str.regexp p) s 0
 

@@ -3,6 +3,8 @@ open Unit
 open Util
 open Common
 open HWData
+open IntervalData
+open StochData
 
 
 
@@ -68,18 +70,19 @@ struct
 
  let kind2str v =
     match v with
-    | HNInput -> "input"
-    | HNOutput -> "output"
+    | HWKInput -> "input"
+    | HWKOutput -> "output"
 
 
   let to_buf e fb =
     let os x = output_string fb x in
-    let print_var (x:hwvid hwportvar) = 
-      os x.port
-    in
+    let print_var prefix (x:hwvid hwportvar) = 
+      os (prefix^" "^x.port)
+    in 
     let print_comp c =
       let _ = os ("==> component "^c.name^" \n") in
-      let _ = MAP.iter c.vars  (fun k v -> print_var v) in
+      let _ = MAP.iter c.ins (fun k v -> print_var "in" v) in
+      let _ = MAP.iter c.outs (fun k v -> print_var "out" v) in
       ()
     in
     let print_prop k v =
@@ -126,7 +129,15 @@ struct
     if hascomp e name then
       error "mkcomp" ("comp with name "^name^"already defined.")
     else
-      let c : hwvid hwcomp = {name=name;params=MAP.make();insts=0;vars=MAP.make();sim=None} in
+      let c : hwvid hwcomp = {
+        name=name;
+        params=MAP.make();
+        vars=[];
+        insts=0;
+        ins=MAP.make();
+        outs=MAP.make();
+        sim=None
+      } in
       let _ = MAP.put e.comps name c in
       e
 
@@ -155,7 +166,7 @@ struct
 
   let hasvar e cname iname =
     let c = getcomp e cname in
-    MAP.has c.vars iname
+    MAP.has c.ins iname || MAP.has c.outs iname
 
   let istime e name =
     match e.time with
@@ -164,10 +175,25 @@ struct
 
   let getvar e cname iname =
     let c = getcomp e cname in
-    if MAP.has c.vars iname = false then
-      error "getport" ("port with name "^iname^" does not exist.")
+    if MAP.has c.ins iname then (MAP.get c.ins iname)
+    else if MAP.has c.outs iname then (MAP.get c.outs iname)
     else
-      MAP.get c.vars iname
+        error "getport" ("port with name "^iname^" does not exist.")
+
+  let to_id e comp port :hwvid =
+    let v = getvar e comp port in
+    HNPort(v.knd,HCMLocal(v.comp),v.port,v.prop)
+
+  let upd_bhv e fxn comp port =
+    let v = getvar e comp port in
+    fxn v.bhvr;
+    ()
+
+  let upd_defs e fxn comp port =
+    let v = getvar e comp port in
+    fxn v.defs;
+    ()
+
 
   let hasparam e cname iname =
     let c = getcomp e cname in
@@ -183,29 +209,35 @@ struct
 
 
 
-  let getvars e cname =
+  let getins e cname =
     let c = getcomp e cname in
-    MAP.to_values c.vars
+    MAP.to_values c.ins
 
-  let get_port_by_kind e (k:hwvkind) (c:string) : hwvid hwportvar list =
-    let vrs = getvars e c in
-    let o = List.filter (fun q -> k = q.knd) vrs in
-    match o with
-    | h::t -> h::t
-    | _ -> error "get_port_by_kind" "no port of that kind exists"
+  let getouts e cname =
+    let c = getcomp e cname in
+    MAP.to_values c.outs
 
+  let getvars e cname =
+    ((getins e cname)) @
+    ((getouts e cname)) 
 
   let getcomps e  =
     MAP.to_values e.comps
 
+  let get_port_by_kind env knd comp =
+    match knd with
+    | HWKInput -> getins env comp 
+    | HWKOutput -> getouts env comp
 
   let comp_port_to_hwid env compname varname hasinst =
     let comp = match hasinst with
       |Some(idx) -> HCMGlobal(compname,idx) | None -> HCMLocal(compname)
     in
     if hasvar env compname varname then
-      let v = getvar env compname varname in
-      HNPort(v.knd,comp,v.port,v.prop)
+      begin
+        let v = getvar env compname varname in
+        HNPort(v.knd,comp,v.port,v.prop)
+      end
     else if hasparam env compname varname then
       let p = getparam env compname varname in
       HNParam(comp,p.name)
@@ -234,8 +266,8 @@ struct
       let id = port2hwid k cname pvar.port pvar.prop pvar.typ in
       id
     in
-    let inport = mkid HNInput name in
-    let outport = mkid HNOutput name in
+    let inport = mkid HWKInput name in
+    let outport = mkid HWKOutput name in
     name,(inport),(outport)
 
   let getin e pr : string*hwvid*hwvid =
@@ -246,45 +278,59 @@ struct
       let id = port2hwid k cname pvar.port pvar.prop pvar.typ in
       id
     in
-    let inport = mkid HNInput name in
-    let outport = mkid HNOutput name in
+    let inport = mkid HWKInput name in
+    let outport = mkid HWKOutput name in
     name,(inport),(outport)
 
+  let mkadefs () : 'a hwadefs =
+    {span=SPNNone; mapper=MAPDirect}
+
+  let mkddefs () : 'a hwddefs =
+    {repr=(1,4,7); freq=(Integer 0,"?")}
+
+
+  let mkstoch () : 'a stoch =
+    {shape=STCHUNIFORM; std=Integer(0)}
 
   let mkport e cname (hwkind:hwvkind) iname (types:(string*untid) list) =
     if hascomp e cname = false then
       error "mkport" ("comp with name "^cname^" already defined.")
     else
-      let c = MAP.get e.comps cname in
-      if MAP.has c.vars iname then
+      if hasvar e cname iname then
         error "mkport" ("variable with name "^iname^" already exists")
       else
+        let c = MAP.get e.comps cname in
         let prop,prop_unit= List.nth types 0 in
+        let bhvr = if hwkind = HWKInput then HWBInput else HWBUndef in
+        let defs = if prop = "D" then HWDDigital (mkddefs()) else HWDAnalog (mkadefs()) in
         let vr = {
           port=iname;
           typ=prop_unit;
           prop=prop;
           knd=hwkind;
           comp=cname;
-          bhvr=HWBhvUndef;
+          bhvr=bhvr;
+          defs=defs
         } in
-        MAP.put c.vars iname vr
+        match hwkind with
+        | HWKInput -> MAP.put c.ins iname vr
+        | HWKOutput -> MAP.put c.outs iname vr
 
   let mkparam e cname iname vl (t:unt) =
   if hascomp e cname = false then
     error "mkparam" ("comp with name "^cname^" already defined.")
   else
-    let c = MAP.get e.comps cname in
-    if MAP.has c.vars iname then
+    if hasparam e cname iname then
       error "mkparam" ("variable with name "^iname^" already exists")
     else
-    let vr = {comp=cname;name=iname;value=vl;typ=t} in
-    MAP.put c.params iname vr
+      let c = MAP.get e.comps cname in
+      let vr = {comp=cname;name=iname;value=vl;typ=t} in
+      MAP.put c.params iname vr
 
-  let mkrel e cname pname (rel:hwvid hwbhv) =
+  let mkrel e (cname:string) (pname:string) (rel:hwvid hwbhv) =
     let p = getvar e cname pname in
     match p.bhvr with
-    | HWBhvUndef-> p.bhvr <- rel
+    | HWBUndef-> p.bhvr <- rel
     | _ -> error "mkrel" ("relation already exists for port "^pname)
 
 
