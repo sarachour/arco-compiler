@@ -72,12 +72,13 @@ comp imul
     def I(Z) mag=[0,1] mA
     def I(Z) map scale A3
 
-    input W {I:mA}
+    output W {I:mA}
     def I(W) mag=[?] mA
-    def I(W) map scale A3/(A1+A2)
+    def I(W) imap scale A3/(A1+A2)
+    def I(W) map scale (A1+A2)/A3
 
-    var I(W) = (I(W))*0.000001 shape GAUSS
-    %rel I(W) = I(X)*I(Y)/I(Z)
+    rel I(W) = ((I(X)*I(Y))/I(Z))
+    var I(W) = (I(W)*0.000001) shape GAUSS
 
 end 
 
@@ -95,7 +96,7 @@ comp deriv_iadd
     input Z0 {I:mA}
     def I(Z0) mag = [0,1] mA
     
-    input Z {I:mA}
+    output Z {I:mA}
     def I(Z) mag = [0,1] mA
     def I(Z) map linear scale=1/A offset=B/A
     

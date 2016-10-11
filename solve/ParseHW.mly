@@ -133,7 +133,7 @@
 %token DEF
 %token REPR MANTISSA EXPO SIGN
 %token MAG SAMPLE
-%token MAP DIRECT LINEAR SCALE OFFSET MAPVAR 
+%token MAP IMAP DIRECT LINEAR SCALE OFFSET MAPVAR 
 
 %token PROP TIME  
 %token COMP INPUT OUTPUT PARAM END SIM
@@ -301,7 +301,7 @@ proptyplst:
   | TOKEN COLON TOKEN COMMA proptyplst     {let rest = $5 and prop = $1 and unt = $3 in (prop,unt)::rest}
 
 portprop:
-  | TOKEN OPARAN TOKEN CPARAN              {($1,$3)}
+  | TOKEN OPARAN TOKEN CPARAN              {($3,$1)}
   
 digital:
   | DIGITAL INPUT TOKEN EOL {
@@ -407,6 +407,15 @@ digital:
         ) comp port;
       ()
   }
+  | digital DEF portprop IMAP map_strategy EOL {
+      let comp = get_cmpname() in
+      let port,prop = $3 and strat = $5 in
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDAnalog(defs) -> defs.mapper <- strat; defs 
+        ) comp port;
+      ()
+  }
+
   | digital SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
       let spname = $3 in
@@ -460,14 +469,18 @@ comp:
     let expr = $6 and shape = $8 in
     let stoch = {shape = $8; std = $6} in
     HwLib.upd_bhv dat (fun b -> match b with
-        | HWBAnalogState(b) -> b.stoch <- stoch) comp port;
+        | HWBAnalogState(b) -> b.stoch <- stoch
+        | _ -> error "var ddt" "expected analog state"
+    ) comp port;
     ()
   }
   | comp VAR portprop EQ expr SHAPE shape EOL {
-    let pname,r = $3 and cname = get_cmpname() in
+    let port,prop = $3 and cname = get_cmpname() in
     let stoch = {shape = $7; std = $5} in
     HwLib.upd_bhv dat (fun b -> match b with
-        | HWBAnalog(b) -> b.stoch <- stoch) cname pname;
+        | HWBAnalog(b) -> b.stoch <- stoch
+        | _ -> error "var" "expected analog state"
+        ) cname port;
     ()
   }
   | comp REL DDT portprop EQ expr INIT portprop EOL {
@@ -477,7 +490,7 @@ comp:
       ic=$8;
       stoch=HwLib.mkstoch();
     } in
-    HwLib.mkrel dat comp prop (HWBAnalogState bhv);
+    HwLib.mkrel dat comp port (HWBAnalogState bhv);
     ()
   }
   | comp REL portprop EQ expr EOL {
@@ -501,7 +514,13 @@ comp:
       let port,prop = $4 and mapper = $6 in
       ()
   }
-  
+  | comp DEF portprop IMAP map_strategy EOL {
+     ()
+  }
+  | comp DEF DDT portprop IMAP map_strategy EOL {
+      let port,prop = $4 and mapper = $6 in
+      ()
+  }
   | comp DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and comp = get_cmpname() in
       let bound = [] and typ = "" in

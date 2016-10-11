@@ -9,6 +9,7 @@ open StochData
 
 
 exception HwLibError of string
+let error s e = raise (HwLibError(s^":"^e))
 
 module HwLib =
 struct
@@ -335,6 +336,7 @@ struct
     let p = getvar e cname pname in
     match p.bhvr with
     | HWBUndef-> p.bhvr <- rel
+    | HWBInput -> error "mkrel" ("cannot define dynamics for input port "^pname)
     | _ -> error "mkrel" ("relation already exists for port "^pname)
 
 

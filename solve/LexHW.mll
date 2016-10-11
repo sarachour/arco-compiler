@@ -61,6 +61,7 @@ rule env = parse
   | "mag"                   {MAG}
 
   | "map"                   {MAP}
+  | "imap"                   {IMAP}
   | "map-var"               {MAPVAR}
   | "linear"                {LINEAR}
   | "scale"                 {SCALE}
