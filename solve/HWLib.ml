@@ -74,11 +74,21 @@ struct
     | HWKInput -> "input"
     | HWKOutput -> "output"
 
+ let bhv2str (v:'a hwbhv) (tostr:'a->string): string = match v with
+      |HWBUndef -> "<undefined>"
+      |HWBInput -> "<input>"
+      |HWBDigital(d) -> "<digital>:"^(ASTLib.ast2str d.rhs tostr)
+      |HWBAnalog(a) -> "<analog>:"^(ASTLib.ast2str a.rhs tostr)
+      |HWBAnalogState(st) -> "<analog>: ddt"^(ASTLib.ast2str st.rhs tostr)^" ic="
+      
+
+  let hwvid_bhv2str (v:hwvid hwbhv) = bhv2str v hwvid2str 
 
   let to_buf e fb =
     let os x = output_string fb x in
-    let print_var prefix (x:hwvid hwportvar) = 
+    let print_var prefix (x:hwvid hwportvar) =
       os (prefix^" "^x.port^"\n")
+      os (prefix^"  bhv "^(hwvid_bhv2str x.bhvr)^"\n")
     in 
     let print_comp c =
       let _ = os ("==> component "^c.name^" ("^(string_of_int c.insts)^" insts) \n") in

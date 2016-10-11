@@ -54,9 +54,7 @@ struct
   let to_buf m fb =
     let os x = output_string fb x in
     let var_to_buf (v:mid mvar) : unit=
-      let _ =
-        os ((v.name)^":"^"TODO\n")
-      in
+      os ((v.name)^":"^"TODO\n");
       ()
     in
     Printf.printf "==== Units ====\n";
