@@ -38,7 +38,9 @@
     (*determine if this is what we're filtering against*)
     let isconntype v = v.knd = conntype in
     let itercmp cmp (idx:index option) =
-      let gidx = if idx = None then IToEnd 0 else OPTION.force_conc idx in
+      let gidx : index = match idx with
+          | Some(i) -> i
+          | None -> IToEnd 0 in
       match conntype with
       | HWKInput -> MAP.iter cmp.ins (fun vname vr -> fxn (cmp.name,vname) gidx)
       | HWKOutput -> MAP.iter cmp.outs (fun vname vr -> fxn (cmp.name,vname) gidx)
@@ -47,7 +49,7 @@
     in
     match c with
     | AllConn ->
-      let cmps = HwLib.getcomps dat in
+      let cmps :hwvid hwcomp list = HwLib.getcomps dat in
       let itercmp cmp = List.iter (fun cmp -> itercmp cmp None) cmps in
       ()
     | CompConn(c) ->
@@ -70,7 +72,7 @@
       ()
 
   let idx2hcconn (c:string) (idx:index) : hcconn =
-    let comp = HwLib.getcomp dat c in
+    let comp : hwvid hwcomp = HwLib.getcomp dat c in
     let res = match idx with
     | IIndex(i) -> HCCIndiv(i)
     | IRange(r) -> HCCRange(r)
@@ -600,7 +602,7 @@ schem:
   }
   | schem CONN connterm ARROW connterm EOL {
     let src = $3 and snk = $5 in
-    let _ = add_conns src snk in
+    add_conns src snk;
     ()
   }
   | schem EOL {

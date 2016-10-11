@@ -116,9 +116,9 @@ schematic
    inst imul : 4
    inst deriv_iadd: 1
 
-   %conn input(I) <-> iadd
-   %conn input(I) <-> imul 
-   %conn input(I) <-> deriv_iadd
-   %conn deriv_iadd <-> output(I)
+   conn input(I) -> iadd
+   conn input(I) -> imul 
+   conn input(I) -> deriv_iadd
+   conn deriv_iadd -> output(I)
 
 end

@@ -5,7 +5,7 @@ open Common
 open HWData
 open IntervalData
 open StochData
-
+open HWConnLib
 
 
 exception HwLibError of string
@@ -81,7 +81,7 @@ struct
       os (prefix^" "^x.port^"\n")
     in 
     let print_comp c =
-      let _ = os ("==> component "^c.name^" \n") in
+      let _ = os ("==> component "^c.name^" ("^(string_of_int c.insts)^" insts) \n") in
       let _ = MAP.iter c.ins (fun k v -> print_var "in" v) in
       let _ = MAP.iter c.outs (fun k v -> print_var "out" v) in
       ()
@@ -98,7 +98,10 @@ struct
     match (e.time) with
     | Some(x,v) -> print_prop x v
     | None -> os"(no time variable defined)\n"
-  in
+   in
+   let print_conn src srng dst drng =
+     os ((HwConnLib.coll2str src srng)^"->"^(HwConnLib.coll2str dst drng)^"\n")
+   in
    let _ = os "==== Units ====\n" in
    let _ = UnitLib.to_buf (e.units) fb in
    let _ = os"==== Props ====\n" in
@@ -107,7 +110,9 @@ struct
    let _ = print_time () in
    let _ = os "==== Components =====\n" in
    let _ = MAP.iter e.comps (fun k v -> print_comp v) in
-   let _ = os "==== Constraints =====\n" in
+   let _ = os "==== Schematic =====\n" in
+   MAP.iter e.conns (fun src dests -> MAP.iter dests (fun dest rngs ->
+       SET.iter rngs (fun (srng,drng) -> print_conn src srng dest drng)));
    ()
 
   let to_file e file =

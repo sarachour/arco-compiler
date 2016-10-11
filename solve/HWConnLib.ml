@@ -45,11 +45,17 @@ let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
      (_valid_conn hcs dest_comp dest_port src_comp src_port ) 
   
 
-  let hcconn2str c = match c with
+  let hcconn2str (c:hcconn) = match c with
   | HCCAll -> "*"
   | HCCIndiv(i) -> string_of_int i
   | HCCRange((s,e)) -> (string_of_int s)^":"^(string_of_int e)
 
+  let connid2str (c:connid) =
+    let comp,port = c in
+    comp^"."^port
+
+  let coll2str (c:connid) (r:hcconn) =
+    (connid2str c)^"["^(hcconn2str r)^"]"
   let to_buf e fb =
     let oc x = output_string fb x in
     let pr_conns (c,p) v =
