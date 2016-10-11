@@ -78,7 +78,7 @@ struct
   let to_buf e fb =
     let os x = output_string fb x in
     let print_var prefix (x:hwvid hwportvar) = 
-      os (prefix^" "^x.port)
+      os (prefix^" "^x.port^"\n")
     in 
     let print_comp c =
       let _ = os ("==> component "^c.name^" \n") in
@@ -339,6 +339,10 @@ struct
     | HWBInput -> error "mkrel" ("cannot define dynamics for input port "^pname)
     | _ -> error "mkrel" ("relation already exists for port "^pname)
 
+  let upd_inst e (cname:string) (i:int) =
+    let c = getcomp e cname in
+    c.insts <- i;
+    ()
 
   let mktime e name units =
     if hastime e then

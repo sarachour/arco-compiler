@@ -5,8 +5,6 @@
   open HWData
   open HWLib
   open HWConnLib
-  open HWInstLib
-  open HWCstrLib
 
   
   open AST
@@ -376,12 +374,15 @@ digital:
       if List.length bound = 2 then
          let min = List.nth bound 0 in
          let max = List.nth bound 1 in 
-         HwCstrLib.mk_mag_cstr dat cname port prop min max typ
+         HwLib.upd_defs dat (fun d -> match d with
+         | HWDAnalog(d) -> d.span = SPNInterval({min=min;max=max})) cname port
   }
 
   | digital DEF portprop SAMPLE EQ number TOKEN EOL {
       let port,prop = $3 and comp = get_cmpname() and rate = $6 and typ = $7 in
-      HwCstrLib.mk_sample_cstr dat comp port prop (rate) typ
+      HwLib.upd_defs dat (fun d -> match d with
+         | HWDDigital(x) -> x.freq = (rate,typ)
+      ) comp port
   }
   | digital DEF portprop REPR EQ TOKEN EOL {
       let repr = $6 and port,prop = $3 in
@@ -527,7 +528,12 @@ comp:
       if List.length bound =  2 then
          let min = List.nth bound 0 in
          let max = List.nth bound 1 in
-         HwCstrLib.mk_mag_cstr dat comp port prop min max typ
+         HwLib.upd_defs dat (fun d -> match d with
+            | HWDAnalog(d) -> d.span = SPNInterval({min=min;max=max})
+            | HWDAnalogState(d) -> d.var_span = SPNInterval({min=min;max=max}))
+            comp port;
+         ()
+
   }
   | comp DEF DDT portprop MAG EQ mag EOL {
       let port,prop = $4 and comp = get_cmpname() in
@@ -535,7 +541,9 @@ comp:
       if List.length bound =  2 then
          let min = List.nth bound 0 in
          let max = List.nth bound 1 in
-         HwCstrLib.mk_mag_cstr dat comp port prop min max typ
+        HwLib.upd_defs dat (fun d -> match d with
+            | HWDAnalogState(d) -> d.deriv_span = SPNInterval({min=min;max=max})) comp port;
+         ()
   }
   | comp SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
@@ -587,7 +595,7 @@ schem:
   }
   | schem INST compname COLON INTEGER EOL {
     let cname = $3 and amt = ($5) in
-    let _ = HwInstLib.mkinst dat cname amt in
+    let _ = HwLib.upd_inst dat cname amt in
     ()
   }
   | schem CONN connterm ARROW connterm EOL {
