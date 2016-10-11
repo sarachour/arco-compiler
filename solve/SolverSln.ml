@@ -12,9 +12,18 @@ open SolverRslv
 exception SolverSlnError of string
 
 let error n m = raise (SolverSlnError (n^":"^m))
-(*
 module SlnLib =
 struct
+
+  let mkcomp (sln:sln) (id:hwcompname) =
+    MAP.put sln.comps id (SET.make (),0)
+
+
+  let mksln () : sln =
+    {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
+
+
+(*
   let hwport2wire cm port =
     match cm with
     | HCMLocal(c) -> error "hwport2wire" ("underspecified identifier "^c^".")
@@ -59,6 +68,7 @@ struct
   *)
 
   let mkconn_cons_shallow (v:slvr) (s:sln) : bool =
+    let sln = SlnLib.mksln () in
     let res = HwConnRslvr.is_valid_shallow v s in
     res
 
@@ -340,5 +350,5 @@ struct
     let lstr = labels2str s.labels in
     "Comps:\n"^cstr^"\n\nConns:"^cnstr^"\n\nLabels:\n"^lstr
 
-end
    *)
+end

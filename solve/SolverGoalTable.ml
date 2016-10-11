@@ -27,10 +27,10 @@ exception GoalTableError of string
 
 let error n m = raise (GoalTableError (n^":"^m))
 
-(*
 module GoalTableLib =
 struct
 
+(*
   let wrap_goal = GoalStubLib.wrap_goal
   let unwrap_goal = GoalStubLib.unwrap_goal
   let add_goal = GoalStubLib.add_goal
@@ -123,9 +123,10 @@ struct
       Some (ast_of_number (v))
     | _ -> None
 
+  *)
   (*make an empty node without the goals*)
-  let mktbl (s:slvr) (is_trivial:uvar->bool) : gltbl =
-    let h2u = UnivLib.hwid2unid in
+  let mktbl (env:uenv) : gltbl =
+    (*
     let eh2u x = ASTLib.trans (ASTLib.map x h2u) (_rm_pars s) in 
     let comp2node (c:hwvid hwcomp) : unode =
       let nvars = MAP.size c.outs in
@@ -152,25 +153,22 @@ struct
                         noop (MAP.put vars (ndat.lhs) [ndat]));
       {vars=vars;params=params;name=c.name;comp_id=UnivLib.name2unodeid c.name}
     in
-    let nodetbl : (unodeid,unode) map = MAP.make () in
+      *)
+    let hwcomp2ucomp (x:hwvid hwcomp) : unid hwcomp = HwLib.map_comp x (fun x -> HwId(x)) in 
+    let comptbl : (hwcompname,ucomp) map = MAP.make () in
     let sln = SlnLib.mksln () in
-    let nodes : unode list = List.map comp2node (MAP.to_values s.hw.comps) in
-    let handle_node (x) =
-       let nid = UnivLib.name2unodeid x.name in
-       let _ = MAP.put nodetbl nid x in
-       let _ = SlnLib.mkcomp sln nid in
-       ()
-    in
-    let _ = List.iter (fun x -> handle_node x) nodes in
-    let search= SlvrSearchLib.mksearch () in
-    let tbl = {
+    List.iter (fun (x:hwvid hwcomp)  ->
+        let u_comp = hwcomp2ucomp x in
+        MAP.put comptbl u_comp.name {d=u_comp};
+        SlnLib.mkcomp sln u_comp.name;
+        ()
+    ) (MAP.to_values env.hw.comps);
+    (*let search= SlvrSearchLib.mksearch () in*)
+    let tbl : gltbl = {
         goals=SET.make_dflt ();
-        is_trivial=is_trivial;
-        nodes=nodetbl;
-        sln=sln;
-        search=search;
-        used_nodes = MAP.make ();
-        blacklist = SET.make_dflt ()
+        avail_comps=comptbl;
+        comp_ctx=MAP.make();
+        sln_ctx=sln;
       } in
     tbl
 
@@ -209,4 +207,3 @@ struct
     let _ = SearchLib.setroot tbl.search (s,tbl) steps in
     ()
 end
-      *)

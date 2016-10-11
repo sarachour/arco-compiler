@@ -22,12 +22,6 @@ type unid =
   |MathId of mid
   |HwId of hwvid
 
-type ucompid =
-  | UCmInput of string
-  | UCmOutput of string
-  | UCmCopy of string
-  | UCmComp of string
-
 (*Tableau Data*)
 
 
@@ -38,7 +32,6 @@ partially set parameters and multiple relations.
 *)
 type ucomp = {
   d: unid hwcomp;
-  comp_id: ucompid;
 }
 (*A particular goal to strive for*)
 (*
@@ -98,16 +91,7 @@ solving goals generates facts:
    map an input port to a math expr
    map an output port to a math variable 
 *)
-type wireid = {
-    comp:ucompid;
-    inst:int;
-    port:string;
-}
 
-type wireconn = {
-  src: wireid;
-  dst: wireid;
-}
 
 type portlabel_expr =
   |PLbVar of mid
@@ -124,14 +108,14 @@ type portlabel = {
 
 type sln = {
   (*how many of each component is used *)
-  mutable comps: (ucompid,(int set)*int) map;
+  mutable comps: (hwcompname,(int set)*int) map;
   mutable conns: (wireid, wireid set) map;
   mutable labels: (wireid, portlabel) map;
 }
 
 
 type ssolmod =
-  | SSolUseNode of ucompid*int
+  | SSolUseNode of hwcompname*int
   | SSolAddConn of wireconn
   | SSolAddLabel of portlabel
   | SSolRemoveLabel of portlabel
@@ -146,7 +130,7 @@ type sstep =
   (*add a relation for a node*)
 
 
-type mag_env = {
+type map_ctx = {
   mutable inst: (string,int) map;
   (*cstrs*)
   mutable sameas: (string*int,int list) map;
@@ -162,18 +146,17 @@ type mag_env = {
 
 type uenv =  {
   hw: hwvid hwenv;
-  prob: mid menv;
-  cnt: int;
+  math: mid menv;
   goal_cnt:int;
 }
 type gltbl = {
   (*solution env*)
   env: uenv;
-  mutable sln_env: sln;
-  mutable comp_env : (ucompid*int,ucomp) map;
-  mutable mag_env : mag_env; 
+  mutable sln_ctx: sln;
+  mutable comp_ctx : (hwcompinst,ucomp) map;
+  mutable map_ctx : map_ctx; 
+  mutable avail_comps : (hwcompname, ucomp) map;
   (*state of table*)
   mutable goals : goal set;
-  mutable avail_comps : (ucompid, ucomp) map;
   mutable search: (sstep,gltbl) ssearch;
   }

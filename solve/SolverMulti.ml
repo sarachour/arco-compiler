@@ -36,7 +36,6 @@ let error n m = raise (SolverMultiError (n^":"^m))
 let _print_debug : string -> unit = print_debug 1 "multi"
 let m_menu = menu 1
 let m_print_inter = print_inter 1
-(*
 module MultiSearchTree =
 struct
   let step2str x = match x with
@@ -109,6 +108,7 @@ struct
     internal_menu_handle,user_menu_handle
 
 
+(*
   let set2key (x:(unid*int) set) : string =
     let xsort = SET.sort x (fun (unid1,i1) (unid2,i2) ->
       let s1 = UnivLib.unid2str unid1 in
@@ -663,10 +663,11 @@ struct
       | h::t -> Some(h::t)
       |[] ->None
 
-  let mkmulti (slvr:slvr) =
+*)
+  let mkmulti (env:uenv) =
     (*make a top level table with default goals*)
-    let scratch = GoalTableLib.mktbl slvr (TrivialLib.is_trivial) in
-    let _ = GoalTableLib.mkgoalroot slvr scratch  in
+    let scratch = GoalTableLib.mktbl env in
+    let _ = GoalTableLib.mkgoalroot env scratch  in
     (*create ordering*)
     let order = QUEUE.make () in
     let _ =SET.iter scratch.goals (fun g -> let v = UnivLib.goal2lhs g in
@@ -680,7 +681,7 @@ struct
       local = SET.make_dflt ();
       global = None;
       solved = SET.make_dflt ();
-      slvr = slvr;
+      slvr = uenv;
     } in
     let _ = SearchLib.setroot mtree mtbl [] in
     let msearch : musearch = {
@@ -698,4 +699,3 @@ struct
 
 
 end
-*)

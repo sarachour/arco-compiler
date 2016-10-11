@@ -2,11 +2,15 @@ open AST
 open Unit
 open Util
 open Common
+
 open HWData
 open IntervalData
 open StochData
-open HWConnLib
 
+
+open HWConnLib
+open StochLib
+open IntervalLib
 
 exception HwLibError of string
 let error s e = raise (HwLibError(s^":"^e))
@@ -33,13 +37,27 @@ struct
   | ["output";q] -> Some("output",q)
   | _ -> None
 
+  let hwcompname2str (id:hwcompname) = match id with
+  | HWCmInput(x) -> input_cid x
+  | HWCmOutput(x) -> output_cid x
+  | HWCmCopy(x) -> copy_cid x
+  | HWCmComp(x) -> x
+
+  let str2hwcompname (c:string) : hwcompname = match get_special c with
+    | Some("copy",prop) -> HWCmCopy(prop)
+    | Some("input",prop) -> HWCmInput(prop)
+    | Some("output",prop) -> HWCmOutput(prop)
+    | Some(_) -> error "name2HWCmt" "illegal name"
+    | None -> HWCmComp c
+
+
   let is_special nm = match get_special nm with
   | Some(_) -> true
   | None -> false
 
 
   let hwid2port hwid = match hwid with
-  | HNPort(k,HCMGlobal(c,i),n,p) -> k,c,n,p,Some(i)
+  | HNPort(k,HCMGlobal(c),n,p) -> k,c.name,n,p,Some(c.inst)
   | HNPort(k,HCMLocal(c),n,p) -> k,c,n,p,None
   | _ -> error "hwid2port" "only works for port hwids"
 
@@ -47,12 +65,12 @@ struct
     HNPort(k, HCMLocal(cname),pname,prop)
 
   let compid2str c = match c with
-  | HCMGlobal(n,i) -> n
+  | HCMGlobal(n) -> n.name
   | HCMLocal(n) -> n
 
   let tolcl x = match x with
-  | HNPort(k,HCMGlobal(c,i),x,p) ->
-    HNPort(k,HCMLocal(c),x,p)
+  | HNPort(k,HCMGlobal(c),x,p) ->
+    HNPort(k,HCMLocal(c.name),x,p)
   | _ -> x
 
   let hwid_map_comp x fn = match x with
@@ -62,8 +80,8 @@ struct
 
   let hwvid2str e =
     let c2str c = match c with
-    | HCMLocal(n) -> n^"."
-    | HCMGlobal(n,i) -> n^"["^(string_of_int i)^"]."
+    | HCMLocal(n) -> (hwcompname2str n)^"."
+    | HCMGlobal(n) -> (hwcompname2str n.name)^"["^(string_of_int n.inst)^"]."
     in
     match e with
     | HNPort(_,c,v,prop) ->(c2str c)^prop^"{"^v^"}:"
@@ -91,7 +109,7 @@ struct
       os (prefix^"  bhv "^(hwvid_bhv2str x.bhvr)^"\n")
     in 
     let print_comp c =
-      let _ = os ("==> component "^c.name^" ("^(string_of_int c.insts)^" insts) \n") in
+      let _ = os ("==> component "^(hwcompname2str c.name)^" ("^(string_of_int c.insts)^" insts) \n") in
       let _ = MAP.iter c.ins (fun k v -> print_var "in" v) in
       let _ = MAP.iter c.outs (fun k v -> print_var "out" v) in
       ()
@@ -141,9 +159,9 @@ struct
   let hasprop e n =
     MAP.has (e.props) n
 
-  let mkcomp e name =
+  let mkcomp e (name:hwcompname) =
     if hascomp e name then
-      error "mkcomp" ("comp with name "^name^"already defined.")
+      error "mkcomp" ("comp with name "^(hwcompname2str name)^"already defined.")
     else
       let c : hwvid hwcomp = {
         name=name;
@@ -157,11 +175,11 @@ struct
       let _ = MAP.put e.comps name c in
       e
 
-  let mksim (e:hwvid hwenv) (cname:string) (name:string) (args:string list) =
+  let mksim (e:hwvid hwenv) (cname:hwcompname) (name:string) (args:string list) =
     if hascomp e cname = false then
-      error "mkcomp" ("comp with name "^cname^"not defined.")
+      error "mkcomp" ("comp with name "^(hwcompname2str cname)^"not defined.")
     else
-      let c : hwvid hwcomp = MAP.get e.comps cname in
+      let c : hwvid hwcomp = MAP.get e.comps (cname) in
       let _ = (c.sim <- Some(name,args)) in
       e
 
@@ -172,11 +190,11 @@ struct
 
   let getcomp e cname =
     if hascomp e cname = false then
-      error "getcomp" ("comp with name "^cname^" does not exist")
+      error "getcomp" ("comp with name "^(hwcompname2str cname)^" does not exist")
     else
         MAP.get e.comps cname
 
-  let sim (e:hwvid hwenv) (cname:string) : (string*(string list)) option =
+  let sim (e:hwvid hwenv) (cname:hwcompname) : (string*(string list)) option =
     let c = getcomp e cname in
     c.sim
 
@@ -251,7 +269,8 @@ struct
 
   let comp_port_to_hwid env compname varname hasinst =
     let comp = match hasinst with
-      |Some(idx) -> HCMGlobal(compname,idx) | None -> HCMLocal(compname)
+      |Some(idx) -> HCMGlobal({name=compname;inst=idx})
+      | None -> HCMLocal(compname)
     in
     if hasvar env compname varname then
       begin
@@ -274,13 +293,13 @@ struct
     | _ -> error "getunit" "param doesn't have type unit."
 
 
-  let getkind e (cname:string) pname =
+  let getkind e (cname:hwcompname) pname =
     let p = getvar e cname pname in
     p.knd 
   (*get the *)
 
   let getout e pr : string*hwvid*hwvid =
-    let name = output_cid pr in
+    let name = HWCmOutput(pr) in
     let mkid k cname =
       let pvar = List.nth (get_port_by_kind e k cname) 0 in
       let id = port2hwid k cname pvar.port pvar.prop pvar.typ in
@@ -288,10 +307,10 @@ struct
     in
     let inport = mkid HWKInput name in
     let outport = mkid HWKOutput name in
-    name,(inport),(outport)
+    hwcompname2str name,(inport),(outport)
 
   let getin e pr : string*hwvid*hwvid =
-    let name = input_cid pr in
+    let name = HWCmInput(pr) in
     let cmp = getcomp e name in
     let mkid k cname =
       let pvar = List.nth (get_port_by_kind e k cname) 0 in
@@ -300,24 +319,24 @@ struct
     in
     let inport = mkid HWKInput name in
     let outport = mkid HWKOutput name in
-    name,(inport),(outport)
+    hwcompname2str name,(inport),(outport)
 
-  let mkadefs () : 'a hwadefs =
+  let mkadefs () :  hwadefs =
     {span=SPNNone; conv=MAPDirect;iconv=MAPDirect}
 
-  let mkastatedefs () : 'a hwastatedefs =
+  let mkastatedefs () :  hwastatedefs =
     {stvar=mkadefs();deriv=mkadefs()}
 
-  let mkddefs () : 'a hwddefs =
+  let mkddefs () : hwddefs =
     {repr=(1,4,7); freq=(Integer 0,"?")}
 
 
   let mkstoch () : 'a stoch =
     {shape=STCHUNIFORM; std=Integer(0)}
 
-  let mkport e cname (hwkind:hwvkind) iname (types:(string*untid) list) =
+  let mkport e (cname:hwcompname) (hwkind:hwvkind) iname (types:(string*untid) list) =
     if hascomp e cname = false then
-      error "mkport" ("comp with name "^cname^" already defined.")
+      error "mkport" ("comp with name "^(hwcompname2str cname)^" already defined.")
     else
       if hasvar e cname iname then
         error "mkport" ("variable with name "^iname^" already exists")
@@ -339,18 +358,18 @@ struct
         | HWKInput -> MAP.put c.ins iname vr
         | HWKOutput -> MAP.put c.outs iname vr
 
-  let mkparam e cname iname vl (t:unt) =
-  if hascomp e cname = false then
-    error "mkparam" ("comp with name "^cname^" already defined.")
-  else
-    if hasparam e cname iname then
-      error "mkparam" ("variable with name "^iname^" already exists")
+  let mkparam e (cname:hwcompname) iname vl (t:unt) =
+    if hascomp e cname = false then
+      error "mkparam" ("comp with name "^(hwcompname2str cname)^" already defined.")
     else
-      let c = MAP.get e.comps cname in
-      let vr = {comp=cname;name=iname;value=vl;typ=t} in
-      MAP.put c.params iname vr
+      if hasparam e cname iname then
+        error "mkparam" ("variable with name "^iname^" already exists")
+      else
+        let c = MAP.get e.comps cname in
+        let vr = {comp=cname;name=iname;value=vl;typ=t} in
+        MAP.put c.params iname vr
 
-  let mkrel e (cname:string) (pname:string) (rel:hwvid hwbhv) =
+  let mkrel e (cname:hwcompname) (pname:string) (rel:hwvid hwbhv) =
     let p = getvar e cname pname in
     match p.bhvr with
     | HWBUndef-> p.bhvr <- rel;
@@ -362,7 +381,7 @@ struct
     | HWBInput -> error "mkrel" ("cannot define dynamics for input port "^pname)
     | _ -> error "mkrel" ("relation already exists for port "^pname)
 
-  let upd_inst e (cname:string) (i:int) =
+  let upd_inst e (cname:hwcompname) (i:int) =
     let c = getcomp e cname in
     c.insts <- i;
     ()
@@ -401,5 +420,34 @@ struct
       e
 
 
+  let map_bhvr (type a) (type b) (x:a hwbhv) (f:a->b) : b hwbhv =
+    let map_expr (e:a ast): b ast= ASTLib.map e f in
+    match x with
+    | HWBAnalog(b) ->
+      let nrhs = map_expr b.rhs and nvar = StochLib.map_stoch b.stoch f in 
+      HWBAnalog({rhs=nrhs;stoch=nvar})
+    | HWBDigital(b) ->
+      let nrhs = map_expr b.rhs in
+      HWBDigital({rhs=nrhs})
+    | HWBAnalogState(b)->
+      let nrhs = map_expr b.rhs and nvar = StochLib.map_stoch b.stoch f in 
+      HWBAnalogState({rhs=nrhs;ic=b.ic;stoch=nvar})
+    | HWBInput -> HWBInput
+    | HWBUndef -> HWBUndef 
+   
+      
+
+  let map_var (type a) (type b) (x:a hwportvar) (f:a->b) : b hwportvar =
+    {
+      port=x.port;prop=x.prop;typ=x.typ;knd=x.knd;comp=x.comp;
+      bhvr=map_bhvr x.bhvr f;
+      defs = x.defs 
+    }
+
+  let map_comp (type a) (type b) (x:a hwcomp) (f:a->b) : b hwcomp =
+    let nins = MAP.map_vals x.ins (fun k v -> map_var v f)   in
+    let nouts = MAP.map_vals x.outs (fun k v -> map_var v f)  in
+    {name=x.name;vars=x.vars;outs=nouts;ins=nins;params=x.params;insts=x.insts;sim=x.sim}
+    
 
 end

@@ -2,8 +2,6 @@ open Common
 
 open HWLib
 open HWData
-open HWCstrLib
-open HWInstLib
 
 open MathData
 open MathLib
@@ -109,19 +107,6 @@ struct
 
 
 
-
-  let unodeid2name unodeid = match unodeid with
-  | UNoInput(x) -> HwLib.input_cid x
-  | UNoOutput(x) -> HwLib.output_cid x
-  | UNoCopy(x) -> HwLib.copy_cid x
-  | UNoComp(x) -> x
-
-  let name2unodeid (c:string) = match HwLib.get_special c with
-    | Some("copy",prop) -> UNoCopy(prop)
-    | Some("input",prop) -> UNoInput(prop)
-    | Some("output",prop) -> UNoOutput(prop)
-    | Some(_) -> error "name2UNot" "illegal name"
-    | None -> UNoComp c
 
   let hwid2var hwid =
   let proccmp (x:compid) = match x with

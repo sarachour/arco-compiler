@@ -13,7 +13,7 @@
   open StochData
 
   type parser_meta = {
-    mutable comp : string option;
+    mutable comp : hwcompname option;
   }
 
   let dat = HwLib.mkenv()
@@ -40,10 +40,12 @@
     let itercmp cmp (idx:index option) =
       let gidx : index = match idx with
           | Some(i) -> i
-          | None -> IToEnd 0 in
+          | None -> IToEnd 0
+      in
+      let hwcnv name = HwLib.hwcompname2str name in 
       match conntype with
-      | HWKInput -> MAP.iter cmp.ins (fun vname vr -> fxn (cmp.name,vname) gidx)
-      | HWKOutput -> MAP.iter cmp.outs (fun vname vr -> fxn (cmp.name,vname) gidx)
+      | HWKInput -> MAP.iter cmp.ins (fun vname vr -> fxn (hwcnv cmp.name,vname) gidx)
+      | HWKOutput -> MAP.iter cmp.outs (fun vname vr -> fxn (hwcnv cmp.name,vname) gidx)
       ;
       ()
     in
@@ -53,13 +55,13 @@
       let itercmp cmp = List.iter (fun cmp -> itercmp cmp None) cmps in
       ()
     | CompConn(c) ->
-      let cmp = HwLib.getcomp dat c in
+      let cmp = HwLib.getcomp dat (HwLib.str2hwcompname c) in
       itercmp cmp None
     | CompPortConn(c,p) ->
       let ident = (c,p) in
       fxn ident (IToEnd 0)
     | InstConn(c,i) ->
-      let cmp = HwLib.getcomp dat c in
+      let cmp = HwLib.getcomp dat (HwLib.str2hwcompname c) in
       let _ = List.iter (fun idx ->
         itercmp cmp (Some idx)) i
       in
@@ -72,7 +74,7 @@
       ()
 
   let idx2hcconn (c:string) (idx:index) : hcconn =
-    let comp : hwvid hwcomp = HwLib.getcomp dat c in
+    let comp : hwvid hwcomp = HwLib.getcomp dat (HwLib.str2hwcompname c) in
     let res = match idx with
     | IIndex(i) -> HCCIndiv(i)
     | IRange(r) -> HCCRange(r)
@@ -120,7 +122,7 @@
     ASTLib.ast2str e (fun x -> HwLib.hwvid2str x)
 
   let mkdfl cname iname =
-    let mk p = HwConnLib.mk dat cname iname p in
+    let mk p = HwConnLib.mk dat (HwLib.hwcompname2str cname) iname p in
     MAP.iter (dat.props) (fun k v -> mk k); 
     ()
 %}
@@ -230,12 +232,12 @@ expr:
           let v = HwLib.getparam dat cname x in
           HNParam(HCMLocal(cname),v.name)
         else
-          error "expr" ("variable "^x^" not found in "^cname)
+          error "expr" ("variable "^x^" not found in "^(HwLib.hwcompname2str cname))
     in
     let getcmpid c =
       match c with
       | HCMLocal(v) -> v
-      | HCMGlobal(v,i) -> v
+      | HCMGlobal(v) -> v.name
     in
     let hwid2propid x =
       match x with
@@ -305,13 +307,13 @@ portprop:
   
 digital:
   | DIGITAL INPUT TOKEN EOL {
-    let name = HwLib.input_cid $3 in
+    let name = HWCmInput $3 in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()
   }
   | DIGITAL OUTPUT TOKEN EOL {
-    let name = HwLib.output_cid $3 in
+    let name = HWCmOutput $3 in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()
@@ -440,13 +442,13 @@ digital:
 
 comp:
   | COMP TOKEN EOL {
-    let name = $2 in
+    let name = HWCmComp $2 in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()
   }
   | COMP COPY TOKEN EOL {
-    let name = HwLib.copy_cid  $3 in
+    let name = HWCmCopy  $3 in
     let _ = set_cmpname name in
     let _ = HwLib.mkcomp dat name in
     ()
@@ -539,7 +541,7 @@ comp:
       let port,prop = $4 and comp = get_cmpname() and strat = $6 in
       HwLib.upd_defs dat (fun b -> match b with
           | HWDAnalogState(defs) -> defs.deriv.conv <- strat; b
-          | _ -> error "def ddt imap" "must be a state variable"
+          | _ -> error "def ddt map" "must be a state variable"
           ) comp port;
         ()
   }
@@ -625,7 +627,7 @@ schem:
   }
   | schem INST compname COLON INTEGER EOL {
     let cname = $3 and amt = ($5) in
-    let _ = HwLib.upd_inst dat cname amt in
+    let _ = HwLib.upd_inst dat (HwLib.str2hwcompname cname) amt in
     ()
   }
   | schem CONN connterm ARROW connterm EOL {

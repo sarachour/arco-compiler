@@ -38,7 +38,7 @@ let gen h f o cfg =
     | None -> ()
   in
   let mathenv,hwenv = read_data f h in
-  (*Solver.solve hwenv mathenv o; *)
+  Solver.solve hwenv mathenv o; 
   ()
 
 let gen_cfg o =

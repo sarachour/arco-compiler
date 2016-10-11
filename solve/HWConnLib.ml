@@ -56,6 +56,7 @@ let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
 
   let coll2str (c:connid) (r:hcconn) =
     (connid2str c)^"["^(hcconn2str r)^"]"
+
   let to_buf e fb =
     let oc x = output_string fb x in
     let pr_conns (c,p) v =

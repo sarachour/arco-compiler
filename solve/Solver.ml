@@ -40,17 +40,8 @@ let error n m = raise (SolverError (n^":"^m))
 let slvr_print_debug = print_debug 1
 let slvr_menu = menu 1
 let slvr_print_inter = print_inter 1
+
 (*
-module SolveLib =
-struct
-
-
-  let mkslv h p : slvr = {hw=h; prob=p; cnt=0;}
-
-
-end
-
-
 let canonicalize_sln (hw:hwvid hwenv) (s:sln) =
   
   let newlabels = MAP.make () in
@@ -72,11 +63,13 @@ let canonicalize_sln (hw:hwvid hwenv) (s:sln) =
   let _ = MAP.set s.labels newlabels in
   ()
 
-
+*)
 let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
-  let _ = init_utils() in
-  let sl = SolveLib.mkslv hw prob in
+  init_utils();
+  let sl = {hw=hw;math=prob;goal_cnt=0;} in
   let msearch = MultiSearch.mkmulti sl in
+  ()
+(*
   let _ = slvr_print_inter "===== Beginning Interactive Solver ======\n" in
   let nslns = Globals.get_glbl_int "slvr-solutions" in
   let slns : (sln list) option = MultiSearch.msolve (REF.mk sl) msearch nslns in
@@ -107,4 +100,4 @@ let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
       let _ = flush_all () in
       error "solve" " no solution Found."
   ()
-*)
+      *)

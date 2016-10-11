@@ -5,6 +5,23 @@ open Util
 open IntervalData
 open StochData
 
+type hwcompname =
+  | HWCmInput of string
+  | HWCmOutput of string
+  | HWCmCopy of string
+  | HWCmComp of string
+
+type hwcompinst = {
+  name : hwcompname;
+  inst : int;
+}
+
+type hwvkind = HWKInput | HWKOutput
+
+type compid =
+  | HCMLocal of hwcompname 
+  | HCMGlobal of hwcompinst
+
 type hcconn =
   | HCCAll
   | HCCRange of irange
@@ -13,6 +30,16 @@ type hcconn =
 (*port to port*)
 type connid = string*string
 
+type wireid = {
+    comp:hwcompname;
+    inst:int;
+    port:string;
+}
+
+type wireconn = {
+  src: wireid;
+  dst: wireid;
+}
 
 (*General Data*)
 type hwvid =
@@ -25,28 +52,26 @@ type hwparam = {
   value : number list;
   typ: unt;
   name:string;
-  comp:string;
+  comp:hwcompname;
 }
 
 type port_prop = string*string
 
-type 'a hwadefs = {
+type hwadefs = {
   mutable span: span;
   mutable conv:  mapper;
   mutable iconv:  mapper;
 }
 
-type 'a hwastatedefs = {
-  mutable deriv : 'a hwadefs;
-  mutable stvar : 'a hwadefs;
+type hwastatedefs = {
+  mutable deriv : hwadefs;
+  mutable stvar : hwadefs;
 }
 
-type 'a hwddefs = {
+type hwddefs = {
   mutable freq: number*untid;
   mutable repr: int*int*int;
 }
-type 'a hwdinp = 'a hwddefs 
-type 'a hwainp = 'a hwadefs
 
 type 'a hwdout = {
   rhs : 'a ast;
@@ -68,19 +93,19 @@ type 'a hwbhv =
   | HWBInput
   | HWBUndef
 
-type 'a hwdefs =
-  | HWDAnalog of 'a hwadefs
-  | HWDDigital of 'a hwddefs
-  | HWDAnalogState of 'a hwastatedefs
+type  hwdefs =
+  | HWDAnalog of hwadefs
+  | HWDDigital of hwddefs
+  | HWDAnalogState of hwastatedefs
   
 type 'a hwportvar = {
    mutable bhvr: 'a hwbhv;
-   mutable defs: 'a hwdefs;
+   mutable defs: hwdefs;
    typ:untid;
    knd:hwvkind;
    port:string;
    prop:string;
-   comp:string;
+   comp:hwcompname;
    
 }
 
@@ -90,7 +115,7 @@ type 'a hwcomp = {
   ins: (string,'a hwportvar) map;
   params: (string,hwparam) map;
   mutable insts: int;
-  name:string;
+  name:hwcompname;
   mutable sim: (string*(string list)) option;
 }
 
@@ -99,7 +124,7 @@ type 'a hwenv = {
   mutable units : unt_env;
   mutable props : (string, untid set) map;
   conns: (connid, (connid,(hcconn*hcconn) set) map) map;
-  mutable comps : (string,'a hwcomp) map;
+  mutable comps : (hwcompname,'a hwcomp) map;
   mutable time : (string*(untid set)) option;
 }
 
