@@ -40,7 +40,7 @@ let error n m = raise (SolverError (n^":"^m))
 let slvr_print_debug = print_debug 1
 let slvr_menu = menu 1
 let slvr_print_inter = print_inter 1
-
+(*
 module SolveLib =
 struct
 
@@ -107,3 +107,4 @@ let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
       let _ = flush_all () in
       error "solve" " no solution Found."
   ()
+*)

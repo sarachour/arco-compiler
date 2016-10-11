@@ -27,7 +27,7 @@ exception GoalTableError of string
 
 let error n m = raise (GoalTableError (n^":"^m))
 
-
+(*
 module GoalTableLib =
 struct
 
@@ -125,17 +125,16 @@ struct
 
   (*make an empty node without the goals*)
   let mktbl (s:slvr) (is_trivial:uvar->bool) : gltbl =
+    let h2u = UnivLib.hwid2unid in
+    let eh2u x = ASTLib.trans (ASTLib.map x h2u) (_rm_pars s) in 
     let comp2node (c:hwvid hwcomp) : unode =
-      let nvars = List.filter (fun (x:hwvid hwportvar) ->
-          x.bhvr <> HWBhvUndef) (MAP.to_values (c.vars)) in
-      let h2u = UnivLib.hwid2unid in
-      let eh2u x = ASTLib.trans (ASTLib.map x h2u) (_rm_pars s) in 
-      let hwvar2uvar (x:hwvid hwportvar) : uvar =
-        let new_lhs = HwId(HNPort(x.knd,HCMLocal(c.name),x.port,x.prop)) in
-        let ubhv : ubhv= match x.bhvr with
-        | HWBhvDigital(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHDigitalVar()})
-        | HWBhvAnalogVar(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHAnalogVar()})
-        | HWBhvAnalogStateVar(bhv) ->
+      let nvars = MAP.size c.outs in
+        let hwvar2uvar (x:hwvid hwportvar) : uvar =
+          let new_lhs = HwId(HNPort(x.knd,HCMLocal(c.name),x.port,x.prop)) in
+          let ubhv : ubhv= match x.bhvr with
+            | HWBDigital(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHDigitalVar()})
+            | HWBAnalogVar(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHAnalogVar()})
+            | HWBAnalogStateVar(bhv) ->
           let ic_port,ic_prop = bhv.ic in
           let new_ic_var : unid = HwId(HNPort(HNInput,HCMLocal(c.name),ic_port,ic_prop)) in
           UBhvState({rhs=eh2u bhv.rhs;ic=ICVar(new_ic_var); knd=UBHAnalogStateVar()})
@@ -210,3 +209,4 @@ struct
     let _ = SearchLib.setroot tbl.search (s,tbl) steps in
     ()
 end
+      *)

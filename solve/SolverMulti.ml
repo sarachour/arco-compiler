@@ -36,7 +36,7 @@ let error n m = raise (SolverMultiError (n^":"^m))
 let _print_debug : string -> unit = print_debug 1 "multi"
 let m_menu = menu 1
 let m_print_inter = print_inter 1
-
+(*
 module MultiSearchTree =
 struct
   let step2str x = match x with
@@ -698,3 +698,4 @@ struct
 
 
 end
+*)

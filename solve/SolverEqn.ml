@@ -32,7 +32,7 @@ let error n m = raise (SolverEqnError (n^":"^m))
 let _print_debug = print_debug 2 "eqn"
 let _menu = menu 2
 let _print_inter = print_inter 2
-
+(*
 module SolverEqn =
 struct
   let mkmenu (s:slvr) (v:gltbl) (currgoal:goal option) =
@@ -488,3 +488,4 @@ struct
       | _ -> None
 
 end
+*)

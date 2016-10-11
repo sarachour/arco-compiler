@@ -15,7 +15,7 @@ let error s e =
 
 let _print_debug = print_debug 1 "rslvr"
 let _exec_debug = exec_debug 1 
-
+(*
 module HwConnRslvr =
 struct
 
@@ -289,3 +289,4 @@ struct
     true
 
 end
+*)

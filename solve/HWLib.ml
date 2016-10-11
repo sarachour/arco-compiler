@@ -194,6 +194,10 @@ struct
     fxn v.defs;
     ()
 
+  let upd_mapvars e vars comp =
+    let c : hwvid hwcomp = getcomp e comp in
+    c.vars <- c.vars @ vars;
+    ()
 
   let hasparam e cname iname =
     let c = getcomp e cname in

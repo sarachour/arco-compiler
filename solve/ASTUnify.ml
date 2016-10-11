@@ -16,7 +16,7 @@ open SolverSln
 open SolverGoalTable
 open SolverUtil
 
-
+(*
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
@@ -837,3 +837,4 @@ struct
     slns
 
 end
+*)

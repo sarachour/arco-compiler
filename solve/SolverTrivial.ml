@@ -14,7 +14,7 @@ open HWLib
 
 exception TrivialException of (string)
 let error n msg = raise (TrivialException(n^": "^msg))
-
+(*
 (*TODO: Fill in after refactor*)
 module TrivialLib =
 struct
@@ -135,3 +135,4 @@ struct
 *)
 
 end
+*)

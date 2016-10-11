@@ -1,7 +1,7 @@
 open SolverData
 open Util
 open SearchData
-
+(*
 type mutbl = {
   (*subtrees*)
   slvr: slvr;
@@ -29,3 +29,4 @@ type musearch = {
   mutable goals : goal set;
   is_trivial: uvar -> bool;
 }
+*)

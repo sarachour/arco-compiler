@@ -133,7 +133,7 @@
 %token DEF
 %token REPR MANTISSA EXPO SIGN
 %token MAG SAMPLE
-%token MAP LINEAR SCALE OFFSET MAPVAR 
+%token MAP DIRECT LINEAR SCALE OFFSET MAPVAR 
 
 %token PROP TIME  
 %token COMP INPUT OUTPUT PARAM END SIM
@@ -265,9 +265,27 @@ typ:
   | QMARK {UVariant}
 
 map_strategy:
-| LINEAR SCALE EQ map_expr OFFSET EQ map_expr {()}
-| SCALE map_expr {()}
-| OFFSET map_expr {()}
+  | LINEAR SCALE EQ map_expr OFFSET EQ map_expr {
+    let scale_expr : mapvar ast = $4 in
+    let offset_expr : mapvar ast = $7 in
+    let data = {scale=scale_expr; offset=offset_expr} in 
+    MAPLinear(data)
+  }
+
+  | SCALE map_expr {
+      let scale_expr : mapvar ast = $2 in
+      let data = {scale=scale_expr} in
+      MAPScale(data)
+  }
+
+  | OFFSET map_expr {
+      let offset_expr : mapvar ast =$2 in
+      let data = {offset=offset_expr} in
+      MAPOffset(data)
+  }
+  | DIRECT {
+      MAPDirect
+  }
 
 mag:
 | OBRAC numlist CBRAC TOKEN {()}
@@ -376,10 +394,18 @@ digital:
          ()
   }
   | digital DEF MAPVAR tokenlist EOL {
-         ()
+      let vars : string list = $4 in
+      let cname = get_cmpname() in 
+      HwLib.upd_mapvars dat vars cname;
+      ()
   }
   | digital DEF portprop MAP map_strategy EOL {
-         ()
+      let comp = get_cmpname() in
+      let port,prop = $3 and strat = $5 in
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDAnalog(defs) -> defs.mapper <- strat; defs 
+        ) comp port;
+      ()
   }
   | digital SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in

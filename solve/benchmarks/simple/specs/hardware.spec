@@ -47,8 +47,11 @@ comp iadd
 
     output Z{I:mA}
     %def I(Z) mag=[?] mA
-    def I(Z) map linear scale=1/A offset=(B1+B2)/A
-
+    %hardware to symbolic 
+    def I(Z) imap linear scale=1/A offset=-(B1+B2)/A
+    %symbolic to hardware 
+    def I(Z) map linear scale=A offset=(B1+B2)
+    
     rel I(Z) = I(X) + I(Y)
     var I(Z) = I(Z)*0.00001 shape GAUSS
 end

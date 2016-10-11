@@ -12,7 +12,7 @@ open AST
 open Util
 open Unit
 open SolverData
-
+(*
 module UnivLib =
 struct
   let wrap_goal (v:gltbl) (u:uvar) : goal =
@@ -369,3 +369,4 @@ struct
   let wrap_goal = UnivLib.wrap_goal
   let unwrap_goal = UnivLib.unwrap_goal
 end
+*)

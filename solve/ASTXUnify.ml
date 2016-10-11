@@ -24,7 +24,7 @@ let spy_print_debug = print_debug 4 "sympy"
 let _print_debug = print_debug 3 "uni"
 let debug : string -> unit =_print_debug  
 let auni_menu = menu 3
-
+(*
 module ASTUnifier =
 struct
 
@@ -989,3 +989,4 @@ struct
     slns
 
 end
+*)

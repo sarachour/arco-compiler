@@ -12,7 +12,7 @@ open SolverRslv
 exception SolverSlnError of string
 
 let error n m = raise (SolverSlnError (n^":"^m))
-
+(*
 module SlnLib =
 struct
   let hwport2wire cm port =
@@ -274,10 +274,10 @@ struct
         let handle = prp^" of "^(UnivLib.unodeid2name sname)^" "^(string_of_int sid)^" "^sport in
         let cmd = match lbl with
         | LBindValue(k,f) -> "bind value "^handle^" :: "^(string_of_number f)
-        | LBindVar(HNInput,MNVar(_,n)) -> "bind var "^handle^" :: "^"var "^n
-        | LBindVar(HNOutput,MNVar(_,n)) -> "bind var "^handle^" :: "^"var "^n
-        | LBindVar(HNInput,MNTime(_)) -> "bind time "^handle
-        | LBindVar(HNInput,MNParam(n,p)) -> "bind value "^handle^" :: "^(string_of_number p)
+        | LBindVar(HWKInput,MNVar(_,n)) -> "bind var "^handle^" :: "^"var "^n
+        | LBindVar(HWKOutput,MNVar(_,n)) -> "bind var "^handle^" :: "^"var "^n
+        | LBindVar(HWKInput,MNTime(_)) -> "bind time "^handle
+        | LBindVar(HWKInput,MNParam(n,p)) -> "bind value "^handle^" :: "^(string_of_number p)
         | _ -> "%unsupported label"
         in
         os (cmd^"\n")
@@ -341,3 +341,4 @@ struct
     "Comps:\n"^cstr^"\n\nConns:"^cnstr^"\n\nLabels:\n"^lstr
 
 end
+   *)

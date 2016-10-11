@@ -12,11 +12,9 @@ open MathData
 
 open SearchData
 
-type slvr =  {
-  hw: hwvid hwenv;
-  prob: mid menv;
-  cnt: int;
-}
+open IntervalData
+open StochData
+
 
 (*Unified math and hardware ids*)
 
@@ -24,120 +22,158 @@ type unid =
   |MathId of mid
   |HwId of hwvid
 
-type 'a init_cond = 
-  | ICVar of 'a
-  | ICVal of number 
-
-type unodeid =
-  | UNoInput of string
-  | UNoOutput of string
-  | UNoCopy of string
-  | UNoComp of string
+type ucompid =
+  | UCmInput of string
+  | UCmOutput of string
+  | UCmCopy of string
+  | UCmComp of string
 
 (*Tableau Data*)
 
-type ubhv_vk_analog_var = unit
-type ubhv_vk_digital_var = unit 
-type ubhv_vk_math_var = unit
 
-type ubhv_var_kind =
-  | UBHAnalogVar of ubhv_vk_analog_var
-  | UBHDigitalVar of ubhv_vk_digital_var
-  | UBMMathVar of ubhv_vk_math_var
+(*
+abstract hardware resources, including potentially
+partially set parameters and multiple relations.
 
-type u_fxn_var = {
-  mutable knd: ubhv_var_kind;
-  mutable rhs : unid ast;
+*)
+type ucomp = {
+  d: unid hwcomp;
+  comp_id: ucompid;
 }
-
-type ubhv_stub_kind =
-  | UBHPortConn of unid
-  | UBHPortVal of number
-
-type u_stub_var = {
-  mutable knd: ubhv_stub_kind;
-}
-
-type ubhv_sk_math_state = unit 
-type ubhv_sk_analog_state = unit
-type ubhv_state_kind =
-  | UBHAnalogStateVar of ubhv_sk_analog_state
-  | UBMMathStateVar of ubhv_sk_math_state
-
-type u_state_var = {
-  mutable knd : ubhv_state_kind;
-  mutable rhs : unid ast;
-  mutable ic : unid init_cond;
-}
-(**)
-
-type ubhv =
-  | UBhvVar of u_fxn_var
-  | UBhvState of u_state_var
-  | UBhvStub of u_stub_var
-  | UBhvUndef
-
-(*math *)
-type uvar = {
-  bhvr: ubhv;
-  mutable lhs: unid;
-}
-type uparam = {
-  name: string;
-  values: number list;
-}
-(*abstract hardware resources, including potentially
-partially set parameters and multiple relations.*)
-type unode = {
-  mutable params: (string,uparam) map;
-  mutable vars: (unid,(uvar) list) map;
-  name : string;
-  comp_id: unodeid;
-}
-
 (*A particular goal to strive for*)
+(*
 type goal =
   | TrivialGoal of uvar
   | NonTrivialGoal of uvar
+*)
+(*
+   you start off with v = expr. You unify with
+   h = expr', you are mapping v to h
 
-type wireid = unodeid*int*string
+   the mapping of v to h also maps [v] to [h]
+   and enforces mapper [v] to [h]. the stochastic
+   behavior 
+
+   the vars h' in expr' are mapped to expressions
+   in the math env 
+*)
+
+(* a math variable *)
+type goal_math = {
+  d: mid mvar;
+}
+(*
+   map a math relation to the input port
+*)
+type goal_hw_input = {
+  input_port:hwvid;
+  expr:mid ast;
+}
+(*connect two ports*)
+type goal_hw_conn = {
+  output_port:hwvid;
+  input_port:hwvid;
+}
+(*map to the digital interface*)
+type goal_hw_varmap = {
+  expr: mid ast;
+  port:hwvid;
+}
+(*port input goals*)
+type goal_data =
+  | GMathGoal of goal_math
+  | GPortInputGoal of goal_hw_input
+  | GPortConnGoal of goal_hw_conn
+  | GInPortMapGoal of goal_hw_varmap  
+  | GOutPortMapGoal of goal_hw_varmap  
+
+type goal = {
+  d: goal_data;
+  mutable active:bool;
+  id:int;
+}
+(*
+solving goals generates facts:
+   map an input port to a math variable
+   map an input port to a math expr
+   map an output port to a math variable 
+*)
+type wireid = {
+    comp:ucompid;
+    inst:int;
+    port:string;
+}
+
+type wireconn = {
+  src: wireid;
+  dst: wireid;
+}
+
+type portlabel_expr =
+  |PLbVar of mid
+  |PLbVal of number
+  |PLbExpr of mid ast
+
+(*map an expression to a hardware port*)
+type portlabel = {
+  hwid: hwvid;
+  expr: portlabel_expr;
+}
 
 (*Different kinds of labels*)
-type label =
-  | LMagnitude of range*untid*range*unt
-  | LTime of range*untid*range*untid
-  | LError
-  | LBindValue of hwvkind*number
-  | LBindVar of hwvkind*mid
 
 type sln = {
   (*how many of each component is used *)
-  mutable comps: (unodeid,(int set)*int) map;
+  mutable comps: (ucompid,(int set)*int) map;
   mutable conns: (wireid, wireid set) map;
-  mutable labels: (wireid, (string, label set) map) map;
+  mutable labels: (wireid, portlabel) map;
 }
 
 
+type ssolmod =
+  | SSolUseNode of ucompid*int
+  | SSolAddConn of wireconn
+  | SSolAddLabel of portlabel
+  | SSolRemoveLabel of portlabel
+  
 type sstep =
-  | SSolUseNode of unodeid*int
-  | SSolAddConn of wireid*wireid
-  | SSolAddLabel of wireid*string*label
-  | SSolRemoveLabel of wireid*string*label
-  | SRemoveGoal of goal
+  | SModifySol of ssolmod
   | SAddGoal of goal
-  | SMakeGoalPassive of goal
-  | SMakeGoalActive of goal
+  | SRemoveGoal of goal
+  | SChangeGoalStatus of int*bool
+  | SMakeGoalActive of int*bool
+  | SAddUsedComp of ucomp*int
   (*add a relation for a node*)
-  | SAddNodeRel of unodeid*int*(uvar)
-  | SRemoveNodeRel of unodeid*int*(uvar)
 
 
-type gltbl = {
-  mutable goals : goal set;
-  mutable blacklist : goal set;
-  mutable nodes : (unodeid, unode) map;
-  mutable used_nodes : (unodeid*int,unode) map;
-  is_trivial: uvar->bool;
-  mutable search: (sstep,slvr*gltbl) ssearch;
-  mutable sln: sln;
+type mag_env = {
+  mutable inst: (string,int) map;
+  (*cstrs*)
+  mutable sameas: (string*int,int list) map;
+  mutable usedin: (string*int, hwvid) map;
+  mutable uses: (hwvid,string*int) map;
+  (*convert the hardware intervals to effective math intervals*)
+  mutable conv : (hwvid,mapper) map;
+  (*the hardware interval*)
+  mutable hw_ival : (hwvid,interval) map;
+  (*the interval you're imposing*)
+  mutable m_ival : (hwvid,interval) map;
 }
+
+type uenv =  {
+  hw: hwvid hwenv;
+  prob: mid menv;
+  cnt: int;
+  goal_cnt:int;
+}
+type gltbl = {
+  (*solution env*)
+  env: uenv;
+  mutable sln_env: sln;
+  mutable comp_env : (ucompid*int,ucomp) map;
+  mutable mag_env : mag_env; 
+  (*state of table*)
+  mutable goals : goal set;
+  mutable avail_comps : (ucompid, ucomp) map;
+  mutable search: (sstep,gltbl) ssearch;
+  }

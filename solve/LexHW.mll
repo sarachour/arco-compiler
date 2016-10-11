@@ -64,6 +64,7 @@ rule env = parse
   | "map-var"               {MAPVAR}
   | "linear"                {LINEAR}
   | "scale"                 {SCALE}
+  | "direct"                {DIRECT}
   | "offset"                {OFFSET}
 
   | "sample"                {SAMPLE}

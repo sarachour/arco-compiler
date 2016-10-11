@@ -7,7 +7,7 @@ open Search
 open SearchData
 
 open Globals
-
+(*
 module SlvrSearchLib =
 struct
 
@@ -163,3 +163,4 @@ struct
 
 
 end
+*)

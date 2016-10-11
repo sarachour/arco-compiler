@@ -4,7 +4,7 @@ open SymCaml
 open SymCamlData
 open SearchData
 open SolverData
-
+(*
 type 'a rkind =
 | RKDeriv of 'a init_cond
 | RKFunction
@@ -28,7 +28,6 @@ remove templ rel: remove a relation from the template
 remove target rel: remove a relation from the target
 fill in target var: fill in a target variable
 fill in a templ var: fill in a template variable
-
 *)
 (*an entanglement*)
 
@@ -123,3 +122,4 @@ type 'a runify = {
 
 (*the data necessary for the unification*)
 type 'a rarg = 'a*('a ast)*('a rkind)
+*)
