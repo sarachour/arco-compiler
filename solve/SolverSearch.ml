@@ -7,10 +7,10 @@ open Search
 open SearchData
 
 open Globals
-(*
 module SlvrSearchLib =
 struct
 
+(*
 
   (*
   select table with most trivial to non-trivial goals
@@ -82,9 +82,13 @@ struct
     let delta = 0. in
     SearchLib.mkscore state delta
   
+
+*)
+
   let score_step () =
     let typ = get_glbl_string "eqn-selector-branch" in
     match typ with
+    (*
     | "uniform" -> score_uniform
     | "random" -> score_random
     | "trivial-ratio" -> score_triv_goals
@@ -92,11 +96,13 @@ struct
     | "goal-complexity" -> score_goal_complexity
     | "goal-complexity-and-depth" -> score_goal_complexity_and_depth
     | "goal-complexity-and-used-comps" -> score_goal_complexity_and_comps_used
+    *)
     | _ ->
       error "best_path_function" "path selector doesn't exist"
-
-
-  let step2str (n:sstep) = match n with
+    
+  let step2str (n:sstep) =
+  (*
+  match n with
   | SAddGoal(v) -> "add "^(UnivLib.goal2str v)
   | SRemoveGoal(v) -> "rm "^(UnivLib.goal2str v)
   | SAddNodeRel(id,i,rel) ->
@@ -108,11 +114,12 @@ struct
   | SSolRemoveLabel(w,p,l) -> "s.rmlbl "^(SlnLib.wire2str w)^"."^p^" -> "^(SlnLib.label2str l)
   | SMakeGoalActive(v) -> "activate "^(UnivLib.goal2str v)
   | SMakeGoalPassive(v) -> "inactive "^(UnivLib.goal2str v)
+  *)
+    ""
 
-
-  let mksearch () =
-    let apply_step ((slvenv,tbl):slvr*gltbl) (s:sstep) =
+  let apply_step (tbl:gltbl) (s:sstep) =
       (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)
+      (*
       let _ = match s with
       | SAddGoal(g) ->
         let _ = GoalStubLib.add_goal tbl g in ()
@@ -127,17 +134,19 @@ struct
       | SMakeGoalActive(g) -> let _ = GoalStubLib.activate_goal tbl g in ()
       | SMakeGoalPassive(g) -> let _ = GoalStubLib.deactivate_goal tbl g in ()
       in
-      (slvenv,tbl)
-    in
-    let order_steps x y = match (x,y) with
+      *)
+      tbl
+
+  let order_steps x y = match (x,y) with
     | (_,SRemoveGoal(_)) -> 1
     | (SRemoveGoal(_),_) -> -1
     | (SAddGoal(_),_) -> 1
     | (_,SAddGoal(_)) -> -1
     | _ -> 0
-    in
-    let unapply_step ((slvenv,tbl):slvr*gltbl) (s:sstep) =
+
+  let unapply_step (tbl:gltbl) (s:sstep) =
       (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
+      (*
       let _ = match s with
       | SAddGoal(g) ->
         let _ = GoalStubLib.remove_goal tbl g in ()
@@ -152,10 +161,12 @@ struct
       | SMakeGoalActive(g) -> let _ = GoalStubLib.deactivate_goal tbl g in ()
       | SMakeGoalPassive(g) -> let _ = GoalStubLib.activate_goal tbl g in ()
       in
-      (slvenv,tbl)
-    in
-    let score_step = score_step () in
-    let search : (sstep,slvr*gltbl) ssearch =
+      *)
+      (tbl)
+
+  let mksearch () =
+        let score_step = score_step () in
+    let search : (sstep,gltbl) ssearch =
       SearchLib.mksearch apply_step unapply_step order_steps score_step step2str
     in
     search
@@ -163,4 +174,3 @@ struct
 
 
 end
-*)

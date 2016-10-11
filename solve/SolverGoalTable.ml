@@ -12,6 +12,8 @@ open AST
 open Util
 open Unit
 
+open IntervalLib
+
 open SymCamlData
 
 open SearchData
@@ -163,18 +165,21 @@ struct
         SlnLib.mkcomp sln u_comp.name;
         ()
     ) (MAP.to_values env.hw.comps);
-    (*let search= SlvrSearchLib.mksearch () in*)
+    let search= SlvrSearchLib.mksearch () in
     let tbl : gltbl = {
+        env=env;
+        map_ctx=IntervalLib.mk_map_ctx ();
         goals=SET.make_dflt ();
         avail_comps=comptbl;
         comp_ctx=MAP.make();
         sln_ctx=sln;
+        search=search;
       } in
     tbl
 
 
 
-  
+ (* 
   let mkgoalroot (s:slvr) (tbl:gltbl) =
     let fltmath (x:mid mvar) = x.bhvr <> MBhvUndef in
     let math2goal (x:mid mvar) : goal =
@@ -198,12 +203,12 @@ struct
     let steps = List.map (fun x -> SAddGoal x) goals in
     let _ = SearchLib.setroot tbl.search (s,tbl) steps in
     ()
-
-  let mknullroot s tbl =
-    let _ = SearchLib.setroot tbl.search (s,tbl) [] in
+*)
+  let mknullroot tbl =
+    let _ = SearchLib.setroot tbl.search tbl [] in
     ()
 
-  let mkroot s tbl steps =
-    let _ = SearchLib.setroot tbl.search (s,tbl) steps in
+  let mkroot tbl steps =
+    let _ = SearchLib.setroot tbl.search tbl steps in
     ()
 end

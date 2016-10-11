@@ -130,19 +130,6 @@ type sstep =
   (*add a relation for a node*)
 
 
-type map_ctx = {
-  mutable inst: (string,int) map;
-  (*cstrs*)
-  mutable sameas: (string*int,int list) map;
-  mutable usedin: (string*int, hwvid) map;
-  mutable uses: (hwvid,string*int) map;
-  (*convert the hardware intervals to effective math intervals*)
-  mutable conv : (hwvid,mapper) map;
-  (*the hardware interval*)
-  mutable hw_ival : (hwvid,interval) map;
-  (*the interval you're imposing*)
-  mutable m_ival : (hwvid,interval) map;
-}
 
 type uenv =  {
   hw: hwvid hwenv;
@@ -154,7 +141,7 @@ type gltbl = {
   env: uenv;
   mutable sln_ctx: sln;
   mutable comp_ctx : (hwcompinst,ucomp) map;
-  mutable map_ctx : map_ctx; 
+  mutable map_ctx : hwvid map_ctx; 
   mutable avail_comps : (hwcompname, ucomp) map;
   (*state of table*)
   mutable goals : goal set;

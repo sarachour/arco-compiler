@@ -45,3 +45,16 @@ type 'a mapper_env = {
 type 'a interval_env = {
   mutable intervals : ('a,interval) map;
 }
+
+type 'a map_ctx = {
+  mutable inst: (string,int) map;
+  (*cstrs*)
+  mutable usedin: (string*int, 'a) map;
+  mutable uses: ('a,string*int) map;
+  (*convert the hardware intervals to effective math intervals*)
+  mutable conv : ('a,mapper) map;
+  (*the hardware interval*)
+  mutable ival_phys : ('a,interval) map;
+  (*the interval you're imposing*)
+  mutable ival_abs : ('a,interval) map;
+}

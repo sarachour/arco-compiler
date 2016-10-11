@@ -38,19 +38,21 @@ let m_menu = menu 1
 let m_print_inter = print_inter 1
 module MultiSearchTree =
 struct
+  let partid2str (id:part_id) = (id.mvr)^"#"^(string_of_int id.inst) 
+  let glblid2str (id:glbl_id) = (id.gid)^"#"^(string_of_int id.inst) 
   let step2str x = match x with
-    | MSSolveVar(id) -> "-var "^(UnivLib.unid2var id)
-    | MSPartialApp(id,i) -> "#partial"^(UnivLib.unid2var id)^"."^(string_of_int i)
-    | MSGlobalApp(key,i) -> "#global "^(key)^"  : "^(string_of_int i)
+    | MSSolveVar(id) -> "-var "^(id)
+    | MSPartialApp(id) -> "#partial"^(partid2str id)
+    | MSGlobalApp(id) -> "#global "^(glblid2str id)
 
   let apply_step (env:mutbl) (x:mustep) : mutbl =
     let _ = _print_debug ("apply "^step2str x) in
     match x with
-    | MSPartialApp(id,i) ->
-      let _ = SET.add env.local(id,i) in
+    | MSPartialApp(id) ->
+      let _ = SET.add env.local(id) in
       env
-    | MSGlobalApp(idkey,i) -> 
-      let _ = env.global <- Some(idkey,i) in 
+    | MSGlobalApp(id) -> 
+      let _ = env.global <- Some(id) in 
       env 
     | MSSolveVar(id) ->
       let _ = SET.add env.solved id in
@@ -59,10 +61,10 @@ struct
   let unapply_step (env:mutbl) (x:mustep) : mutbl =
     let _ = _print_debug ("unapply "^step2str x) in
     match x with
-    | MSPartialApp(id,i) ->
-      let _ = SET.rm env.local (id,i) in
+    | MSPartialApp(id) ->
+      let _ = SET.rm env.local (id) in
       env
-    | MSGlobalApp(idkey,i) -> 
+    | MSGlobalApp(idkey) -> 
       let _ = env.global <- None in
       env
     | MSSolveVar(id) ->
@@ -97,7 +99,7 @@ struct
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "o" then
-        let _ = Printf.printf "\n%s\n\n" (QUEUE.tostr s.order UnivLib.unid2var) in
+        let _ = Printf.printf "\n%s\n\n" (QUEUE.tostr s.order (fun x -> x)) in
         let _ = on_finished() in
         ()
       else
