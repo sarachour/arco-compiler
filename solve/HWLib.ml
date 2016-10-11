@@ -79,7 +79,7 @@ struct
       |HWBInput -> "<input>"
       |HWBDigital(d) -> "<digital>:"^(ASTLib.ast2str d.rhs tostr)
       |HWBAnalog(a) -> "<analog>:"^(ASTLib.ast2str a.rhs tostr)
-      |HWBAnalogState(st) -> "<analog>: ddt"^(ASTLib.ast2str st.rhs tostr)^" ic="
+      |HWBAnalogState(st) -> "<analog-st> "^(ASTLib.ast2str st.rhs tostr)^" ic="
       
 
   let hwvid_bhv2str (v:hwvid hwbhv) = bhv2str v hwvid2str 
@@ -87,7 +87,7 @@ struct
   let to_buf e fb =
     let os x = output_string fb x in
     let print_var prefix (x:hwvid hwportvar) =
-      os (prefix^" "^x.port^"\n")
+      os (prefix^" "^x.port^"\n");
       os (prefix^"  bhv "^(hwvid_bhv2str x.bhvr)^"\n")
     in 
     let print_comp c =
@@ -303,7 +303,10 @@ struct
     name,(inport),(outport)
 
   let mkadefs () : 'a hwadefs =
-    {span=SPNNone; mapper=MAPDirect}
+    {span=SPNNone; conv=MAPDirect;iconv=MAPDirect}
+
+  let mkastatedefs () : 'a hwastatedefs =
+    {stvar=mkadefs();deriv=mkadefs()}
 
   let mkddefs () : 'a hwddefs =
     {repr=(1,4,7); freq=(Integer 0,"?")}
@@ -350,7 +353,12 @@ struct
   let mkrel e (cname:string) (pname:string) (rel:hwvid hwbhv) =
     let p = getvar e cname pname in
     match p.bhvr with
-    | HWBUndef-> p.bhvr <- rel
+    | HWBUndef-> p.bhvr <- rel;
+      begin
+        match p.bhvr with
+        | HWBAnalogState(_) -> p.defs <- HWDAnalogState(mkastatedefs()); ()
+        | _ -> ()
+      end
     | HWBInput -> error "mkrel" ("cannot define dynamics for input port "^pname)
     | _ -> error "mkrel" ("relation already exists for port "^pname)
 

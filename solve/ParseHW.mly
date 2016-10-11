@@ -402,11 +402,19 @@ digital:
       HwLib.upd_mapvars dat vars cname;
       ()
   }
+  | digital DEF portprop IMAP map_strategy EOL {
+      let comp = get_cmpname() in
+      let port,prop = $3 and strat = $5 in
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDAnalog(defs) -> defs.iconv <- strat; defs 
+        ) comp port;
+      ()
+  }
   | digital DEF portprop MAP map_strategy EOL {
       let comp = get_cmpname() in
       let port,prop = $3 and strat = $5 in
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.mapper <- strat; defs 
+          | HWDAnalog(defs) -> defs.conv <- strat; defs 
         ) comp port;
       ()
   }
@@ -414,7 +422,7 @@ digital:
       let comp = get_cmpname() in
       let port,prop = $3 and strat = $5 in
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.mapper <- strat; defs 
+          | HWDAnalog(defs) -> defs.iconv <- strat; defs 
         ) comp port;
       ()
   }
@@ -511,18 +519,38 @@ comp:
       ()
   }
   | comp DEF portprop MAP map_strategy EOL {
-     ()
+      let port,prop = $3 and comp = get_cmpname() and strat = $5 in
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDAnalog(defs) -> defs.iconv <- strat; b
+          | HWDAnalogState(defs) -> defs.stvar.conv <- strat; b
+          ) comp port;
+        ()
+  }
+  
+  | comp DEF portprop IMAP map_strategy EOL {
+      let port,prop = $3 and comp = get_cmpname() and strat = $5 in
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDAnalog(defs) -> defs.iconv <- strat; b
+          | HWDAnalogState(defs) -> defs.stvar.iconv <- strat; b
+          ) comp port;
+        ()
   }
   | comp DEF DDT portprop MAP map_strategy EOL {
-      let port,prop = $4 and mapper = $6 in
-      ()
+      let port,prop = $4 and comp = get_cmpname() and strat = $6 in
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDAnalogState(defs) -> defs.deriv.conv <- strat; b
+          | _ -> error "def ddt imap" "must be a state variable"
+          ) comp port;
+        ()
   }
-  | comp DEF portprop IMAP map_strategy EOL {
-     ()
-  }
+  
   | comp DEF DDT portprop IMAP map_strategy EOL {
-      let port,prop = $4 and mapper = $6 in
-      ()
+      let port,prop = $4 and comp = get_cmpname() and strat = $6 in
+      HwLib.upd_defs dat (fun b -> match b with
+          | HWDAnalogState(defs) -> defs.deriv.iconv <- strat; b
+          | _ -> error "def ddt imap" "must be a state variable"
+          ) comp port;
+        ()
   }
   | comp DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and comp = get_cmpname() in
@@ -532,7 +560,7 @@ comp:
          let max = List.nth bound 1 in
          HwLib.upd_defs dat (fun d -> match d with
             | HWDAnalog(d) -> d.span = SPNInterval({min=min;max=max})
-            | HWDAnalogState(d) -> d.var_span = SPNInterval({min=min;max=max}))
+            | HWDAnalogState(d) -> d.stvar.span = SPNInterval({min=min;max=max}))
             comp port;
          ()
 
@@ -544,7 +572,7 @@ comp:
          let min = List.nth bound 0 in
          let max = List.nth bound 1 in
         HwLib.upd_defs dat (fun d -> match d with
-            | HWDAnalogState(d) -> d.deriv_span = SPNInterval({min=min;max=max})) comp port;
+            | HWDAnalogState(d) -> d.deriv.span = SPNInterval({min=min;max=max})) comp port;
          ()
   }
   | comp SIM TOKEN tokenlist EOL {

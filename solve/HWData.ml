@@ -30,15 +30,17 @@ type hwparam = {
 
 type port_prop = string*string
 
-type 'a hwastatedefs = {
-  mutable deriv_span: span;
-  mutable var_span: span;
-  mutable var_mapper:  mapper;
-}
 type 'a hwadefs = {
   mutable span: span;
-  mutable mapper:  mapper;
+  mutable conv:  mapper;
+  mutable iconv:  mapper;
 }
+
+type 'a hwastatedefs = {
+  mutable deriv : 'a hwadefs;
+  mutable stvar : 'a hwadefs;
+}
+
 type 'a hwddefs = {
   mutable freq: number*untid;
   mutable repr: int*int*int;

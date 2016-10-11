@@ -97,15 +97,16 @@ comp deriv_iadd
     def I(Z0) mag = [0,1] mA
     
     output Z {I:mA}
+   
+    rel ddt I(Z) = I(X) - I(P)*I(Z) init I(Z0)
+    var ddt I(Z) = I(Z)*0.00001 shape GAUSS
+
     def I(Z) mag = [0,1] mA
     def I(Z) map linear scale=1/A offset=B/A
     
     def ddt I(Z) mag= [?] mA
     def ddt I(Z) map linear scale=1/A offset=B/A
-    
-    rel ddt I(Z) = I(X) - I(P)*I(Z) init I(Z0)
-    var ddt I(Z) = I(Z)*0.00001 shape GAUSS
-
+   
 end
 
 
