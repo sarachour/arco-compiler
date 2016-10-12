@@ -7,6 +7,12 @@ open Search
 open SearchData
 
 open Globals
+open Interactive
+
+let debug : string -> unit = print_debug 4 "multi"
+let m_menu = menu 1
+let m_print_inter = print_inter 1
+
 module SlvrSearchLib =
 struct
 
@@ -77,30 +83,39 @@ struct
     let delta = 0. in
     SearchLib.mkscore state delta
 
-  let score_uniform ((slvenv,tbl):slvr*gltbl) (s:sstep list) =
+  
+*)
+  let score_uniform (tbl:gltbl) (s:sstep list) =
     let state = 0. in
     let delta = 0. in
     SearchLib.mkscore state delta
   
 
-*)
 
   let score_step () =
     let typ = get_glbl_string "eqn-selector-branch" in
     match typ with
-    (*
-    | "uniform" -> score_uniform
-    | "random" -> score_random
-    | "trivial-ratio" -> score_triv_goals
-    | "ngoals" -> score_ngoals
-    | "goal-complexity" -> score_goal_complexity
-    | "goal-complexity-and-depth" -> score_goal_complexity_and_depth
-    | "goal-complexity-and-used-comps" -> score_goal_complexity_and_comps_used
-    *)
-    | _ ->
-      error "best_path_function" "path selector doesn't exist"
-    
-  let step2str (n:sstep) =
+    | _ -> score_uniform
+
+  let goalstep2str (n:sgoalctx) = match n with
+    | _ -> "<goalstep2str UNIMPLEMENTED>"
+
+  let slnstep2str (n:sslnctx) = match n with
+    | _ -> "<slnstep2str UNIMPLEMENTED>"
+
+  let mapstep2str (n:smapctx) = match n with
+    | _ -> "<mapstep2str UNIMPLEMENTED>"
+
+  let compstep2str (n:scmpctx) = match n with
+    | _ -> "<compstep2str UNIMPLEMENTED"
+
+  let step2str (n:sstep) = match n with
+    | SModifyCompCtx(c) -> compstep2str c
+    | SModifyGoalCtx(c) -> goalstep2str c
+    | SModifyMapCtx(c) -> mapstep2str c
+    | SModifySln(c) -> slnstep2str c
+    | _ -> error "step2str" "unimplemented"
+
   (*
   match n with
   | SAddGoal(v) -> "add "^(UnivLib.goal2str v)
@@ -117,9 +132,14 @@ struct
   *)
     "<step2str UNIMPLEMENTED>"
 
-  let apply_step (tbl:gltbl) (s:sstep) =
-      (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)
-      (*
+  let apply_step (tbl:gltbl) (s:sstep) : gltbl =
+      debug  ("> do step %s\n"^(step2str s));
+      begin
+        match s with
+        | _ -> error "apply_step" "unimplemented"
+      end
+      tbl
+       (*
       let _ = match s with
       | SAddGoal(g) ->
         let _ = GoalStubLib.add_goal tbl g in ()
@@ -135,17 +155,22 @@ struct
       | SMakeGoalPassive(g) -> let _ = GoalStubLib.deactivate_goal tbl g in ()
       in
       *)
-      tbl
 
   let order_steps x y = match (x,y) with
-    | (_,SRemoveGoal(_)) -> 1
-    | (SRemoveGoal(_),_) -> -1
-    | (SAddGoal(_),_) -> 1
-    | (_,SAddGoal(_)) -> -1
+    | (_,SModifyGoalCtx(SGRemoveGoal(_))) -> 1
+    | (SModifyGoalCtx(SGRemoveGoal(_)),_) -> -1
+    | (SModifyGoalCtx(SGAddGoal(_)),_) -> 1
+    | (_,SModifyGoalCtx(SGAddGoal(_))) -> -1
     | _ -> 0
 
   let unapply_step (tbl:gltbl) (s:sstep) =
-      (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
+      debug  ("> undo step %s\n"^(step2str s));
+      begin
+        match s with
+        | _ -> error "apply_step" "unimplemented"
+      end
+      tbl
+    (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
       (*
       let _ = match s with
       | SAddGoal(g) ->
@@ -162,7 +187,6 @@ struct
       | SMakeGoalPassive(g) -> let _ = GoalStubLib.activate_goal tbl g in ()
       in
       *)
-      (tbl)
 
   let mksearch () =
         let score_step = score_step () in

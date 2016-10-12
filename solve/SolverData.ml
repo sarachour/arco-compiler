@@ -113,27 +113,34 @@ type sln = {
 }
 
 
-type ssolmod =
+type sslnctx =
   | SSolUseNode of hwcompname*int
   | SSolAddConn of wireconn
   | SSolAddLabel of portlabel
   | SSolRemoveLabel of portlabel
+
+type scmpctx =
+  | SCAddUsedComp of ucomp*int
+
+type sgoalctx =
+  | SGAddGoal of goal
+  | SGRemoveGoal of int
+  | SGChangeGoalStatus of int*bool
+
+type smapctx = unit
   
 type sstep =
-  | SModifySol of ssolmod
-  | SAddGoal of goal
-  | SRemoveGoal of goal
-  | SChangeGoalStatus of int*bool
-  | SMakeGoalActive of int*bool
-  | SAddUsedComp of ucomp*int
+  | SModifySln of sslnctx 
+  | SModifyCompCtx of scmpctx
+  | SModifyGoalCtx of sgoalctx
+  | SModifyMapCtx of smapctx
   (*add a relation for a node*)
-
 
 
 type uenv =  {
   hw: hwvid hwenv;
   math: mid menv;
-  goal_cnt:int;
+  mutable goal_cnt:int;
 }
 type gltbl = {
   (*solution env*)

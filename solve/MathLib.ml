@@ -216,4 +216,11 @@ struct
           error "mkrel"  ("variable "^name^" doesn't type check with expression: "^
             (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
         *)
+
+  let iter_vars e f =
+    MAP.iter e.vars (fun k v -> f v)
+
+  let fold_vars e f r0 =
+    MAP.fold e.vars (fun k v r -> f v r) r0
+
 end

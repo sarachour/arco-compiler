@@ -677,7 +677,7 @@ struct
     let _ = GoalTableLib.mkgoalroot scratch  in
     (*create ordering*)
     let order = QUEUE.make () in
-    MAP.iter env.math.vars (fun s v -> order_var order v);
+    MathLib.iter_vars  env.math (fun v -> order_var order v);
     error "mkmulti" "unimplemented"
     (*
     let _ =SET.iter scratch.goals (fun g -> let v = UnivLib.goal2lhs g in

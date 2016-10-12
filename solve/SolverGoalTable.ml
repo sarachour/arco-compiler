@@ -28,6 +28,21 @@ exception GoalTableError of string
 
 let error n m = raise (GoalTableError (n^":"^m))
 
+module GoalLib =
+struct
+  let mk_goal (tbl:gltbl) (g:goal_data) =
+    let cnt = tbl.env.goal_cnt in
+    let goal = {d=g;active=true;id=cnt} in
+    tbl.env.goal_cnt <- tbl.env.goal_cnt + 1;
+    goal
+
+  let mk_mathgoal (tbl:gltbl) (m:mid mvar) =
+    let mgoal = GMathGoal({d=m}) in
+    mk_goal tbl mgoal
+    
+
+
+end
 module GoalTableLib =
 struct
 
@@ -179,31 +194,14 @@ struct
 
 
   let mkgoalroot (tbl:gltbl) =
-    error "mkgoalroot" "unimplemented"
- (* 
-    let fltmath (x:mid mvar) = x.bhvr <> MBhvUndef in
-    let math2goal (x:mid mvar) : goal =
-      let m2u : mid -> unid = UnivLib.mid2unid in
-      let tf (x:mid ast) : unid ast =
-        let t = ASTLib.trans (ASTLib.map x m2u) (_rm_pars s) in
-        t
-      in
-      let lhs : unid = MathId(MNVar(x.knd,x.name)) in
-      let bhvr : ubhv= match x.bhvr with
-        | MBhvVar(bhv) ->
-          UBhvVar ({rhs=(tf bhv.rhs); knd=UBMMathVar()})
-        | MBhvStateVar(bhv) ->
-          UBhvState ({rhs=(tf bhv.rhs); ic=ICVal(bhv.ic); knd=UBMMathStateVar()})
-        | MBhvUndef -> error "math2goal" "impossible."
-      in
-      let vrb:uvar = {lhs=lhs;bhvr=bhvr} in
-        if tbl.is_trivial vrb then TrivialGoal(vrb) else NonTrivialGoal(vrb)
+    let steps :sstep list = MathLib.fold_vars tbl.env.math (fun v r ->
+        let goal : goal = GoalLib.mk_mathgoal tbl v in
+        let step = SModifyGoalCtx(SGAddGoal(goal)) in
+        step::r
+      ) []
     in
-    let goals : goal list = List.map math2goal (List.filter fltmath (MAP.to_values s.prob.vars)) in
-    let steps = List.map (fun x -> SAddGoal x) goals in
-    let _ = SearchLib.setroot tbl.search (s,tbl) steps in
-    ()
-*)
+    SearchLib.setroot tbl.search tbl steps
+
   let mknullroot tbl =
     let _ = SearchLib.setroot tbl.search tbl [] in
     ()
