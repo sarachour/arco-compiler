@@ -3,7 +3,6 @@
   open MathLib
   open Util
   open Unit
-  open Common
 
   open AST
   open CompileUtil

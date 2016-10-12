@@ -1,4 +1,3 @@
-open Common
 open Globals
 
 open HWLib
@@ -68,7 +67,7 @@ let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   init_utils();
   let sl = {hw=hw;math=prob;goal_cnt=0;} in
   let msearch = MultiSearch.mkmulti sl in
-  ()
+  error "solve" "unimplemented"
 (*
   let _ = slvr_print_inter "===== Beginning Interactive Solver ======\n" in
   let nslns = Globals.get_glbl_int "slvr-solutions" in

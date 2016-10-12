@@ -1,5 +1,4 @@
 
-open Common
 open Globals
 
 open HWLib
@@ -179,8 +178,9 @@ struct
 
 
 
+  let mkgoalroot (tbl:gltbl) =
+    error "mkgoalroot" "unimplemented"
  (* 
-  let mkgoalroot (s:slvr) (tbl:gltbl) =
     let fltmath (x:mid mvar) = x.bhvr <> MBhvUndef in
     let math2goal (x:mid mvar) : goal =
       let m2u : mid -> unid = UnivLib.mid2unid in

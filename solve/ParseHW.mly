@@ -1,7 +1,6 @@
 %{
   open Util
   open Unit
-  open Common
   open HWData
   open HWLib
   open HWConnLib

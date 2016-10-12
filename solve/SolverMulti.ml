@@ -666,12 +666,20 @@ struct
       |[] ->None
 
 *)
-  let mkmulti (env:uenv) =
+  let order_var (vars:string queue) (x:'a mvar) : unit =
+    if x.knd = MOutput or x.knd = MLocal then
+      noop (QUEUE.enqueue vars x.name) 
+    
+
+  let mkmulti (env:uenv) : musearch =
     (*make a top level table with default goals*)
     let scratch = GoalTableLib.mktbl env in
-    let _ = GoalTableLib.mkgoalroot env scratch  in
+    let _ = GoalTableLib.mkgoalroot scratch  in
     (*create ordering*)
     let order = QUEUE.make () in
+    MAP.iter env.math.vars (fun s v -> order_var order v);
+    error "mkmulti" "unimplemented"
+    (*
     let _ =SET.iter scratch.goals (fun g -> let v = UnivLib.goal2lhs g in
       return (QUEUE.enqueue order v) ()
     ) in
@@ -696,7 +704,7 @@ struct
     }
     in
     msearch
-
+    *)
 
 
 

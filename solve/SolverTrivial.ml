@@ -7,7 +7,6 @@ open SolverData
 open SolverGoalTable
 open SolverSln
 
-open Common
 open HWData
 open MathData
 open HWLib

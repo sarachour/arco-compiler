@@ -1,4 +1,3 @@
-open Common
 open Unit
 open AST
 open Util

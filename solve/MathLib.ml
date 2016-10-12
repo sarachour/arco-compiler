@@ -2,8 +2,6 @@ open AST
 open Unit
 open Util
 open MathData
-open Common
-
 exception MathException of string
 
 let error n s = raise (MathException (n^": "^s))

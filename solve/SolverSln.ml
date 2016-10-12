@@ -1,7 +1,6 @@
 open Util
 open SolverData
 
-open Common
 open HWData
 open HWLib
 open MathLib

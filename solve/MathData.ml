@@ -1,12 +1,13 @@
-open Common
 open AST 
 open Unit
 open Util
 
+type mkind =   MInput | MOutput | MLocal
 type mid =
   | MNVar of mkind*string
   | MNParam of string*number
   | MNTime
+
 
 
 type mparam = {
