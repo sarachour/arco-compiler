@@ -14,11 +14,15 @@ type glbl_id = {
   gid:string;
   inst:int;
 }
+
+type psearch = (sstep,gltbl) ssearch
+type psearches = (int,psearch) map
+
 type mutbl = {
   (*subtrees*)
   env: uenv;
-  partials: (part_id,(sstep,gltbl) ssearch) map;
-  globals: (glbl_id, (sstep,gltbl) ssearch) map;
+  partials: (string,psearch) map;
+  globals: (string,psearches) map;
 
   (*partial solutions that are applied*)
   local: (part_id) set;
@@ -40,5 +44,5 @@ type musearch = {
   (*the order to process the expressions*)
   mutable order: string queue;
   mutable avail_comps : (hwcompname, ucomp) map;
-  mutable goals : goal set;
+  mutable goals : (int,goal) map;
 }

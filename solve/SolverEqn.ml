@@ -29,12 +29,14 @@ exception SolverEqnError of string
 let error n m = raise (SolverEqnError (n^":"^m))
 
 let _print_debug = print_debug 2 "eqn"
+let debug = print_debug 2 "eqn"
 let _menu = menu 2
 let _print_inter = print_inter 2
-(*
 module SolverEqn =
 struct
-  let mkmenu (s:slvr) (v:gltbl) (currgoal:goal option) =
+
+
+  let mkmenu (v:gltbl) (currgoal:goal option) =
     let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
@@ -42,14 +44,14 @@ struct
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "s" then
-        let _ = Printf.printf "\n%s\n\n" (SlnLib.tostr v.sln) in
+        let _ = Printf.printf "\n%s\n\n" (SlnLib.sln2str v.sln_ctx) in
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "goto" then
         let _ = match STRING.split inp " " with
         | [_;id] ->
           let nid = int_of_string id in
-          let _ = SearchLib.move_cursor v.search (s,v) (SearchLib.id2node v.search nid) in
+          let _ = SearchLib.move_cursor v.search v (SearchLib.id2node v.search nid) in
           ()
         | _ -> ()
         in
@@ -57,17 +59,17 @@ struct
         ()
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===" in
-        let _ = Printf.printf "%s\n" (GoalTableLib.goals2str v v.goals) in
+        let _ = Printf.printf "%s\n" (GoalLib.goals2str v) in
         let _ = Printf.printf "============\n" in
         let _ = match currgoal with
-          | Some(currgoal) -> Printf.printf ">> Current Goal: %s\n" (GoalTableLib.goal2str currgoal)
+          | Some(currgoal) -> Printf.printf ">> Current Goal: %s\n" (GoalLib.goal2str currgoal)
           | _ -> Printf.printf ">> CurrentGoal: (none)"
         in
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "c" then
         let _ = match currgoal with
-          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n\n" (UnivLib.goal2str g)  in ()
+          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n\n" (GoalLib.goal2str g)  in ()
           | None -> Printf.printf "<no goal>\n\n\n"
         in
         ()
@@ -81,7 +83,8 @@ struct
 
 
  (*TODO Fix*)
-  let feasible_component_goal_combo (s:slvr) (g:goal) (node_id:unodeid) = false
+  let feasible_component_goal_combo (tbl:gltbl) (g:goal) (compname:hwcompname) =
+    error "feasible_component_goal_combo" "unimplemented"
     (*
     let node_name = UnivLib.unodeid2name node_id in
     let test_conn (src:hwvid) (snk:hwvar) =
@@ -105,8 +108,9 @@ struct
 *)
 
 
-  let apply_component (s:slvr) (gtbl:gltbl) (g:goal) (node_id:unodeid) (iid:int option) : int option = None
-   (* 
+  let apply_component (gtbl:gltbl) (g:goal) (comp:hwcompname) (iid:int option) : int option = 
+    error "apply_component" "unimplemented"
+  (*
     if get_glbl_bool "test-component-reachability" && feasible_component_goal_combo s g node_id = false then
       None
     else
@@ -252,7 +256,9 @@ struct
 *)
 
 
-  let apply_components (slvenv:slvr) (tbl:gltbl) (g:goal) : unit =()
+  let apply_components (tbl:gltbl) (g:goal) : unit =
+    error "apply_components" "unimplemented"
+                                                                 
 (*
     let goal_cursor = SearchLib.cursor tbl.search in
     let handle_component (id:unodeid) (inst: int option) (status:bool) : bool =
@@ -277,7 +283,9 @@ struct
     else ()
 *)
 
-  let mark_if_solution (s:slvr) (v:gltbl) (curr:(sstep snode)) = 
+  let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
+    error "mark_if_solution" "unimplemented"
+(*
     let _ = _print_debug "[mark-if-solution] testing if solution." in
     let _ = SearchLib.move_cursor v.search (s,v) curr in
     let is_conn_cons = SlnLib.mkconn_cons s v.sln in
@@ -286,52 +294,56 @@ struct
       SearchLib.solution v.search curr
     else
       begin SearchLib.deadend v.search curr (s,v); () end
-       
+*)     
 
+  
 
-
+  let backup_and_move_cursor (tbl:gltbl) (node:sstep snode) =
+    let old_cursor = SearchLib.cursor tbl.search in
+    let old_depth =  List.length (TREE.get_path tbl.search.tree node) in
+    SearchLib.move_cursor tbl.search tbl node;
+    (old_cursor,old_depth)
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
-  let test_node_validity (s:slvr) (v:gltbl) (c:sstep snode) (depth:int) : bool=
-  begin
-    let old_cursor = SearchLib.cursor v.search in
-    let currdepth =  List.length (TREE.get_path v.search.tree c) in
-    _print_debug ("-> testing validity: "^(string_of_int c.id));
-    SearchLib.move_cursor v.search (s,v) c;
-    let is_valid : bool =
-      if currdepth >= depth then
-        begin
-          (*determine if there are any goals left*)
-          _print_debug "[test-node-validity] hit max depth:";
-          SearchLib.deadend v.search c (s,v);
-          false
-        end
-      else if (GoalTableLib.num_actionable_goals v) = 0 then
+  let test_node_validity (tbl:gltbl) (node:sstep snode) (depth:int) : bool=
+    begin
+      let old_cursor, old_depth = backup_and_move_cursor tbl node in 
+      _print_debug ("-> testing validity: "^(string_of_int node.id));
+      let is_valid : bool =
+        if old_depth >= depth then
+          begin
+            (*determine if there are any goals left*)
+            _print_debug "[test-node-validity] hit max depth:";
+            SearchLib.deadend tbl.search node tbl;
+            false
+          end
+        else if (GoalTableLib.num_active_goals tbl) = 0 then
         begin
           (*found all goals*)
           _print_debug "[test-node-validity] found a valid solution";
-          mark_if_solution s v c;
+          mark_if_solution tbl node;
           true
         end
       else
         true
     in
-    SearchLib.move_cursor v.search (s,v) old_cursor;
+    SearchLib.move_cursor tbl.search tbl old_cursor;
     is_valid
   end
 
   (*get the best valid node. If there is no valid node, return none *)
-  let rec get_best_valid_node (s:slvr) (v:gltbl) (root:(sstep snode) option) (depth:int)  : (sstep snode) option =
-    match SearchLib.select_best_node v.search root with
+  let rec get_best_valid_node (tbl:gltbl) (root:(sstep snode) option) (depth:int)  : (sstep snode) option =
+    match SearchLib.select_best_node tbl.search root with
     | Some(newnode) ->
-        if test_node_validity s v newnode depth then
+        if test_node_validity tbl newnode depth then
           Some(newnode)
         else
-          get_best_valid_node s v root depth
+          get_best_valid_node tbl root depth
     | None -> None
 
   (*
     Scoring the goal: higher = better
   *)
+(*
   let score_goal_uniform g = 0.
   let score_goal_random g = RAND.rand_norm()
 
@@ -342,20 +354,16 @@ struct
   let score_goal_nontrivial_preferred g = match g with
     | TrivialGoal(v) -> RAND.rand_norm ()
     | NonTrivialGoal(v) -> 1. +. RAND.rand_norm()
-
+*)
   let best_goal_function () =
     let typ = get_glbl_string "eqn-selector-goal" in
     match typ with
-    | "uniform" -> score_goal_uniform
-    | "random" -> score_goal_random
-    | "trivial" -> score_goal_trivial_preferred
-    | "nontrivial" -> score_goal_nontrivial_preferred
     | _ ->
       error "best_goal_function" ("goal selector named <"^typ^"> doesn't exist")
 
   let get_best_valid_goal (v:gltbl) : goal =
     let cursor = SearchLib.cursor v.search in
-    let goals = GoalTableLib.get_actionable_goals v in
+    let goals = GoalTableLib.get_active_goals v in
     let score_goal = best_goal_function() in
     if List.length goals > 0  then
       let _,targ_goal = LIST.max (fun x -> score_goal x) goals in
@@ -366,9 +374,11 @@ struct
   let no_more_nodes (v:gltbl) (head:(sstep snode) option) =
     (List.length (SearchLib.get_paths v.search head))
 
-    (*solve a goal*)
-  let solve_subtree (s:slvr) (v:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
-   let downgrade_enable = get_glbl_bool "downgrade-trivial" in 
+
+  let solve_goal (g:goal) =
+    error "solve_goal" "unimplemented"
+  (*solve a goal*)
+   (*
    let solve_goal (g:goal) =
       let curr = SearchLib.cursor v.search in
       let mint,musr = mkmenu s v (Some g) in
@@ -426,65 +436,90 @@ struct
           ()
 
     in
-    let mint,musr = mkmenu s v (None) in
+*)
+  let solve_subtree (tbl:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
+    let downgrade_enable = get_glbl_bool "downgrade-trivial" in
+    let mint,musr = mkmenu tbl (None) in
     let rec rec_solve_subtree (root:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
-      let currslns = SearchLib.num_solutions v.search (Some root) in 
+      let currslns = SearchLib.num_solutions tbl.search (Some root) in 
+      begin
       if currslns >= nslns then
-         let _ = _print_debug "[search_tree] Found enough solutions" in
-         let _ = musr () in
+        begin
+         debug "[search_tree] Found enough solutions";
+         musr ();
          ()
+        end
       else
-        let _ = _print_debug ("[search_tree] found "^(string_of_int currslns)^" / "^(string_of_int nslns)) in 
-        if SearchLib.is_exhausted v.search (Some root) then
-          let _ = _print_debug "[search_tree] is exhausted" in
-          let _ = musr () in
-          ()
+        begin
+        debug ("[search_tree] found "^(string_of_int currslns)^" / "^(string_of_int nslns));
+        if SearchLib.is_exhausted tbl.search (Some root) then
+          begin
+            debug "[search_tree] is exhausted";
+            musr ();
+            ()
+          end
         else
           (*get the next node*)
-          let maybe_next_node = get_best_valid_node s v (Some root) depth in
+          let maybe_next_node = get_best_valid_node tbl (Some root) depth in
           match maybe_next_node with
           | Some(next_node) ->
-            (*move to node*)
-            let _ = SearchLib.move_cursor v.search (s,v) next_node in
-            let next_goal = get_best_valid_goal v in
-            (*solves the goal*)
-            let _ = solve_goal next_goal in
-            rec_solve_subtree root
-          (*No more subgoals*)
+            begin
+              (*move to node*)
+              SearchLib.move_cursor tbl.search tbl next_node;
+              let next_goal = get_best_valid_goal tbl in
+              (*solves the goal*)
+              solve_goal next_goal;
+              rec_solve_subtree root
+            end
+            (*No more subgoals*)
           | None ->
             ()
-      in
-      let _ = _print_debug "[search-tree] starting" in
-      let _ = mint "g" in
-      let _ = musr () in
-      let r = SearchLib.root v.search in
-      let _ = SearchLib.move_cursor v.search (s,v) (OPTION.force_conc r) in
-      let _ = _print_debug "[search-tree] positioned cursor" in
-      if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
-        let _ = mark_if_solution s v root in 
-        let _ = _print_debug "[search-tree] begin search" in
-        let _ = rec_solve_subtree root in
-        ()
-      else
-        let _ = _print_debug "[search-tree] get best valid goal" in
-        let next_goal = get_best_valid_goal v in
-        let _ = _print_debug "[search-tree] solve the best valid goal" in
-        let _ = solve_goal next_goal in
-        let _ = _print_debug "[search-tree] begin search" in
-        let _ = rec_solve_subtree root in
-        ()
+        end
+      end
+    in
+    debug "[search-tree] starting";
+    mint "g";
+    musr ();
+    let maybe_root = SearchLib.root tbl.search in
+    begin
+      match maybe_root with
+      | Some(root) -> 
+        begin
+        SearchLib.move_cursor tbl.search tbl root;
+        debug "[search-tree] positioned cursor";
+        if List.length ( GoalTableLib.get_active_goals tbl ) = 0 then
+          begin
+            mark_if_solution tbl root;
+            debug "[search-tree] there are no active goals. beginning search anyway";
+            rec_solve_subtree root;
+            ()
+          end
+        else
+          begin
+            debug "[search-tree] get best valid goal";
+            let next_goal = get_best_valid_goal tbl in
+            debug "[search-tree] solve the best valid goal";
+            solve_goal next_goal;
+            debug "[search-tree] begin search";
+            rec_solve_subtree root;
+            ()
+          end
+        end
+      | None -> error "solve_tree" "root is empty/unset"
+    end
 
-
-
-    let solve (s:slvr) (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
-      let _ = _print_debug ("find # solutions: "^(string_of_int nslns)) in
-      let root = OPTION.force_conc (SearchLib.root v.search) in
-      let _ : unit= solve_subtree s v root nslns depth in
-      let slns = SearchLib.get_solutions v.search (Some root) in
-      match slns with
-      | h::t -> Some slns
-      | _ -> None
+  let solve (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
+    debug ("find # solutions: "^(string_of_int nslns));
+    match SearchLib.root v.search with
+    | Some(root) ->
+      begin
+        solve_subtree v root nslns depth;
+        let slns = SearchLib.get_solutions v.search (Some root) in
+        match slns with
+        | [] -> None
+        | lst -> Some(lst)
+      end
+    | None -> error "solve" "the tree has no root."
 
 end
-*)

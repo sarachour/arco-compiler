@@ -34,6 +34,7 @@ let error n m = raise (SolverMultiError (n^":"^m))
 
 
 let _print_debug : string -> unit = print_debug 1 "multi"
+let debug : string -> unit = print_debug 1 "multi"
 let m_menu = menu 1
 let m_print_inter = print_inter 1
 module MultiSearchTree =
@@ -110,25 +111,21 @@ struct
     internal_menu_handle,user_menu_handle
 
 
-(*
-  let set2key (x:(unid*int) set) : string =
-    let xsort = SET.sort x (fun (unid1,i1) (unid2,i2) ->
-      let s1 = UnivLib.unid2str unid1 in
-      let s2 = UnivLib.unid2str unid2 in
-      if s1 = s2 then
-        i1 - i2
+  let set2key (x:part_id set) : string =
+    let xsort = SET.sort x (fun (x:part_id) (y:part_id) ->
+      if x.mvr = y.mvr then
+        x.inst - y.inst
       else
-        STRING.compare s1 s2
+        STRING.compare x.mvr y.mvr
     )
     in
-    let str = List.fold_right (fun (x,i) r->
-      let s = UnivLib.unid2str x in
-      s^"~"^(string_of_int i)^r
+    let str = List.fold_right (fun (x:part_id) r->
+      x.mvr^"~"^(string_of_int x.inst)^r
     ) xsort "" in
     str
 
   (*choose a variable, if there are no variables left, don't do anything.*)
-  let get_unsolved_var (ms:musearch) : unid option=
+  let get_unsolved_var (ms:musearch) : string option=
     if QUEUE.empty ms.order then
       None
     else
@@ -141,6 +138,7 @@ struct
         Some (List.nth left 0)
 
 
+(*
   let get_labels tbl valfilt varfilt : (wireid*string*label) list =
     let results = MAP.fold tbl.sln.labels (fun wire pmap rest ->
         let rr = MAP.fold pmap (fun p xset rest ->
@@ -407,21 +405,28 @@ struct
       ) new_partial_steps in
       let _ = _print_debug "================" in
       new_partial_steps 
-
+*)
   let build_partials_steps ms (ids:(unid*int) set) : sstep list =
+    error "build_partials_steps" "unimplemented"
+(*
     let _ = _print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
     let steps = SET.fold ids (fun (id,i) steps -> steps @ (build_partial_steps ms steps id i)) [] in
     steps
+*)
 
   let build_global_steps ms =
+    error "build_global_steps" "unimplemented"
+(*
     let dummy = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
     let _ = GoalTableLib.mknullroot ms.state.slvr dummy in
     let steps = build_partials_steps ms ms.state.local in
     let _ = SearchLib.apply_steps dummy.search (ms.state.slvr,dummy) steps in
     let glsteps = get_global_context ms dummy in
     glsteps @ steps
-
+*)
   let mk_global_tbl (ms:musearch) =
+    error "mk_global_tbl" "unimplemented"
+(*
     let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
     let key = (set2key ms.state.local) in
     (*if this table already exists*)
@@ -437,10 +442,12 @@ struct
       let search = MAP.get ms.state.globals key in
       let _ = (tbl.search <- search) in
       tbl
-
+*)
 
   (*find a global solution, given the set of partials that have been applied*)
   let find_global_solution (ms:musearch) (nsols:int) : sstep snode list option =
+    error "find_global_solution" "unimplemented"
+    (*
     let tbl = mk_global_tbl ms in
     (*find the global steps *)
     let depth = get_glbl_int "slvr-global-depth" in
@@ -449,66 +456,91 @@ struct
     let root = OPTION.force_conc (SearchLib.root tbl.search) in
     let _ = SearchLib.clear_cursor tbl.search in
     results
+    *)
 
   let get_existing_global_solution (ms:musearch) (key:string) (id:int) : sln =
+    error "get_existing_global_solution" "unimplemented"
+(*
     let gtree = MAP.get ms.state.globals key in
     let ptbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in 
     let _ = _print_debug ("=> Global Solution: "^key^" :: "^(string_of_int id)) in 
     let slnnode = SearchLib.id2node gtree id in 
     let _ = SearchLib.move_cursor gtree (ms.state.slvr,ptbl) slnnode in  
     ptbl.sln
+*)
 
-  let mk_partial_tbl (ms:musearch) (id:unid) =
-    (*make the current search state*)
-    let _ = if MAP.has ms.state.partials id = false then
-        let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
-        (*make passive bans*)
-        let blacklist = SET.filter ms.goals (fun g -> UnivLib.goal2lhs g <> id) in
-        let bansteps = List.map (fun x -> SMakeGoalPassive(x)) blacklist in
-        let goalsteps = SET.map ms.goals (fun g -> SAddGoal(g)) in
-        let _ = GoalTableLib.mkroot ms.state.slvr tbl (bansteps @ goalsteps) in
-        let _ = _print_debug "made a partial tree" in
-        let _ = MAP.put ms.state.partials id tbl.search in
-        ()
+  let has_partial_search (ms:musearch) (name:string) : bool =
+    MAP.has ms.state.partials name 
+
+  let get_partial_search (ms:musearch) (name:string) : psearch =
+    if has_partial_search ms name then
+      MAP.get ms.state.partials name
+    else
+      error "get_partial_search" "no partial search tree exists"
+
+  let make_new_partial_table ms v =
+    let tbl = GoalTableLib.mktbl ms.state.env in
+    let steps = GoalLib.fold_goals tbl (fun g r ->
+        SModifyGoalCtx(SGAddGoal(g))::SModifyGoalCtx(SGChangeGoalStatus(g.id,false))::r)
+        []
     in
-    let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
+    GoalTableLib.mkroot tbl steps;
+    debug "made a partial tree";
+    MAP.put ms.state.partials v tbl.search;
+    ()
+
+  let mk_partial_tbl (ms:musearch) (id:string) =
+    (*make the current search state*)
+    begin
+      if has_partial_search ms id = false then
+        make_new_partial_table ms id;
+        ()
+    end;
+    let tbl = GoalTableLib.mktbl ms.state.env in
     (*get the current state*)
     let search = MAP.get ms.state.partials id in
-    let _ = (tbl.search <- search) in
-    let root = SearchLib.root tbl.search in
-    let _ = SearchLib.move_cursor tbl.search (ms.state.slvr,tbl) (OPTION.force_conc root) in
-    tbl
+    let _ = (tbl.search <- get_partial_search ms id) in
+    let maybe_root = SearchLib.root tbl.search in
+    match maybe_root with
+    | Some(root) ->
+      SearchLib.move_cursor tbl.search tbl root;
+      tbl
+    | None -> error "mk_partial_table" "there is no root"
 
-  let find_partial_solution (ms:musearch) (pvar) (nslns) : ((sstep snode) list) option = 
+  let find_partial_solution (ms:musearch) (pvar:string) (nslns:int) : ((sstep snode) list) option =
     let mint,musr = mkmenu ms in
-    let slvr = ms.state.slvr in
     let ptbl = mk_partial_tbl ms pvar in
     let currsols : int = SearchLib.num_solutions ptbl.search None in
     (*original solution set*)
     let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
-    let is_new q = List.length (LIST.filter (fun (x:sstep snode) -> q.id = x.id) orig) = 0 in
-    let _ = _print_debug "find a partial solution" in
-    let depth = get_glbl_int "slvr-partial-depth" in
-    let _ = set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-partial") in
-    let _ = _print_debug "== Finding Local Solution ==" in
-    let _ = _print_debug ("== # Current: "^(string_of_int currsols)) in
-    let _ = _print_debug ("== # New: "^(string_of_int nslns)) in
-    let _ = musr () in
-    let r : ((sstep snode) list) option = SolverEqn.solve slvr ptbl (nslns+currsols) depth in
-    let _ = SearchLib.clear_cursor ptbl.search in
-    let _ = _print_debug "found partial solutions" in
-    match r with
-    | None -> None
-    | Some(nw) ->
-      let diff = List.filter (fun q ->  is_new q) nw in
-      begin
-      match diff with
-      | [] -> None
-      | h::t -> Some(h::t)
-      end
-
+    begin
+      let is_new (q:sstep snode) =
+        List.length (LIST.filter (fun (x:sstep snode) -> q.id = x.id) orig) = 0
+      in
+      let depth = get_glbl_int "slvr-partial-depth" in
+      debug "find a partial solution";
+      set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-partial");
+      debug "== Finding Local Solution ==";
+      debug ("== Current # Solutions: "^(string_of_int currsols));
+      debug ("== # New Solutions To Find: "^(string_of_int nslns));
+      musr ();
+      let maybe_results : ((sstep snode) list) option = SolverEqn.solve ptbl (nslns+currsols) depth in
+      SearchLib.clear_cursor ptbl.search;
+      debug "found partial solutions";
+      match maybe_results with
+      | None -> None
+      | Some(results) ->
+        let new_results :(sstep snode) list = List.filter (fun result -> is_new result) results in
+        begin
+          match new_results with
+          | [] -> None
+          | lst -> Some(lst)
+        end
+    end
     (*Find and add a new partial *)
     let augment_with_partial_solution (ms:musearch) (pvar) (slns: sstep snode list option) :  'a option =
+      error "augment_wit_partial" "unimplemented"
+      (*)
       let mint,musr = mkmenu ms in
       let curs = SearchLib.cursor ms.search in
       let proc_step x = match x with
@@ -568,6 +600,7 @@ struct
         let _ = _print_debug "could not find any more partial solutions." in
         slns
 
+    *)
     let augment_with_new_partial_sln (ms:musearch) (pvar) (nslns) =
       let _ = _print_debug "finding new partial solution" in
       let slns : (sstep snode list) option = find_partial_solution ms pvar nslns in
@@ -575,18 +608,21 @@ struct
       let res : 'a option = augment_with_partial_solution ms pvar slns in
       res
 
+    let get_partial_slns ms pvar =
+      let partial_search = MAP.get ms.state.partials pvar in
+      let slns = SearchLib.get_solutions partial_search None in
+      if List.length slns = 0 then None else Some(slns)
+
     let augment_with_existing_partial_sln (ms:musearch) (pvar) =
-      if MAP.has ms.state.partials pvar = false then
+      if has_partial_search ms pvar = false then
         None
       else
-        let partial_search = MAP.get ms.state.partials pvar in
-        let slns  = SearchLib.get_solutions partial_search None in
-        let slns = if List.length slns = 0 then None else Some(slns) in
-        let res : 'a option = augment_with_partial_solution ms pvar slns in
+        let partial_slns = get_partial_slns ms pvar in 
+        let res : 'a option = augment_with_partial_solution ms pvar partial_slns in
         res
 
     let n_existing_partial_slns (ms:musearch) (pvar) =
-      0
+      error "n_existing_partial" "unimplemented"
 
     (*get the best valid node. If there is no valid node, return none *)
     let rec get_best_valid_node (ms:musearch)  : (mustep snode) option =
@@ -631,14 +667,14 @@ struct
                 let _ = _msolve () in
                 ()
            | Some(id) ->
-                let _ = _print_debug ("solving target: "^(UnivLib.unid2var id)) in
+                let _ = _print_debug ("solving target: "^(id)) in
                 if SearchLib.is_exhausted ms.search None then
                         let _ = _print_debug ("search tree is exhausted. adding new.") in
                         let _ = _msolve_new id in
                         let _ = _msolve_next () in
                         ()
                 else
-                        let _ = _print_debug ("search tree is not exhausted. adding existing:"^(UnivLib.unid2var id)) in
+                        let _ = _print_debug ("search tree is not exhausted. adding existing:"^(id)) in
                         (*try and augment with existing partials*)
                         let _ = if augment_with_existing_partial_sln ms id = None then
                                 _msolve_new id
@@ -655,8 +691,8 @@ struct
       let slns = List.fold_right (fun (x:mustep snode) (rest:sln list) ->
         let _ = SearchLib.move_cursor ms.search ms.state x in
         match ms.state.global with 
-        | Some(gkey,gid) ->
-                let s :sln  = get_existing_global_solution ms gkey gid in
+        | Some(gid) ->
+                let s :sln  = get_existing_global_solution ms gid.gid gid.inst in
                 s::rest
         | None -> rest
       ) snodes []
@@ -665,7 +701,6 @@ struct
       | h::t -> Some(h::t)
       |[] ->None
 
-*)
   let order_var (vars:string queue) (x:'a mvar) : unit =
     if x.knd = MOutput or x.knd = MLocal then
       noop (QUEUE.enqueue vars x.name) 
@@ -678,33 +713,26 @@ struct
     (*create ordering*)
     let order = QUEUE.make () in
     MathLib.iter_vars  env.math (fun v -> order_var order v);
-    error "mkmulti" "unimplemented"
-    (*
-    let _ =SET.iter scratch.goals (fun g -> let v = UnivLib.goal2lhs g in
-      return (QUEUE.enqueue order v) ()
-    ) in
-    (*initialize partial tree*)
-    let mtree =  MultiSearchTree.mksearch () in
+    let mtree = MultiSearchTree.mksearch () in
     let mtbl : mutbl = {
       partials = MAP.make ();
       globals = MAP.make ();
       local = SET.make_dflt ();
       global = None;
       solved = SET.make_dflt ();
-      slvr = uenv;
+      env = env;
     } in
-    let _ = SearchLib.setroot mtree mtbl [] in
+    SearchLib.setroot mtree mtbl [];
     let msearch : musearch = {
-      nodes = scratch.nodes;
+      avail_comps = scratch.avail_comps;
       goals = scratch.goals;
       order = order;
       search = mtree;
       state = mtbl;
-      is_trivial = TrivialLib.is_trivial;
     }
     in
     msearch
-    *)
+
 
 
 

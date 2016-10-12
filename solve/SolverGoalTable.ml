@@ -41,10 +41,26 @@ struct
     mk_goal tbl mgoal
     
 
+  let fold_goals (type a) (tbl:gltbl) (f:goal->a->a) (r0:a) =
+    MAP.fold tbl.goals (fun gid goal  r -> f goal r) r0
+
+  let goal2str (g:goal) = "goal2str: unimplemented"
+
+  let goals2str tbl =
+    fold_goals tbl (fun x r -> r^(goal2str x)^"\n") ""
+
 
 end
+
 module GoalTableLib =
 struct
+
+  let get_active_goals (t:gltbl) =
+    GoalLib.fold_goals t (fun g lst -> if g.active then g::lst else lst) []
+
+  let num_active_goals (t:gltbl) =
+    List.length (get_active_goals t)
+
 
 (*
   let wrap_goal = GoalStubLib.wrap_goal

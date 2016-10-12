@@ -315,7 +315,10 @@ struct
     let _ = close_out oc in
     ()
 
-  let tostr (s:sln) : string=
+   *)
+  let sln2str (s:sln) : string=
+    "<sln2str: unimplemented>"
+   (*
     let comp2str cname clist id =
       let instlist2str lst =
         SET.tostr clist (fun x -> string_of_int x) ","
@@ -348,6 +351,5 @@ struct
     let cnstr = conns2str s.conns in
     let lstr = labels2str s.labels in
     "Comps:\n"^cstr^"\n\nConns:"^cnstr^"\n\nLabels:\n"^lstr
-
-   *)
+    *)
 end
