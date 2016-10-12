@@ -123,7 +123,7 @@ type 'a hwenv = {
   mutable units : unt_env;
   mutable props : (string, untid set) map;
   conns: (connid, (connid,(hcconn*hcconn) set) map) map;
-  mutable comps : (hwcompname,'a hwcomp) map;
+  mutable comps : (string,'a hwcomp) map;
   mutable time : (string*(untid set)) option;
 }
 

@@ -111,11 +111,11 @@ end
 
 
 schematic
-   inst input I : 50
-   inst output I : 10
-   inst iadd  : 2
    inst imul : 4
+   inst iadd  : 2
    inst deriv_iadd: 1
+   inst output I : 10
+   inst input I : 50
 
    conn input(I) -> iadd
    conn input(I) -> imul 

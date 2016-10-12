@@ -164,7 +164,7 @@
 %type <index> ind
 %type <index list> inds
 %type <conn> connterm
-%type <string> compname
+%type <HWData.hwcompname> compname
 %type <unit> schem
 %type <unit> comp
 %type <unit> block
@@ -307,14 +307,14 @@ portprop:
 digital:
   | DIGITAL INPUT TOKEN EOL {
     let name = HWCmInput $3 in
-    let _ = set_cmpname name in
-    let _ = HwLib.mkcomp dat name in
+    set_cmpname name;
+    HwLib.mkcomp dat name;
     ()
   }
   | DIGITAL OUTPUT TOKEN EOL {
     let name = HWCmOutput $3 in
-    let _ = set_cmpname name in
-    let _ = HwLib.mkcomp dat name in
+    set_cmpname name;
+    HwLib.mkcomp dat name;
     ()
   }
   | digital INPUT TOKEN OBRACE proptyplst CBRACE EOL  {
@@ -442,14 +442,14 @@ digital:
 comp:
   | COMP TOKEN EOL {
     let name = HWCmComp $2 in
-    let _ = set_cmpname name in
-    let _ = HwLib.mkcomp dat name in
+    set_cmpname name;
+    HwLib.mkcomp dat name;
     ()
   }
   | COMP COPY TOKEN EOL {
     let name = HWCmCopy  $3 in
-    let _ = set_cmpname name in
-    let _ = HwLib.mkcomp dat name in
+    set_cmpname name;
+    HwLib.mkcomp dat name;
     ()
   }
   | comp INPUT TOKEN OBRACE proptyplst CBRACE EOL  {
@@ -615,18 +615,18 @@ connterm:
     | _ -> error "connterm" "unsupported port of term."
   }
 compname:
-  | COPY TOKEN    {let prop = $2 in HwLib.copy_cid prop}
-  | INPUT TOKEN   {let prop = $2 in HwLib.input_cid prop}
-  | OUTPUT TOKEN  {let prop = $2 in HwLib.output_cid prop}
-  | TOKEN         {let name = $1 in name }
+  | COPY TOKEN    {HWCmCopy $2}
+  | INPUT TOKEN   {HWCmInput $2}
+  | OUTPUT TOKEN  {HWCmOutput $2}
+  | TOKEN         {HWCmComp  $1}
 
 schem:
   | SCHEMATIC EOL {
     ()
   }
   | schem INST compname COLON INTEGER EOL {
-    let cname = $3 and amt = ($5) in
-    let _ = HwLib.upd_inst dat (HwLib.str2hwcompname cname) amt in
+    let cname : hwcompname= $3 and amt = ($5) in
+    HwLib.upd_inst dat cname amt;
     ()
   }
   | schem CONN connterm ARROW connterm EOL {

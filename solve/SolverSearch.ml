@@ -115,7 +115,7 @@ struct
   | SMakeGoalActive(v) -> "activate "^(UnivLib.goal2str v)
   | SMakeGoalPassive(v) -> "inactive "^(UnivLib.goal2str v)
   *)
-    ""
+    "<step2str UNIMPLEMENTED>"
 
   let apply_step (tbl:gltbl) (s:sstep) =
       (*let _ = Printf.printf "> do step %s\n" (step2str s) in*)

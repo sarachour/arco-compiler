@@ -13,7 +13,7 @@ open IntervalLib
 
 exception HwLibError of string
 let error s e = raise (HwLibError(s^":"^e))
-
+let print s = print_string s
 module HwLib =
 struct
 
@@ -153,7 +153,7 @@ struct
 
 
   let hascomp e n =
-    MAP.has (e.comps) n
+    MAP.has e.comps (hwcompname2str n) 
 
   let hasprop e n =
     MAP.has (e.props) n
@@ -171,27 +171,26 @@ struct
         outs=MAP.make();
         sim=None
       } in
-      let _ = MAP.put e.comps name c in
+      print ("added <"^(hwcompname2str name)^"> comp\n");
+      MAP.put e.comps (hwcompname2str name) c;
       e
 
-  let mksim (e:hwvid hwenv) (cname:hwcompname) (name:string) (args:string list) =
-    if hascomp e cname = false then
-      error "mkcomp" ("comp with name "^(hwcompname2str cname)^"not defined.")
-    else
-      let c : hwvid hwcomp = MAP.get e.comps (cname) in
-      let _ = (c.sim <- Some(name,args)) in
-      e
-
-  let gettime e =
+    let gettime e =
     match e.time with
     | Some(t) -> t
     | _ -> error "gettime" "time must be defined in spec."
 
-  let getcomp e cname =
+  let getcomp e (cname:hwcompname) =
     if hascomp e cname = false then
-      error "getcomp" ("comp with name "^(hwcompname2str cname)^" does not exist")
+      error "getcomp" ("comp with name <"^(hwcompname2str cname)^"> does not exist")
     else
-        MAP.get e.comps cname
+        MAP.get e.comps (hwcompname2str cname) 
+
+  let mksim (e:hwvid hwenv) (cname:hwcompname) (name:string) (args:string list) =
+      let c : hwvid hwcomp = getcomp e (cname) in
+      c.sim <- Some(name,args);
+      e
+
 
   let sim (e:hwvid hwenv) (cname:hwcompname) : (string*(string list)) option =
     let c = getcomp e cname in
@@ -334,13 +333,10 @@ struct
     {shape=STCHUNIFORM; std=Integer(0)}
 
   let mkport e (cname:hwcompname) (hwkind:hwvkind) iname (types:(string*untid) list) =
-    if hascomp e cname = false then
-      error "mkport" ("comp with name "^(hwcompname2str cname)^" already defined.")
-    else
       if hasvar e cname iname then
         error "mkport" ("variable with name "^iname^" already exists")
       else
-        let c = MAP.get e.comps cname in
+        let c = getcomp e cname in
         let prop,prop_unit= List.nth types 0 in
         let bhvr = if hwkind = HWKInput then HWBInput else HWBUndef in
         let defs = if prop = "D" then HWDDigital (mkddefs()) else HWDAnalog (mkadefs()) in
@@ -364,7 +360,7 @@ struct
       if hasparam e cname iname then
         error "mkparam" ("variable with name "^iname^" already exists")
       else
-        let c = MAP.get e.comps cname in
+        let c = getcomp e cname in
         let vr = {comp=cname;name=iname;value=vl;typ=t} in
         MAP.put c.params iname vr
 
