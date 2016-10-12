@@ -132,12 +132,19 @@ struct
   *)
     "<step2str UNIMPLEMENTED>"
 
+  let apply_goal_step (tbl:gltbl) (s:sgoalctx) : unit = match s with
+    | SGAddGoal(g) -> noop (MAP.put tbl.goals g.id g)
+    | SGRemoveGoal(g) -> noop (MAP.rm tbl.goals g.id)
+    | SGChangeGoalStatus(gid,st) -> let goal = MAP.get tbl.goals gid in
+      goal.active <- st
+
   let apply_step (tbl:gltbl) (s:sstep) : gltbl =
       debug  ("> do step %s\n"^(step2str s));
       begin
         match s with
+        | SModifyGoalCtx(g) -> apply_goal_step tbl g 
         | _ -> error "apply_step" "unimplemented"
-      end
+      end;
       tbl
        (*
       let _ = match s with
@@ -163,12 +170,20 @@ struct
     | (_,SModifyGoalCtx(SGAddGoal(_))) -> -1
     | _ -> 0
 
+  let unapply_goal_step (tbl:gltbl) (s:sgoalctx) : unit = match s with
+    | SGAddGoal(g) -> noop (MAP.rm tbl.goals g.id)
+    | SGRemoveGoal(g) -> noop (MAP.put tbl.goals g.id g)
+    | SGChangeGoalStatus(gid,st) -> let goal = MAP.get tbl.goals gid in
+      goal.active <- true
+
+
   let unapply_step (tbl:gltbl) (s:sstep) =
       debug  ("> undo step %s\n"^(step2str s));
       begin
         match s with
+        | SModifyGoalCtx(g) -> unapply_goal_step tbl g 
         | _ -> error "apply_step" "unimplemented"
-      end
+      end;
       tbl
     (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)
       (*

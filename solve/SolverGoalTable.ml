@@ -183,7 +183,7 @@ struct
     let tbl : gltbl = {
         env=env;
         map_ctx=IntervalLib.mk_map_ctx ();
-        goals=SET.make_dflt ();
+        goals=MAP.make();
         avail_comps=comptbl;
         comp_ctx=MAP.make();
         sln_ctx=sln;

@@ -124,7 +124,7 @@ type scmpctx =
 
 type sgoalctx =
   | SGAddGoal of goal
-  | SGRemoveGoal of int
+  | SGRemoveGoal of goal 
   | SGChangeGoalStatus of int*bool
 
 type smapctx = unit
@@ -150,6 +150,6 @@ type gltbl = {
   mutable map_ctx : hwvid map_ctx; 
   mutable avail_comps : (hwcompname, ucomp) map;
   (*state of table*)
-  mutable goals : goal set;
+  mutable goals : (int,goal) map;
   mutable search: (sstep,gltbl) ssearch;
   }
