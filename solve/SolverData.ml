@@ -74,7 +74,7 @@ type goal_hw_varmap = {
 (*port input goals*)
 type goal_data =
   | GMathGoal of goal_math
-  | GPortInputGoal of goal_hw_input
+  | GUnifyInPortGoal of goal_hw_input
   | GPortConnGoal of goal_hw_conn
   | GInPortMapGoal of goal_hw_varmap  
   | GOutPortMapGoal of goal_hw_varmap  

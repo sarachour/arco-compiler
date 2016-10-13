@@ -171,7 +171,6 @@ struct
         outs=MAP.make();
         sim=None
       } in
-      print ("added <"^(hwcompname2str name)^"> comp\n");
       MAP.put e.comps (hwcompname2str name) c;
       e
 

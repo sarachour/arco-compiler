@@ -25,7 +25,7 @@ open SolverSearch
 open SolverEqn
 
 open SolverMultiData
-
+open GoalLib
 
 exception SolverMultiError of string
 
@@ -478,15 +478,11 @@ struct
     else
       error "get_partial_search" "no partial search tree exists"
 
-  let make_new_partial_table ms v =
+  let make_new_partial_table ms vname =
     let tbl = GoalTableLib.mktbl ms.state.env in
-    let steps = GoalLib.fold_goals tbl (fun g r ->
-        SModifyGoalCtx(SGAddGoal(g))::SModifyGoalCtx(SGChangeGoalStatus(g.id,false))::r)
-        []
-    in
-    GoalTableLib.mkroot tbl steps;
-    debug "made a partial tree";
-    MAP.put ms.state.partials v tbl.search;
+    GoalTableLib.mkgoalroot tbl (fun v -> v.name == vname);
+    debug ("made a partial tree with "^(string_of_int (GoalLib.num_goals tbl))^" goals");
+    MAP.put ms.state.partials vname tbl.search;
     ()
 
   let mk_partial_tbl (ms:musearch) (id:string) =
@@ -498,8 +494,7 @@ struct
     end;
     let tbl = GoalTableLib.mktbl ms.state.env in
     (*get the current state*)
-    let search = MAP.get ms.state.partials id in
-    let _ = (tbl.search <- get_partial_search ms id) in
+    (tbl.search <- get_partial_search ms id);
     let maybe_root = SearchLib.root tbl.search in
     match maybe_root with
     | Some(root) ->

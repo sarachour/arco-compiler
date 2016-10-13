@@ -23,34 +23,11 @@ open SolverUtil
 open SolverSln
 open SolverSearch
 
+open GoalLib
 
 exception GoalTableError of string
 
 let error n m = raise (GoalTableError (n^":"^m))
-
-module GoalLib =
-struct
-  let mk_goal (tbl:gltbl) (g:goal_data) =
-    let cnt = tbl.env.goal_cnt in
-    let goal = {d=g;active=true;id=cnt} in
-    tbl.env.goal_cnt <- tbl.env.goal_cnt + 1;
-    goal
-
-  let mk_mathgoal (tbl:gltbl) (m:mid mvar) =
-    let mgoal = GMathGoal({d=m}) in
-    mk_goal tbl mgoal
-    
-
-  let fold_goals (type a) (tbl:gltbl) (f:goal->a->a) (r0:a) =
-    MAP.fold tbl.goals (fun gid goal  r -> f goal r) r0
-
-  let goal2str (g:goal) = "goal2str: unimplemented"
-
-  let goals2str tbl =
-    fold_goals tbl (fun x r -> r^(goal2str x)^"\n") ""
-
-
-end
 
 module GoalTableLib =
 struct
@@ -158,34 +135,6 @@ struct
   *)
   (*make an empty node without the goals*)
   let mktbl (env:uenv) : gltbl =
-    (*
-    let eh2u x = ASTLib.trans (ASTLib.map x h2u) (_rm_pars s) in 
-    let comp2node (c:hwvid hwcomp) : unode =
-      let nvars = MAP.size c.outs in
-        let hwvar2uvar (x:hwvid hwportvar) : uvar =
-          let new_lhs = HwId(HNPort(x.knd,HCMLocal(c.name),x.port,x.prop)) in
-          let ubhv : ubhv= match x.bhvr with
-            | HWBDigital(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHDigitalVar()})
-            | HWBAnalogVar(bhv) -> UBhvVar({rhs=eh2u bhv.rhs;knd=UBHAnalogVar()})
-            | HWBAnalogStateVar(bhv) ->
-          let ic_port,ic_prop = bhv.ic in
-          let new_ic_var : unid = HwId(HNPort(HNInput,HCMLocal(c.name),ic_port,ic_prop)) in
-          UBhvState({rhs=eh2u bhv.rhs;ic=ICVar(new_ic_var); knd=UBHAnalogStateVar()})
-        | _ -> UBhvUndef          
-        in
-        {lhs=new_lhs;bhvr=ubhv}
-      in
-      let hwpar2upar (c:hwparam) : uparam =
-        {name=c.name;values=c.value}
-      in
-      let vars = MAP.make() and params = MAP.make() in
-      MAP.iter c.params (fun par data -> if List.length data.value == 1 then () else
-                            noop (MAP.put params par (hwpar2upar data)));
-      MAP.iter c.vars (fun v data -> let ndat = hwvar2uvar data in
-                        noop (MAP.put vars (ndat.lhs) [ndat]));
-      {vars=vars;params=params;name=c.name;comp_id=UnivLib.name2unodeid c.name}
-    in
-      *)
     let hwcomp2ucomp (x:hwvid hwcomp) : unid hwcomp = HwLib.map_comp x (fun x -> HwId(x)) in 
     let comptbl : (hwcompname,ucomp) map = MAP.make () in
     let sln = SlnLib.mksln () in
@@ -209,20 +158,22 @@ struct
 
 
 
-  let mkgoalroot (tbl:gltbl) =
+  let mkgoalroot (tbl:gltbl) (enable:mid mvar->bool) : unit =
     let steps :sstep list = MathLib.fold_vars tbl.env.math (fun v r ->
         let goal : goal = GoalLib.mk_mathgoal tbl v in
         let step = SModifyGoalCtx(SGAddGoal(goal)) in
-        step::r
+        if enable v then step::r
+        else step::SModifyGoalCtx(SGChangeGoalStatus(goal.id,false))::r
       ) []
     in
-    SearchLib.setroot tbl.search tbl steps
+    SearchLib.setroot tbl.search tbl steps;
+    ()
 
   let mknullroot tbl =
-    let _ = SearchLib.setroot tbl.search tbl [] in
+    SearchLib.setroot tbl.search tbl [];
     ()
 
   let mkroot tbl steps =
-    let _ = SearchLib.setroot tbl.search tbl steps in
+    SearchLib.setroot tbl.search tbl steps;
     ()
 end

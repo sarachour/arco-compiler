@@ -24,6 +24,8 @@ open SolverSln
 open SolverTrivial
 
 
+open GoalLib
+
 exception SolverEqnError of string
 
 let error n m = raise (SolverEqnError (n^":"^m))
@@ -58,12 +60,12 @@ struct
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "g" then
-        let _ = Printf.printf "==== Goals ===" in
+        let _ = Printf.printf "==== Goals ===\n" in
         let _ = Printf.printf "%s\n" (GoalLib.goals2str v) in
         let _ = Printf.printf "============\n" in
         let _ = match currgoal with
           | Some(currgoal) -> Printf.printf ">> Current Goal: %s\n" (GoalLib.goal2str currgoal)
-          | _ -> Printf.printf ">> CurrentGoal: (none)"
+          | _ -> Printf.printf ">> CurrentGoal: (none)\n"
         in
         let _ = on_finished() in
         ()

@@ -8,8 +8,9 @@ open SearchData
 
 open Globals
 open Interactive
+open GoalLib
 
-let debug : string -> unit = print_debug 4 "multi"
+let debug : string -> unit = print_debug 4 "slvrsearch"
 let m_menu = menu 1
 let m_print_inter = print_inter 1
 
@@ -98,7 +99,11 @@ struct
     | _ -> score_uniform
 
   let goalstep2str (n:sgoalctx) = match n with
-    | _ -> "<goalstep2str UNIMPLEMENTED>"
+    | SGAddGoal(g) -> "add-goal "^(GoalLib.goal2str g)
+    | SGRemoveGoal(g) -> "remove-goal "^(GoalLib.goal2str g)
+    | SGChangeGoalStatus(gid,st) -> "change-goal-status "^(string_of_int gid)^" to "^
+                                    (if st then "enabled" else "disabled")
+
 
   let slnstep2str (n:sslnctx) = match n with
     | _ -> "<slnstep2str UNIMPLEMENTED>"
@@ -135,11 +140,12 @@ struct
   let apply_goal_step (tbl:gltbl) (s:sgoalctx) : unit = match s with
     | SGAddGoal(g) -> noop (MAP.put tbl.goals g.id g)
     | SGRemoveGoal(g) -> noop (MAP.rm tbl.goals g.id)
-    | SGChangeGoalStatus(gid,st) -> let goal = MAP.get tbl.goals gid in
+    | SGChangeGoalStatus(gid,st) -> 
+      let goal = GoalLib.get_goal_by_id tbl gid in
       goal.active <- st
-
+   
   let apply_step (tbl:gltbl) (s:sstep) : gltbl =
-      debug  ("> do step %s\n"^(step2str s));
+      debug  ("> do step "^(step2str s)^"\n");
       begin
         match s with
         | SModifyGoalCtx(g) -> apply_goal_step tbl g 
@@ -163,19 +169,26 @@ struct
       in
       *)
 
-  let order_steps x y = match (x,y) with
-    | (_,SModifyGoalCtx(SGRemoveGoal(_))) -> 1
-    | (SModifyGoalCtx(SGRemoveGoal(_)),_) -> -1
-    | (SModifyGoalCtx(SGAddGoal(_)),_) -> 1
-    | (_,SModifyGoalCtx(SGAddGoal(_))) -> -1
-    | _ -> 0
+  let priority x : int = match x with
+    | SModifyGoalCtx(SGAddGoal(_)) -> 1
+    | SModifyGoalCtx(SGChangeGoalStatus(_)) ->2
+    | SModifyCompCtx(_) -> 3
+    | SModifySln(_) -> 3
+    | SModifyMapCtx(_) -> 3
+    | SModifyGoalCtx(SGRemoveGoal(_)) -> 4
+    
+  let order_steps x y =
+    let score_x = priority x in
+    let score_y = priority y in
+    score_y - score_x
 
   let unapply_goal_step (tbl:gltbl) (s:sgoalctx) : unit = match s with
-    | SGAddGoal(g) -> noop (MAP.rm tbl.goals g.id)
+    | SGAddGoal(g) ->  noop (MAP.rm tbl.goals g.id)
     | SGRemoveGoal(g) -> noop (MAP.put tbl.goals g.id g)
-    | SGChangeGoalStatus(gid,st) -> let goal = MAP.get tbl.goals gid in
-      goal.active <- true
-
+    | SGChangeGoalStatus(gid,st) -> 
+      if GoalLib.has_goal_of_id tbl gid then
+        let goal = GoalLib.get_goal_by_id tbl gid in
+        goal.active <- true
 
   let unapply_step (tbl:gltbl) (s:sstep) =
       debug  ("> undo step %s\n"^(step2str s));

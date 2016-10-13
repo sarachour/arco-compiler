@@ -30,6 +30,9 @@ struct
     | MInput -> "input"
     | MOutput -> "output"
     | MLocal -> "local"
+
+  let mvar2str (type a) (m:a mvar) (f:a->string) : string =
+    (kind2str m.knd)^" "^m.name 
 (*
   let rel2str (v:mrel) : string = match v with
     | MRState(l,r,MNParam(_,ic,_)) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_number ic)
@@ -42,12 +45,7 @@ struct
     |MNParam(_,_) -> u
     |MNTime -> u
 *)
-  let mid2name x =
-    match x with
-    | MNVar(_,n)-> n
-    | MNParam(n,v) -> n
-    | MNTime ->  "t"
-
+                           
 
   let to_buf m fb =
     let os x = output_string fb x in
