@@ -8,4 +8,6 @@ module StochLib = struct
     {shape=x.shape;std=ASTLib.map x.std f}
 
 
+  let mkstoch (): 'a stoch =
+    {shape=STCHNONE;std=Integer(0)}
 end

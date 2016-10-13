@@ -2,6 +2,10 @@ open AST
 open Unit
 open Util
 open MathData
+open StochData
+
+open StochLib
+
 exception MathException of string
 
 let error n s = raise (MathException (n^": "^s))
@@ -31,8 +35,14 @@ struct
     | MOutput -> "output"
     | MLocal -> "local"
 
+  let mbhv2str (type a) (m:a mbhv) (f:a->string) : string = match m with
+    | MBhvStateVar(st) -> "ddt "^(ASTLib.ast2str st.rhs f)^" ic="^(string_of_number st.ic) 
+    | MBhvVar(v) -> ASTLib.ast2str v.rhs f 
+    | MBhvInput -> "<input>"
+    | MBhvUndef -> "<undef>"
+
   let mvar2str (type a) (m:a mvar) (f:a->string) : string =
-    (kind2str m.knd)^" "^m.name 
+    (kind2str m.knd)^" "^m.name^" = "^(mbhv2str m.bhvr f) 
 (*
   let rel2str (v:mrel) : string = match v with
     | MRState(l,r,MNParam(_,ic,_)) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_number ic)
@@ -135,8 +145,9 @@ struct
       error "mkvar" ("variable "^name^" already exists.")
     else
       begin
-      if UnitTypeChecker.valid (e.units) un then
-        let v = {name=name; bhvr=MBhvUndef; knd=knd; typ=un} in
+        if UnitTypeChecker.valid (e.units) un then
+        let bhv = if knd = MInput then MBhvInput else MBhvUndef in
+        let v = {name=name; bhvr=bhv; knd=knd; typ=un} in
         e.vars <- MAP.put e.vars name v;
         e
       else 
@@ -156,6 +167,10 @@ struct
         error "mkvar" "type is invalid"
       end
 
+  let mkvar e name rhs shape = error "mkvar" "unimplemented"
+
+  let mkstvar e name rhs shape = error "mkstvar" "unimplemented"
+
   let mkstrel e name (rhs:mid ast) ic =
     if MAP.has (e.vars) name = false then
       error "mkstrel" ("variable "^name^" does not exist.")
@@ -168,7 +183,8 @@ struct
         | Some(tv) ->
           let bhv : mid mderiv = {
             rhs=rhs;
-            ic=ic
+            ic=ic;
+            stoch=StochLib.mkstoch()
           } in
           dat.bhvr <- MBhvStateVar(bhv);
           e
@@ -198,7 +214,7 @@ struct
         error "mkrel" ("variable "^name^" already has relation defined.")
       else
         if true then
-          let bhv : mid mfxn = {rhs=rhs} in
+          let bhv : mid mfxn = {rhs=rhs;stoch=StochLib.mkstoch()} in
           let _ = dat.bhvr <- MBhvVar(bhv) in
           e
         else e

@@ -328,8 +328,7 @@ struct
     {repr=(1,4,7); freq=(Integer 0,"?")}
 
 
-  let mkstoch () : 'a stoch =
-    {shape=STCHUNIFORM; std=Integer(0)}
+  let mkstoch () : 'a stoch = StochLib.mkstoch()
 
   let mkport e (cname:hwcompname) (hwkind:hwvkind) iname (types:(string*untid) list) =
       if hasvar e cname iname then

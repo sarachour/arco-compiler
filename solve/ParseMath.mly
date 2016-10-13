@@ -179,14 +179,14 @@ st:
     ()
   }
   | VAR DDT TOKEN EQ expr SHAPE shape EOL {
-      let rhs = $5 in
-      let v = $3 in
+      let rhs = $5 and v = $3 and shape = $7 in
+      MathLib.mkstvar v rhs shape;
       ()
   }
 
   | VAR TOKEN EQ expr SHAPE shape EOL {
-      let rhs = $5 in
-      let v = $3 in
+      let rhs = $5 and v = $3 and shape = $7 in
+      MathLib.mkvar v rhs shape;
       ()
   }
   | REL DDT TOKEN EQ expr INIT number EOL {
