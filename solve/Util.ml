@@ -1013,6 +1013,11 @@ struct
 
   let iter (p:'a prioqueue) (f:int -> 'a -> unit) =
     fold p (fun i x () -> f i x) ()
+
+  let delete (p:'a prioqueue) =
+    MAP.clear p.data;
+    SET.clear p.order;
+    ()
 end
 
 

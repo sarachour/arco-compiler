@@ -418,7 +418,8 @@ struct
                 );
           ()
 
-      );
+        );
+      PRIOQUEUE.delete prio_comps;
       error "solve_goal" "math_goal unimplemented"
     | _ -> error "solve_goal" "unimplemented"
   (*solve a goal*)
