@@ -378,8 +378,19 @@ struct
     (List.length (SearchLib.get_paths v.search head))
 
 
-  let solve_goal (g:goal) =
-    error "solve_goal" "unimplemented"
+  let mknode tbl steps (parent:(sstep snode)) =
+        let _ = SearchLib.move_cursor tbl.search tbl parent in
+        let _ = SearchLib.start tbl.search in
+        let _ = SearchLib.add_steps tbl.search steps in
+        let no = SearchLib.commit tbl.search tbl in
+        no
+
+  let solve_goal (tbl:gltbl) (g:goal) =
+    let mint,musr = mkmenu tbl (Some g) in
+    mint "g";
+    musr ();
+    match g with
+    | _ -> error "solve_goal" "unimplemented"
   (*solve a goal*)
    (*
    let solve_goal (g:goal) =
@@ -472,7 +483,7 @@ struct
               SearchLib.move_cursor tbl.search tbl next_node;
               let next_goal = get_best_valid_goal tbl in
               (*solves the goal*)
-              solve_goal next_goal;
+              solve_goal tbl next_goal;
               rec_solve_subtree root
             end
             (*No more subgoals*)
@@ -503,7 +514,7 @@ struct
             debug "[search-tree] get best valid goal";
             let next_goal = get_best_valid_goal tbl in
             debug "[search-tree] solve the best valid goal";
-            solve_goal next_goal;
+            solve_goal tbl next_goal;
             debug "[search-tree] begin search";
             rec_solve_subtree root;
             ()
