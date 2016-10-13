@@ -345,8 +345,8 @@ struct
   (*
     Scoring the goal: higher = better
   *)
-(*
   let score_goal_uniform g = 0.
+(*
   let score_goal_random g = RAND.rand_norm()
 
   let score_goal_trivial_preferred g = match g with
@@ -360,6 +360,7 @@ struct
   let best_goal_function () =
     let typ = get_glbl_string "eqn-selector-goal" in
     match typ with
+    | "trivial" -> score_goal_uniform
     | _ ->
       error "best_goal_function" ("goal selector named <"^typ^"> doesn't exist")
 
