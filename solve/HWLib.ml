@@ -91,18 +91,36 @@ struct
     | HWKInput -> "input"
     | HWKOutput -> "output"
 
+ let portprop2str pp =
+   let port,prop = pp in 
+   port^"."^prop
+
  let bhv2str (v:'a hwbhv) (tostr:'a->string): string = match v with
       |HWBUndef -> "<undefined>"
       |HWBInput -> "<input>"
       |HWBDigital(d) -> "<digital>:"^(ASTLib.ast2str d.rhs tostr)
-      |HWBAnalog(a) -> "<analog>:"^(ASTLib.ast2str a.rhs tostr)
-      |HWBAnalogState(st) -> "<analog-st> "^(ASTLib.ast2str st.rhs tostr)^" ic="
+      |HWBAnalog(a) -> "<analog>:"^(ASTLib.ast2str a.rhs tostr)^" / "^
+                       "std="^(StochLib.stoch2str a.stoch tostr)
+      |HWBAnalogState(st) -> "<analog-st> "^(ASTLib.ast2str st.rhs tostr)^
+                             " ic="^(portprop2str st.ic)^" / "^
+                             "std="^(StochLib.stoch2str st.stoch tostr)
       
 
   let hwvid_bhv2str (v:hwvid hwbhv) = bhv2str v hwvid2str 
 
+  let avardef2str (st:string) (v:hwadefs) =
+    "["^st^"]="^(IntervalLib.span2str v.span)^
+    " {"^st^"}->["^st^"]="^(IntervalLib.mapper2str v.conv)^
+    " ["^st^"]->{"^st^"}="^(IntervalLib.mapper2str v.iconv)
+
+  let def2str (v:hwdefs) = match v with
+    | HWDAnalog(d) -> "<analog> "^(avardef2str "v" d)
+    | HWDAnalogState(d) -> "<analog-st> "^(avardef2str "ddt v" d.deriv)^"\n"^
+                           "<analog-st> "^(avardef2str "v" d.stvar)
+    | HWDDigital(d) -> "<digital>"
+
   let hwportvar2str (h:'a hwportvar) (f:'a -> string) =
-    (kind2str h.knd)^" "^(h.port)^"."^(h.prop)^" "^(bhv2str h.bhvr f)
+    (kind2str h.knd)^" "^(h.port)^"."^(h.prop)^"\n"^(bhv2str h.bhvr f)^"\n"^(def2str h.defs)^"\n"
 
   let to_buf e fb =
     let os x = output_string fb x in
@@ -381,6 +399,12 @@ struct
     let c = getcomp e cname in
     c.insts <- i;
     ()
+
+  let mkhwinst (c:'a hwcomp) (u:int) =
+    {name=c.name;inst=u}
+
+  let mkid (c:'a hwcomp) (i:int) (v:'a hwportvar) =
+    HNPort(v.knd,HCMGlobal(mkhwinst c i),v.port,v.prop)
 
   let mktime e name units =
     if hastime e then

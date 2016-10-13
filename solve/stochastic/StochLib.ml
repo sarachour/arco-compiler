@@ -17,6 +17,7 @@ module StochLib = struct
     | STCHGAUSS -> "gauss"
     | STCHUNIFORM -> "uniform"
     | STCHPOISS -> "poiss"
+    | STCHNONE -> "none"
 
   let stoch2str (type a) (st:a stoch) (f:a->string) : string =
     (shape2str st.shape)^" "^(ASTLib.ast2str st.std f)

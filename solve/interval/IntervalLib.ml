@@ -22,6 +22,13 @@ struct
     | SPNUnknown -> "?"
     | SPNInterval(v) -> "["^(string_of_number v.min)^","^(string_of_number v.max)^"]"
 
+  let mapper2str (mpr:mapper) : string = match mpr with
+    | MAPLinear(d) -> "@"^"*"^(ASTLib.ast2str (d.scale) ident)^
+                      " + "^(ASTLib.ast2str d.offset ident)
+    | MAPScale(d) -> "@"^"*"^(ASTLib.ast2str d.scale ident)
+    | MAPOffset(d) -> "@"^"+"^(ASTLib.ast2str d.offset ident)
+    | MAPDirect -> "@"
+
   let mk_ival (min) max =
     SPNInterval({min=min;max=max})
 end

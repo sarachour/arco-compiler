@@ -44,6 +44,7 @@ type ('a,'b) tree = {
   vcmp : 'b -> 'b -> bool
 }
 
+let ident x = x 
 let return x b = let _ = x in begin
 
 end

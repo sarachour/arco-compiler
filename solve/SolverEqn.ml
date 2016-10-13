@@ -11,6 +11,7 @@ open Globals
 open HWData
 open HWLib
 
+open MathData
 open MathLib
 
 open Search
@@ -106,7 +107,8 @@ struct
       else
         let _ = _print_debug ("[OPTIMIZE ] no connections: "^node_name^" to "^(UnivLib.hwid2var id)) in
         false
-    | NonTrivialGoal(UFunction(MathId(id),lhs)) -> true
+    | NonTr
+ivialGoal(UFunction(MathId(id),lhs)) -> true
     | NonTrivialGoal(UState(MathId(id),_,_,_)) -> true
     | _ -> error "feasible_component_goal_combo" "unexpected"
 *)
@@ -351,6 +353,7 @@ struct
     Scoring the goal: higher = better
   *)
   let score_goal_uniform g = 0.
+
 (*
   let score_goal_random g = RAND.rand_norm()
 
@@ -362,6 +365,7 @@ struct
     | TrivialGoal(v) -> RAND.rand_norm ()
     | NonTrivialGoal(v) -> 1. +. RAND.rand_norm()
 *)
+
   let best_goal_function () =
     let typ = get_glbl_string "eqn-selector-goal" in
     match typ with
@@ -391,36 +395,70 @@ struct
         no
 
 
-  let solve_goal (tbl:gltbl) (g:goal) =
-    let mint,musr = mkmenu tbl (Some g) in
-    mint "g";
-    musr ();
-    if g.active = false then error "solve_goal" "cannot solve inactive goal"; 
-    match g.d with
-    |GMathGoal(g) -> let mvar = g.d in
-      let prio_comps = PRIOQUEUE.make (fun (x,p) ->
-          SolverCompLib.grade_hwvar_with_mvar x p mvar
+  type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
+
+  let unify_math_goal_with_comp tbl (ucomp:ucomp) (inst:int) (hwvar:unid hwportvar) (mvr:mid mvar) =
+    let hwcomp = ucomp.d in
+    match hwvar.bhvr with
+    | HWBAnalogState(data) ->
+      error "unify_math_goal_with_comp" "unimplemented"
+    | HWBAnalog(data) ->
+      error "unify_math_goal_with_comp" "unimplemented"
+    | _ ->
+      error "unify_math_goal_with_comp" "unimplemented"
+
+  let solve_math_goal tbl (g:goal_math) =
+      let mvar = g.d in
+      let prio_comps = PRIOQUEUE.make (fun (k,x,p) -> match k with
+          | HWCompNew(_) -> SolverCompLib.grade_hwvar_with_mvar x p mvar
+          | HWCompExisting(_) -> SolverCompLib.grade_hwvar_with_mvar x p mvar
         )
       in
       SolverCompLib.iter_avail_comps tbl (fun cmpname cmp ->
           match SolverCompLib.compatible_comp_with_mvar cmp mvar with
           | [] -> ()
-          | vars -> List.iter (fun v -> noop (PRIOQUEUE.add prio_comps (cmp,v))) vars
+          | vars -> List.iter (fun v ->
+              noop (PRIOQUEUE.add prio_comps (HWCompNew cmpname,cmp,v))) vars
       );
       SolverCompLib.iter_used_comps tbl (fun cmpid cmp ->
           match SolverCompLib.compatible_comp_with_mvar cmp mvar with
           | [] -> ()
-          | vars -> List.iter (fun v -> noop (PRIOQUEUE.add prio_comps (cmp,v))) vars
+          | vars -> List.iter (fun v ->
+              noop (PRIOQUEUE.add prio_comps (HWCompExisting cmpid,cmp,v))) vars
         );
-      PRIOQUEUE.iter prio_comps (fun (prio:int) (hwcomp,hwvar) ->
+      let nsols : int ref = REF.mk 0 in 
+      PRIOQUEUE.iter prio_comps (fun (prio:int) (cmpkind,hwcomp,hwvar) ->
           debug ("["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
                  "> "^(HwLib.hwportvar2str hwvar unid2str^"\n")
                 );
+          begin
+            match cmpkind with
+            | HWCompNew(cmpname) ->
+              debug "  [new comp]";
+              unify_math_goal_with_comp tbl hwcomp (hwcomp.d.insts) hwvar mvar
+            | HWCompExisting(compinst) ->
+              debug "  [existing comp]";
+              unify_math_goal_with_comp tbl hwcomp (compinst.inst) hwvar mvar
+              error "solve_goal" "hwcompexisting not implemented"
+          end;
           ()
 
         );
       PRIOQUEUE.delete prio_comps;
-      error "solve_goal" "math_goal unimplemented"
+      (*if there are any solutions*)
+      if REF.dr nsols > 0 then
+        ()
+      else
+        ()
+
+  let solve_goal (tbl:gltbl) (g:goal) =
+    let root = SearchLib.cursor tbl.search in
+    let mint,musr = mkmenu tbl (Some g) in
+    mint "g";
+    musr ();
+    if g.active = false then error "solve_goal" "cannot solve inactive goal"; 
+    match g.d with
+    |GMathGoal(g) -> solve_math_goal tbl g 
     | _ -> error "solve_goal" "unimplemented"
   (*solve a goal*)
    (*
