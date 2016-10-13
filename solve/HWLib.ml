@@ -101,6 +101,9 @@ struct
 
   let hwvid_bhv2str (v:hwvid hwbhv) = bhv2str v hwvid2str 
 
+  let hwportvar2str (h:'a hwportvar) (f:'a -> string) =
+    (kind2str h.knd)^" "^(h.port)^"."^(h.prop)^" "^(bhv2str h.bhvr f)
+
   let to_buf e fb =
     let os x = output_string fb x in
     let print_var prefix (x:hwvid hwportvar) =
@@ -428,7 +431,16 @@ struct
     | HWBInput -> HWBInput
     | HWBUndef -> HWBUndef 
    
-      
+
+  let comp_fold_outs (type a) (type b) (x:a hwcomp) (f:a hwportvar -> b -> b) (x0:b) : b =
+    MAP.fold x.outs (fun k v r -> f v r) x0 
+
+  let comp_fold_ins (type a) (type b) (x:a hwcomp) (f:a hwportvar -> b -> b) (x0:b) : b =
+    MAP.fold x.ins (fun k v r -> f v r) x0 
+
+  let comp_fold_vars (type a) (type b) (x:a hwcomp) (f:a hwportvar -> b -> b) (x0:b) : b =
+    let x1 = comp_fold_ins x f x0 in
+    comp_fold_outs x f x1
 
   let map_var (type a) (type b) (x:a hwportvar) (f:a->b) : b hwportvar =
     {

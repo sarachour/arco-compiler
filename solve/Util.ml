@@ -983,6 +983,39 @@ struct
 end
 
 
+type 'a prioqueue = {
+  mutable order : int set;
+  mutable data: (int,'a list) map;
+  score : 'a -> int;
+}
+module PRIOQUEUE =
+struct
+
+  let make (f:'a -> int) : 'a prioqueue =
+    {order=SET.make(); data=MAP.make(); score=f}
+
+
+  let add (p:'a prioqueue) (x:'a) =
+    let score = p.score x in
+    SET.add p.order score;
+    if MAP.has p.data score  = false then
+      noop (MAP.put p.data score [])
+    ;
+    let els = MAP.get p.data score in
+    MAP.put p.data score (x::els)
+
+  let fold (p:'a prioqueue) (f:int->'a -> 'b -> 'b) (x0:'b) =
+    let lst : int list= SET.sort p.order (fun x y -> x - y) in
+    List.fold_right (fun prio (r0:'b) ->
+        let els = MAP.get p.data prio in
+        List.fold_right (fun el r -> f prio el r) els r0
+      ) lst x0
+
+  let iter (p:'a prioqueue) (f:int -> 'a -> unit) =
+    fold p (fun i x () -> f i x) ()
+end
+
+
 
 
 module GRAPH =

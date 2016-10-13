@@ -9,6 +9,11 @@ open AST
 open Util
 open Unit
 open SolverData
+
+
+let unid2str (a:unid) = match a with
+  | HwId(x) -> HwLib.hwvid2str x
+  | MathId(x) -> MathLib.mid2str x
 (*
 module UnivLib =
 struct

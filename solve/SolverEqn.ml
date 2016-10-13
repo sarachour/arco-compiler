@@ -25,6 +25,8 @@ open SolverTrivial
 
 
 open GoalLib
+open SolverCompLib
+
 
 exception SolverEqnError of string
 
@@ -305,6 +307,8 @@ struct
     let old_depth =  List.length (TREE.get_path tbl.search.tree node) in
     SearchLib.move_cursor tbl.search tbl node;
     (old_cursor,old_depth)
+
+
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
   let test_node_validity (tbl:gltbl) (node:sstep snode) (depth:int) : bool=
     begin
@@ -331,6 +335,7 @@ struct
     SearchLib.move_cursor tbl.search tbl old_cursor;
     is_valid
   end
+
 
   (*get the best valid node. If there is no valid node, return none *)
   let rec get_best_valid_node (tbl:gltbl) (root:(sstep snode) option) (depth:int)  : (sstep snode) option =
@@ -379,17 +384,42 @@ struct
 
 
   let mknode tbl steps (parent:(sstep snode)) =
-        let _ = SearchLib.move_cursor tbl.search tbl parent in
-        let _ = SearchLib.start tbl.search in
-        let _ = SearchLib.add_steps tbl.search steps in
+        SearchLib.move_cursor tbl.search tbl parent;
+        SearchLib.start tbl.search;
+        SearchLib.add_steps tbl.search steps;
         let no = SearchLib.commit tbl.search tbl in
         no
+
 
   let solve_goal (tbl:gltbl) (g:goal) =
     let mint,musr = mkmenu tbl (Some g) in
     mint "g";
     musr ();
-    match g with
+    if g.active = false then error "solve_goal" "cannot solve inactive goal"; 
+    match g.d with
+    |GMathGoal(g) -> let mvar = g.d in
+      let prio_comps = PRIOQUEUE.make (fun (x,p) ->
+          SolverCompLib.grade_hwvar_with_mvar x p mvar
+        )
+      in
+      SolverCompLib.iter_avail_comps tbl (fun cmpname cmp ->
+          match SolverCompLib.compatible_comp_with_mvar cmp mvar with
+          | [] -> ()
+          | vars -> List.iter (fun v -> noop (PRIOQUEUE.add prio_comps (cmp,v))) vars
+      );
+      SolverCompLib.iter_used_comps tbl (fun cmpid cmp ->
+          match SolverCompLib.compatible_comp_with_mvar cmp mvar with
+          | [] -> ()
+          | vars -> List.iter (fun v -> noop (PRIOQUEUE.add prio_comps (cmp,v))) vars
+        );
+      PRIOQUEUE.iter prio_comps (fun (prio:int) (hwcomp,hwvar) ->
+          debug ("["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
+                 "> "^(HwLib.hwportvar2str hwvar unid2str^"\n")
+                );
+          ()
+
+      );
+      error "solve_goal" "math_goal unimplemented"
     | _ -> error "solve_goal" "unimplemented"
   (*solve a goal*)
    (*
