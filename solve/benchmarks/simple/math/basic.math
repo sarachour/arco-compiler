@@ -16,9 +16,11 @@ def B mag=[0,1] M
 def C mag=[0,1] M
 def D mag=[0,1] M
 
-def E mag=[0,1] M
-def ddt E mag=[?] M
-
 rel ddt E = (A*B + C*D) - (0.001*E) init 0
 var ddt E = E*0.00001 shape GAUSS
+
+def E mag=[0,1] M
+def ddt E mag=[?] M
+def ddt E time 0.0001
+
 

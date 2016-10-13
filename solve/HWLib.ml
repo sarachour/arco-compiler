@@ -319,7 +319,7 @@ struct
     hwcompname2str name,(inport),(outport)
 
   let mkadefs () :  hwadefs =
-    {span=SPNNone; conv=MAPDirect;iconv=MAPDirect}
+    {span=SPNInfinite; conv=MAPDirect;iconv=MAPDirect}
 
   let mkastatedefs () :  hwastatedefs =
     {stvar=mkadefs();deriv=mkadefs()}

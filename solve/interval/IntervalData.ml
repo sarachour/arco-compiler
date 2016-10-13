@@ -8,8 +8,8 @@ type interval = {
 (* Spann *)
 type span =
   | SPNInterval of interval
-  | SPNUnknown of interval
-  | SPNNone
+  | SPNUnknown 
+  | SPNInfinite
 
 type span_ast = span ast
 

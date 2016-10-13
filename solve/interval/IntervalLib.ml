@@ -16,6 +16,14 @@ struct
       ival_phys= MAP.make();
       ival_abs= MAP.make();
     }
+
+  let span2str (s:span) : string = match s with
+    | SPNInfinite -> "*"
+    | SPNUnknown -> "?"
+    | SPNInterval(v) -> "["^(string_of_number v.min)^","^(string_of_number v.max)^"]"
+
+  let mk_ival (min) max =
+    SPNInterval({min=min;max=max})
 end
 
 

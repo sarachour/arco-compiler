@@ -1,6 +1,8 @@
 %{
   open MathData
   open MathLib
+  open IntervalData 
+  open IntervalLib
   open Util
   open Unit
 
@@ -88,9 +90,9 @@ numlist:
   | number COMMA numlist      {let lst = $3 and e = $1 in e::lst}
 
 shape:
-  | GAUSS {()}
-  | UNIFORM {()}
-  | POISS {()}
+  | GAUSS {STCHGAUSS}
+  | UNIFORM {STCHUNIFORM}
+  | POISS {STCHPOISS}
 typ:
   | sexpr {UExpr(string_to_ast $1)}
   | NONE {UNone}
@@ -118,17 +120,23 @@ st:
     ()
   }
   | DEF TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
+    let v = $2 in
+    MathLib.upd_def dat v (fun x -> match x with
+    | MDefVar(d) -> d.span <- SPNUnknown; x
+    | MDefStVar(d) -> d.stvar_span <- SPNUnknown;x
+    );
     ()
+
   }
   | DEF DDT TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
+    let v = $3 in
+    MathLib.upd_def dat v (fun x -> match x with
+    | MDefStVar(d) -> d.deriv_span <- SPNUnknown;x
+    | _ -> error "def ddt mag" "must be defined after relation"
+    );
     ()
   }
-  | DEF TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
-    ()
-  }
-  | DEF TOKEN DDT MAG EQ OBRAC QMARK CBRAC typ EOL {
-    ()
-  }
+
   | DEF TOKEN MAG EQ OBRAC numlist CBRAC typ EOL {
     let name : string= $2 in
     let bounds = $6 in
@@ -136,8 +144,12 @@ st:
        let min : number = List.nth bounds 0 in
        let max : number = List.nth bounds 1 in
        let typ : unt = $8 in 
-       MathLib.set_mag dat name min max typ
-    else
+       MathLib.upd_def dat name (fun x -> match x with
+       | MDefVar(d) -> d.span <- IntervalLib.mk_ival min max; x
+       | MDefStVar(d) -> d.stvar_span <- IntervalLib.mk_ival min max; x
+       );
+       ()
+   else
        error "cstr mag" "bounds is more than two elements"
   }
   | DEF DDT TOKEN MAG EQ OBRAC numlist CBRAC typ EOL {
@@ -147,9 +159,20 @@ st:
        let min : number = List.nth bounds 0 in
        let max : number = List.nth bounds 1 in
        let typ : unt = $9 in 
-       MathLib.set_mag dat name min max typ
+       MathLib.upd_def dat name (fun x -> match x with
+       | MDefStVar(d) -> d.deriv_span <- IntervalLib.mk_ival min max; x
+       | _ -> error "def ddt mag []" "must be defined after relation"
+       );
+       ()
     else
        error "cstr mag" "bounds is more than two elements"
+  }
+  | DEF DDT TOKEN TIME number {
+    let name = $3 and step = $5 in
+    MathLib.upd_def dat name (fun x -> match x with
+       | MDefStVar(d) -> d.time_step <- step; x
+       | _ -> error "def ddt time" "must be defined after relation"
+       );
   }
   | OUTPUT TOKEN COLON typ EOL {
     let knd : mkind = MOutput in
@@ -180,13 +203,13 @@ st:
   }
   | VAR DDT TOKEN EQ expr SHAPE shape EOL {
       let rhs = $5 and v = $3 and shape = $7 in
-      MathLib.mkstvar v rhs shape;
+      MathLib.mkstd dat v rhs shape;
       ()
   }
 
   | VAR TOKEN EQ expr SHAPE shape EOL {
-      let rhs = $5 and v = $3 and shape = $7 in
-      MathLib.mkvar v rhs shape;
+      let rhs = $4 and v = $2 and shape = $6 in
+      MathLib.mkstd dat v rhs shape;
       ()
   }
   | REL DDT TOKEN EQ expr INIT number EOL {

@@ -5,6 +5,7 @@ open MathData
 open StochData
 
 open StochLib
+open IntervalLib
 
 exception MathException of string
 
@@ -35,14 +36,23 @@ struct
     | MOutput -> "output"
     | MLocal -> "local"
 
-  let mbhv2str (type a) (m:a mbhv) (f:a->string) : string = match m with
-    | MBhvStateVar(st) -> "ddt "^(ASTLib.ast2str st.rhs f)^" ic="^(string_of_number st.ic) 
-    | MBhvVar(v) -> ASTLib.ast2str v.rhs f 
+  let mbhv2str (type a) (s:string) (m:a mbhv) (f:a->string) : string = match m with
+    | MBhvStateVar(st) -> "ddt "^s^"="^(ASTLib.ast2str st.rhs f)^" ic="^(string_of_number st.ic)^
+                          " / std(ddt "^s^")"^(StochLib.stoch2str st.stoch f)
+    | MBhvVar(v) -> s^"="^(ASTLib.ast2str v.rhs f)^" / "^(StochLib.stoch2str v.stoch f) 
     | MBhvInput -> "<input>"
     | MBhvUndef -> "<undef>"
 
+  let mdef2str (v:string) (m:mdef) : string = match m with
+    | MDefStVar(d) -> "[ddt "^v^"]="^(IntervalLib.span2str d.deriv_span)^" / "^
+                    "["^v^"]="^(IntervalLib.span2str d.stvar_span)^" / "^
+                    "ddt >= "^(string_of_number d.time_step)
+
+    | MDefVar(d) -> "["^v^"]="^(IntervalLib.span2str d.span)
+
   let mvar2str (type a) (m:a mvar) (f:a->string) : string =
-    (kind2str m.knd)^" "^m.name^" = "^(mbhv2str m.bhvr f) 
+    (kind2str m.knd)^" "^m.name^" :> "^(mbhv2str m.name m.bhvr f)^" {"^
+    (mdef2str m.name m.defs)^"}"
 (*
   let rel2str (v:mrel) : string = match v with
     | MRState(l,r,MNParam(_,ic,_)) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_number ic)
@@ -137,7 +147,10 @@ struct
     else
       error "mkvar" "type is invalid"
 
-  let set_mag e (name:string) (min:number) (max:number) (typ:unt) =
+
+  let upd_def e name (f:mdef -> mdef) =
+    let v = getvar e name in
+    v.defs <- f v.defs;
     ()
 
   let mkvar e name knd un : mid menv =
@@ -147,7 +160,14 @@ struct
       begin
         if UnitTypeChecker.valid (e.units) un then
         let bhv = if knd = MInput then MBhvInput else MBhvUndef in
-        let v = {name=name; bhvr=bhv; knd=knd; typ=un} in
+        let def : mvardef = {span=SPNUnknown} in 
+        let v = {
+          name=name;
+          bhvr=bhv;
+          knd=knd;
+          defs=MDefVar(def);
+          typ=un;
+        } in
         e.vars <- MAP.put e.vars name v;
         e
       else 
@@ -167,9 +187,16 @@ struct
         error "mkvar" "type is invalid"
       end
 
-  let mkvar e name rhs shape = error "mkvar" "unimplemented"
+  let mkstd e name rhs shape =
+    let stoch = StochLib.create_stoch rhs shape in 
+    let v = getvar e name in
+    match v.bhvr with
+    | MBhvStateVar(bhv) -> bhv.stoch <- stoch; ()
+    | MBhvVar(bhv) -> bhv.stoch <- stoch; ()
+    | _ -> error "mkstd" "cannot have standard deviation for undefined or input variable."
 
-  let mkstvar e name rhs shape = error "mkstvar" "unimplemented"
+    error "mkvar" "unimplemented"
+
 
   let mkstrel e name (rhs:mid ast) ic =
     if MAP.has (e.vars) name = false then
@@ -184,9 +211,15 @@ struct
           let bhv : mid mderiv = {
             rhs=rhs;
             ic=ic;
-            stoch=StochLib.mkstoch()
+            stoch=StochLib.mkstoch();
           } in
+          let def : mstvardef = {
+            deriv_span=SPNUnknown;
+            stvar_span=SPNUnknown;
+            time_step = Integer(1);
+          }  in
           dat.bhvr <- MBhvStateVar(bhv);
+          dat.defs <- MDefStVar(def);
           e
           (*
           let tr : untid ast = UnitTypeChecker.typeof rhs mid2unit in
@@ -214,8 +247,11 @@ struct
         error "mkrel" ("variable "^name^" already has relation defined.")
       else
         if true then
-          let bhv : mid mfxn = {rhs=rhs;stoch=StochLib.mkstoch()} in
-          let _ = dat.bhvr <- MBhvVar(bhv) in
+          let bhv : mid mfxn = {
+            rhs=rhs;
+            stoch=StochLib.mkstoch();
+          } in
+          dat.bhvr <- MBhvVar(bhv);
           e
         else e
         (*
