@@ -124,9 +124,7 @@ struct
 
   let int_of_float x =  int_of_float (round x)
 
-  let cmp_numbers (n1:number) (n2:number) (eps:float) =
-    let f1 = float_of_number n1 in
-    let f2 = float_of_number n2 in
+  let cmp (f1:float) (f2:float) (eps:float) =
     let diff = abs_float(f1 -. f2) in
     diff < eps
 
@@ -134,7 +132,35 @@ struct
     match n with
     | 0 -> ()
     | x -> fxn x; countdown (x-1) fxn
+
+
+  let max (a:float list) =
+    match a with
+    | h::t -> List.fold_right (fun x max ->
+      if  x > max then x else max) t h
+    | [] -> error "max" "cannot take max of empty array"
+
+  let min (a:float list) =
+    match a with
+    | h::t -> List.fold_right (fun x min ->
+      if  x < min then x else min) t h
+    | [] -> error "min" "cannot take max of empty array"
+
 end
+
+module NUMBER =
+struct
+  let float_of_number (x:number) = match x with
+    | Integer(i) -> float_of_int i
+    | Decimal(f) -> f
+
+  let float_list_of_number_list (x:number list) =
+    List.map float_of_number x
+
+  let max numlst = MATH.max (float_list_of_number_list numlst)
+  let min numlst = MATH.min (float_list_of_number_list numlst)
+end
+
 
 module IO =
 struct

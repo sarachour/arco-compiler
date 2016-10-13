@@ -2,8 +2,8 @@ open AST
 open Util
 (* Spanning Variables *)
 type interval = {
-  min: number;
-  max: number;
+  min: float;
+  max: float;
 }
 (* Spann *)
 type span =
