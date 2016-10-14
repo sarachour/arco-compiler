@@ -292,7 +292,17 @@ struct
         IntervalLib.float_to_interval (float_of_number param.value)
       | MNTime -> error "inference_var" "time is unbounded"
     in
-    error "inference_var" "unimplemented"
+    match x.bhvr with
+    | MBhvVar(bhvr) ->
+      let ival = IntervalLib.derive_interval bhvr.rhs lookup in
+      ()
+    | MBhvStateVar(bhvr) ->
+      error "inference_var" "state-var unimplemented"
+    | MBhvInput ->
+      error "inference_var" "cannot infer input at the moment"
+    | MBhvUndef ->
+      error "inference_var" "cannot infer interval of undefined output"
+
   let inference (e:'a menv) (cnv:'a -> mid) =
     iter_vars e (fun x -> inference_var e x cnv);
     ()
