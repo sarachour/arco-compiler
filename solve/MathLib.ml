@@ -299,7 +299,7 @@ struct
     | MBhvStateVar(bhvr) ->
       error "inference_var" "state-var unimplemented"
     | MBhvInput ->
-      error "inference_var" "cannot infer input at the moment"
+      error "inference_var" (("cannot infer interval for input ["^x.name^"])"
     | MBhvUndef ->
       error "inference_var" "cannot infer interval of undefined output"
 
