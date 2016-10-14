@@ -4,15 +4,20 @@ open AST
 
 open ParseMath
 open LexMath
-open MathLib
+
 
 open CompileUtil
 
+open HWData
+open MathData
+
 open HWLib
+open MathLib
 (*
 open ParseHW
 open LexHW
 *)
+open Util
 
 exception ParserGeneratorException of string*string
 
@@ -50,21 +55,23 @@ struct
     let _ = close_file () in
     res
 
-  let file_to_formula fn =
+  let file_to_formula fn : 'a menv =
     let close_file, lb = file_to_lexbuf fn in
     let res = parse_lexbuf "math" (fun x -> ParseMath.env LexMath.env x) lb in
     let _ = close_file () in
     match res with
     | Some(v) -> let res = v in
+      MathLib.inference res ident;
       res
     | None -> error "file_to_formula" "could not parse math environment."
 
-  let file_to_hwspec fn =
+  let file_to_hwspec fn : 'a hwenv =
     let close_file, lb = file_to_lexbuf fn in
     let res = parse_lexbuf "hw" (fun x -> ParseHW.env LexHW.env x) lb in
     let _ = close_file () in
     match res with
     | Some (v) -> let res = v in
+      HwLib.inference res ident;
       res
     | None -> error "file_to_formula" "could not parse the hw environment"
 

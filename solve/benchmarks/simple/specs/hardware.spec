@@ -73,7 +73,6 @@ comp imul
     def I(Z) map scale A3
 
     output W {I:mA}
-    def I(W) mag=[?] mA
     def I(W) imap scale A3/(A1+A2)
     def I(W) map scale (A1+A2)/A3
 
@@ -104,7 +103,6 @@ comp deriv_iadd
     def I(Z) mag = [0,1] mA
     def I(Z) map linear scale=1/A offset=B/A
     
-    def ddt I(Z) mag= [?] mA
     def ddt I(Z) map linear scale=1/A offset=B/A
    
 end

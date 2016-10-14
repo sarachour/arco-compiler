@@ -2,7 +2,9 @@ open AST
 open Unit
 open Util
 open MathData
+
 open StochData
+open IntervalData
 
 open StochLib
 open IntervalLib
@@ -44,11 +46,11 @@ struct
     | MBhvUndef -> "<undef>"
 
   let mdef2str (v:string) (m:mdef) : string = match m with
-    | MDefStVar(d) -> "[ddt "^v^"]="^(IntervalLib.span2str d.deriv_span)^" / "^
-                    "["^v^"]="^(IntervalLib.span2str d.stvar_span)^" / "^
+    | MDefStVar(d) -> "[ddt "^v^"]="^(IntervalLib.interval2str d.deriv.ival)^" / "^
+                    "["^v^"]="^(IntervalLib.interval2str d.stvar.ival)^" / "^
                     "ddt >= "^(string_of_number d.time_step)
 
-    | MDefVar(d) -> "["^v^"]="^(IntervalLib.span2str d.span)
+    | MDefVar(d) -> "["^v^"]="^(IntervalLib.interval2str d.ival)
 
   let mvar2str (type a) (m:a mvar) (f:a->string) : string =
     (kind2str m.knd)^" "^m.name^" :> "^(mbhv2str m.name m.bhvr f)^" {"^
@@ -89,17 +91,17 @@ struct
    e.time
 
 
-  let hasvar e name =
+  let hasvar (e:'a menv) (name:string) =
     MAP.has e.vars name
 
-  let getvar e name =
+  let getvar (e:'a menv) (name:string) =
     if hasvar e name = false then
       error "mkrel" ("variable "^name^" does not exist.")
     else
       MAP.get (e.vars) name
 
 
-  let isvar e name =
+  let isvar (e:'a menv) (name:string) =
     MAP.has e.vars name 
 
   let getkind e name =
@@ -137,7 +139,7 @@ struct
     else
       error "var_to_mid" "error"
 
-  let mktime e name un : mid menv =
+  let mktime (e:'a menv) (name:string) un : mid menv =
     if MAP.has (e.vars) name then
       error "mkvar" ("variable "^name^" already exists.")
     else
@@ -153,6 +155,9 @@ struct
     v.defs <- f v.defs;
     ()
 
+  let mkmvardef () =
+    {ival=IntervalLib.mkdflt_ival ()}
+
   let mkvar e name knd un : mid menv =
     if isvar e name || isparam e name then
       error "mkvar" ("variable "^name^" already exists.")
@@ -160,7 +165,7 @@ struct
       begin
         if UnitTypeChecker.valid (e.units) un then
         let bhv = if knd = MInput then MBhvInput else MBhvUndef in
-        let def : mvardef = {span=SPNUnknown} in 
+        let def : mvardef = mkmvardef () in 
         let v = {
           name=name;
           bhvr=bhv;
@@ -198,7 +203,7 @@ struct
     error "mkvar" "unimplemented"
 
 
-  let mkstrel e name (rhs:mid ast) ic =
+  let mkstrel (e:'a menv) name (rhs:mid ast) ic =
     if MAP.has (e.vars) name = false then
       error "mkstrel" ("variable "^name^" does not exist.")
     else
@@ -214,8 +219,8 @@ struct
             stoch=StochLib.mkstoch();
           } in
           let def : mstvardef = {
-            deriv_span=SPNUnknown;
-            stvar_span=SPNUnknown;
+            deriv=mkmvardef();
+            stvar=mkmvardef();
             time_step = Integer(1);
           }  in
           dat.bhvr <- MBhvStateVar(bhv);
@@ -238,7 +243,7 @@ struct
           error "mkstrel"  "time variable not defined anywhere."
 
 
-  let mkrel e name rhs : mid menv =
+  let mkrel (e:'a menv) name rhs : mid menv =
     if MAP.has (e.vars) name = false then
       error "mkrel" ("variable "^name^" does not exist.")
     else
@@ -267,10 +272,29 @@ struct
             (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr)))
         *)
 
-  let iter_vars e f =
+  let iter_vars (e:'a menv) f =
     MAP.iter e.vars (fun k v -> f v)
 
-  let fold_vars e f r0 =
+  let fold_vars (e:'a menv) f r0 =
     MAP.fold e.vars (fun k v r -> f v r) r0
 
+  let inference_var e (x:'a mvar) (cnv:'a -> mid) =
+    let lookup (x:'a) : interval = match cnv x with
+      | MNVar(MInput,p) -> let vr = getvar e p in
+        begin
+          match vr.defs with
+          | MDefStVar(x) ->
+            x.stvar.ival
+          | MDefVar(x) ->
+            x.ival
+        end
+      | MNParam(p,n) -> let param = getparam e p in
+        IntervalLib.float_to_interval (float_of_number param.value)
+      | MNTime -> error "inference_var" "time is unbounded"
+    in
+    error "inference_var" "unimplemented"
+  let inference (e:'a menv) (cnv:'a -> mid) =
+    iter_vars e (fun x -> inference_var e x cnv);
+    ()
+    
 end

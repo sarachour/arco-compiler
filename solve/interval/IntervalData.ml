@@ -1,17 +1,21 @@
 open AST
 open Util
 (* Spanning Variables *)
-type interval = {
-  min: float;
-  max: float;
-}
-(* Spann *)
-type span =
-  | SPNInterval of interval
-  | SPNUnknown 
-  | SPNInfinite
+type bound =
+  | BNDPosInf
+  | BNDNegInf
+  | BNDZero
+  | BNDNegNum of float
+  | BNDPosNum of float
+  | BNDVar 
+  | BNDNums of float list
 
-type span_ast = span ast
+type interval = {
+  min: bound;
+  max: bound;
+}
+
+type interval_ast = interval ast
 
 
 type mapvar = string

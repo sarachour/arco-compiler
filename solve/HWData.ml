@@ -57,7 +57,7 @@ type hwparam = {
 type port_prop = string*string
 
 type hwadefs = {
-  mutable span: span;
+  mutable ival: interval;
   mutable conv:  mapper;
   mutable iconv:  mapper;
 }

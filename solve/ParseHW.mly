@@ -4,6 +4,7 @@
   open HWData
   open HWLib
   open HWConnLib
+  open IntervalLib
 
   
   open AST
@@ -160,6 +161,7 @@
 %type <unt> typ
 %type <(string*untid) list> proptyplst
 %type <Util.number> number
+%type <float list> mag
 
 %type <index> ind
 %type <index list> inds
@@ -289,8 +291,7 @@ map_strategy:
   }
 
 mag:
-| OBRAC numlist CBRAC TOKEN {()}
-| OBRAC QMARK CBRAC TOKEN {()}
+| OBRAC numlist CBRAC TOKEN {List.map (fun x -> NUMBER.float_of_number x) $2}
 
 shape:
   | GAUSS                                   {STCHGAUSS}
@@ -373,12 +374,13 @@ digital:
   }
   | digital DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and cname = get_cmpname() in
-      let bound :number list = [] and typ = "" in
+      let bound : float list = [] and typ = "" in
       if List.length bound = 2 then
-         let min = List.nth bound 0 in
-         let max = List.nth bound 1 in 
+         let min : float = (List.nth bound 0) in
+         let max : float = (List.nth bound 1) in 
          HwLib.upd_defs dat (fun d -> match d with
-         | HWDAnalog(d) -> d.span = SPNInterval({min=min;max=max})) cname port
+         | HWDAnalog(d) ->
+         d.ival <- IntervalLib.mk_ival min max) cname port
   }
 
   | digital DEF portprop SAMPLE EQ number TOKEN EOL {
@@ -555,25 +557,28 @@ comp:
   }
   | comp DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and comp = get_cmpname() in
-      let bound = [] and typ = "" in
+      let bound : float list = [] and typ = "" in
       if List.length bound =  2 then
-         let min = List.nth bound 0 in
-         let max = List.nth bound 1 in
+         let min :float =  (List.nth bound 0) in
+         let max :float =  (List.nth bound 1) in
          HwLib.upd_defs dat (fun d -> match d with
-            | HWDAnalog(d) -> d.span = SPNInterval({min=min;max=max})
-            | HWDAnalogState(d) -> d.stvar.span = SPNInterval({min=min;max=max}))
-            comp port;
+            | HWDAnalog(d) ->
+              d.ival = IntervalLib.mk_ival min max 
+            | HWDAnalogState(d) ->
+              d.stvar.ival = IntervalLib.mk_ival min max
+            ) comp port;
          ()
 
   }
   | comp DEF DDT portprop MAG EQ mag EOL {
       let port,prop = $4 and comp = get_cmpname() in
-      let bound = [] and typ = "" in
+      let bound : float list = [] and typ = "" in
       if List.length bound =  2 then
-         let min = List.nth bound 0 in
-         let max = List.nth bound 1 in
+         let min =  (List.nth bound 0) in
+         let max =  (List.nth bound 1) in
         HwLib.upd_defs dat (fun d -> match d with
-            | HWDAnalogState(d) -> d.deriv.span = SPNInterval({min=min;max=max})) comp port;
+            | HWDAnalogState(d) ->
+            d.deriv.ival = IntervalLib.mk_ival min max) comp port;
          ()
   }
   | comp SIM TOKEN tokenlist EOL {

@@ -14,6 +14,9 @@ open IntervalLib
 exception HwLibError of string
 let error s e = raise (HwLibError(s^":"^e))
 let print s = print_string s
+let debug = print
+
+
 module HwLib =
 struct
 
@@ -109,7 +112,7 @@ struct
   let hwvid_bhv2str (v:hwvid hwbhv) = bhv2str v hwvid2str 
 
   let avardef2str (st:string) (v:hwadefs) =
-    "["^st^"]="^(IntervalLib.span2str v.span)^
+    "["^st^"]="^(IntervalLib.interval2str v.ival)^
     " {"^st^"}->["^st^"]="^(IntervalLib.mapper2str v.conv)^
     " ["^st^"]->{"^st^"}="^(IntervalLib.mapper2str v.iconv)
 
@@ -340,7 +343,11 @@ struct
     hwcompname2str name,(inport),(outport)
 
   let mkadefs () :  hwadefs =
-    {span=SPNInfinite; conv=MAPDirect;iconv=MAPDirect}
+    {
+      ival=IntervalLib.mkdflt_ival();
+      conv=MAPDirect;
+      iconv=MAPDirect
+    }
 
   let mkastatedefs () :  hwastatedefs =
     {stvar=mkadefs();deriv=mkadefs()}
@@ -466,6 +473,16 @@ struct
     let x1 = comp_fold_ins x f x0 in
     comp_fold_outs x f x1
 
+  let comp_iter_outs (type a) (x:a hwcomp) (f:a hwportvar -> unit) : unit =
+    comp_fold_outs x (fun x () -> f x) ()
+
+  let comp_iter_ins (type a) (x:a hwcomp) (f:a hwportvar -> unit) : unit =
+    comp_fold_ins x (fun x () -> f x) ()
+
+  let comp_iter_vars (type a) (x:a hwcomp) (f:a hwportvar -> unit) : unit =
+    comp_fold_vars x (fun x () -> f x) ()
+
+
   let map_var (type a) (type b) (x:a hwportvar) (f:a->b) : b hwportvar =
     {
       port=x.port;prop=x.prop;typ=x.typ;knd=x.knd;comp=x.comp;
@@ -477,6 +494,38 @@ struct
     let nins = MAP.map_vals x.ins (fun k v -> map_var v f)   in
     let nouts = MAP.map_vals x.outs (fun k v -> map_var v f)  in
     {name=x.name;vars=x.vars;outs=nouts;ins=nins;params=x.params;insts=x.insts;sim=x.sim}
-    
+
+  let fold_comps (type a) (type b) (env:a hwenv) (f:a hwcomp->b->b) (x0:b) : b =
+    MAP.fold env.comps (fun k v x -> f v x) x0
+
+  let iter_comps (type a) (env:a hwenv) (f:a hwcomp->unit) : unit =
+    fold_comps env (fun x () -> f x) ()
+
+  let inference_var (type a) (env:a hwenv) (cmp:a hwcomp) (v:a hwportvar) (cnv:a -> hwvid) : unit =
+    let lookup (x:a) : interval = match cnv x with
+      | HNPort(HWKInput,_,port,_) ->
+        let vr : a hwportvar = getvar env (cmp.name) port in
+        begin
+          match vr.defs with
+          | HWDAnalogState(def) -> def.stvar.ival
+          | HWDAnalog(def) -> def.ival
+          | HWDDigital(def) -> error "lookup" "cannot do interval analysis on digital values"
+        end
+      | HNParam(_,param) -> let param = getparam env cmp.name param in
+        IntervalLib.floats_to_interval (List.map (fun x -> float_of_number x) param.value)
+      | HNTime -> error "inference_var" "time is unbounded"
+    in
+    error "inference_var" "unimplemented"
+
+  let inference_comp (type a) (env:a hwenv) (x:a hwcomp) (cnv:a->hwvid)=
+    comp_iter_ins x (fun v -> inference_var env x v cnv);
+    comp_iter_outs x (fun v -> inference_var env x v cnv);
+    ()
+
+  let inference (type a) (env:a hwenv) (cnv:a->hwvid) =
+    debug "inference hw vars\n";
+    iter_comps env (fun (x:a hwcomp) ->
+        inference_comp env x cnv);
+    ()
 
 end

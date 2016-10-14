@@ -89,6 +89,15 @@ numlist:
   | number                    {let e = $1 in [e]}
   | number COMMA numlist      {let lst = $3 and e = $1 in e::lst}
 
+flt:
+  | DECIMAL   {let e = $1 in (e)}
+  | INTEGER   {let e = $1 in float_of_int (e)}
+
+fltlist:
+  | flt                    {let e = $1 in [e]}
+  | flt COMMA fltlist      {let lst = $3 and e = $1 in e::lst}
+
+
 shape:
   | GAUSS {STCHGAUSS}
   | UNIFORM {STCHUNIFORM}
@@ -122,8 +131,8 @@ st:
   | DEF TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
     let v = $2 in
     MathLib.upd_def dat v (fun x -> match x with
-    | MDefVar(d) -> d.span <- SPNUnknown; x
-    | MDefStVar(d) -> d.stvar_span <- SPNUnknown;x
+    | MDefVar(d) -> d.ival <- IntervalLib.mkdflt_ival (); x 
+    | MDefStVar(d) -> d.stvar.ival <- IntervalLib.mkdflt_ival ();x
     );
     ()
 
@@ -131,36 +140,36 @@ st:
   | DEF DDT TOKEN MAG EQ OBRAC QMARK CBRAC typ EOL {
     let v = $3 in
     MathLib.upd_def dat v (fun x -> match x with
-    | MDefStVar(d) -> d.deriv_span <- SPNUnknown;x
+    | MDefStVar(d) -> d.deriv.ival <- IntervalLib.mkdflt_ival();x
     | _ -> error "def ddt mag" "must be defined after relation"
     );
     ()
   }
 
-  | DEF TOKEN MAG EQ OBRAC numlist CBRAC typ EOL {
+  | DEF TOKEN MAG EQ OBRAC fltlist CBRAC typ EOL {
     let name : string= $2 in
     let bounds = $6 in
     if List.length bounds == 2 then
-       let min : number = List.nth bounds 0 in
-       let max : number = List.nth bounds 1 in
+       let min : float = List.nth bounds 0 in
+       let max : float = List.nth bounds 1 in
        let typ : unt = $8 in 
        MathLib.upd_def dat name (fun x -> match x with
-       | MDefVar(d) -> d.span <- IntervalLib.mk_ival min max; x
-       | MDefStVar(d) -> d.stvar_span <- IntervalLib.mk_ival min max; x
+       | MDefVar(d) -> d.ival <- IntervalLib.mk_ival min max; x
+       | MDefStVar(d) -> d.stvar.ival <- IntervalLib.mk_ival min max; x
        );
        ()
    else
        error "cstr mag" "bounds is more than two elements"
   }
-  | DEF DDT TOKEN MAG EQ OBRAC numlist CBRAC typ EOL {
+  | DEF DDT TOKEN MAG EQ OBRAC fltlist CBRAC typ EOL {
     let name : string= $3 in
     let bounds = $7 in
     if List.length bounds == 2 then
-       let min : number = List.nth bounds 0 in
-       let max : number = List.nth bounds 1 in
+       let min : float = List.nth bounds 0 in
+       let max : float = List.nth bounds 1 in
        let typ : unt = $9 in 
        MathLib.upd_def dat name (fun x -> match x with
-       | MDefStVar(d) -> d.deriv_span <- IntervalLib.mk_ival min max; x
+       | MDefStVar(d) -> d.deriv.ival <- IntervalLib.mk_ival min max; x
        | _ -> error "def ddt mag []" "must be defined after relation"
        );
        ()

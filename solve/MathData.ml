@@ -29,11 +29,11 @@ type 'a mderiv = {
 }
 
 type mvardef = {
-  mutable span : span;
+  mutable ival: interval;
 }
 type mstvardef = {
-  mutable stvar_span : span;
-  mutable deriv_span : span;
+  mutable stvar : mvardef;
+  mutable deriv : mvardef;
   mutable time_step : number;
  
 }
