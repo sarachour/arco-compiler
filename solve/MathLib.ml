@@ -292,17 +292,26 @@ struct
         IntervalLib.float_to_interval (float_of_number param.value)
       | MNTime -> error "inference_var" "time is unbounded"
     in
-    match x.bhvr with
-    | MBhvVar(bhvr) ->
-      let ival = IntervalLib.derive_interval bhvr.rhs lookup in
+    let requires_infer = match x.defs with
+    | MDefVar(def) -> IntervalLib.is_undefined def.ival
+    | MDefStVar(def) -> if IntervalLib.is_undefined def.stvar.ival then
+        error "inference_var" "cannot leave the bounds of a state variable undefined."
+          else IntervalLib.is_undefined def.deriv.ival 
+    in
+    if(requires_infer) then
+      match x.bhvr with
+      | MBhvVar(bhvr) ->
+        let ival = IntervalLib.derive_interval bhvr.rhs lookup in
+        error "inference_var" "fxn-var unimplemented"
+      | MBhvStateVar(bhvr) ->
+        let ival = IntervalLib.derive_interval bhvr.rhs lookup in
+        error "inference_var" "state-var unimplemented"
+      | MBhvInput ->
+        error "inference_var" ("cannot infer interval for input ["^x.name^"]")
+      | MBhvUndef ->
+        error "inference_var" "cannot infer interval of undefined output"
+    else
       ()
-    | MBhvStateVar(bhvr) ->
-      error "inference_var" "state-var unimplemented"
-    | MBhvInput ->
-      error "inference_var" (("cannot infer interval for input ["^x.name^"])"
-    | MBhvUndef ->
-      error "inference_var" "cannot infer interval of undefined output"
-
   let inference (e:'a menv) (cnv:'a -> mid) =
     iter_vars e (fun x -> inference_var e x cnv);
     ()

@@ -61,6 +61,11 @@ struct
     mk_ival x x
 
 
+  let is_undefined (a:interval) = match a.min,a.max with
+    | BNDVar,_ -> true
+    | _,BNDVar -> true
+    | _ -> false
+
   let contains_zero (a:interval) = match a.min,a.max with
     | BNDZero,_ -> true
     | _,BNDZero -> true
