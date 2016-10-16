@@ -20,6 +20,9 @@ open SolverUtil
 open HWData
 open MathData
 
+open HWLib
+open MathLib
+
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
@@ -28,6 +31,263 @@ let _print_debug = print_debug 3 "uni"
 let debug : string -> unit =_print_debug  
 let auni_menu = menu 3
 
+type  rnode = (rstep) snode
+
+module ASTUnifySymcaml =
+struct
+  let _symvar2mid (s:mid menv) (rst:string list) : mid =  match rst with
+  | [v] -> MathLib.var_to_mid s v 
+  | _ -> error "apply_comp" "iconvmid encountered unexpected string"
+
+  let _symvar2hwid (s:hwvid hwenv) (rst:string list) = match rst with
+    | ["l";cn;v;p] -> let cnn = HwLib.str2hwcompname cn in 
+      HwLib.comp_port_to_hwid s cnn v (None)
+   | ["g";cn;i;v;p] -> let cnn = HwLib.str2hwcompname cn in
+     let comp : hwvid hwcomp= HwLib.getcomp s cnn in
+     HwLib.comp_port_to_hwid s cnn v (Some (int_of_string i))
+   | ["l";cn;"t"] -> let cnn : hwcompname = HwLib.str2hwcompname cn in
+     HNTime
+   | ["g";cn;istr;"t"] -> let cnn : hwcompname = HwLib.str2hwcompname cn in
+     HNTime
+   | ["l";cn;v] -> let cnn = HwLib.str2hwcompname cn in
+     HwLib.comp_port_to_hwid s cnn v (None)
+   | ["g";cn;i;v] -> let cnn = HwLib.str2hwcompname cn in
+     HwLib.comp_port_to_hwid s cnn v (Some (int_of_string i))
+   | _ -> error "apply_comp" "iconvhwid encountered unexpected hwid"
+
+  let symvar2mid s mid = _symvar2mid (s) (STRING.split mid ":")
+
+  let symvar2hwid (s) hwid = _symvar2hwid (s) (STRING.split hwid ":")
+
+  let symvar2unid (mstate:math_state) (hwstate:hwcomp_state) uid =
+   match STRING.split uid ":" with
+    | "m"::r -> MathId(_symvar2mid (mstate.env) r)
+    | "h"::r -> HwId(_symvar2hwid (hwstate.env) r)
+    | h::r -> error "iconvunid" ("unexpected prefix "^h)
+    | _ -> error "" ""
+
+  let hwid2symvar hwid =
+    let proccmp (x:compid)  : string= match x with
+      | HCMLocal(v) -> "l:"^(HwLib.hwcompname2str v)
+      | HCMGlobal(v) -> "g:"^(HwLib.hwcompname2str v.name)^":"^(string_of_int v.inst)
+    in
+    match hwid with
+    | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
+    | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
+    | HNParam(cmp,name) -> (proccmp cmp)^":"^name
+    | HNTime(_) -> "t'"
+
+  let mid2symvar (mid:mid) : string = match mid with
+  | MNVar(k,n) -> n
+  | MNParam(name,v) -> name
+  | MNTime -> "t"
+
+
+  let unid2symvar uid = match uid with
+  | MathId(m) -> "m:"^(mid2symvar m)
+  | HwId(h) -> "h:"^(hwid2symvar h)
+
+
+
+end
+
+module ASTUnifyTree =
+struct
+ let apply_step (type a) (s:rtbl) (st:rstep) =
+  match st with
+    | _ -> error "apply" "unimplemented" 
+  
+ 
+
+ let unapply_step (type a) (s:rtbl) (st:rstep) =
+  match st with
+    | _ -> error "unapply" "unimplemented"
+
+ let step2str (a:rstep) = match a with
+  | RAddParAssign(vr,asgn) ->
+        "+par-asgn "^(vr)^"=TODO"
+  | RAddOutAssign(vr,asgn) ->
+        "+out-asgn "^(vr)^"=TODO"
+  | RAddInAssign(vr,asgn) ->
+        "+inp-asgn "^(vr)^"=TODO"
+  | RDisableAssign(vr,rhs) ->
+    "-asgn"^(vr)^"="^"TODO"
+
+ let order_steps a b = 0
+
+ let score_uniform env steps : sscore =
+    let delta = 0. in
+    let state = 0. in
+    SearchLib.mkscore delta state
+
+ let score_random env steps : sscore =
+    let delta = RAND.rand_norm () in
+    let state = RAND.rand_norm () in
+    SearchLib.mkscore delta state
+                      
+ let score_bans env steps : sscore = 
+    let delta = LIST.fold steps (fun x r -> match x with
+            | RDisableAssign(lhs,rhs) -> 1+(ASTLib.size rhs)+r
+            | _ -> r
+        ) 0
+    in
+    let state = 0. in
+    SearchLib.mkscore (float_of_int delta) state
+
+  let get_score ()  =
+    match get_glbl_string "uast-selector-branch" with
+    | "uniform" -> score_uniform
+    | "random" -> score_random
+    | "bans" -> score_bans
+
+  let is_wildcard (comp:hwcomp_state) (vr:unid) = match vr with
+    | HwId(HNPort(_,HCMLocal(hname),hwport,_)) -> true
+    | HwId(HNPort(_,HCMGlobal(hname),hwport,_)) -> true
+    | _ -> false
+
+  let mk_conccomp_search (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) =
+    let search : (rstep, rtbl) ssearch =
+      SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str)
+    in
+    let hw_st : hwcomp_state = {
+      env=hwenv;
+      comp=comp.d;
+      target=hvar;
+      cfg=comp.cfg;
+      disabled=MAP.make();
+    } in
+    let math_st : math_state = {
+      env=menv;
+      solved=[];
+    } in
+    let sym_st : symcaml_env = {
+      s=SymCaml.init();
+      cnv= ASTUnifySymcaml.unid2symvar;
+      icnv= ASTUnifySymcaml.symvar2unid;
+      is_wildcard = is_wildcard hw_st;
+    } in
+    SymCaml.clear sym_st.s;
+    let tbl : rtbl = {
+      symenv = sym_st;
+      hwstate = hw_st;
+      mstate = math_st;
+      target=TRGNone;
+    } in
+    {
+      tbl=tbl;
+      search=search;
+    }
+
+  let mk_newcomp_search  (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) =
+    let search : (rstep, rtbl) ssearch =
+      SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str)
+    in
+    let hw_st : hwcomp_state = {
+      env=hwenv;
+      comp=comp.d;
+      target=hvar;
+      cfg=SolverLib.mkhwcompcfg ();
+      disabled=MAP.make();
+    } in
+    let math_st : math_state = {
+      env=menv;
+      solved=[];
+    } in
+    let sym_st : symcaml_env = {
+      s=SymCaml.init();
+      cnv= ASTUnifySymcaml.unid2symvar;
+      icnv= ASTUnifySymcaml.symvar2unid;
+      is_wildcard = is_wildcard hw_st;
+    } in
+    SymCaml.clear sym_st.s;
+    let tbl : rtbl = {
+      symenv = sym_st;
+      hwstate = hw_st;
+      mstate = math_st;
+      target=TRGNone;
+    } in
+    {
+      tbl=tbl;
+      search=search;
+    }
+  (*make search tree*)
+   (*
+  let mksearch (type a) (targ_var: a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
+    (is_wc: a->bool) (cnv:a->symvar) (icnv:symvar -> a) (freshvar:int->unifytype->a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
+    (*make the data for each variable*)
+    let mkdata ifo relinfo =
+      let lhs,rhs,knd = relinfo in
+      let data = {
+        rhs = rhs;
+        kind = knd;
+      } in
+      let _ = MAP.put ifo.info lhs data in
+      ()
+    in
+    let mkinfo () : a rinfo =
+      {
+        info=MAP.make ();
+        nodep = MAP.make ();
+        repls = MAP.make ();
+        subtrees = [];
+      }
+    in
+    (*create environment*)
+    let state = {
+            state = None; 
+            bans = MAP.make ();
+            subset = SET.make ();
+    } in
+    (*make the environment*)
+    let s = SymCaml.init() in
+    let _ = SymCaml.clear s in
+    let env = {
+      s=s;
+      cnv= cnv;
+      icnv= icnv;
+      freshvar = freshvar;
+      is_wc = is_wc;
+    } in
+    (*make the dependency tree*)
+    let tmpl_info =  mkinfo() in
+    let targ_info = mkinfo() in
+    let _ = List.iter  (fun x -> mkdata tmpl_info x) templs_e in
+    let _ = List.iter  (fun x -> mkdata targ_info x) targs_e in
+    (*make the search tree*)
+    let tree = GRAPH.make (fun x y -> x = y) in
+    let tbl = {
+      templ= tmpl_info;
+      targ= targ_info;
+      st = state;
+      env = env;
+      tostr=tostr;
+    } in
+    (*make search object*)
+    let search : (a rstep, a rtbl) ssearch =
+      SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str tostr)
+    in
+    let strct: a runify = {
+        search=search;
+        tbl=tbl;
+      }
+    in
+    let mkverb (s:a runify) (x:a rinfo) =
+      let mvars : (a set) set= SET.make () in
+      let _ = MAP.iter x.info (fun k d -> return (SET.add mvars (SET.from_list [k])) ()) in
+      let _ = x.subtrees <- SET.to_list mvars in
+      let _ = x.nodep <- x.info in
+      ()
+    in
+    mkverb strct strct.tbl.templ;
+    mkverb strct strct.tbl.targ;
+    let root, _ = SearchLib.setroot search tbl [] in
+    (root,strct)
+*)
+  (*apply the existing state to python, that is transform the expressions*)
+
+
+
+end
 
 module ASTUnifier =
 struct
@@ -103,12 +363,6 @@ struct
   let mkstate (type a) asgns solved resolved unused = 
         {assigns=asgns; solved=solved; resolved=resolved; unused=unused}
 
-  let step2str (type a) (tostr:a -> string) (a:a rstep) = match a with
-  | RSetState(state) ->
-        "+asgn "^(state2str tostr state)
-  | RBanAssign(lhs,rhs) -> "-asgn"^(tostr lhs)^":="^(ASTLib.ast2str rhs tostr)
-  | RTemplSubgraph(sub) -> "subset "^(SET.tostr sub tostr "; ")
-
   let add_ban (type a) (s:a rtbl) (lhs:a) (rhs:a ast) =
     let bans = (g_bans s) in
     let _ = if MAP.has bans lhs = false then
@@ -128,129 +382,9 @@ struct
       SET.rm bans rhs;
       ()
 
-  let apply_step (type a) (s:a rtbl) (st:a rstep) =
-  let _ = match st with
-  | RSetState(state) ->
-        let _ = (s.st.state <- Some(state)) in 
-        ()
-  | RBanAssign(lhs,rhs) -> ret (add_ban s lhs rhs) ()
-  | RTemplSubgraph(sub) -> ret (SET.setv s.st.subset sub) ()
-  in
-  s
-
-  let unapply_step (type a) (s:a rtbl) (st:a rstep) =
-  let _ = match st with
-    | RSetState(state) -> 
-        let _ = (s.st.state <- None) in 
-        ()
-     | RBanAssign(lhs,rhs) -> ret (rm_ban s lhs rhs) ()
-    | RTemplSubgraph(sub) -> ret (SET.clear s.st.subset) ()
-  in
-  s
+ s
 
   (*add variables first*)
-  let order_steps a b = 0
-
-  let score_uniform env steps : sscore =
-    let delta = 0. in
-    let state = 0. in
-    SearchLib.mkscore delta state
-
-  let score_random env steps : sscore =
-    let delta = RAND.rand_norm () in
-    let state = RAND.rand_norm () in
-    SearchLib.mkscore delta state
-                      
-  let score_bans env steps : sscore = 
-    let delta = LIST.fold steps (fun x r -> match x with
-                              | RBanAssign(lhs,rhs) -> 1+(ASTLib.size rhs)+r
-                              | _ -> r
-                    ) 0
-    in
-    let state = 0. in
-    SearchLib.mkscore (float_of_int delta) state
-
-  let get_score ()  =
-    match get_glbl_string "uast-selector-branch" with
-    | "uniform" -> score_uniform
-    | "random" -> score_random
-    | "bans" -> score_bans
-
-  (*make search tree*)
-  let mksearch (type a) (targ_var: a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)
-    (is_wc: a->bool) (cnv:a->symvar) (icnv:symvar -> a) (freshvar:int->unifytype->a) (tostr:a->string) : ((a rstep) snode)*(a runify) =
-    (*make the data for each variable*)
-    let mkdata ifo relinfo =
-      let lhs,rhs,knd = relinfo in
-      let data = {
-        rhs = rhs;
-        kind = knd;
-      } in
-      let _ = MAP.put ifo.info lhs data in
-      ()
-    in
-    let mkinfo () : a rinfo =
-      {
-        info=MAP.make ();
-        nodep = MAP.make ();
-        repls = MAP.make ();
-        subtrees = [];
-      }
-    in
-    (*create environment*)
-    let state = {
-            state = None; 
-            bans = MAP.make ();
-            subset = SET.make ();
-    } in
-    (*make the environment*)
-    let s = SymCaml.init() in
-    let _ = SymCaml.clear s in
-    let env = {
-      s=s;
-      cnv= cnv;
-      icnv= icnv;
-      freshvar = freshvar;
-      is_wc = is_wc;
-    } in
-    (*make the dependency tree*)
-    let tmpl_info =  mkinfo() in
-    let targ_info = mkinfo() in
-    let _ = List.iter  (fun x -> mkdata tmpl_info x) templs_e in
-    let _ = List.iter  (fun x -> mkdata targ_info x) targs_e in
-    (*make the search tree*)
-    let tree = GRAPH.make (fun x y -> x = y) in
-    let tbl = {
-      templ= tmpl_info;
-      targ= targ_info;
-      st = state;
-      env = env;
-      tostr=tostr;
-    } in
-    (*make search object*)
-    let search : (a rstep, a rtbl) ssearch =
-      SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str tostr)
-    in
-    let strct: a runify = {
-        search=search;
-        tbl=tbl;
-      }
-    in
-    let mkverb (s:a runify) (x:a rinfo) =
-      let mvars : (a set) set= SET.make () in
-      let _ = MAP.iter x.info (fun k d -> return (SET.add mvars (SET.from_list [k])) ()) in
-      let _ = x.subtrees <- SET.to_list mvars in
-      let _ = x.nodep <- x.info in
-      ()
-    in
-    mkverb strct strct.tbl.templ;
-    mkverb strct strct.tbl.targ;
-    let root, _ = SearchLib.setroot search tbl [] in
-    (root,strct)
-
-  type 'a rnode = ('a rstep) snode
-  (*apply the existing state to python, that is transform the expressions*)
-
 
 
 
@@ -989,9 +1123,10 @@ struct
 *)
 
 
-  let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:unid hwcomp) (hvar:unid hwportvar) (h2var:hwvid) =
+  let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:hwvid hwcomp) (hvar:string) (h2var:hwvid) =
     error "unify_comp_with_hwvar" "unimplemented"
 
-  let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:unid hwcomp) (hvar:unid hwportvar) (mvar:mid mvar) =
+  let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:hwvid hwcomp) (hvar:string) (mvar:string) =
+    
     error "unify_comp_with_mvar" "unimplemented"
 end

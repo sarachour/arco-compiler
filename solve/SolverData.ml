@@ -29,9 +29,7 @@ abstract hardware resources, including potentially
 partially set parameters and multiple relations.
 
 *)
-type ucomp = {
-  d: unid hwcomp;
-}
+
 (*A particular goal to strive for*)
 (*
 type goal =
@@ -96,12 +94,14 @@ type hwvar_config = {
   expr: unid ast;
 }
 type hwcomp_config = {
-  mutable asgns_in: (string,hwvar_config) map;
-  mutable asgns_out: (string,hwvar_config) map;
-  mutable par_asgns: (string,number) map;
-  mutable mapvar_asgns: (string,float) map;
+  mutable inps: (string,hwvar_config) map;
+  mutable outs: (string,hwvar_config) map;
+  mutable pars: (string,number) map;
+  mutable mapvars: (string,float) map;
 }
-
+type ucomp = {
+  d: hwvid hwcomp;
+}
 type ucomp_conc = {
   d: hwvid hwcomp;
   inst: int;

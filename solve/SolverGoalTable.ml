@@ -135,13 +135,11 @@ struct
   *)
   (*make an empty node without the goals*)
   let mktbl (env:uenv) : gltbl =
-    let hwcomp2ucomp (x:hwvid hwcomp) : unid hwcomp = HwLib.map_comp x (fun x -> HwId(x)) in 
     let comptbl : (hwcompname,ucomp) map = MAP.make () in
     let sln = SlnLib.mksln () in
-    List.iter (fun (x:hwvid hwcomp)  ->
-        let u_comp = hwcomp2ucomp x in
-        MAP.put comptbl u_comp.name {d=u_comp};
-        SlnLib.mkcomp sln u_comp.name;
+    List.iter (fun (hwcomp:hwvid hwcomp)  ->
+        MAP.put comptbl hwcomp.name {d=hwcomp};
+        SlnLib.mkcomp sln hwcomp.name;
         ()
     ) (MAP.to_values env.hw.comps);
     let search= SlvrSearchLib.mksearch () in

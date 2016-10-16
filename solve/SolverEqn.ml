@@ -397,9 +397,9 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
 
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
 
-  let unify_math_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (inst:int) (hwvar:unid hwportvar) (mvr:mid mvar) =
+  let unify_math_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (inst:int) (hwvar:hwvid hwportvar) (mvr:mid mvar) =
     let hwcomp = ucomp.d in
-    ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math hwcomp hwvar mvr
+    ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math hwcomp hwvar.port mvr.name
 
   let solve_math_goal tbl (g:goal_math) =
       let mvar = g.d in
@@ -423,7 +423,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       let nsols : int ref = REF.mk 0 in 
       PRIOQUEUE.iter prio_comps (fun (prio:int) (cmpkind,hwcomp,hwvar) ->
           debug ("["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
-                 "> "^(HwLib.hwportvar2str hwvar unid2str^"\n")
+                 "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n")
                 );
           begin
             match cmpkind with

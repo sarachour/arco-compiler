@@ -21,40 +21,47 @@ type rstep =
         
 
 
-type symcaml_env = {
-  s: symcaml;
-  cnv: unid->symvar;
-  icnv: symvar->unid;
-}
 
 
 type hwcomp_state = {
-  hwenv: hwvid hwenv;
+  env: hwvid hwenv;
   comp: hwvid hwcomp;
   cfg: hwcomp_config;
-  targ: string;
+  target: string;
   (*disable*)
   mutable disabled: (string,hwvar_config list) map;
   (* the state *)
 }
 
 type math_state = {
-  menv: mid menv;
-  targ: mid mvar;
+  env: mid menv;
   mutable solved: mid list;
 }
 
+type unify_targ =
+  | TRGMathVar of string
+  | TRGHWVar of hwvid*(mid ast)
+  | TRGNone
+
 (*the dynamics must match*)
+
 type entanglement  =
   | ENTMathHwEntang of mid*string
   | ENTHwHwEntang of hwvid*string
 
+type symcaml_env = {
+  s: symcaml;
+  cnv: unid->symvar;
+  icnv:math_state-> hwcomp_state->symvar->unid;
+  is_wildcard:unid->bool;
+}
 (*the search tree to build*)
 type rtbl = {
   hwstate:hwcomp_state;
   mstate:math_state;
   (*template to rel assignments*)
   symenv: symcaml_env;
+  mutable target:unify_targ;
 }
 
 type 'a runify = {

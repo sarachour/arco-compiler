@@ -14,6 +14,22 @@ open SolverData
 let unid2str (a:unid) = match a with
   | HwId(x) -> HwLib.hwvid2str x
   | MathId(x) -> MathLib.mid2str x
+
+let hwid2str (a:hwvid) = HwLib.hwvid2str a
+
+module SolverLib =
+struct
+
+  let mkhwcompcfg () : hwcomp_config =
+    {
+      inps = MAP.make();
+      outs = MAP.make();
+      pars = MAP.make();
+      mapvars = MAP.make();
+    }
+
+
+end
 (*
 module UnivLib =
 struct
