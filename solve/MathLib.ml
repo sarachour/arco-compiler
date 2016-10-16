@@ -40,8 +40,8 @@ struct
 
   let mbhv2str (type a) (s:string) (m:a mbhv) (f:a->string) : string = match m with
     | MBhvStateVar(st) -> "ddt "^s^"="^(ASTLib.ast2str st.rhs f)^" ic="^(string_of_number st.ic)^
-                          " / std(ddt "^s^")"^(StochLib.stoch2str st.stoch f)
-    | MBhvVar(v) -> s^"="^(ASTLib.ast2str v.rhs f)^" / "^(StochLib.stoch2str v.stoch f) 
+                          " / std(ddt "^s^") = "^(StochLib.stoch2str st.stoch f)
+    | MBhvVar(v) -> s^"="^(ASTLib.ast2str v.rhs f)^" / std("^s^") = "^(StochLib.stoch2str v.stoch f) 
     | MBhvInput -> "<input>"
     | MBhvUndef -> "<undef>"
 
@@ -72,7 +72,9 @@ struct
   let to_buf m fb =
     let os x = output_string fb x in
     let var_to_buf (v:mid mvar) : unit=
-      os ((v.name)^":"^"TODO\n");
+      os ((v.name)^": "^
+          (mbhv2str v.name v.bhvr mid2str)^"\n"^
+          (mdef2str v.name v.defs)^"\n");
       ()
     in
     Printf.printf "==== Units ====\n";

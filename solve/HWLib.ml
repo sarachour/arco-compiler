@@ -128,8 +128,8 @@ struct
   let to_buf e fb =
     let os x = output_string fb x in
     let print_var prefix (x:hwvid hwportvar) =
-      os (prefix^" "^x.port^"\n");
-      os (prefix^"  bhv "^(hwvid_bhv2str x.bhvr)^"\n")
+      os (prefix^" "^x.port^"  bhv "^(hwvid_bhv2str x.bhvr)^"\n");
+      os (prefix^"  def"^(def2str x.defs )^"\n")
     in 
     let print_comp c =
       let _ = os ("==> component "^(hwcompname2str c.name)^" ("^(string_of_int c.insts)^" insts) \n") in
@@ -246,7 +246,7 @@ struct
 
   let upd_defs e fxn comp port =
     let v = getvar e comp port in
-    fxn v.defs;
+    v.defs <- fxn v.defs;
     ()
 
   let upd_mapvars e vars comp =
@@ -425,8 +425,8 @@ struct
           let _ = SET.add s n in
           ()
       in
-      let _ = List.iter add_unit units in
-      let _ = e.time <- Some(name,s) in
+      List.iter add_unit units;
+      e.time <- Some(name,s);
       e
 
 
@@ -511,11 +511,47 @@ struct
           | HWDAnalog(def) -> def.ival
           | HWDDigital(def) -> error "lookup" "cannot do interval analysis on digital values"
         end
+      | HNPort(HWKOutput,_,port,_) ->
+        let vr : a hwportvar = getvar env (cmp.name) port in
+        begin
+          match vr.defs with
+          | HWDAnalogState(def) -> def.stvar.ival
+          | HWDAnalog(def) -> def.ival
+          | HWDDigital(def) -> error "lookup" "cannot do interval analysis on digital values"
+        end
       | HNParam(_,param) -> let param = getparam env cmp.name param in
         IntervalLib.floats_to_interval (List.map (fun x -> float_of_number x) param.value)
       | HNTime -> error "inference_var" "time is unbounded"
     in
-    error "inference_var" "unimplemented"
+    let requires_infer = match v.defs with
+    | HWDAnalog(def) -> IntervalLib.is_undefined def.ival
+    | HWDAnalogState(def) -> if IntervalLib.is_undefined def.stvar.ival then
+        error "inference_var" "cannot leave the bounds of a state variable undefined."
+          else IntervalLib.is_undefined def.deriv.ival 
+    | HWDDigital(_) -> false
+    in
+    if(requires_infer) then
+      match v.bhvr with
+      | HWBAnalog(bhvr) ->
+        let ival = IntervalLib.derive_interval bhvr.rhs lookup in
+        begin match v.defs with
+          | HWDAnalog(x) -> x.ival <- ival
+          | _ -> error "inference_var" "expected analog def for analog behavior"
+        end
+      | HWBAnalogState(bhvr) ->
+        let ival = IntervalLib.derive_interval bhvr.rhs lookup in
+        begin
+          match v.defs with
+          | HWDAnalogState(def) -> def.deriv.ival <- ival
+          | _ -> error "inference_var" "expected state-analog def for var behavior"
+          end
+      | HWBInput ->
+        error "inference_var" ("cannot infer interval for input ["^
+                               (hwcompname2str cmp.name)^":"^v.port^"."^v.prop^"]")
+      | HWBUndef ->
+        error "inference_var" "cannot infer interval of undefined output"
+      | _ ->
+        error "inference_var" "unimplemented"
 
   let inference_comp (type a) (env:a hwenv) (x:a hwcomp) (cnv:a->hwvid)=
     comp_iter_ins x (fun v -> inference_var env x v cnv);

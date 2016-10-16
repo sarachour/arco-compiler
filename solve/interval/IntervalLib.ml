@@ -191,14 +191,29 @@ struct
     | _,BNDZero -> BNDZero
     | _ -> error "bound_prod" "cannot bound variable"
 
+  let bound_div (num:bound) (denom:bound): bound =
+    let derive_dir adir bdir = match adir,bdir with
+        | QDPositive,QDPositive -> (QDPositive)
+        | QDNegative,QDNegative -> (QDPositive)
+        | _ -> (QDNegative)
+    in
+    match num,denom with
+    | BNDNum(adir,av),BNDNum(bdir,bv) -> float_to_bound (av /. bv)
+    | BNDNum(_),BNDInf(_) -> BNDZero
+    | BNDNum(adir,_),BNDZero(_) -> BNDInf(adir)
+    | BNDZero,BNDZero -> error "bound_div" "0/0 = NaN"
+    | BNDZero,_ -> BNDZero
+    | BNDInf(adir),BNDNum(bdir,_) -> BNDInf(derive_dir adir bdir)
+    | BNDInf(adir),BNDInf(bdir) -> error "bound_div" "inf/inf = NaN"
+    | _ -> error "bound_div" "unimplemented"
+
   let rule_sum (a:interval) (b:interval) : interval = _rule_of_x a b bound_sum
 
   let rule_prod (a:interval) (b:interval) = _rule_of_x a b bound_prod
 
   let rule_sub (a:interval) (b:interval) : interval = _rule_of_x a b bound_sub
 
-  let rule_div (a:interval) (b:interval) : interval =
-    error "rule" "div unimplemented"
+  let rule_div (a:interval) (b:interval) : interval = _rule_of_x a b bound_div
 
   let rule_power (a:interval) (b:interval) : interval =
     error "rule" "pow unimplemented"

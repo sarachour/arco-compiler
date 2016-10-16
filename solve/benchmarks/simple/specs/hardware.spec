@@ -42,8 +42,8 @@ comp iadd
     def I(X) map linear scale=A offset=B1
 
     input Y {I:mA}
-    def I(X) mag=[0,1] mA
-    def I(X) map linear scale=A offset=B2
+    def I(Y) mag=[0,1] mA
+    def I(Y) map linear scale=A offset=B2
 
     output Z{I:mA}
     %def I(Z) mag=[?] mA
@@ -69,7 +69,7 @@ comp imul
     def I(Y) map scale A2
 
     input Z {I:mA}
-    def I(Z) mag=[0,1] mA
+    def I(Z) mag=[0.0001,1] mA
     def I(Z) map scale A3
 
     output W {I:mA}

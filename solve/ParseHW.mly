@@ -374,19 +374,21 @@ digital:
   }
   | digital DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and cname = get_cmpname() in
-      let bound : float list = [] and typ = "" in
+      let bound : float list = $6 and typ = "" in
       if List.length bound = 2 then
          let min : float = (List.nth bound 0) in
          let max : float = (List.nth bound 1) in 
-         HwLib.upd_defs dat (fun d -> match d with
-         | HWDAnalog(d) ->
-         d.ival <- IntervalLib.mk_ival min max) cname port
+         HwLib.upd_defs dat (fun b -> match b with
+            | HWDAnalog(d) ->
+              d.ival <- IntervalLib.mk_ival min max; b
+           ) cname port
+      else error "def digital mag" "not exactly two numbers to define bounds."
   }
 
   | digital DEF portprop SAMPLE EQ number TOKEN EOL {
       let port,prop = $3 and comp = get_cmpname() and rate = $6 and typ = $7 in
       HwLib.upd_defs dat (fun d -> match d with
-         | HWDDigital(x) -> x.freq = (rate,typ)
+         | HWDDigital(x) -> x.freq = (rate,typ); d 
       ) comp port
   }
   | digital DEF portprop REPR EQ TOKEN EOL {
@@ -396,7 +398,8 @@ digital:
       let mant = STRING.count repr "M" in
       let cname = get_cmpname() in 
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDDigital(defs) -> defs.repr <- (sign,exp,mant)) cname port;
+          | HWDDigital(defs) -> defs.repr <- (sign,exp,mant); b
+          ) cname port;
          ()
   }
   | digital DEF MAPVAR tokenlist EOL {
@@ -409,7 +412,7 @@ digital:
       let comp = get_cmpname() in
       let port,prop = $3 and strat = $5 in
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.iconv <- strat; defs 
+          | HWDAnalog(defs) -> defs.iconv <- strat; b 
         ) comp port;
       ()
   }
@@ -417,15 +420,15 @@ digital:
       let comp = get_cmpname() in
       let port,prop = $3 and strat = $5 in
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.conv <- strat; defs 
+          | HWDAnalog(defs) -> defs.conv <- strat; b 
         ) comp port;
       ()
   }
   | digital DEF portprop IMAP map_strategy EOL {
       let comp = get_cmpname() in
-      let port,prop = $3 and strat = $5 in
+      let port,prop = $3 and strat : mapper = $5 in
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.iconv <- strat; defs 
+          | HWDAnalog(defs) -> defs.iconv <- strat; b
         ) comp port;
       ()
   }
@@ -557,29 +560,31 @@ comp:
   }
   | comp DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and comp = get_cmpname() in
-      let bound : float list = [] and typ = "" in
+      let bound : float list = $6 and typ = "" in
       if List.length bound =  2 then
          let min :float =  (List.nth bound 0) in
          let max :float =  (List.nth bound 1) in
-         HwLib.upd_defs dat (fun d -> match d with
+         HwLib.upd_defs dat (fun b -> match b with
             | HWDAnalog(d) ->
-              d.ival = IntervalLib.mk_ival min max 
+              d.ival <- IntervalLib.mk_ival min max; HWDAnalog(d) 
             | HWDAnalogState(d) ->
-              d.stvar.ival = IntervalLib.mk_ival min max
+              d.stvar.ival <- IntervalLib.mk_ival min max; HWDAnalogState(d)
             ) comp port;
          ()
+      else error "def mag" "there are >/< two numbers defining the bounds"
 
   }
   | comp DEF DDT portprop MAG EQ mag EOL {
       let port,prop = $4 and comp = get_cmpname() in
-      let bound : float list = [] and typ = "" in
+      let bound : float list = $7 and typ = "" in
       if List.length bound =  2 then
          let min =  (List.nth bound 0) in
          let max =  (List.nth bound 1) in
-        HwLib.upd_defs dat (fun d -> match d with
+        HwLib.upd_defs dat (fun b -> match b with
             | HWDAnalogState(d) ->
-            d.deriv.ival = IntervalLib.mk_ival min max) comp port;
+            d.deriv.ival <- IntervalLib.mk_ival min max; b) comp port;
          ()
+      else error "def ddt mag" "there are >/< two numbers defining the bounds"
   }
   | comp SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
