@@ -283,14 +283,16 @@ struct
       | MNVar(MInput,p) -> let vr = getvar e p in
         begin
           match vr.defs with
-          | MDefStVar(x) ->
-            x.stvar.ival
-          | MDefVar(x) ->
-            x.ival
+          | MDefVar(x) -> x.ival
+          | _ -> error "lookup" "cannot have an input that's a state variable"
         end
       | MNParam(p,n) -> let param = getparam e p in
         IntervalLib.float_to_interval (float_of_number param.value)
       | MNTime -> error "inference_var" "time is unbounded"
+      | MNVar(MOutput,p) -> let vr = getvar e p in
+        match vr.defs with
+        | MDefStVar(x) -> x.stvar.ival
+        | MDefVar(x) -> x.ival
     in
     let requires_infer = match x.defs with
     | MDefVar(def) -> IntervalLib.is_undefined def.ival

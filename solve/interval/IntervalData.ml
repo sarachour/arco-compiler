@@ -1,12 +1,11 @@
 open AST
 open Util
 (* Spanning Variables *)
+type bound_dir = QDPositive | QDNegative
 type bound =
-  | BNDPosInf
-  | BNDNegInf
+  | BNDInf of bound_dir
   | BNDZero
-  | BNDNegNum of float
-  | BNDPosNum of float
+  | BNDNum of bound_dir*float
   | BNDVar 
   | BNDNums of float list
 
