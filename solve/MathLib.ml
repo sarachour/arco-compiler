@@ -200,7 +200,6 @@ struct
     | MBhvVar(bhv) -> bhv.stoch <- stoch; ()
     | _ -> error "mkstd" "cannot have standard deviation for undefined or input variable."
 
-    error "mkvar" "unimplemented"
 
 
   let mkstrel (e:'a menv) name (rhs:mid ast) ic =
@@ -304,16 +303,24 @@ struct
       match x.bhvr with
       | MBhvVar(bhvr) ->
         let ival = IntervalLib.derive_interval bhvr.rhs lookup in
-        error "inference_var" "fxn-var unimplemented"
+        begin match x.defs with
+          | MDefVar(x) -> x.ival <- ival
+          | _ -> error "inference_var" "expected var def for var behavior"
+        end
       | MBhvStateVar(bhvr) ->
         let ival = IntervalLib.derive_interval bhvr.rhs lookup in
-        error "inference_var" "state-var unimplemented"
+        begin
+          match x.defs with
+          | MDefStVar(def) -> def.deriv.ival <- ival
+          | _ -> error "inference_var" "expected st-var def for var behavior"
+          end
       | MBhvInput ->
         error "inference_var" ("cannot infer interval for input ["^x.name^"]")
       | MBhvUndef ->
         error "inference_var" "cannot infer interval of undefined output"
     else
       ()
+
   let inference (e:'a menv) (cnv:'a -> mid) =
     iter_vars e (fun x -> inference_var e x cnv);
     ()
