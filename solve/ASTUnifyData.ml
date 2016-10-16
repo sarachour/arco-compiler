@@ -4,122 +4,62 @@ open SymCaml
 open SymCamlData
 open SearchData
 open SolverData
-(*
-type 'a rkind =
-| RKDeriv of 'a init_cond
-| RKFunction
 
-type unifytype = UTypTempl| UTypTarg
+open HWData
+open MathData
 
-type 'a fuse =
-  | USAssign of 'a*('a ast)
-  (*remove solved targets*)
-  | USRmGoal of 'a*('a ast)
-  (*add partially resolved goal*)
-  | USAddRel of 'a*('a ast)
-
-type 'a fusion = 'a fuse list
-
-(*
-You can use up a template rel, remove a target rel
-addassign: add an assignment
-banassign: ban an assignment
-remove templ rel: remove a relation from the template
-remove target rel: remove a relation from the target
-fill in target var: fill in a target variable
-fill in a templ var: fill in a template variable
-*)
-(*an entanglement*)
-
-type 'a initial_assign = 
-  | INVarAssign of 'a*'a
-  | INExprAssign of 'a*('a ast)
-  | INTNoAssign
+(* the hardware state. includes unused strings,
+assignments. we will add interval information *)
 
 
-type 'a entanglement = {
-    templ_var : 'a;
-    targ_expr : 'a ast;
-    targ_var : 'a;
-    templ_expr: 'a ast;
-    assignments: 'a initial_assign list;
-}
-(*resolved entanglement*)
-type 'a resolution = {
-    templ_var : 'a;
-    targ_expr : 'a ast;
-    targ_var : 'a;
-    templ_expr: 'a ast; 
-}
-
-type 'a asgn_state  = {
-        mutable assigns: ('a, 'a ast) map;
-        mutable solved: ('a,('a ast)*('a rkind)) map;
-        mutable unused: ('a,('a ast)*('a rkind)) map;
-        mutable resolved: ('a resolution) list;
-}
-
-type 'a rstep =
-        (*solution assign*)
-        | RSetState of 'a asgn_state 
+type rstep =
+        | RAddInAssign of string*hwvar_config
+        | RAddOutAssign of string*hwvar_config
+        | RAddParAssign of string*number
         (*ban an assignment*)
-        | RBanAssign of 'a*('a ast)
-        | RTemplSubgraph of 'a set
+        | RDisableAssign of string*(unid ast)
+        
 
-type 'a rvstats = {
-  nconflicts: ('a*('a ast), int) map
-}
-(*the stateful part of the tableau*)
-type 'a rstate = {
-  (*templ to targ assigns *)
-  mutable state : 'a asgn_state option;
-  (*targ bans for templ*)
-  bans: ('a, ('a ast) set) map;
-  mutable subset: 'a set;
-}
 
-(*the data for each variable*)
-type 'a rdata = {
-  rhs : 'a ast;
-  kind: 'a rkind;
-}
-
-type 'a rinfo = {
-  (*the info*)
-  info: ('a,'a rdata) map;
-  (*the data with no dependences*)
-  mutable nodep: ('a,'a rdata) map;
-  (*replacements to break cycles*)
-  mutable repls: ('a, 'a set) map;
-  (*subtrees to apply*)
-  mutable subtrees: ('a set) list;
-}
-
-(*the symcaml environment*)
-type 'a renv = {
+type symcaml_env = {
   s: symcaml;
-  cnv: 'a->symvar;
-  icnv: symvar->'a;
-  freshvar: int -> unifytype -> 'a;
-  is_wc: 'a -> bool
+  cnv: unid->symvar;
+  icnv: symvar->unid;
 }
 
-(*the tableau, which is comprised of the original statements  *)
-type 'a rtbl = {
-  templ: 'a rinfo;
-  targ: 'a rinfo;
-  (*template to rel assignments*)
-  st: 'a rstate;
-  env: 'a renv;
-  tostr: 'a -> string;
+
+type hwcomp_state = {
+  hwenv: hwvid hwenv;
+  comp: hwvid hwcomp;
+  cfg: hwcomp_config;
+  targ: string;
+  (*disable*)
+  mutable disabled: (string,hwvar_config list) map;
+  (* the state *)
 }
+
+type math_state = {
+  menv: mid menv;
+  targ: mid mvar;
+  mutable solved: mid list;
+}
+
+(*the dynamics must match*)
+type entanglement  =
+  | ENTMathHwEntang of mid*string
+  | ENTHwHwEntang of hwvid*string
 
 (*the search tree to build*)
+type rtbl = {
+  hwstate:hwcomp_state;
+  mstate:math_state;
+  (*template to rel assignments*)
+  symenv: symcaml_env;
+}
+
 type 'a runify = {
-  search : ('a rstep, 'a rtbl) ssearch;
-  tbl: 'a rtbl;
+  search : (rstep, rtbl) ssearch;
+  tbl: rtbl;
 }
 
 (*the data necessary for the unification*)
-type 'a rarg = 'a*('a ast)*('a rkind)
-*)

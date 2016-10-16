@@ -61,6 +61,7 @@ type goal_hw_input = {
   input_port:hwvid;
   expr:mid ast;
 }
+(*connect *)
 (*connect two ports*)
 type goal_hw_conn = {
   output_port:hwvid;
@@ -75,6 +76,7 @@ type goal_hw_varmap = {
 type goal_data =
   | GMathGoal of goal_math
   | GUnifyInPortGoal of goal_hw_input
+  (*terminal goal*)
   | GPortConnGoal of goal_hw_conn
   | GInPortMapGoal of goal_hw_varmap  
   | GOutPortMapGoal of goal_hw_varmap  
@@ -90,8 +92,21 @@ solving goals generates facts:
    map an input port to a math expr
    map an output port to a math variable 
 *)
+type hwvar_config = {
+  expr: unid ast;
+}
+type hwcomp_config = {
+  mutable asgns_in: (string,hwvar_config) map;
+  mutable asgns_out: (string,hwvar_config) map;
+  mutable par_asgns: (string,number) map;
+  mutable mapvar_asgns: (string,float) map;
+}
 
-
+type ucomp_conc = {
+  d: hwvid hwcomp;
+  inst: int;
+  mutable cfg: hwcomp_config; 
+}
 type portlabel_expr =
   |PLbVar of mid
   |PLbVal of number

@@ -108,7 +108,7 @@ struct
         let _ = _print_debug ("[OPTIMIZE ] no connections: "^node_name^" to "^(UnivLib.hwid2var id)) in
         false
     | NonTr
-ivialGoal(UFunction(MathId(id),lhs)) -> true
+ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     | NonTrivialGoal(UState(MathId(id),_,_,_)) -> true
     | _ -> error "feasible_component_goal_combo" "unexpected"
 *)
@@ -397,15 +397,9 @@ ivialGoal(UFunction(MathId(id),lhs)) -> true
 
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
 
-  let unify_math_goal_with_comp tbl (ucomp:ucomp) (inst:int) (hwvar:unid hwportvar) (mvr:mid mvar) =
+  let unify_math_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (inst:int) (hwvar:unid hwportvar) (mvr:mid mvar) =
     let hwcomp = ucomp.d in
-    match hwvar.bhvr with
-    | HWBAnalogState(data) ->
-      error "unify_math_goal_with_comp" "unimplemented"
-    | HWBAnalog(data) ->
-      error "unify_math_goal_with_comp" "unimplemented"
-    | _ ->
-      error "unify_math_goal_with_comp" "unimplemented"
+    ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math hwcomp hwvar mvr
 
   let solve_math_goal tbl (g:goal_math) =
       let mvar = g.d in

@@ -17,6 +17,9 @@ open SolverGoalTable
 open SolverUtil
 
 
+open HWData
+open MathData
+
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
@@ -24,14 +27,11 @@ let spy_print_debug = print_debug 4 "sympy"
 let _print_debug = print_debug 3 "uni"
 let debug : string -> unit =_print_debug  
 let auni_menu = menu 3
-(*
+
+
 module ASTUnifier =
 struct
 
-
-  let info2buf (type a) chan (indent:int) (tostr:a->string) (st:a rinfo) =
-      let prefix = "" in
-      ()
 
   let mkmenu (type a) (sr:a runify) =
     let menu_desc = "t=search-tree,i=info" in
@@ -42,10 +42,7 @@ struct
         ()
       else if STRING.startswith inp "i" then
         let chan = stdout in
-        let _ = Printf.fprintf chan "# TEMPL\n" in
-        let _ = info2buf chan 1 sr.tbl.tostr sr.tbl.templ in
-        let _ = Printf.fprintf chan "# TARG\n" in
-        let _ = info2buf chan 1 sr.tbl.tostr sr.tbl.targ in
+        let _ = Printf.fprintf chan "# TODO\n" in
         let _ = on_finished() in
         ()
       else
@@ -57,6 +54,7 @@ struct
 
 
 
+(*
   let g_bans s = s.st.bans
 
   let g_info s k = if k = UTypTarg then
@@ -988,5 +986,12 @@ struct
     _print_debug "=================";
     slns
 
-end
 *)
+
+
+  let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:unid hwcomp) (hvar:unid hwportvar) (h2var:hwvid) =
+    error "unify_comp_with_hwvar" "unimplemented"
+
+  let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:unid hwcomp) (hvar:unid hwportvar) (mvar:mid mvar) =
+    error "unify_comp_with_mvar" "unimplemented"
+end
