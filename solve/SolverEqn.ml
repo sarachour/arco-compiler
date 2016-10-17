@@ -398,8 +398,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
 
   let unify_math_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (inst:int) (hwvar:hwvid hwportvar) (mvr:mid mvar) =
-    let hwcomp = ucomp.d in
-    ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math hwcomp hwvar.port mvr.name
+    ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mvr.name
 
   let solve_math_goal tbl (g:goal_math) =
       let mvar = g.d in

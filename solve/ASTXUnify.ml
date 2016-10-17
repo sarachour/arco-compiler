@@ -293,7 +293,7 @@ module ASTUnifier =
 struct
 
 
-  let mkmenu (type a) (sr:a runify) =
+  let mkmenu (sr : runify) =
     let menu_desc = "t=search-tree,i=info" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
@@ -1126,7 +1126,7 @@ struct
   let unify_with_hwvar (env:runify) (hvar:hwvid) =
     error "unify_with_hwvar" "unimplemented"
 
-  let unify_with_mvar (env:runify) (hvar:hwvid) =
+  let unify_with_mvar (env:runify) (mvar:string) =
     error "unify_with_mvar" "unimplemented"
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (h2var:hwvid) =
@@ -1139,7 +1139,7 @@ struct
 
   let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    unify_with_hwvar uenv h2var
+    unify_with_hwvar uenv hwvar
 
   let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
