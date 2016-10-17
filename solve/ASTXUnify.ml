@@ -1123,10 +1123,27 @@ struct
 *)
 
 
-  let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:hwvid hwcomp) (hvar:string) (h2var:hwvid) =
-    error "unify_comp_with_hwvar" "unimplemented"
+  let unify_with_hwvar (env:runify) (hvar:hwvid) =
+    error "unify_with_hwvar" "unimplemented"
 
-  let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:hwvid hwcomp) (hvar:string) (mvar:string) =
-    
-    error "unify_comp_with_mvar" "unimplemented"
+  let unify_with_mvar (env:runify) (hvar:hwvid) =
+    error "unify_with_mvar" "unimplemented"
+
+  let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (h2var:hwvid) =
+    let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
+    unify_with_hwvar uenv h2var
+
+  let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (mvar:string) =
+    let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
+    unify_with_mvar uenv mvar
+
+  let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) =
+    let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
+    unify_with_hwvar uenv h2var
+
+  let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (mvar:string) =
+    let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
+    unify_with_mvar uenv mvar
+
+
 end

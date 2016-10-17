@@ -64,7 +64,7 @@ type rtbl = {
   mutable target:unify_targ;
 }
 
-type 'a runify = {
+type runify = {
   search : (rstep, rtbl) ssearch;
   tbl: rtbl;
 }
