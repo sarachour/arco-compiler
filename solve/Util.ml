@@ -570,6 +570,20 @@ struct
     let lst_minus_other = List.filter (fun x -> has other x = false) lst in
     let other_minus_lst = List.filter (fun x -> has lst x = false) other in
     List.length lst_minus_other == 0 && List.length other_minus_lst == 0
+
+
+  let permutations (type a) (lst:(a list) list) =
+    let rec explore (options:(a list) list) = match lst with
+      |(poss)::t ->
+        List.fold_right (fun (option:a list) (new_options:a list list) ->
+            List.fold_right (fun (possibility:a) (new_options:a list list)->
+                (possibility::option)::new_options
+              ) poss new_options
+          ) options []
+      | [] -> options
+    in
+    explore lst
+
 end
 
 type 'a ord_set_node = {

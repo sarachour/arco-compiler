@@ -13,8 +13,8 @@ assignments. we will add interval information *)
 
 
 type rstep =
-        | RAddInAssign of string*hwvar_config
-        | RAddOutAssign of string*hwvar_config
+        | RAddInAssign of string*hwvarcfg
+        | RAddOutAssign of string*hwvarcfg
         | RAddParAssign of string*number
         (*ban an assignment*)
         | RDisableAssign of string*(unid ast)
@@ -26,10 +26,10 @@ type rstep =
 type hwcomp_state = {
   env: hwvid hwenv;
   comp: hwvid hwcomp;
-  cfg: hwcomp_config;
+  cfg: hwcompcfg;
   target: string;
   (*disable*)
-  mutable disabled: (string,hwvar_config list) map;
+  mutable disabled: (string,hwvarcfg list) map;
   (* the state *)
 }
 

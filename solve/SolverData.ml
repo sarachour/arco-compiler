@@ -55,11 +55,10 @@ type goal_math = {
 (*
    map a math relation to the input port
 *)
-type goal_hw_input = {
-  input_port:hwvid;
-  expr:mid ast;
-}
+
+
 (*connect *)
+
 (*connect two ports*)
 type goal_hw_conn = {
   output_port:hwvid;
@@ -70,10 +69,16 @@ type goal_hw_varmap = {
   expr: mid ast;
   port:hwvid;
 }
+type goal_unify_hwin = {
+  port: string;
+  prop: string;
+  comp: hwcompinst;
+  expr: mid ast;
+}
 (*port input goals*)
 type goal_data =
   | GMathGoal of goal_math
-  | GUnifyInPortGoal of goal_hw_input
+  | GUnifyHWGoal of goal_unify_hwin
   (*terminal goal*)
   | GPortConnGoal of goal_hw_conn
   | GInPortMapGoal of goal_hw_varmap  
@@ -90,12 +95,12 @@ solving goals generates facts:
    map an input port to a math expr
    map an output port to a math variable 
 *)
-type hwvar_config = {
+type hwvarcfg = {
   expr: unid ast;
 }
-type hwcomp_config = {
-  mutable inps: (string,hwvar_config) map;
-  mutable outs: (string,hwvar_config) map;
+type hwcompcfg = {
+  mutable inps: (string,hwvarcfg) map;
+  mutable outs: (string,hwvarcfg) map;
   mutable pars: (string,number) map;
   mutable mapvars: (string,float) map;
 }
@@ -105,7 +110,7 @@ type ucomp = {
 type ucomp_conc = {
   d: hwvid hwcomp;
   inst: int;
-  mutable cfg: hwcomp_config; 
+  mutable cfg: hwcompcfg; 
 }
 type portlabel_expr =
   |PLbVar of mid
@@ -161,7 +166,7 @@ type gltbl = {
   (*solution env*)
   env: uenv;
   mutable sln_ctx: sln;
-  mutable comp_ctx : (hwcompinst,ucomp) map;
+  mutable comp_ctx : (hwcompinst,ucomp_conc) map;
   mutable map_ctx : hwvid map_ctx; 
   mutable avail_comps : (hwcompname, ucomp) map;
   (*state of table*)

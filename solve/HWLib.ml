@@ -228,12 +228,16 @@ struct
     | Some(timename,_) -> name = timename
     | None -> false
 
-  let getvar e cname iname =
-    let c = getcomp e cname in
+  let comp_getvar c iname =
     if MAP.has c.ins iname then (MAP.get c.ins iname)
     else if MAP.has c.outs iname then (MAP.get c.outs iname)
     else
-        error "getport" ("port with name "^iname^" does not exist.")
+        error "comp_getvar" ("port with name "^iname^" does not exist.")
+
+
+  let getvar e cname iname =
+    let c = getcomp e cname in
+    comp_getvar  c iname
 
   let to_id e comp port :hwvid =
     let v = getvar e comp port in
@@ -482,6 +486,15 @@ struct
   let comp_iter_vars (type a) (x:a hwcomp) (f:a hwportvar -> unit) : unit =
     comp_fold_vars x (fun x () -> f x) ()
 
+  let comp_getparam (type a) (x:a hwcomp) (f:string) =
+    if MAP.has x.params f then
+      MAP.get x.params f
+    else
+      error "comp_getparam" "could not find param in comp"
+
+  let comp_get_param_values (type a) (x:a hwcomp) (f:string) : number list=
+    let par = comp_getparam x f in
+    par.value
 
   let map_var (type a) (type b) (x:a hwportvar) (f:a->b) : b hwportvar =
     {
@@ -557,6 +570,38 @@ struct
     comp_iter_ins x (fun v -> inference_var env x v cnv);
     comp_iter_outs x (fun v -> inference_var env x v cnv);
     ()
+  let portvar_iter_vars (type a) (type b) (x:a hwcomp) (portname:string) (f:a->unit) : unit =
+    let port = comp_getvar x portname in
+    match port.bhvr with
+    | HWBAnalog(data) ->
+      let vars : a list = ASTLib.get_vars data.rhs in
+      let stvars = StochLib.get_vars data.stoch in
+      List.iter (fun v ->  f v ) (vars @ stvars)
+    | HWBAnalogState(data) ->
+      let vars : a list = ASTLib.get_vars data.rhs in
+      let stvars = StochLib.get_vars data.stoch in 
+      List.iter (fun v ->  f v ) (vars @ stvars)
+    | _ ->
+      error "portvar_iter_vars" "can only fold over output vars"
+
+  let portvar_fold_vars (type a) (type b) (x:a hwcomp) (portname:string) (f:a->b option) : b list =
+    let port = comp_getvar x portname in
+    match port.bhvr with
+    | HWBAnalog(data) ->
+      let vars : a list = ASTLib.get_vars data.rhs in
+      let stvars = StochLib.get_vars data.stoch in
+      List.fold_right (fun v lst -> match f v with
+          | Some(q) -> q::lst
+          | None -> lst
+      ) (vars @ stvars) []
+    | HWBAnalogState(data) ->
+      let vars : a list = ASTLib.get_vars data.rhs in
+      let stvars = StochLib.get_vars data.stoch in 
+      List.fold_right (fun v lst -> match f v with
+          | Some(q) -> q::lst
+          | None -> lst
+        ) (vars @ stvars) []
+    | _ -> error "portvar_fold_vars" "can only fold over output vars"
 
   let inference (type a) (env:a hwenv) (cnv:a->hwvid) =
     debug "inference hw vars\n";

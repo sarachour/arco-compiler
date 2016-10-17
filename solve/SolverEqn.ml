@@ -400,39 +400,48 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
   let unify_math_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (inst:int) (hwvar:hwvid hwportvar) (mvr:mid mvar) =
     ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mvr.name
 
-  let solve_math_goal tbl (g:goal_math) =
+  let solve_math_goal (tbl:gltbl) (g:goal_math) =
       let mvar = g.d in
-      let prio_comps = PRIOQUEUE.make (fun (k,x,p) -> match k with
-          | HWCompNew(_) -> SolverCompLib.grade_hwvar_with_mvar x p mvar
-          | HWCompExisting(_) -> SolverCompLib.grade_hwvar_with_mvar x p mvar
+      let prio_comps = PRIOQUEUE.make (fun (k,p) -> match k with
+          | HWCompNew(xname) ->
+            let hwcomp = SolverCompLib.get_avail_comp tbl xname in 
+            SolverCompLib.grade_hwvar_with_mvar hwcomp.d p mvar
+          | HWCompExisting(xinst) ->
+            let hwcomp = SolverCompLib.get_conc_comp tbl xinst in 
+            SolverCompLib.grade_hwvar_with_mvar hwcomp.d p mvar
         )
       in
       SolverCompLib.iter_avail_comps tbl (fun cmpname cmp ->
           match SolverCompLib.compatible_comp_with_mvar cmp mvar with
           | [] -> ()
           | vars -> List.iter (fun v ->
-              noop (PRIOQUEUE.add prio_comps (HWCompNew cmpname,cmp,v))) vars
+              noop (PRIOQUEUE.add prio_comps (HWCompNew cmpname,v))) vars
       );
       SolverCompLib.iter_used_comps tbl (fun cmpid cmp ->
-          match SolverCompLib.compatible_comp_with_mvar cmp mvar with
+          match SolverCompLib.compatible_used_comp_with_mvar cmp mvar with
           | [] -> ()
           | vars -> List.iter (fun v ->
-              noop (PRIOQUEUE.add prio_comps (HWCompExisting cmpid,cmp,v))) vars
+              noop (PRIOQUEUE.add prio_comps (HWCompExisting cmpid,v))) vars
         );
       let nsols : int ref = REF.mk 0 in 
-      PRIOQUEUE.iter prio_comps (fun (prio:int) (cmpkind,hwcomp,hwvar) ->
-          debug ("["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
-                 "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n")
-                );
+      PRIOQUEUE.iter prio_comps (fun (prio:int) (cmpkind,hwvar) ->
           begin
             match cmpkind with
             | HWCompNew(cmpname) ->
-              debug "  [new comp]";
-              unify_math_goal_with_comp tbl hwcomp (hwcomp.d.insts) hwvar mvar
+              let hwcomp = SolverCompLib.get_avail_comp tbl cmpname in 
+              begin
+                debug ("new: ["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
+                       "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n"));
+                unify_math_goal_with_comp tbl hwcomp (hwcomp.d.insts) hwvar mvar
+              end
             | HWCompExisting(compinst) ->
+              let hwcomp = SolverCompLib.get_conc_comp tbl compinst in 
+              begin
               debug "  [existing comp]";
-              unify_math_goal_with_comp tbl hwcomp (compinst.inst) hwvar mvar
-              error "solve_goal" "hwcompexisting not implemented"
+                     debug ("new: ["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
+                "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n"));
+              error "solve_math_goal" "reusing comp is not implemented"
+              end
           end;
           ()
 

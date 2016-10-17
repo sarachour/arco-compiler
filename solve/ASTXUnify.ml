@@ -16,6 +16,7 @@ open SolverSln
 open SolverGoalTable
 open SolverUtil
 
+open SolverCompLib
 
 open HWData
 open MathData
@@ -186,7 +187,7 @@ struct
       env=hwenv;
       comp=comp.d;
       target=hvar;
-      cfg=SolverLib.mkhwcompcfg ();
+      cfg=ConcCompLib.mkhwcompcfg ();
       disabled=MAP.make();
     } in
     let math_st : math_state = {
@@ -1122,16 +1123,76 @@ struct
 
 *)
 
+  let get_involved_vars (type b) (cmp:hwvid hwcomp) (cfg:hwcompcfg)
+      (startvar:string) (f:hwvid->b option) : b list =
+    let outvars : string set = SET.make_dflt () in
+    let explored : string set= SET.make_dflt () in
+    let coll = SET.make_dflt () in
+    let rec _get_involved_vars ()=
+      let target_maybe : string option=
+        SET.fold outvars (fun x t -> if SET.has explored x = false then Some(x) else t) None
+      in
+      match target_maybe with
+      | Some(target) ->
+        begin
+        HwLib.portvar_iter_vars cmp target (fun (v:hwvid) ->
+          match f v with
+          |Some(q) -> noop (SET.add coll q)
+          |None -> ();
+          match v with
+          | HNPort(HWKOutput,_,pname,_) ->
+            if ConcCompLib.is_conc cfg pname = false then
+              noop (SET.add outvars pname)
+          | _ -> ()
+            )
+          end
+      | None -> ()
+    in
+    SET.add outvars startvar;
+    _get_involved_vars();
+    SET.to_list coll
 
-  let unify_with_hwvar (env:runify) (hvar:hwvid) =
+
+  (*prune params based on target hwvar*)
+  let expand_params_tree (env:runify) =
+    (*compute closed set of parameters*)
+    let params
+      = get_involved_vars env.tbl.hwstate.comp env.tbl.hwstate.cfg env.tbl.hwstate.target
+        (fun x -> match x with
+           | HNParam(_,x) -> Some(x)
+           | _ -> None
+        )
+    in
+    (*compute list of possibilities of values for params*)
+    let options : (rstep list) list = List.fold_right (fun (paramname:string) opts ->
+        let paramvals : number list=
+          HwLib.comp_get_param_values env.tbl.hwstate.comp paramname in
+        let opt : rstep list= List.map
+            (fun (v:number) -> RAddParAssign(paramname,v)) paramvals in
+        opt::opts 
+      ) params []
+    in
+    let permutes : (rstep list) list= LIST.permutations options in
+    let rootnode = SearchLib.root env.search in
+    List.iter ( fun (steps: rstep list) ->
+        SearchLib.mknode_from_steps env.search env.tbl steps;
+        ()
+      ) permutes;
+    ()
+
+  let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: mid ast)=
+    env.tbl.target <- TRGHWVar(hvar,hexpr);
     error "unify_with_hwvar" "unimplemented"
 
   let unify_with_mvar (env:runify) (mvar:string) =
+    env.tbl.target <- TRGMathVar(mvar);
+    expand_params_tree env;
     error "unify_with_mvar" "unimplemented"
 
-  let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (h2var:hwvid) =
+  let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
+      (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:mid ast) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
-    unify_with_hwvar uenv h2var
+    unify_with_hwvar uenv h2var hexpr
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in

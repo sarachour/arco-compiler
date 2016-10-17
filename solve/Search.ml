@@ -408,6 +408,10 @@ struct
     | _,_ -> error "commit" "cannot commit empty node."
 
 
+  let mknode_from_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
+    mknode sr;
+    add_steps sr sts;
+    commit sr env
 
   let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
     start sr;

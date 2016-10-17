@@ -22,4 +22,6 @@ module StochLib = struct
   let stoch2str (type a) (st:a stoch) (f:a->string) : string =
     (shape2str st.shape)^" "^(ASTLib.ast2str st.std f)
 
+  let get_vars (type a) (st:a stoch) =
+    ASTLib.get_vars st.std
 end
