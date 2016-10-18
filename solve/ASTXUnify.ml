@@ -1201,9 +1201,20 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
-  let unify (env:renv) = 
-
-    error "unify" "unimplemented"
+  let unify (env:runify) = 
+    (* get concretized version of component with config substituted in*)
+    (* get bhvr of hardware *)
+    match env.tbl.target with
+    | TRGMathVar(mname) ->
+      let mvar = MathLib.getvar env.tbl.mstate.env mname in
+      error "unify" "unify with math variable unimplemented"
+      
+    | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
+      error "unify" "connect to an input port unimplemented"
+       
+    | TRGHWVar(HNPort(HWKOutput,_,_,_),expr) ->
+      error "unify" "connect to an output port unimplemented"
+      
   (*============ UNIFY END ===================*)
   (*============ TREE START ===================*)
   (*select the next node to solve*)
