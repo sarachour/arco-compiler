@@ -99,6 +99,10 @@ struct
      match st with
     | RAddParAssign(vr,asgn) ->
       ConcCompLib.conc_param s.hwstate.cfg vr asgn
+    | RAddOutAssign(vr,asgn) ->
+      ConcCompLib.conc_out s.hwstate.cfg vr asgn
+    | RAddInAssign(vr,asgn) ->
+      ConcCompLib.conc_in s.hwstate.cfg vr asgn
     | _ -> error "apply" "unimplemented"
    end;
    s 
@@ -107,8 +111,12 @@ struct
  let unapply_step (type a) (s:rtbl) (st:rstep) : rtbl =
    begin
     match st with
-      | RAddParAssign(vr,asgn) ->
+      | RAddParAssign(vr,_) ->
         ConcCompLib.abs_param s.hwstate.cfg vr 
+      | RAddOutAssign(vr,_) ->
+        ConcCompLib.abs_out s.hwstate.cfg vr 
+      | RAddInAssign(vr,_) ->
+        ConcCompLib.abs_in s.hwstate.cfg vr 
       | _ -> error "unapply" "unimplemented"
    end;
    s
@@ -117,9 +125,9 @@ struct
   | RAddParAssign(vr,asgn) ->
         "+par-asgn "^(vr)^"="^(string_of_number asgn)
   | RAddOutAssign(vr,asgn) ->
-        "+out-asgn "^(vr)^"=TODO"
+        "+out-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
   | RAddInAssign(vr,asgn) ->
-        "+inp-asgn "^(vr)^"=TODO"
+        "+inp-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
   | RDisableAssign(vr,rhs) ->
     "-asgn"^(vr)^"="^"TODO"
 
@@ -183,7 +191,6 @@ struct
       mstate = math_st;
       target=TRGNone;
     } in
-    SearchLib.setroot search tbl [];
     {
       tbl=tbl;
       search=search;
@@ -217,12 +224,22 @@ struct
       mstate = math_st;
       target=TRGNone;
     } in
-    SearchLib.setroot search tbl [];
     {
       tbl=tbl;
       search=search;
     }
 
+  let init_root st =
+    match st.tbl.target with
+    | TRGMathVar(name) ->
+      let mvar = MathLib.getvar st.tbl.mstate.env name in
+      let mcfg = ConcCompLib.mkvarcfg (Term(MathId(MNVar(mvar.knd,name)))) in 
+      let asgn = RAddOutAssign(st.tbl.hwstate.target, mcfg) in
+      SearchLib.setroot st.search st.tbl [asgn]
+    | TRGHWVar(hwid,_) ->
+      SearchLib.setroot st.search st.tbl []
+    | TRGNone -> error "init_root" "must have a target at root creation"
+      
   let rec get_best_valid_node (type a) (sr:runify) (root:(rnode) option)  : (rnode) option =
     SearchLib.select_best_node sr.search root 
     
@@ -1201,14 +1218,16 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
+  let unify_math_var (mname) = 
+      error "unify" "unify with math variable unimplemented"
+
   let unify (env:runify) = 
     (* get concretized version of component with config substituted in*)
     (* get bhvr of hardware *)
     match env.tbl.target with
     | TRGMathVar(mname) ->
       let mvar = MathLib.getvar env.tbl.mstate.env mname in
-      error "unify" "unify with math variable unimplemented"
-      
+      unify_math_var mvar
     | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
       error "unify" "connect to an input port unimplemented"
        
@@ -1275,31 +1294,31 @@ struct
  
   let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: mid ast)=
     env.tbl.target <- TRGHWVar(hvar,hexpr);
+    ASTUnifyTree.init_root env;
+    expand_params_tree env;
     solve env 1
 
   let unify_with_mvar (env:runify) (mvar:string) =
     env.tbl.target <- TRGMathVar(mvar);
+    ASTUnifyTree.init_root env;
+    expand_params_tree env;
     solve env 1
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:mid ast) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
-    expand_params_tree uenv;
     unify_with_hwvar uenv h2var hexpr
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
-    expand_params_tree uenv;
     unify_with_mvar uenv mvar
 
   let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    expand_params_tree uenv;
     unify_with_hwvar uenv hwvar
 
   let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    expand_params_tree uenv;
     unify_with_mvar uenv mvar
 
 
