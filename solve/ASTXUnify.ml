@@ -1134,7 +1134,9 @@ struct
     slns
 
 *)
-
+  (*
+     Parameter scoping and expansion
+  *)
   let get_involved_vars (type b) (cmp:hwvid hwcomp) (cfg:hwcompcfg)
       (startvar:string) (f:hwvid->b option) : b list =
     let outvars : string set = SET.make_dflt () in
@@ -1192,30 +1194,89 @@ struct
       ) permutes;
     ()
 
+  (*select the next node to solve*)
+  let solve (type a) (sr:runify) (n:int) =
+    let sysmenu,usrmenu = mkmenu sr in
+    let _mnext () =
+        let maybe_next_node = get_best_valid_node sr (Some root) in
+        match maybe_next_node with
+        | Some(next_node) ->
+            (*if we're going really deep*)
+            let _ = SearchLib.move_cursor sr.search sr.tbl next_node in
+            true 
+        | None ->false 
+    in
+    let exceeded_depth (curs) =
+      SearchLib.deadend sr.search curs sr.tbl;
+      if _mnext ()
+      then begin _solve(); () end
+      else ()
+    in
+    let found_enough_solutions (curs) =
+      _print_debug "!--> Found Enough Solutions, Exiting <--!";
+      ()
+    in
+    let find_more_solutions (curs) solve_fxn =
+          unify sr;
+          usrmenu ();
+          if _mnext () then
+            begin
+            debug "--> Continuing Search <--";
+            solve_fxn ()
+            end
+          else
+           debug "--> Finishing AST Search <--";
+           ()
+    in
+    let rec _solve () =
+      let curs = SearchLib.cursor sr.search in
+      let depth : int =  SearchLib.depth sr.search curs in
+      if depth >= get_glbl_int "uast-depth" then
+        exceeded_depth(curs)
+      else
+        begin
+        (*get the next node*)
+        let nslns : int = SearchLib.num_solutions sr.search None in
+        _print_debug ("# solutions: "^(string_of_int nslns));
+        if nslns >= n then
+          found_enough_solutions curs
+        else
+         find_more_solutions curs _solve
+        end
+    in
+    let _ = _mnext () in
+    let _ = _solve () in
+    (*let _ = sysmenu "t" in*)
+    ()
+ 
   let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: mid ast)=
     env.tbl.target <- TRGHWVar(hvar,hexpr);
     error "unify_with_hwvar" "unimplemented"
 
   let unify_with_mvar (env:runify) (mvar:string) =
     env.tbl.target <- TRGMathVar(mvar);
-    expand_params_tree env;
+    
     error "unify_with_mvar" "unimplemented"
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:mid ast) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
+    expand_params_tree env;
     unify_with_hwvar uenv h2var hexpr
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
+    expand_params_tree env;
     unify_with_mvar uenv mvar
 
   let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
+    expand_params_tree env;
     unify_with_hwvar uenv hwvar
 
   let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
+    expand_params_tree env;
     unify_with_mvar uenv mvar
 
 
