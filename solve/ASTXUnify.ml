@@ -115,7 +115,7 @@ struct
 
  let step2str (a:rstep) = match a with
   | RAddParAssign(vr,asgn) ->
-        "+par-asgn "^(vr)^"=TODO"
+        "+par-asgn "^(vr)^"="^(string_of_number asgn)
   | RAddOutAssign(vr,asgn) ->
         "+out-asgn "^(vr)^"=TODO"
   | RAddInAssign(vr,asgn) ->
@@ -222,6 +222,11 @@ struct
       tbl=tbl;
       search=search;
     }
+
+  let rec get_best_valid_node (type a) (sr:runify) (root:(rnode) option)  : (rnode) option =
+    SearchLib.select_best_node sr.search root 
+    
+
 
   (*make search tree*)
    (*
@@ -418,14 +423,14 @@ struct
     (*calculate how many bound switches you have*)
     let decl_wild (v:symvar) (bans:symexpr list) =
         let ban_str = LIST.fold bans (fun x str -> str^","^(SymExpr.expr2str x)) v in 
-        let _ = spy_print_debug ("[env][decl] wild "^(v)^" != "^ban_str) in
+        let _ = spydebug ("[env][decl] wild "^(v)^" != "^ban_str) in
         let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in ()
     in
     let decl_sym (v:symvar) = let _ =
-        let _ = spy_print_debug ("[env][decl] sym "^(v)) in
+        let _ = spydebug ("[env][decl] sym "^(v)) in
         SymCaml.define_symbol (g_sym s.tbl) v in ()
     in
-    let _ = spy_print_debug "[env] == state ===" in
+    let _ = spydebug "[env] == state ===" in
     let _ = SymCaml.clear (g_sym s.tbl) in
     (*let _ = SymCaml.set_debug (g_sym s.tbl) true in*)
     (*create replacement tables*)
@@ -465,7 +470,7 @@ struct
     let add_expr scratch v rhs (kind:a rkind) (iswc:bool) (addvars:bool)= 
       let _ = if addvars then add_vars v rhs kind iswc else () in
       let _ = MAP.put scratch v (rhs,kind) in
-      let _ = spy_print_debug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
+      let _ = spydebug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
       ()
     in
     (*define default values*)
@@ -572,7 +577,7 @@ struct
       let targ_expr : symexpr = OpN(Add,SET.to_list assertions_targ) in 
       (*generate the experssion for unification*)
       (*SymCaml.set_debug (g_sym s.tbl) true;*) 
-      _print_debug ("#unify <?>\n  templ:\n"^
+      debug ("#unify <?>\n  templ:\n"^
                (SymCaml.expr2str templ_expr)^"\n\n  targ:\n"^(SymCaml.expr2str targ_expr)^"\n");
       (*attempt unification*)
       let maybe_assigns = try 
@@ -587,10 +592,10 @@ struct
         |Some(lst) ->
             LIST.iter (fun ((l,r):string*symexpr) -> 
                         ret (MAP.put nassigns (sym2a l) (ASTLib.from_symcaml r sym2a)) ()) lst;
-            _print_debug ("---assigns---\n"^(MAP.str nassigns v2str e2str));
+            debug ("---assigns---\n"^(MAP.str nassigns v2str e2str));
             Some(nassigns)
         |None -> 
-            _print_debug "[unify_term][pattern]: <no solution>";
+            debug "[unify_term][pattern]: <no solution>";
             None 
   
  
@@ -973,7 +978,7 @@ struct
         add_assignment_node s curs assigns templs targs resolved;
         debug ("[SUCCESS] successfully unified component and relation "^
         " and added "^(string_of_int nrestrictions)^" restrictions");
-          _print_debug "--> Found Solution Node <--";
+          debug "--> Found Solution Node <--";
         ()
         end
       | USTUnresolvable(assigns) ->
@@ -1027,9 +1032,9 @@ struct
       else
         (*get the next node*)
         let nslns = SearchLib.num_solutions sr.search (Some root) in
-        let _ = _print_debug ("# solutions: "^(string_of_int nslns)) in
+        let _ = debug ("# solutions: "^(string_of_int nslns)) in
         if nslns >= n then
-         let _ = _print_debug "!--> Found Enough Solutions, Exiting <--!" in
+         let _ = debug "!--> Found Enough Solutions, Exiting <--!" in
          ()
         else
           let templvar = SET.singleton sr.tbl.st.subset in 
@@ -1055,7 +1060,7 @@ struct
     let curs = root in
     let _ = List.iter (fun subst ->
       SearchLib.start s.search;
-      _print_debug ("subset : "^(SET.tostr subst v2str ""));
+      debug ("subset : "^(SET.tostr subst v2str ""));
       SearchLib.add_step s.search (RTemplSubgraph subst);
       SearchLib.commit s.search s.tbl;
       ()
@@ -1081,7 +1086,7 @@ struct
       (*add all assignments in fusion.*)
     in
     let node2fusion (node: (a rstep) snode) : a fusion =
-        let _ = _print_debug ("node: "^(string_of_int node.id)) in         
+        let _ = debug ("node: "^(string_of_int node.id)) in         
         let _ = SearchLib.move_cursor s.search s.tbl node in
         let fsn = SET.make_dflt () in
         let _ = SET.add_all fsn (env2fuses s) in
@@ -1123,14 +1128,14 @@ struct
     (*solve a thing*)
     let ncmp = n*(List.length tmpl) in 
     solve stree root targvar ncmp;
-    _print_debug "=== Done with Relation Search ===";
+    debug "=== Done with Relation Search ===";
     let _,usrmenu = mkmenu stree in
     usrmenu ();
     let slns = get_slns stree in
     let rep = print_fusions 1 stree.tbl.tostr slns in
-    _print_debug "=== SOLUTIONS ===";
-    _print_debug rep;
-    _print_debug "=================";
+    debug "=== SOLUTIONS ===";
+    debug rep;
+    debug "=================";
     slns
 
 *)
@@ -1179,6 +1184,7 @@ struct
     in
     (*compute list of possibilities of values for params*)
     let options : (rstep list) list = List.fold_right (fun (paramname:string) opts ->
+        debug ("adding options for "^paramname);
         let paramvals : number list=
           HwLib.comp_get_param_values env.tbl.hwstate.comp paramname in
         let opt : rstep list= List.map
@@ -1193,27 +1199,32 @@ struct
         ()
       ) permutes;
     ()
-
+  (*============ EXPAND PARAMS END ===================*)
+  (*============ UNIFY  START ===================*)
+  let unify env =
+    error "unify" "unimplemented"
+  (*============ UNIFY END ===================*)
+  (*============ TREE START ===================*)
   (*select the next node to solve*)
-  let solve (type a) (sr:runify) (n:int) =
+  let solve (type a) (sr:runify) desired_nslns =
     let sysmenu,usrmenu = mkmenu sr in
     let _mnext () =
-        let maybe_next_node = get_best_valid_node sr (Some root) in
+        let maybe_next_node = ASTUnifyTree.get_best_valid_node sr None in
         match maybe_next_node with
         | Some(next_node) ->
             (*if we're going really deep*)
-            let _ = SearchLib.move_cursor sr.search sr.tbl next_node in
+            SearchLib.move_cursor sr.search sr.tbl next_node;
             true 
         | None ->false 
     in
-    let exceeded_depth (curs) =
+    let exceeded_depth (curs) solve_fxn =
       SearchLib.deadend sr.search curs sr.tbl;
       if _mnext ()
-      then begin _solve(); () end
+      then begin solve_fxn(); () end
       else ()
     in
     let found_enough_solutions (curs) =
-      _print_debug "!--> Found Enough Solutions, Exiting <--!";
+      debug "!--> Found Enough Solutions, Exiting <--!";
       ()
     in
     let find_more_solutions (curs) solve_fxn =
@@ -1232,51 +1243,51 @@ struct
       let curs = SearchLib.cursor sr.search in
       let depth : int =  SearchLib.depth sr.search curs in
       if depth >= get_glbl_int "uast-depth" then
-        exceeded_depth(curs)
+        exceeded_depth(curs) _solve
       else
         begin
         (*get the next node*)
-        let nslns : int = SearchLib.num_solutions sr.search None in
-        _print_debug ("# solutions: "^(string_of_int nslns));
-        if nslns >= n then
-          found_enough_solutions curs
-        else
-         find_more_solutions curs _solve
+          let nslns : int = SearchLib.num_solutions sr.search None in
+          debug ("# solutions: "^(string_of_int nslns));
+          if nslns >= desired_nslns then
+            found_enough_solutions curs 
+          else
+          find_more_solutions curs _solve
         end
     in
-    let _ = _mnext () in
-    let _ = _solve () in
+    sysmenu "t";
+    _mnext ();
+    _solve ();
     (*let _ = sysmenu "t" in*)
     ()
  
   let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: mid ast)=
     env.tbl.target <- TRGHWVar(hvar,hexpr);
-    error "unify_with_hwvar" "unimplemented"
+    solve env 1
 
   let unify_with_mvar (env:runify) (mvar:string) =
     env.tbl.target <- TRGMathVar(mvar);
-    
-    error "unify_with_mvar" "unimplemented"
+    solve env 1
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:mid ast) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
-    expand_params_tree env;
+    expand_params_tree uenv;
     unify_with_hwvar uenv h2var hexpr
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
-    expand_params_tree env;
+    expand_params_tree uenv;
     unify_with_mvar uenv mvar
 
   let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    expand_params_tree env;
+    expand_params_tree uenv;
     unify_with_hwvar uenv hwvar
 
   let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    expand_params_tree env;
+    expand_params_tree uenv;
     unify_with_mvar uenv mvar
 
 

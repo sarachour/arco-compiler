@@ -572,17 +572,28 @@ struct
     List.length lst_minus_other == 0 && List.length other_minus_lst == 0
 
 
-  let permutations (type a) (lst:(a list) list) =
-    let rec explore (options:(a list) list) = match lst with
-      |(poss)::t ->
-        List.fold_right (fun (option:a list) (new_options:a list list) ->
-            List.fold_right (fun (possibility:a) (new_options:a list list)->
-                (possibility::option)::new_options
-              ) poss new_options
-          ) options []
-      | [] -> options
+  let permutations (type a) (options:(a list) list) =
+    let rec explore options (selections:(a list) list) = match options with
+      |(curr_option)::t ->
+        (*explode selection so that each selection has prefix of all available current options*)
+        let new_options : (a list) list =
+          List.fold_right (fun (selection:a list) (new_selections:a list list) ->
+              let upd_selection :a list list =
+                List.fold_right (
+                  fun (option:a) (new_selection:a list list)->
+                    (option::selection)::new_selection 
+                  ) curr_option []
+              in
+              upd_selection @ new_selections
+          ) selections []
+        in
+        explore t new_options
+      | [] -> selections
     in
-    explore lst
+    (*make initial set of selections*)
+    match options with
+    | h::t -> explore t (List.map (fun x -> [x]) h)
+    | [] -> []
 
   let pairwise (type a) (type b) (type c) (alst:(a list)) (blst:(b list)) (fn:a->b->c) : c list =
     List.fold_right (fun ael results->
