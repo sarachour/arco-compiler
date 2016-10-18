@@ -30,6 +30,7 @@ let error n msg = raise (ASTUnifierException(n^": "^msg))
 let spy_print_debug = print_debug 4 "sympy"
 let _print_debug = print_debug 3 "uni"
 let debug : string -> unit =_print_debug  
+let spydebug: string -> unit =spy_print_debug  
 let auni_menu = menu 3
 
 type  rnode = (rstep) snode
@@ -88,7 +89,105 @@ struct
   | MathId(m) -> "m:"^(mid2symvar m)
   | HwId(h) -> "h:"^(hwid2symvar h)
 
+  let print_wildcard (v:string) (bans:symexpr list) =
+    let ban_str = LIST.fold bans (fun (x:symexpr) str ->
+        str^","^(SymExpr.expr2str x)
+      ) ""
+    in
+      spydebug ("[env][decl] wild "^(v)^" != "^ban_str);
+      ()
 
+  let make_symcaml_env (s:runify) =
+    let symenv = s.tbl.symenv and hwstate = s.tbl.hwstate and mstate = s.tbl.mstate in
+    let to_symvar = symenv.cnv in
+    let to_symexpr x : symexpr = ASTLib.to_symcaml x (symenv.cnv) in
+    let declared = SET.make_dflt() in
+    (*declare and then print the wildcard*)
+    let decl_wildcard (v: hwvid hwportvar) =
+      let bans : symexpr list =
+        if MAP.has hwstate.disabled v.port then
+          let ban_cfgs = MAP.get hwstate.disabled v.port in
+          List.map (fun (x:hwvarcfg) -> to_symexpr x.expr) ban_cfgs
+        else []
+      in
+      let vname = to_symvar (HwId (HwLib.var2id v)) in
+      print_wildcard vname bans;
+      SymCaml.define_wildcard symenv.s vname bans;
+      ()
+    in
+    SymCaml.clear symenv.s;
+    HwLib.comp_iter_vars hwstate.comp (fun (v:hwvid hwportvar) ->
+        if ConcCompLib.is_conc hwstate.cfg v.port = false then
+          decl_wildcard v
+    );
+    error "make_symcaml_env" "unimplemented"
+  (*
+  (*apply the state to syncaml*)
+  let apply_state (type a) (s: a runify) : ((a, a ast*a rkind) map)*((a, a ast*a rkind) map) =
+    let var2symvar = g_conv s.tbl in
+    let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s.tbl) in
+    (*calculate how many bound switches you have*)
+    let decl_wild (v:symvar) (bans:symexpr list) =
+        let ban_str = LIST.fold bans (fun x str -> str^","^(SymExpr.expr2str x)) v in 
+        let _ = spydebug ("[env][decl] wild "^(v)^" != "^ban_str) in
+        let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in ()
+    in
+    let decl_sym (v:symvar) = let _ =
+        let _ = spydebug ("[env][decl] sym "^(v)) in
+        SymCaml.define_symbol (g_sym s.tbl) v in ()
+    in
+    let _ = spydebug "[env] == state ===" in
+    let _ = SymCaml.clear (g_sym s.tbl) in
+    (*let _ = SymCaml.set_debug (g_sym s.tbl) true in*)
+    (*create replacement tables*)
+    let add_wild (set:(symvar*(symexpr list)) set) (v:a) =
+      let bans =
+        if MAP.has (g_bans s.tbl) v then
+          let bans = SET.map (MAP.get (g_bans s.tbl) v) (fun x -> x) in
+          bans
+        else []
+      in
+      let symbans : symexpr list = List.map (fun (x) -> expr2symexpr x) bans in
+      let _ = if SET.has set (var2symvar v,symbans) = false then
+        ret (SET.add set (var2symvar v, symbans)) () in
+      ()
+    in
+    let add_sym (set:symvar set) (v:a) =
+      let var2symvar = g_conv s.tbl in
+      let _ = if SET.has set (var2symvar v) = false then ret (SET.add set (var2symvar v)) () in ()
+    in
+    (*actual conversion routine*)
+    let scratch_targ = MAP.make () and scratch_templ = MAP.make () in
+    let sym_vars = SET.make_dflt () and wc_vars = SET.make_dflt () in
+    let add_vars lhs (rhs:a ast) kind (iswc:bool)=
+      let addvar q = if iswc && (s.tbl.env).is_wc q
+        then add_wild wc_vars q
+        else add_sym sym_vars q
+      in
+      let _ = addvar lhs in
+      let _ = List.iter (fun q -> addvar q) (ASTLib.get_vars rhs) in
+      let _ = match kind with 
+      | RKDeriv(ICVar(v)) -> addvar v 
+      | _ -> ()
+      in 
+      ()
+    in
+    (*add exprs*)
+    let add_expr scratch v rhs (kind:a rkind) (iswc:bool) (addvars:bool)= 
+      let _ = if addvars then add_vars v rhs kind iswc else () in
+      let _ = MAP.put scratch v (rhs,kind) in
+      let _ = spydebug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
+      ()
+    in
+    (*define default values*)
+    (*add original variables*)
+    let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs data.kind  false true) in
+    let _ = MAP.iter (g_info s.tbl UTypTempl).nodep (fun v data ->add_expr scratch_templ v data.rhs data.kind true true) in
+    (*declare variables*)
+    let _ = SET.iter sym_vars (fun x -> decl_sym  x) in
+    let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild  x bans) in
+    (scratch_templ,scratch_targ)
+    *) 
 
 end
 
@@ -233,9 +332,19 @@ struct
     match st.tbl.target with
     | TRGMathVar(name) ->
       let mvar = MathLib.getvar st.tbl.mstate.env name in
+      let hvar = HwLib.comp_getvar st.tbl.hwstate.comp st.tbl.hwstate.target in
       let mcfg = ConcCompLib.mkvarcfg (Term(MathId(MNVar(mvar.knd,name)))) in 
       let asgn = RAddOutAssign(st.tbl.hwstate.target, mcfg) in
-      SearchLib.setroot st.search st.tbl [asgn]
+      begin
+      match hvar.bhvr,mvar.bhvr with
+      | HWBAnalogState(h),MBhvStateVar(s) ->
+        let icport,_ = h.ic in
+        let iccfg = ConcCompLib.mkvarcfg (number_to_ast s.ic) in 
+        let ic_asgn = RAddInAssign(icport,iccfg) in
+        SearchLib.setroot st.search st.tbl [ic_asgn;asgn]
+      | _ -> 
+        SearchLib.setroot st.search st.tbl [asgn]
+      end
     | TRGHWVar(hwid,_) ->
       SearchLib.setroot st.search st.tbl []
     | TRGNone -> error "init_root" "must have a target at root creation"
@@ -1218,8 +1327,19 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
-  let unify_math_var (mname) = 
-      error "unify" "unify with math variable unimplemented"
+  let unify_math_var (st:runify) (mvar) =
+    let hwstate = st.tbl.hwstate in 
+    let hvar = HwLib.comp_getvar hwstate.comp hwstate.target in
+    ASTUnifySymcaml.make_symcaml_env st; 
+    match mvar.bhvr,hvar.bhvr with
+    | MBhvVar(mbhv),HWBAnalog(abhv) ->
+      error "unify" "unify var with analog"
+    | MBhvStateVar(mbhv),HWBAnalogState(abhv) ->
+      error "unify" "unify stvar with analog state"
+    | MBhvVar(_),HWBDigital(_) ->
+      error "unify" "unify var with digital"
+    | _ ->
+      error "unify" "unify unsupported"
 
   let unify (env:runify) = 
     (* get concretized version of component with config substituted in*)
@@ -1227,7 +1347,7 @@ struct
     match env.tbl.target with
     | TRGMathVar(mname) ->
       let mvar = MathLib.getvar env.tbl.mstate.env mname in
-      unify_math_var mvar
+      unify_math_var env mvar
     | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
       error "unify" "connect to an input port unimplemented"
        

@@ -312,6 +312,8 @@ struct
       error "comp_port_to_hwid" "unknown variable"
 
 
+  let var2id (v:'a hwportvar) : hwvid =
+    HNPort(v.knd,HCMLocal(v.comp),v.port,v.prop)
 
   let var2kind (id:hwvid) =
     match id with

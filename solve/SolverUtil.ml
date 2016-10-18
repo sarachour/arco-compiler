@@ -17,6 +17,10 @@ let unid2str (a:unid) = match a with
 
 let hwid2str (a:hwvid) = HwLib.hwvid2str a
 
+let number_to_ast (a:number) : 'a ast = match a with
+  | Decimal(d) -> Decimal(d)
+  | Integer(i) -> Integer(i)
+
 (*
 module UnivLib =
 struct
