@@ -77,6 +77,10 @@ struct
     mk_ival_from_floats x x
 
 
+  let interval_to_interval_data (x:interval) : interval_data = match x with
+    | Interval(d) -> d
+    | _ -> error "interval_to_interval_data" "expected interval"
+
   let get_direction (a:bound) : bound_dir option = match a with
     | BNDNum(v) -> Some (float_to_dir v) 
     | BNDInf(dir) -> Some dir
@@ -218,23 +222,29 @@ struct
     mk_ival (min_of_list corners) (max_of_list corners)
 
   let _ival_ivals_compute_interval (a:interval_data ) (b:interval_data list)
-      (compute:bound->bound->bound) : interval =
-    error "error" "unimpl"
+      (compute:bound->bound->bound) : interval  =
+    let data : interval_data list= List.map (fun (ival:interval_data) ->
+        match _ival_ival_compute_interval a ival compute with
+        | Interval(data) -> data
+        | _ -> error "ival_ivals_compute_interval" "unknown"
+      ) b
+    in
+    MixedInterval(data)
 
   let _ivals_ivals_compute_interval (a:interval_data list) (b:interval_data list)
       (compute:bound->bound->bound) : interval =
-    error "error" "unimpl"
-
-
+    let data : interval_data list = List.fold_right (
+        fun (ival:interval_data) (lst:interval_data list) ->
+          match _ival_ivals_compute_interval ival b compute with
+          | MixedInterval(data) -> data @ lst
+          | _ -> error "ivals_ivals_compute_interval" "unknown"
+      ) a []
+    in
+    MixedInterval(data)
 
   let _compute_interval (a:interval) (b:interval)
       (compute:bound->bound->bound): interval =
-    let order a b = match a,b with
-      | _, Quantize(x) -> b,a
-      | _, Interval(x) -> b,a
-      | _ -> a,b
-    in
-    match order a b with
+    match a,b with
     (*quantize is always first*)
     | Quantize(alst),Quantize(blst) ->
       _quant_quant_compute_interval alst blst compute 
@@ -243,14 +253,20 @@ struct
     | Quantize(alst),MixedInterval(blst) ->
       _quant_ivals_compute_interval alst blst compute
     (* interval computation *)
+    | Interval(alst),Quantize(blst) ->
+      _quant_ival_compute_interval blst alst compute
     | Interval(blst),Interval(alst) ->
       _ival_ival_compute_interval alst blst compute
     | Interval(alst),MixedInterval(blst) ->
       _ival_ivals_compute_interval alst blst compute
     (*interval collection computation*)
+    | MixedInterval(alst),Interval(blst) ->
+      _ival_ivals_compute_interval blst alst compute
     | MixedInterval(alst),MixedInterval(blst) ->
       _ivals_ivals_compute_interval alst blst compute
-    | _ -> error "_compute_interval" "unimplemented"
+     (**)
+    | a,b ->
+      error "_compute_interval" ("unimplemented: "^(interval2str a)^", "^(interval2str b))
 
   let bound_sum (a:bound) (b:bound) : bound = match a,b with
     | BNDNum(av),BNDNum(bv) -> float_to_bound (av +. bv)
