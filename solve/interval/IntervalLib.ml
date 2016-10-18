@@ -211,7 +211,11 @@ struct
 
   let _ival_ival_compute_interval (a:interval_data) (b:interval_data)
       (compute:bound->bound->bound) : interval =
-    error "error" "unimpl"
+    let corners : bound list = [
+      compute a.min b.max; compute a.max b.max;
+      compute a.max b.min; compute a.min b.min;
+    ] in
+    mk_ival (min_of_list corners) (max_of_list corners)
 
   let _ival_ivals_compute_interval (a:interval_data ) (b:interval_data list)
       (compute:bound->bound->bound) : interval =
