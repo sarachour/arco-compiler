@@ -1201,7 +1201,8 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
-  let unify env =
+  let unify (env:renv) = 
+
     error "unify" "unimplemented"
   (*============ UNIFY END ===================*)
   (*============ TREE START ===================*)
@@ -1252,11 +1253,11 @@ struct
           if nslns >= desired_nslns then
             found_enough_solutions curs 
           else
-          find_more_solutions curs _solve
+            find_more_solutions curs _solve
         end
     in
-    sysmenu "t";
     _mnext ();
+    sysmenu "t";
     _solve ();
     (*let _ = sysmenu "t" in*)
     ()
