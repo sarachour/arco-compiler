@@ -154,8 +154,8 @@ st:
        let max : float = List.nth bounds 1 in
        let typ : unt = $8 in 
        MathLib.upd_def dat name (fun x -> match x with
-       | MDefVar(d) -> d.ival <- IntervalLib.mk_ival min max; x
-       | MDefStVar(d) -> d.stvar.ival <- IntervalLib.mk_ival min max; x
+       | MDefVar(d) -> d.ival <- IntervalLib.mk_ival_from_floats min max; x
+       | MDefStVar(d) -> d.stvar.ival <- IntervalLib.mk_ival_from_floats min max; x
        );
        ()
    else
@@ -169,7 +169,7 @@ st:
        let max : float = List.nth bounds 1 in
        let typ : unt = $9 in 
        MathLib.upd_def dat name (fun x -> match x with
-       | MDefStVar(d) -> d.deriv.ival <- IntervalLib.mk_ival min max; x
+       | MDefStVar(d) -> d.deriv.ival <- IntervalLib.mk_ival_from_floats min max; x
        | _ -> error "def ddt mag []" "must be defined after relation"
        );
        ()

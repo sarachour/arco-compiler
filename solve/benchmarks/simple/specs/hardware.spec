@@ -46,7 +46,6 @@ comp iadd
     def I(Y) map linear scale=A offset=B2
 
     output Z{I:mA}
-    %def I(Z) mag=[?] mA
     %hardware to symbolic 
     def I(Z) imap linear scale=1/A offset=-(B1+B2)/A
     %symbolic to hardware 
@@ -84,6 +83,10 @@ end
 
 comp deriv_iadd
     map-var A B
+    
+    param EN_F : ? = {0,1}
+    param EN_B: ? = {0,1}
+
     input X {I:mA}
     def I(X) mag=[0,1] mA
     def I(X) map linear scale=A offset=B
@@ -97,7 +100,7 @@ comp deriv_iadd
     
     output Z {I:mA}
    
-    rel ddt I(Z) = I(X) - I(P)*I(Z) init I(Z0)
+    rel ddt I(Z) = EN_F*I(X) - EN_B*I(P)*I(Z) init I(Z0)
     var ddt I(Z) = I(Z)*0.00001 shape GAUSS
 
     def I(Z) mag = [0,1] mA

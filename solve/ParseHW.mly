@@ -380,7 +380,7 @@ digital:
          let max : float = (List.nth bound 1) in 
          HwLib.upd_defs dat (fun b -> match b with
             | HWDAnalog(d) ->
-              d.ival <- IntervalLib.mk_ival min max; b
+              d.ival <- IntervalLib.mk_ival_from_floats min max; b
            ) cname port
       else error "def digital mag" "not exactly two numbers to define bounds."
   }
@@ -566,9 +566,9 @@ comp:
          let max :float =  (List.nth bound 1) in
          HwLib.upd_defs dat (fun b -> match b with
             | HWDAnalog(d) ->
-              d.ival <- IntervalLib.mk_ival min max; HWDAnalog(d) 
+              d.ival <- IntervalLib.mk_ival_from_floats min max; HWDAnalog(d) 
             | HWDAnalogState(d) ->
-              d.stvar.ival <- IntervalLib.mk_ival min max; HWDAnalogState(d)
+              d.stvar.ival <- IntervalLib.mk_ival_from_floats min max; HWDAnalogState(d)
             ) comp port;
          ()
       else error "def mag" "there are >/< two numbers defining the bounds"
@@ -582,7 +582,7 @@ comp:
          let max =  (List.nth bound 1) in
         HwLib.upd_defs dat (fun b -> match b with
             | HWDAnalogState(d) ->
-            d.deriv.ival <- IntervalLib.mk_ival min max; b) comp port;
+            d.deriv.ival <- IntervalLib.mk_ival_from_floats min max; b) comp port;
          ()
       else error "def ddt mag" "there are >/< two numbers defining the bounds"
   }

@@ -2,19 +2,34 @@ open AST
 open Util
 (* Spanning Variables *)
 type bound_dir = QDPositive | QDNegative
+(*simple, canonical bound*)
+
 type bound =
   | BNDInf of bound_dir
-  | BNDZero
-  | BNDNum of bound_dir*float
-  | BNDVar 
-  | BNDNums of float list
+  | BNDNum of float
 
-type interval = {
+type interval_data = {
   min: bound;
   max: bound;
 }
 
+type interval_cstr =
+  | ICstrContains of float
+  | ICstrExcludes of float
+  | ICstrLowerBound of bound
+  | ICstrUpperBound of bound
+
+type interval =
+  | Interval of interval_data
+  | MixedInterval of interval_data list 
+  (*Quantization*)
+  | Quantize of float list
+  (*unknown upper bound*)
+  | IntervalUnknown of interval_cstr list
+
+
 type interval_ast = interval ast
+type canon_interval_ast = interval ast
 
 
 type mapvar = string

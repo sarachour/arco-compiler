@@ -584,6 +584,13 @@ struct
     in
     explore lst
 
+  let pairwise (type a) (type b) (type c) (alst:(a list)) (blst:(b list)) (fn:a->b->c) : c list =
+    List.fold_right (fun ael results->
+        List.fold_right (fun bel results ->
+            (fn ael bel)::results
+          ) blst results
+      ) alst []
+
 end
 
 type 'a ord_set_node = {

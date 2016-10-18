@@ -22,20 +22,29 @@ struct
       ival_abs= MAP.make();
     }
 
-  let mkdflt_ival () =
-    {min=BNDVar; max=BNDVar}
+  let mkdflt_ival () : interval =
+    IntervalUnknown([])
+
+  let is_undefined i = match i with
+    | IntervalUnknown(_) -> true
+    | _ -> false
 
   let bnd2str (s:bound) : string = match s with
     | BNDInf(QDPositive)-> "+inf"
     | BNDInf(QDNegative)-> "-inf"
-    | BNDZero -> "0"
-    | BNDNum(_,x) -> string_of_float x
-    | BNDNums(x) ->
-      "["^(List.fold_right (fun x r -> (string_of_float x)^","^r) x "")^"]"
-    | BNDVar -> "@"
+    | BNDNum(x) -> string_of_float x
 
-  let interval2str (v:interval) : string =
+  let intervaldata2str (v:interval_data) : string =
     "["^(bnd2str v.min)^","^(bnd2str v.max)^"]"
+
+  let interval2str (v:interval) : string = match v with
+    | Interval(i) -> intervaldata2str i
+    | MixedInterval(i) -> List.fold_right (fun x r ->
+        (intervaldata2str x)^" "^r) i ""
+    | Quantize(q) -> "{"^(List.fold_right (fun x r ->
+        (string_of_float x)^","^r) q "}")
+    | IntervalUnknown(_) -> "TODO"
+    | _ -> "UNIMPLEMENTED"
 
   let mapper2str (mpr:mapper) : string = match mpr with
     | MAPLinear(d) -> "@"^"*"^(ASTLib.ast2str (d.scale) ident)^
@@ -44,43 +53,45 @@ struct
     | MAPOffset(d) -> "@"^"+"^(ASTLib.ast2str d.offset ident)
     | MAPDirect -> "@"
 
+  let float_to_dir (n:float) : bound_dir =
+    if n >= 0. then QDPositive
+    else QDNegative
+
+
   let float_to_bound (n:float) : bound =
-    if n > 0. then BNDNum(QDPositive,n)
-    else if n < 0. then BNDNum(QDNegative,n)
-    else BNDZero
+    BNDNum(n)
 
   let floats_to_interval (n:float list) : interval =
-    {min=BNDNums(n);max=BNDNums(n)}
+    Quantize(n)
 
-  let mk_ival (min) max =
-    {min=float_to_bound min; max=float_to_bound max}
+  let mk_ival_data (min) max : interval_data =
+    {min=min; max=max}
 
+  let mk_ival min max : interval =
+    Interval(mk_ival_data min max)
+
+  let mk_ival_from_floats min max : interval =
+    mk_ival (float_to_bound min) (float_to_bound max)
 
   let float_to_interval (x:float) : interval =
-    mk_ival x x
+    mk_ival_from_floats x x
 
-
-  let is_undefined (a:interval) = match a.min,a.max with
-    | BNDVar,_ -> true
-    | _,BNDVar -> true
-    | _ -> false
 
   let get_direction (a:bound) : bound_dir option = match a with
-    | BNDNum(dir,_) -> Some dir
+    | BNDNum(v) -> Some (float_to_dir v) 
     | BNDInf(dir) -> Some dir
     | _ -> None
 
-  let contains_zero (a:interval) = match a.min,a.max with
-    | BNDZero,_ -> true
-    | _,BNDZero -> true
-    | BNDVar(_),_ -> error "contains_zero" "cannot determine"
-    | _,BNDVar(_) -> error "contains_zero" "cannot determine"
-    | _ ->
-      begin match get_direction a.min, get_direction a.max with
-        | Some QDNegative,Some QDPositive -> true
-        | _ -> false 
-      end
-  (*
+  let ival_data_contains_zero (a:interval_data) = match a.min,a.max with
+    | BNDNum(n),BNDNum(n2) -> n <= 0. && n2 >= 0.
+    | BNDNum(n),BNDInf(QDPositive) -> n <= 0.
+    | BNDInf(QDNegative),BNDInf(QDPositive) -> true
+    | _ -> false
+
+  let bound_is_zero (b:bound) = match b with
+    | BNDNum(n) -> n = 0.
+    | _ -> false
+(*
   let corners (a:interval) (b:interval) (f:float->float->float) =
     let base =
       [f a.min b.min; f a.min b.max; f a.max b.min; f a.max b.max] in
@@ -116,59 +127,137 @@ struct
   *)
 
 
- 
-  let cast_zero (x:bound) = match x with
-    | BNDZero -> BNDNum(QDPositive,0.)
-    | _ -> x
-
-  let coerce_zero (x:bound) = match x with
-    | BNDNum(adir,av) -> if av = 0. then BNDZero else x
-    | _ -> x
-
-  let min_bound (a:bound) (b:bound) = match cast_zero a,cast_zero b with
-    | BNDNum(adir,av) ,BNDNum(bdir,bv) -> if av < bv then a else b
+  let min_bound (a:bound) (b:bound) = match a,b with
+    | BNDNum(av) ,BNDNum(bv) -> if av < bv then a else b
     | _,BNDInf(QDNegative) -> BNDInf(QDNegative)
     | BNDInf(QDNegative),_ -> BNDInf(QDNegative)
     | _,BNDInf(QDPositive) -> a
     | BNDInf(QDPositive),_ -> b
+    | _ -> error "max_bound" "can only compute max of normalized"
 
 
-  let max_bound (a:bound) (b:bound) = match cast_zero a,cast_zero b with
-    | BNDNum(adir,av) ,BNDNum(bdir,bv) -> if av > bv then a else b
+  let max_bound (a:bound) (b:bound) = match a,b with
+    | BNDNum(av) ,BNDNum(bv) -> if av > bv then a else b
     | _,BNDInf(QDPositive) -> BNDInf(QDPositive)
     | BNDInf(QDPositive),_ -> BNDInf(QDPositive)
     | _,BNDInf(QDNegative) -> a
     | BNDInf(QDNegative),_ -> b
+    | _ -> error "max_bound" "can only compute max of normalized"
+    (*quantized vs continuous bound*)
 
-  let max_of_list (lst:bound list) : bound =
+  (*find the maximum of a list of bounds*)
+  let list_to_bound (lst:bound list) (f:bound->bound->bound): bound =
     match lst with
-    | h::t -> List.fold_right (fun bnd max -> max_bound bnd max) t h
-    | [] -> error "max_of_list" "list is empty"
+    | h::t -> List.fold_right (fun bnd max -> f bnd max) t h
+    | [] -> error "list_to_bound" "list is empty"
 
-  let min_of_list (lst:bound list) : bound =
-    match lst with
-    | h::t -> List.fold_right (fun bnd max -> min_bound bnd max) t h
-    | [] -> error "max_of_list" "list is empty"
+  let max_of_list (lst:bound list) = list_to_bound lst max_bound
+  let min_of_list (lst:bound list) = list_to_bound lst min_bound
+ 
+  (*
+     expand an interval to include 
+  *)
+  let expand_interval (a:interval) (b:bound) : interval = match a,b with
+    | Quantize(els), BNDNum(res_el) ->
+      Quantize(res_el::els)
+    | Quantize(els), BNDInf(QDPositive) ->
+      mk_ival (BNDNum (MATH.min els)) (BNDInf(QDPositive))
+    | Quantize(els), BNDInf(QDNegative) ->
+      mk_ival (BNDInf(QDNegative)) (BNDNum(MATH.max els))
+    | Interval(ival),bnd ->
+      mk_ival (min_bound (ival.min) bnd) (max_bound (ival.max) bnd)
+    | MixedInterval(ival),_ ->
+      error "expand_interval" "unclear how to expand mixed interval"
+    (*add constraints to interval*)
+    | IntervalUnknown(cstrs),BNDNum(res_el) ->
+      IntervalUnknown((ICstrContains(res_el))::cstrs)
+    | IntervalUnknown(cstrs),BNDInf(QDNegative) ->
+      IntervalUnknown((ICstrLowerBound(BNDInf QDNegative))::cstrs)
+    | IntervalUnknown(cstrs),BNDInf(QDPositive) ->
+      IntervalUnknown((ICstrUpperBound(BNDInf QDPositive))::cstrs)
+
+  let _quant_quant_compute_interval (a:float list) (b:float list)
+      (compute:bound->bound->bound): interval =
+    List.fold_right (fun (a_el:float) (res:interval) ->
+        List.fold_right (fun (b_el:float) (res:interval) ->
+            let res_el : bound =
+              compute (BNDNum a_el) (BNDNum b_el) in
+            expand_interval res res_el
+          ) a res) b (Quantize [])
+
+  let _quant_ival_compute_interval (a:float list) (b:interval_data)
+      (compute:bound->bound->bound): interval =
+    let intervals : interval_data list =
+      List.map (fun (a_el:float) ->
+        let corners : bound list= [
+          compute (BNDNum a_el) (b.min);
+          compute (BNDNum a_el) (b.max);
+        ] in
+        mk_ival_data (min_of_list corners) (max_of_list corners)
+      ) a
+    in
+    MixedInterval(intervals)
+
+  let _quant_ivals_compute_interval (a:float list) (b:interval_data list)
+    (compute:bound->bound->bound) : interval =
+    let intervals: interval_data list =
+      List.fold_right (fun ival res ->
+          match _quant_ival_compute_interval a ival compute with
+          | MixedInterval(data) -> data @ res
+          | _ -> error "_quant_ivals_compute_interval" "unexpected")
+        b []
+    in
+    MixedInterval(intervals)
+
+  let _ival_ival_compute_interval (a:interval_data) (b:interval_data)
+      (compute:bound->bound->bound) : interval =
+    error "error" "unimpl"
+
+  let _ival_ivals_compute_interval (a:interval_data ) (b:interval_data list)
+      (compute:bound->bound->bound) : interval =
+    error "error" "unimpl"
+
+  let _ivals_ivals_compute_interval (a:interval_data list) (b:interval_data list)
+      (compute:bound->bound->bound) : interval =
+    error "error" "unimpl"
 
 
-  let _rule_of_x (a:interval) (b:interval) (compute:bound->bound->bound): interval =
-    let corners = [compute a.min b.min; compute a.min b.max;
-                   compute a.max b.min; compute a.max b.max] in
-    let max = max_of_list corners in
-    let min = min_of_list corners in
-    {min=min;max=max}
 
+  let _compute_interval (a:interval) (b:interval)
+      (compute:bound->bound->bound): interval =
+    let order a b = match a,b with
+      | _, Quantize(x) -> b,a
+      | _, Interval(x) -> b,a
+      | _ -> a,b
+    in
+    match order a b with
+    (*quantize is always first*)
+    | Quantize(alst),Quantize(blst) ->
+      _quant_quant_compute_interval alst blst compute 
+    | Quantize(alst),Interval(blst) ->
+      _quant_ival_compute_interval alst blst compute
+    | Quantize(alst),MixedInterval(blst) ->
+      _quant_ivals_compute_interval alst blst compute
+    (* interval computation *)
+    | Interval(blst),Interval(alst) ->
+      _ival_ival_compute_interval alst blst compute
+    | Interval(alst),MixedInterval(blst) ->
+      _ival_ivals_compute_interval alst blst compute
+    (*interval collection computation*)
+    | MixedInterval(alst),MixedInterval(blst) ->
+      _ivals_ivals_compute_interval alst blst compute
+    | _ -> error "_compute_interval" "unimplemented"
 
-  let bound_sum (a:bound) (b:bound) : bound = match cast_zero a,cast_zero b with
-    | BNDNum(adir,av),BNDNum(bdir,bv) -> float_to_bound (av +. bv)
+  let bound_sum (a:bound) (b:bound) : bound = match a,b with
+    | BNDNum(av),BNDNum(bv) -> float_to_bound (av +. bv)
     | BNDInf(adir),BNDInf(bdir) -> if adir = bdir then a
       else error "bound_sum" "cannot add two infinities"
     | BNDInf(_),_ -> a
     | _,BNDInf(_) -> b
     | _ -> error "bound_sum" "unimplemented"
 
-  let bound_sub (a:bound) (b:bound) : bound = match cast_zero a,cast_zero b with
-    | BNDNum(adir,av),BNDNum(bdir,bv) -> float_to_bound (av -. bv)
+  let bound_sub (a:bound) (b:bound) : bound = match a,b with
+    | BNDNum(av),BNDNum(bv) -> float_to_bound (av -. bv)
     | BNDInf(adir),BNDInf(bdir) -> if adir = bdir then a
       else error "bound_sub" "cannot sub two infinities"
     | BNDInf(_),_ -> a
@@ -182,14 +271,14 @@ struct
         | QDNegative,QDNegative -> (QDPositive)
         | _ -> (QDNegative)
     in
+    if bound_is_zero a || bound_is_zero b then BNDNum(0.)
+    else
     match a,b with
-    | BNDNum(adir,av),BNDNum(bdir,bv) -> BNDNum(derive_dir adir bdir,av *. bv)
-    | BNDNum(adir,_),BNDInf(bdir) -> BNDInf(derive_dir adir bdir)
-    | BNDInf(adir),BNDNum(bdir,_) -> BNDInf(derive_dir adir bdir)
+    | BNDNum(av),BNDNum(bv) ->
+      BNDNum(av *. bv)
+    | BNDNum(av),BNDInf(bdir) -> BNDInf(derive_dir bdir (float_to_dir av))
+    | BNDInf(adir),BNDNum(bv) -> BNDInf(derive_dir adir (float_to_dir bv))
     | BNDInf(adir),BNDInf(bdir) -> BNDInf(derive_dir adir bdir)
-    | BNDZero,_ -> BNDZero
-    | _,BNDZero -> BNDZero
-    | _ -> error "bound_prod" "cannot bound variable"
 
   let bound_div (num:bound) (denom:bound): bound =
     let derive_dir adir bdir = match adir,bdir with
@@ -198,22 +287,26 @@ struct
         | _ -> (QDNegative)
     in
     match num,denom with
-    | BNDNum(adir,av),BNDNum(bdir,bv) -> float_to_bound (av /. bv)
-    | BNDNum(_),BNDInf(_) -> BNDZero
-    | BNDNum(adir,_),BNDZero(_) -> BNDInf(adir)
-    | BNDZero,BNDZero -> error "bound_div" "0/0 = NaN"
-    | BNDZero,_ -> BNDZero
-    | BNDInf(adir),BNDNum(bdir,_) -> BNDInf(derive_dir adir bdir)
-    | BNDInf(adir),BNDInf(bdir) -> error "bound_div" "inf/inf = NaN"
+    | BNDNum(av),BNDNum(bv) ->
+      begin
+        match bound_is_zero denom, bound_is_zero num with
+        | true,true -> error "bound_div" "0/0 = NaN"
+        | true,false -> BNDNum(0.)
+        | false,true -> BNDInf(float_to_dir av)
+        | _ -> BNDNum (av /. bv)
+      end
+    | BNDNum(_),BNDInf(_) ->BNDNum(0.)
+    | BNDInf(adir),BNDNum(bv) -> BNDInf(derive_dir adir (float_to_dir bv))
+    | BNDInf(adir),BNDInf(bv) -> error "bound_div" "inf/inf = NaN"
     | _ -> error "bound_div" "unimplemented"
 
-  let rule_sum (a:interval) (b:interval) : interval = _rule_of_x a b bound_sum
+  let rule_sum (a:interval) (b:interval) : interval = _compute_interval a b bound_sum
 
-  let rule_prod (a:interval) (b:interval) = _rule_of_x a b bound_prod
+  let rule_prod (a:interval) (b:interval) = _compute_interval a b bound_prod
 
-  let rule_sub (a:interval) (b:interval) : interval = _rule_of_x a b bound_sub
+  let rule_sub (a:interval) (b:interval) : interval = _compute_interval a b bound_sub
 
-  let rule_div (a:interval) (b:interval) : interval = _rule_of_x a b bound_div
+  let rule_div (a:interval) (b:interval) : interval = _compute_interval a b bound_div
 
   let rule_power (a:interval) (b:interval) : interval =
     error "rule" "pow unimplemented"
