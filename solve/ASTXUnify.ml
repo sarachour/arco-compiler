@@ -94,15 +94,24 @@ end
 
 module ASTUnifyTree =
 struct
- let apply_step (type a) (s:rtbl) (st:rstep) =
-  match st with
-    | _ -> error "apply" "unimplemented" 
-  
+ let apply_step (type a) (s:rtbl) (st:rstep) : rtbl =
+   begin
+     match st with
+    | RAddParAssign(vr,asgn) ->
+      ConcCompLib.conc_param s.hwstate.cfg vr asgn
+    | _ -> error "apply" "unimplemented"
+   end;
+   s 
  
 
- let unapply_step (type a) (s:rtbl) (st:rstep) =
-  match st with
-    | _ -> error "unapply" "unimplemented"
+ let unapply_step (type a) (s:rtbl) (st:rstep) : rtbl =
+   begin
+    match st with
+      | RAddParAssign(vr,asgn) ->
+        ConcCompLib.abs_param s.hwstate.cfg vr 
+      | _ -> error "unapply" "unimplemented"
+   end;
+   s
 
  let step2str (a:rstep) = match a with
   | RAddParAssign(vr,asgn) ->
@@ -174,6 +183,7 @@ struct
       mstate = math_st;
       target=TRGNone;
     } in
+    SearchLib.setroot search tbl [];
     {
       tbl=tbl;
       search=search;
@@ -207,10 +217,12 @@ struct
       mstate = math_st;
       target=TRGNone;
     } in
+    SearchLib.setroot search tbl [];
     {
       tbl=tbl;
       search=search;
     }
+
   (*make search tree*)
    (*
   let mksearch (type a) (targ_var: a) (templs_e: (a rarg) list) (targs_e: (a rarg) list)

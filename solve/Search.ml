@@ -182,7 +182,7 @@ struct
   let add_step (type a) (type b) (sr:(a,b) ssearch) (s:a) =
     match sr.scratch with
     | Some(b) -> b.s <- s::b.s
-    | None -> error "add_step" "cannot add step to no node"
+    | None -> error "add_step" "cannot add step to node"
 
   let add_steps (type a) (type b) (sr:(a,b) ssearch) (st:a list) =
     let _ = List.iter (fun x -> add_step sr x) st in
@@ -409,7 +409,7 @@ struct
 
 
   let mknode_from_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
-    mknode sr;
+    start sr;
     add_steps sr sts;
     commit sr env
 
