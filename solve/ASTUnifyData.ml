@@ -28,6 +28,7 @@ type hwcomp_state = {
   comp: hwvid hwcomp;
   cfg: hwcompcfg;
   target: string;
+  inst: int option;
   (*disable*)
   mutable disabled: (string,hwvarcfg list) map;
   (* the state *)
@@ -40,7 +41,7 @@ type math_state = {
 
 type unify_targ =
   | TRGMathVar of string
-  | TRGHWVar of hwvid*(mid ast)
+  | TRGHWVar of hwvid*(unid ast)
   | TRGNone
 
 (*the dynamics must match*)

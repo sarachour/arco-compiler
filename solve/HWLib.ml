@@ -272,6 +272,11 @@ struct
       MAP.get c.params iname
 
 
+  let comp_isstvar comp iname =
+    let v = comp_getvar comp iname in
+    match v.bhvr with
+    | HWBAnalogState(_) -> true
+    | _ -> false
 
   let getins e cname =
     let c = getcomp e cname in
@@ -311,6 +316,10 @@ struct
     else
       error "comp_port_to_hwid" "unknown variable"
 
+
+  let mkcompid (x:hwcompname) (i:int option) = match i with
+    | Some(inst) -> HCMGlobal({name=x;inst=inst})
+    | None -> HCMLocal(x)
 
   let var2id (v:'a hwportvar) : hwvid =
     HNPort(v.knd,HCMLocal(v.comp),v.port,v.prop)

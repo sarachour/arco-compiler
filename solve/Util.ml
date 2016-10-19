@@ -355,6 +355,12 @@ struct
   let filter (type a) (s:a stack) (f:a->bool) : a list =
     List.filter f (REF.dr s)
 
+  let fold (type a) (type b)(s:a stack) (f:a->b->b) (x0:b) : b =
+    List.fold_right f (REF.dr s) x0
+
+  let iter (type a) (s:a stack) (f:a->unit) : unit =
+    List.iter f (REF.dr s)
+
   let has (type a) (s:a stack) (x:a) : bool =
     match filter s (fun q -> q = x) with
     | [] -> false

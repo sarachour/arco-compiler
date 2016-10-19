@@ -339,7 +339,7 @@ struct
   | RAddInAssign(vr,asgn) ->
         "+inp-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
   | RDisableAssign(vr,rhs) ->
-    "-asgn"^(vr)^"="^"TODO"
+    "-asgn"^(vr)^"="^(ASTLib.ast2str rhs unid2str)
 
  let order_steps a b = 0
 
@@ -380,6 +380,7 @@ struct
     let hw_st : hwcomp_state = {
       env=hwenv;
       comp=comp.d;
+      inst=Some(comp.inst);
       target=hvar;
       cfg=comp.cfg;
       disabled=MAP.make();
@@ -413,6 +414,7 @@ struct
     let hw_st : hwcomp_state = {
       env=hwenv;
       comp=comp.d;
+      inst=None;
       target=hvar;
       cfg=ConcCompLib.mkhwcompcfg ();
       disabled=MAP.make();
@@ -1438,13 +1440,238 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
+  let mkcompid (s:runify)  =
+    HwLib.mkcompid s.tbl.hwstate.comp.name s.tbl.hwstate.inst
+
+  let find_entanglements s assigns : (string*unid ast) list =
+    let hwstate = s.tbl.hwstate in
+    let cmpid = mkcompid s in 
+    let get_port_from_id (x:unid) : hwvkind*string = match x with
+      | HwId(HNPort(knd,cmp,port,prop)) ->
+        if cmp = cmpid then knd,port else
+          error "get_port_from_id" "can only set properties inside component"
+      | _ ->
+        error "get_port_from_id" "can only set hardware ports"
+    in
+    let get_entanglement lhs rhs =
+      let mrhs = uast2mast rhs in
+      match (get_port_from_id lhs) with
+      | HWKInput,port -> None
+      | HWKOutput,port ->
+        if ConcCompLib.is_conc hwstate.cfg port = false
+        then Some port
+        else error "get_entanglement" "cannot re-assign variable"
+
+    in
+    List.fold_right (fun (lhs,rhs) (lst:(string*unid ast) list) ->
+        match get_entanglement lhs rhs with
+        | Some(v) -> (v,rhs)::lst
+        | _ -> lst
+      ) assigns []
+
+  type unify_expr =
+    (*entangled with another math variable*)
+    | UNIMathVar of string
+    (*entangled with an expression of math variables*)
+    | UNIMathExpr of mid ast
+    (*entangled with another state variable*)
+    | UNIUnunifiable of unid ast
+
+  type unify_assign = {
+    port: string;
+    expr: unify_expr;
+  }
+
+  (*concretization stack*)
+  type unify_op = {
+    steps:rstep list;
+    entang:unify_assign list;
+    rslvd:unify_assign list;
+  }
+  type unify_ctx = (unify_op) stack
+  let mkunifyctx () = STACK.make()
+
+  let unifyassign2str (e:unify_assign) =
+    let estr = match e.expr with
+      | UNIMathExpr(e) -> "math-expr "^(ASTLib.ast2str e mid2str)
+      | UNIMathVar(v) -> "math-var "^v
+      | UNIUnunifiable(e) -> "deadend "^(ASTLib.ast2str e unid2str)
+    in
+    e.port^" = "^estr
+
+  let op2str (op:unify_op) =
+    let str =
+       List.fold_right (fun x str ->
+          (ASTUnifyTree.step2str x)^"\n"^str) op.steps ""
+    in
+    let str = List.fold_right (fun x str ->
+        "entg "^(unifyassign2str x)^"\n"^str) op.entang str
+    in
+    let str = List.fold_right (fun x str ->
+        "rslv "^(unifyassign2str x)^"\n"^str) op.rslvd str
+    in
+    str
+
+  let ctx2str (ctx:unify_ctx) =
+    STACK.fold ctx (fun el str ->
+        str^"\n"^(op2str el)^"---------\n"
+      ) "== CTX =="
+
+ 
+  (*get all the resolved entanglements*)
+  let get_resolutions (ctx:unify_ctx) :(string,unify_assign) map =
+    let rsls = MAP.make () in
+    STACK.iter ctx (fun (op:unify_op)  ->
+        List.iter (fun r ->
+            noop (MAP.put rsls r.port r)
+          ) op.rslvd;
+         ()
+    );
+    rsls
+
+ 
+  let get_entanglements (ctx:unify_ctx) :(string,unify_assign) map =
+    let ents = MAP.make () in
+    let rslvd = get_resolutions ctx in 
+    STACK.iter ctx (fun (op:unify_op)  ->
+        List.iter (fun ent ->
+            if MAP.has rslvd ent.port then
+              ()
+            else
+              noop (MAP.put ents ent.port ent )
+          ) op.entang;
+         ()
+    );
+    ents
+
+  (*unifying an output hwvar with...*)
+  let uast_to_unify_expr (st:runify) (port:string) (a:unid ast) : unify_expr =
+    let mstate = st.tbl.mstate and hwstate = st.tbl.hwstate in
+    match a with
+    (*unifying with an input variable. This is un-unifiable*)
+    | Term(MathId(MNVar(MInput,name))) -> UNIUnunifiable(a)
+    (*unifying with an output variable*)
+    | Term(MathId(MNVar(MOutput,name))) ->
+      begin
+      match MathLib.isstvar mstate.env name, HwLib.comp_isstvar hwstate.comp port with
+      | true,true -> UNIMathVar(name)
+      | false,false -> UNIMathVar(name)
+      | _ -> UNIUnunifiable(a)
+      end
+    | expr -> UNIMathExpr(uast2mast expr)
 
 
-  let unify_math_var (st:runify) (mvar) =
+  (*given the configuration, find any entanglements, negating the already resolved ones*)
+  let addctx_derive_entanglements (st:runify) (ctx:unify_ctx)
+      (asgns:(string*unid ast) list) (new_rslvd:unify_assign list) =
+    let resolved = get_resolutions ctx in
+    let is_resolved ovar oexpr : bool =
+      if MAP.has resolved ovar then
+        if (MAP.get resolved ovar).expr = oexpr then
+          true
+        else
+          error "addctx_derive_entanglements" "cannot add entanglement when variable has been reoslved"
+      else
+        LIST.fold new_rslvd (fun x found ->
+          if ovar = x.port && oexpr = x.expr
+          then true else found
+        ) false
+    in
+    let is_output_port ovar =
+      (HwLib.comp_getvar st.tbl.hwstate.comp ovar).knd = HWKOutput
+    in
+    let entang = List.fold_right (fun (ovar,oexpr) (entangs) ->
+        let unify_expr = uast_to_unify_expr st ovar oexpr in
+        if is_resolved ovar unify_expr = false && is_output_port ovar then
+          ({port=ovar;expr=unify_expr}::entangs)
+        else
+          entangs   
+      ) asgns ([]) in
+    entang
+        
+  (*add assignments to the context*)
+  let addctx (st:runify) (ctx:unify_ctx)
+      (asgns:(string*unid ast) list) (new_rslvd:unify_assign list) : unify_ctx =
+    let to_step port expr :rstep =
+      match (HwLib.comp_getvar st.tbl.hwstate.comp port).knd with
+      | HWKInput -> RAddInAssign(port,ConcCompLib.mkvarcfg expr)
+      | HWKOutput -> RAddOutAssign(port,ConcCompLib.mkvarcfg expr)
+    in
+    let entang = addctx_derive_entanglements st ctx asgns new_rslvd in 
+    let steps : rstep list = List.map (fun (port,expr) ->
+        let stp = to_step port expr in
+        ASTUnifyTree.apply_step st.tbl stp;
+        stp
+      ) asgns
+    in
+    let op : unify_op = {steps=steps;entang=entang;rslvd=new_rslvd} in
+    STACK.push ctx op;
+    ctx
+
+  (*remove the last set of assignments*)
+  let popctx (st:runify) (ctx:unify_ctx) =
+    let op : unify_op = STACK.peek ctx in
+    List.iter (fun step ->
+        ASTUnifyTree.unapply_step st.tbl step;
+        ()
+      ) op.steps;
+    STACK.pop ctx;
+    ctx
+
+  (*entanglements*)
+
+  let ctx_backtrack_ununifiable (st:runify) (ctx:unify_ctx) =
+    error "ctx_backtrack_ununifiable" "unimpl"
+
+  let ctx_backtrack_no_solution (st:runify) (ctx:unify_ctx) =
+    error "ctx_backtrack_no_solution" "unimpl"
+
+
+  let ctx_unsolvable (st:runify) (ctx:unify_ctx) =
+    let entang = get_entanglements ctx in
+    (List.length
+       (MAP.filter entang (fun k v -> match v.expr with
+            | UNIUnunifiable(_) -> true | _ -> false)) 
+    ) > 0
+
+  let unify_expr (st:runify) (expr:unid ast) = 
+    error "unify_expr" "unimpl"
+
+  let strip_port_from_list st (lst:(unid*unid ast) list) : (string*unid ast) list =
+    let hcmp = mkcompid st in 
+    let strip_port_from_id x = match x with
+      | HwId(HNPort(k,cmp,port,prop)) -> if cmp = hcmp then
+          port else error "strip_port_from_Id" "cannot set another component's port"
+      | _ -> error "strip_port_from_Id" "cannot set another variable"
+    in
+    List.map (fun (k,v) -> (strip_port_from_id k,v)) lst
+
+  let unify_math_expr (st:runify) (port:string) (expr:mid ast) =
     let hwstate = st.tbl.hwstate and mstate = st.tbl.mstate in 
-    let hvar = HwLib.comp_getvar hwstate.comp hwstate.target in
-    let compid = (HCMLocal hwstate.comp.name) in 
-    ASTUnifySymcaml.make_symcaml_env st; 
+    let hvar = HwLib.comp_getvar hwstate.comp port in
+    let cmpid = mkcompid st in 
+    match hvar.bhvr with
+    | HWBAnalog(abhv) ->
+      let hexpru :unid ast =
+        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg abhv.rhs
+      in
+      let mexpru :unid ast= mast2uast
+          (MathLib.replace_params mstate.env expr)
+      in
+      ASTUnifySymcaml.unify st hexpru mexpru
+
+    | HWBDigital(_) ->
+      error "unify" "unify var with digital"
+    | _ ->
+      error "unify" "unify unsupported"
+
+
+  (*unify with math variable*)
+  let unify_math_var (st:runify) (port:string) (mvar:string) =
+    let hwstate = st.tbl.hwstate and mstate = st.tbl.mstate in 
+    let hvar = HwLib.comp_getvar hwstate.comp port in
+    let mvar = MathLib.getvar mstate.env mvar in 
+    let cmpid = mkcompid st in 
     match mvar.bhvr,hvar.bhvr with
     | MBhvVar(mbhv),HWBAnalog(abhv) ->
       error "unify" "unify var with analog"
@@ -1452,40 +1679,74 @@ struct
       let mexpru :unid ast= mast2uast
           (MathLib.replace_params mstate.env mbhv.rhs) in
       let hexpru :unid ast =
-        ConcCompLib.concrete_hwexpr compid hwstate.cfg abhv.rhs
+        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg abhv.rhs
       in
-      begin
-      match ASTUnifySymcaml.unify st hexpru mexpru with
-      | [] ->  error "unify" "there are no unifications"
-      | assigns ->
-        (*determine if there are conflicts*)
-        begin
-          match find_entanglements st assigns with
-          | Some(entanglements) ->
-            error "unify" "there exist some entanglements"
-          | None ->
-            error "unify" "no entanglements found"
-        end
-      end
+      ASTUnifySymcaml.unify st hexpru mexpru
+
     | MBhvVar(_),HWBDigital(_) ->
       error "unify" "unify var with digital"
     | _ ->
       error "unify" "unify unsupported"
 
+  (*recursively unify*) 
+  let rec unify_recurse (st:runify) (ctx:unify_ctx) =
+    let entangled = get_entanglements ctx in
+    if ctx_unsolvable st ctx then
+      begin
+        ctx_backtrack_ununifiable st ctx;
+        unify_recurse st ctx
+      end
+    else
+      match MAP.to_values entangled with
+      | ent::t ->
+        begin
+          debug ("solving entanglement: "^unifyassign2str ent);
+          let maybe_assigns = 
+              match ent.expr with
+                | UNIMathExpr(expr) ->
+                  unify_math_expr st ent.port expr 
+                | UNIMathVar(v) ->
+                  unify_math_var st ent.port v
+                | UNIUnunifiable(_) ->
+                  ctx_backtrack_ununifiable st ctx
+          in
+          begin
+          match maybe_assigns with
+            | Some(assigns) -> addctx st ctx (strip_port_from_list st assigns) [ent]
+            | None -> ctx_backtrack_no_solution st ctx
+          end;
+          debug (ctx2str ctx);
+          unify_recurse st ctx
+        end
+      | [] -> ctx
+
   let unify (env:runify) = 
     (* get concretized version of component with config substituted in*)
     (* get bhvr of hardware *)
+    let hwstate = env.tbl.hwstate in 
+    ASTUnifySymcaml.make_symcaml_env env;
+    let ctx = mkunifyctx () in 
     match env.tbl.target with
     | TRGMathVar(mname) ->
-      let mvar = MathLib.getvar env.tbl.mstate.env mname in
-      unify_math_var env mvar
+      begin
+        let mvar = MathLib.getvar env.tbl.mstate.env mname in
+        let rhs = Term(MathId(MathLib.var2mid mvar)) in
+        addctx env ctx [(hwstate.target,rhs)] [];
+        unify_recurse env ctx;
+        error "unify" "commit ctx to tree"
+      end
     | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
-      error "unify" "connect to an input port unimplemented"
+      addctx env ctx[(hwstate.target,expr)] [];
+      unify_recurse env ctx;
+      error "unify" "commit ctx to tree"
        
     | TRGHWVar(HNPort(HWKOutput,_,_,_),expr) ->
-      error "unify" "connect to an output port unimplemented"
-      
+      addctx env ctx[(hwstate.target,expr)] [];
+      unify_recurse env ctx;
+      error "unify" "commit ctx to tree"
+    | _ -> error "unify" "unhandled"
   (*============ UNIFY END ===================*)
+
   (*============ TREE START ===================*)
   (*select the next node to solve*)
   let solve (type a) (sr:runify) desired_nslns =
@@ -1543,7 +1804,7 @@ struct
     (*let _ = sysmenu "t" in*)
     ()
  
-  let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: mid ast)=
+  let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: unid ast)=
     env.tbl.target <- TRGHWVar(hvar,hexpr);
     ASTUnifyTree.init_root env;
     expand_params_tree env;
@@ -1556,7 +1817,7 @@ struct
     solve env 1
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
-      (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:mid ast) =
+      (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:unid ast) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
     unify_with_hwvar uenv h2var hexpr
 

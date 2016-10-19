@@ -129,6 +129,12 @@ struct
     | Some(t) -> t = name
     | None -> false
 
+  let isstvar e name =
+    let v = getvar e name in
+    match v.bhvr with
+    | MBhvStateVar(_) -> true
+    | _ -> false
+
   let str2mid e name =
     if isparam e name then
       let p = getparam e name in
