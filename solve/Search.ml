@@ -407,6 +407,12 @@ struct
       error "commit" "cannot commit new step with no parent."
     | _,_ -> error "commit" "cannot commit empty node."
 
+  let mknode_child_from_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
+    let c : a snode = cursor sr in
+    start sr;
+    add_steps sr sts;
+    commit sr env;
+    move_cursor sr env c
 
   let mknode_from_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
     start sr;

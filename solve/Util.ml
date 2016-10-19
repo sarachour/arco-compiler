@@ -346,10 +346,14 @@ struct
       | [] -> error "stack.pop" "failed to dequeue empty list"
     ) in s
 
-  let tail (type a) (s:a stack) : a stack =
-    match REF.dr s with
-    | h::t -> REF.mk t
-    | [] -> error "tail" "cannot take tail of one element stack"
+  let pop_bottom (type a) (s:a stack) : a stack =
+    let s_lst =  REF.dr s in
+    let rec _pop_bottom lst = match lst with
+      | h::h2::t -> h::(_pop_bottom (h2::t))
+      | [h] -> []
+      | [] -> error "tail" "cannot take tail of one element stack"
+    in
+    REF.mk (_pop_bottom s_lst)
 
   let peek (type a) (s:a stack) : a =
     match REF.dr s with

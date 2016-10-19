@@ -185,7 +185,8 @@ struct
       );
     MathLib.iter_vars mstate.env (fun (v:mid mvar) ->
         let vname = to_symvar s (MathId (MathLib.var2mid v)) in 
-         ()
+        decl_symvar vname;
+        ()
     );
     (*declare variable external to component*)
     noop (vtable_iter vtable (fun v st-> match st with
@@ -208,6 +209,7 @@ struct
   let print_assign (lhs:unid) (rhs:unid ast) =
     debug (" "^(unid2str lhs)^"="^(uast2str rhs))
 
+
   let unify (s:runify) (hwexpr:unid ast) (texpr:unid ast) =
     (*attempt unification*)
     let symenv = s.tbl.symenv in
@@ -216,6 +218,7 @@ struct
     print_unify symhwexpr symtexpr;
     let maybe_assigns =
       try
+        SymCaml.set_debug symenv.s true;
         SymCaml.pattern symenv.s symtexpr symhwexpr
       with PyCamlWrapperException(_) ->
         warn "[unify_term][exception] python exception";
@@ -227,6 +230,7 @@ struct
       Some (List.map (fun ((symlhs,symrhs):symvar*symexpr) ->
           let lhs = to_uvar s symlhs in
           let rhs = to_uast s symrhs in
+          debug "[unify][pattern]: <no solution>";
           print_assign lhs rhs;
           (lhs,rhs)
       ) assigns) 
@@ -242,11 +246,13 @@ module ASTUnifyTree =
 struct
   let remove_disabled (tbl:rtbl) v expr =
     let s = tbl.hwstate in 
-    let e = ConcCompLib.mkvarcfg expr in
+    let ecfg = ConcCompLib.mkvarcfg expr in
     if MAP.has s.disabled v then
       let dsbl = MAP.get s.disabled v in
-      let new_dsbl =
-        List.filter (fun curr_e -> curr_e != e) dsbl
+      let new_dsbl : hwvarcfg list =
+        List.filter (fun (curr_e:hwvarcfg) ->
+            curr_e.expr != ecfg.expr
+          ) dsbl
       in
       begin
       match new_dsbl with
@@ -744,11 +750,12 @@ struct
     unapply_ctx st ctx;
     UNIRESFailure(get_ununifiable ctx)
 
+  
   let ctx_no_solution (st:runify) (ctx:unify_ctx) =
-    let subseq_steps = STACK.fold (STACK.tail ctx) (fun ops lst ->
+    let subseq_steps = STACK.fold (STACK.pop_bottom ctx) (fun ops lst ->
         ops.steps @ lst ) []
     in
-    unapply_ctx st ctx;
+    (*enumerate all of the assignments that we should ban*)
     let assigns = List.fold_right (fun (s:rstep) (asgns:unify_assign list) -> match s with
         | RAddOutAssign(lhs,rhs) ->
           let unify_expr = uast_to_unify_expr st lhs (rhs.expr) in
@@ -759,6 +766,7 @@ struct
         | _ -> asgns
       ) subseq_steps []
     in
+    unapply_ctx st ctx;
     if List.length assigns = 0 then
       UNIRESCompleteFailure
     else
@@ -895,16 +903,28 @@ struct
     | UNIRESSuccess(steps) ->
       error "unify" "success. Add solution and randomly ban"
 
+    (*add child*)
     | UNIRESFailure(assigns) ->
       let restricts = List.map (fun x ->
           RDisableAssign(x.port,unifyexpr2uast env x.expr)
-        ) assigns in
-      SearchLib.mknode_from_steps env.search env.tbl restricts;
-      ()
+        ) assigns
+      in
+      let currnode :rnode = SearchLib.cursor env.search in
+      List.iter (fun restrict ->
+          SearchLib.mknode_child_from_steps env.search env.tbl [restrict];
+          ()
+      ) restricts
+
     | UNIRESCompleteFailure ->
       let currnode :rnode = SearchLib.cursor env.search in
-      noop (SearchLib.deadend env.search currnode env.tbl) 
+      noop (SearchLib.deadend env.search currnode env.tbl)
+
+
   (*============ UNIFY END ===================*)
+
+
+
+
 
   (*============ TREE START ===================*)
   (*select the next node to solve*)

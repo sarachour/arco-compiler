@@ -21,7 +21,8 @@ if [ "$CMD" = "test-slv" ]; then
 fi
 
 if [ "$CMD" = "run" ]; then
-  make && ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "$NAME".ckt
+  make && \
+    ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "$NAME".ckt
 fi
 
 

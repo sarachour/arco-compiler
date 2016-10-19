@@ -9,8 +9,11 @@ FLAGS=-use-ocamlfind -use-menhir -menhir "menhir --infer --explain"
 DEBUG_FLAGS=-cflag -g
 
 
+
 all: solver solver.debug
 
+config:
+	cd benchmarks/simple/configs; ./make_configs.sh
 
 interval:
 	cd interval; make
