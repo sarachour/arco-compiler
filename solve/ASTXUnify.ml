@@ -135,8 +135,15 @@ struct
     let symenv = s.tbl.symenv and hwstate = s.tbl.hwstate and mstate = s.tbl.mstate in
     let vtable : sym_vtable = mk_vtable  () in
     (*variable table*)
+    
+    let decl_symvar (vname:symvar) =
+        spydebug ("[env][decl] mvar "^vname);
+        vtable_declare vtable vname;
+        SymCaml.define_symbol symenv.s vname;
+        ()
+    in
     let use_vars_in_expr (e:symexpr) =
-      List.iter (fun v -> vtable_use vtable v) (SymExpr.get_vars e)
+      List.iter (fun vname -> decl_symvar vname) (SymExpr.get_vars e)
     in
     (*get list of disabled expressions*)
     let get_disabled (v: hwvid hwportvar) = 
@@ -165,9 +172,7 @@ struct
         | Some(conc_expr) -> use_vars_in_expr (to_symexpr s conc_expr)
         | None -> ()
       end;
-      spydebug ("[env][decl] var "^vname);
-      vtable_declare vtable vname;
-      SymCaml.define_symbol symenv.s vname;
+      decl_symvar vname;
       ()
     in
     SymCaml.clear symenv.s;
@@ -180,10 +185,7 @@ struct
       );
     MathLib.iter_vars mstate.env (fun (v:mid mvar) ->
         let vname = to_symvar s (MathId (MathLib.var2mid v)) in 
-        spydebug ("[env][decl] mvar "^vname);
-        vtable_declare vtable vname;
-        SymCaml.define_symbol symenv.s vname;
-        ()
+         ()
     );
     (*declare variable external to component*)
     noop (vtable_iter vtable (fun v st-> match st with
@@ -743,6 +745,7 @@ struct
 
   let ctx_no_solution (st:runify) (ctx:unify_ctx) =
     let entang = get_entanglements ctx in
+    unapply_ctx st ctx;
     UNIRESFailure(MAP.to_values entang)
 
   let ctx_unified (st:runify) (ctx:unify_ctx) =
