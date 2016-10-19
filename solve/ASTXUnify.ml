@@ -233,73 +233,6 @@ struct
       None
 
 
-(*
-  (*apply the state to syncaml*)
-  let apply_state (type a) (s: a runify) : ((a, a ast*a rkind) map)*((a, a ast*a rkind) map) =
-    let var2symvar = g_conv s.tbl in
-    let expr2symexpr x : symexpr = ASTLib.to_symcaml x (g_conv s.tbl) in
-    (*calculate how many bound switches you have*)
-    let decl_wild (v:symvar) (bans:symexpr list) =
-        let ban_str = LIST.fold bans (fun x str -> str^","^(SymExpr.expr2str x)) v in 
-        let _ = spydebug ("[env][decl] wild "^(v)^" != "^ban_str) in
-        let _ = SymCaml.define_wildcard (g_sym s.tbl) v bans in ()
-    in
-    let decl_sym (v:symvar) = let _ =
-        let _ = spydebug ("[env][decl] sym "^(v)) in
-        SymCaml.define_symbol (g_sym s.tbl) v in ()
-    in
-    let _ = spydebug "[env] == state ===" in
-    let _ = SymCaml.clear (g_sym s.tbl) in
-    (*let _ = SymCaml.set_debug (g_sym s.tbl) true in*)
-    (*create replacement tables*)
-    let add_wild (set:(symvar*(symexpr list)) set) (v:a) =
-      let bans =
-        if MAP.has (g_bans s.tbl) v then
-          let bans = SET.map (MAP.get (g_bans s.tbl) v) (fun x -> x) in
-          bans
-        else []
-      in
-      let symbans : symexpr list = List.map (fun (x) -> expr2symexpr x) bans in
-      let _ = if SET.has set (var2symvar v,symbans) = false then
-        ret (SET.add set (var2symvar v, symbans)) () in
-      ()
-    in
-    let add_sym (set:symvar set) (v:a) =
-      let var2symvar = g_conv s.tbl in
-      let _ = if SET.has set (var2symvar v) = false then ret (SET.add set (var2symvar v)) () in ()
-    in
-    (*actual conversion routine*)
-    let scratch_targ = MAP.make () and scratch_templ = MAP.make () in
-    let sym_vars = SET.make_dflt () and wc_vars = SET.make_dflt () in
-    let add_vars lhs (rhs:a ast) kind (iswc:bool)=
-      let addvar q = if iswc && (s.tbl.env).is_wc q
-        then add_wild wc_vars q
-        else add_sym sym_vars q
-      in
-      let _ = addvar lhs in
-      let _ = List.iter (fun q -> addvar q) (ASTLib.get_vars rhs) in
-      let _ = match kind with 
-      | RKDeriv(ICVar(v)) -> addvar v 
-      | _ -> ()
-      in 
-      ()
-    in
-    (*add exprs*)
-    let add_expr scratch v rhs (kind:a rkind) (iswc:bool) (addvars:bool)= 
-      let _ = if addvars then add_vars v rhs kind iswc else () in
-      let _ = MAP.put scratch v (rhs,kind) in
-      let _ = spydebug ("ENV add: "^(s.tbl.tostr v)^" = "^(ASTLib.ast2str rhs s.tbl.tostr)^"") in
-      ()
-    in
-    (*define default values*)
-    (*add original variables*)
-    let _ = MAP.iter (g_info s.tbl UTypTarg).info (fun v data ->add_expr scratch_targ v data.rhs data.kind  false true) in
-    let _ = MAP.iter (g_info s.tbl UTypTempl).nodep (fun v data ->add_expr scratch_templ v data.rhs data.kind true true) in
-    (*declare variables*)
-    let _ = SET.iter sym_vars (fun x -> decl_sym  x) in
-    let _ = SET.iter wc_vars (fun (x,bans) -> decl_wild  x bans) in
-    (scratch_templ,scratch_targ)
-    *) 
 
 end
 
@@ -345,7 +278,6 @@ struct
         ConcCompLib.conc_in s.hwstate.cfg vr asgn
       | RDisableAssign(vr,asgn) ->
         add_disabled s vr asgn 
-      | _ -> error "apply" "unimplemented"
     end;
     s 
 
@@ -361,7 +293,6 @@ struct
           ConcCompLib.abs_in s.hwstate.cfg vr 
         | RDisableAssign(vr,expr) ->
           remove_disabled s vr expr
-        | _ -> error "unapply" "unimplemented"
     end;
     s
 
@@ -373,7 +304,7 @@ struct
     | RAddInAssign(vr,asgn) ->
           "+inp-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
     | RDisableAssign(vr,rhs) ->
-      "-asgn"^(vr)^"="^(ASTLib.ast2str rhs unid2str)
+          "-asgn "^(vr)^"="^(ASTLib.ast2str rhs unid2str)
 
   let order_steps a b = 0
 
@@ -401,6 +332,7 @@ struct
       | "uniform" -> score_uniform
       | "random" -> score_random
       | "bans" -> score_bans
+      | _ -> error "get_score" "unknown strategy"
 
     let is_wildcard (comp:hwcomp_state) (vr:unid) = match vr with
       | HwId(HNPort(_,HCMLocal(hname),hwport,_)) -> true
@@ -778,8 +710,15 @@ struct
     STACK.pop ctx;
     ctx
 
+  let rec clear_ctx (st:runify) (ctx:unify_ctx) =
+    if STACK.size ctx > 0 then
+      begin
+      popctx st ctx;
+      clear_ctx st ctx
+      end
+    else
+      ()
   (*entanglements*)
-
   let get_ununifiable (ctx:unify_ctx) : unify_assign list =
     let entang = get_entanglements ctx in
     MAP.fold entang (fun k v lst -> match v.expr with
@@ -795,9 +734,7 @@ struct
     let steps = STACK.fold ctx (fun ops lst ->
         ops.steps @ lst) []
     in
-    List.iter (fun x ->
-        noop (ASTUnifyTree.unapply_step st.tbl x)
-      ) steps;
+    clear_ctx st ctx;
     steps
 
   let ctx_ununifiable (st:runify) (ctx:unify_ctx) =
