@@ -268,21 +268,21 @@ typ:
   | QMARK {UVariant}
 
 map_strategy:
-  | LINEAR SCALE EQ map_expr OFFSET EQ map_expr {
-    let scale_expr : mapvar ast = $4 in
-    let offset_expr : mapvar ast = $7 in
+  | SCALE EQ map_expr OFFSET EQ map_expr {
+    let scale_expr : mapvar ast = $3 in
+    let offset_expr : mapvar ast = $6 in
     let data = {scale=scale_expr; offset=offset_expr} in 
     MAPLinear(data)
   }
 
-  | SCALE map_expr {
-      let scale_expr : mapvar ast = $2 in
+  | SCALE EQ map_expr {
+      let scale_expr : mapvar ast = $3 in
       let data = {scale=scale_expr} in
       MAPScale(data)
   }
 
-  | OFFSET map_expr {
-      let offset_expr : mapvar ast =$2 in
+  | OFFSET EQ map_expr {
+      let offset_expr : mapvar ast =$3 in
       let data = {offset=offset_expr} in
       MAPOffset(data)
   }

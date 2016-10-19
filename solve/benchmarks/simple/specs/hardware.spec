@@ -25,7 +25,7 @@ end
 digital output I
     input X {I:mA}
     def I(X) mag=[0,1] mA
-    def I(X) map linear scale=A offset=B
+    def I(X) map scale=A offset=B
 
     output O {D:bits}
     def D(O) repr=SEEEMMMM
@@ -39,17 +39,17 @@ comp iadd
 
     input X {I:mA}
     def I(X) mag=[0,1] mA
-    def I(X) map linear scale=A offset=B1
+    def I(X) map scale=A offset=B1
 
     input Y {I:mA}
     def I(Y) mag=[0,1] mA
-    def I(Y) map linear scale=A offset=B2
+    def I(Y) map scale=A offset=B2
 
     output Z{I:mA}
     %hardware to symbolic 
-    def I(Z) imap linear scale=1/A offset=-(B1+B2)/A
+    def I(Z) imap scale=1/A offset=-(B1+B2)/A
     %symbolic to hardware 
-    def I(Z) map linear scale=A offset=(B1+B2)
+    def I(Z) map scale=A offset=(B1+B2)
     
     rel I(Z) = I(X) + I(Y)
     var I(Z) = I(Z)*0.00001 shape GAUSS
@@ -61,19 +61,19 @@ comp imul
 
     input X {I:mA}
     def I(X) mag=[0,1] mA
-    def I(X) map scale A1
+    def I(X) map scale=A1
 
     input Y {I:mA}
     def I(Y) mag=[0,1] mA
-    def I(Y) map scale A2
+    def I(Y) map scale=A2
 
     input Z {I:mA}
     def I(Z) mag=[0.0001,1] mA
-    def I(Z) map scale A3
+    def I(Z) map scale=A3
 
     output W {I:mA}
-    def I(W) imap scale A3/(A1+A2)
-    def I(W) map scale (A1+A2)/A3
+    def I(W) imap scale=A3/(A1+A2)
+    def I(W) map scale=(A1+A2)/A3
 
     rel I(W) = ((I(X)*I(Y))/I(Z))
     var I(W) = (I(W)*0.000001) shape GAUSS
@@ -82,31 +82,45 @@ end
 
 
 comp deriv_iadd
-    map-var A B
+    map-var A B 
     
     param EN_F : ? = {0,1}
     param EN_B: ? = {0,1}
+    param K : ? = {0,1}
 
-    input X {I:mA}
-    def I(X) mag=[0,1] mA
-    def I(X) map linear scale=A offset=B
+    input XT {I:mA}
+    def I(XT) mag=[0,1] mA
+    def I(XT) map scale=A 
+    
+    input YT {I:mA}
+    def I(YT) mag=[0,1] mA
+    def I(YT) map scale=B 
+
 
     input P {I:mA}
     def I(P) mag = [0,0.0001] mA
-    def I(P) map scale A
+    def I(P) map scale=A*B 
+    %derive ddt 
 
     input Z0 {I:mA}
     def I(Z0) mag = [0,1] mA
-    
+    % derive ddt
+
     output Z {I:mA}
-   
-    rel ddt I(Z) = EN_F*I(X) - EN_B*I(P)*I(Z) init I(Z0)
+    output X {I:mA}
+    rel I(X) = I(XT) - K*I(Z)
+    def I(X) map scale=1/(A*B)   
+ 
+    output Y {I:mA}
+    rel I(Y) =  I(YT) - K*I(Z)
+    def I(X) map scale=1/(A*B)
+
+    rel ddt I(Z) = EN_F*I(X)*I(Y) - EN_B*I(P)*I(Z) init I(Z0)
     var ddt I(Z) = I(Z)*0.00001 shape GAUSS
 
     def I(Z) mag = [0,1] mA
-    def I(Z) map linear scale=1/A offset=B/A
-    
-    def ddt I(Z) map linear scale=1/A offset=B/A
+    def I(Z) imap scale=1/(A*B) 
+    def ddt I(Z) imap scale=1/(A*B) 
    
 end
 
