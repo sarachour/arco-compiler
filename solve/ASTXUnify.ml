@@ -1502,6 +1502,14 @@ struct
     in
     e.port^" = "^estr
 
+  let unifyexpr2uast (st:runify) (a:unify_expr) =
+    match a with
+    | UNIMathExpr(e) -> (mast2uast e)
+    | UNIMathVar(v) ->
+      let knd = MathLib.getkind st.tbl.mstate.env v in
+      (Term(MathId(knd,v)))
+    | UNIUnunifiable(e) -> (e)
+
   let op2str (op:unify_op) =
     let str =
        List.fold_right (fun x str ->
@@ -1768,10 +1776,13 @@ struct
     in
     match result with
     | UNIRESSuccess(steps) ->
-      error "unify" "failure. Ban these assigns"
+      error "unify" "success. Add solution and randomly ban"
 
     | UNIRESFailure(assigns) ->
-      error "unify" "failure. Ban these assigns"
+      let restricts = List.map (fun x ->
+          RDisableAssign(x.port,unifyexpr2restriction st x.expr)) assigns in
+      SearchLib.mknode_from_steps env.search restricts;
+      ()
 
   (*============ UNIFY END ===================*)
 
