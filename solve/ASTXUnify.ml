@@ -731,6 +731,7 @@ struct
   type unify_result =
     | UNIRESSuccess of rstep list
     | UNIRESFailure of unify_assign list
+    | UNIRESCompleteFailure
 
   let unapply_ctx (st:runify) (ctx) =
     let steps = STACK.fold ctx (fun ops lst ->
@@ -744,9 +745,24 @@ struct
     UNIRESFailure(get_ununifiable ctx)
 
   let ctx_no_solution (st:runify) (ctx:unify_ctx) =
-    let entang = get_entanglements ctx in
+    let subseq_steps = STACK.fold (STACK.tail ctx) (fun ops lst ->
+        ops.steps @ lst ) []
+    in
     unapply_ctx st ctx;
-    UNIRESFailure(MAP.to_values entang)
+    let assigns = List.fold_right (fun (s:rstep) (asgns:unify_assign list) -> match s with
+        | RAddOutAssign(lhs,rhs) ->
+          let unify_expr = uast_to_unify_expr st lhs (rhs.expr) in
+          {port=lhs;expr=unify_expr}::asgns
+        | RAddInAssign(lhs,rhs) ->
+          let unify_expr = uast_to_unify_expr st lhs (rhs.expr) in
+          {port=lhs;expr=unify_expr}::asgns
+        | _ -> asgns
+      ) subseq_steps []
+    in
+    if List.length assigns = 0 then
+      UNIRESCompleteFailure
+    else
+      UNIRESFailure(assigns)
 
   let ctx_unified (st:runify) (ctx:unify_ctx) =
     let steps = unapply_ctx st ctx in 
@@ -885,7 +901,9 @@ struct
         ) assigns in
       SearchLib.mknode_from_steps env.search env.tbl restricts;
       ()
-
+    | UNIRESCompleteFailure ->
+      let currnode :rnode = SearchLib.cursor env.search in
+      noop (SearchLib.deadend env.search currnode env.tbl) 
   (*============ UNIFY END ===================*)
 
   (*============ TREE START ===================*)
