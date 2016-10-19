@@ -129,7 +129,7 @@ struct
     | Some(t) -> t = name
     | None -> false
 
-  let var_to_mid e name =
+  let str2mid e name =
     if isparam e name then
       let p = getparam e name in
       MNParam(p.name,p.value)
@@ -139,7 +139,10 @@ struct
     else if istime e name then
       MNTime
     else
-      error "var_to_mid" "error"
+      error "str2mid" "error"
+
+  let var2mid (v:'a mvar) =
+    MNVar(v.knd,v.name)
 
   let mktime (e:'a menv) (name:string) un : mid menv =
     if MAP.has (e.vars) name then
@@ -279,6 +282,12 @@ struct
   let fold_vars (e:'a menv) f r0 =
     MAP.fold e.vars (fun k v r -> f v r) r0
 
+  let replace_params (env:'a menv) (e:mid ast) =
+    ASTLib.trans_id e (fun (x:mid) -> match x with
+        | MNParam(name,vl) ->
+          number_to_ast vl
+        | _ -> Term(x)
+      )
   let inference_var e (x:'a mvar) (cnv:'a -> mid) =
     let lookup (x:'a) : interval = match cnv x with
       | MNVar(MInput,p) -> let vr = getvar e p in

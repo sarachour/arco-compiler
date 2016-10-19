@@ -45,9 +45,11 @@ type ('a,'b) tree = {
 }
 
 let ident x = x 
-let return x b = let _ = x in begin
+let return x b =
+  x;
+  b
 
-end
+
 let string_of_number n = match n with
   | Integer(q) -> string_of_int(q)
   | Decimal(q) -> string_of_float(q)

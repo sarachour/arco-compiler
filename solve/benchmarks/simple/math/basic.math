@@ -10,6 +10,7 @@ input D: M
 output E: M
 output F:M
 time t : s 
+param DEG : M = 0.001
 
 def A mag=[0,1] M
 def B mag=[0,1] M
@@ -18,8 +19,8 @@ def D mag=[0,1] M
 
 rel F = A*B
 
-rel ddt E = (A*B + C*D) - (0.001*E) init 0
-var ddt E = E*0.00001 shape GAUSS
+rel ddt E = (A*B + C*D) - (DEG*E) init 0
+var ddt E = E*DEG*DEG shape GAUSS
 
 def E mag=[0,1] M
 def ddt E time 0.0001

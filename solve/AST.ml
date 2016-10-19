@@ -50,6 +50,11 @@ let error n msg = raise (ASTException(n^": "^msg))
 
 type 'a symassign = ('a,'a ast) map
 
+let number_to_ast (a:number) : 'a ast = match a with
+  | Decimal(d) -> Decimal(d)
+  | Integer(i) -> Integer(i)
+
+
 module ASTLib
 (*): sig
     val ast2str : ('a ast) -> ('a -> string) -> string
@@ -132,47 +137,51 @@ module ASTLib
               choose (Decimal(d))
             | Integer(i) ->
               choose (Integer(i))
+            | _ -> error "_MAP" "unimplemented node"
         in
         _map a
 
-    let trans (a:'b ast) (conv_elem: 'b ast -> ('b ast) option) : 'b ast =
-      _MAP a conv_elem (fun x -> Term(x))
+      let trans_id (type a) (type b) (targ:a ast) (conv_elem: a  -> b ast ) : b ast =
+        _MAP targ (fun x -> None) conv_elem
 
-    let map (type x) (type y) (a:x ast) (cnv_term:x -> y) : y ast =
-     let cnv_el (v:y ast) : (y ast) option = None in
-     let cnv_t (v:x) = Term(cnv_term v) in
-     let res : y ast = _MAP a cnv_el cnv_t in
-     res
+      let trans (a:'b ast) (conv_elem: 'b ast -> ('b ast) option) : 'b ast =
+        _MAP a conv_elem (fun x -> Term(x))
 
-    let expand (type x) (type y) (a:x ast) (cnv_term:x -> y ast) : y ast =
-      let cnv_el (v) = None in
-      let res : y ast = _MAP a cnv_el cnv_term in
+      let map (type x) (type y) (a:x ast) (cnv_term:x -> y) : y ast =
+      let cnv_el (v:y ast) : (y ast) option = None in
+      let cnv_t (v:x) = Term(cnv_term v) in
+      let res : y ast = _MAP a cnv_el cnv_t in
       res
 
-    let fold (type x) (type y) (a:x ast) (fld:x ast -> y -> y)  (b0:y) : y =
-      let rec _fold (el: x ast) (b: y) : y =
-        let _foldlst (lst:(x ast) list) b0 : y =
-          List.fold_left (fun b a -> let nb = _fold a b in fld a nb) b0 lst
-        in
-        match el with
-          | OpN(op,elst) -> let nb : y = _foldlst elst b in
-            fld el nb
-          | Op2(op,e1,e2) -> let nb : y = _foldlst [e1;e2] b in
-            fld el nb
-          | Op1(op,e1) -> let nb : y = _foldlst [e1] b in
-            fld el nb
-          | _ -> fld el b
-      in
-        _fold a b0
+      let expand (type x) (type y) (a:x ast) (cnv_term:x -> y ast) : y ast =
+        let cnv_el (v) = None in
+        let res : y ast = _MAP a cnv_el cnv_term in
+        res
 
-    let get_vars (type a) (e:a ast) : a list =
-      let vset : a set = fold e (fun xast st ->
-          match xast with
-          | Term(l) -> SET.add st l
-          | _ -> st
-          ) (SET.make_dflt () )
-      in
-      SET.to_list vset
+      let fold (type x) (type y) (a:x ast) (fld:x ast -> y -> y)  (b0:y) : y =
+        let rec _fold (el: x ast) (b: y) : y =
+          let _foldlst (lst:(x ast) list) b0 : y =
+            List.fold_left (fun b a -> let nb = _fold a b in fld a nb) b0 lst
+          in
+          match el with
+            | OpN(op,elst) -> let nb : y = _foldlst elst b in
+              fld el nb
+            | Op2(op,e1,e2) -> let nb : y = _foldlst [e1;e2] b in
+              fld el nb
+            | Op1(op,e1) -> let nb : y = _foldlst [e1] b in
+              fld el nb
+            | _ -> fld el b
+        in
+          _fold a b0
+
+      let get_vars (type a) (e:a ast) : a list =
+        let vset : a set = fold e (fun xast st ->
+            match xast with
+            | Term(l) -> SET.add st l
+            | _ -> st
+            ) (SET.make_dflt () )
+        in
+        SET.to_list vset
 
     let compute (type x) (a:x ast) : float option =
       let conv (lst: x ast list) fn =

@@ -38,7 +38,7 @@ type  rnode = (rstep) snode
 module ASTUnifySymcaml =
 struct
   let _symvar2mid (s:mid menv) (rst:string list) : mid =  match rst with
-  | [v] -> MathLib.var_to_mid s v 
+  | [v] -> MathLib.str2mid s v 
   | _ -> error "apply_comp" "iconvmid encountered unexpected string"
 
   let _symvar2hwid (s:hwvid hwenv) (rst:string list) = match rst with
@@ -75,19 +75,18 @@ struct
     in
     match hwid with
     | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
-    | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
     | HNParam(cmp,name) -> (proccmp cmp)^":"^name
-    | HNTime(_) -> "t'"
+    | HNTime -> "t'"
 
   let mid2symvar (mid:mid) : string = match mid with
-  | MNVar(k,n) -> n
-  | MNParam(name,v) -> name
-  | MNTime -> "t"
+    | MNVar(k,n) -> n
+    | MNParam(name,v) -> name
+    | MNTime -> "t"
 
 
   let unid2symvar uid = match uid with
-  | MathId(m) -> "m:"^(mid2symvar m)
-  | HwId(h) -> "h:"^(hwid2symvar h)
+    | MathId(m) -> "m:"^(mid2symvar m)
+    | HwId(h) -> "h:"^(hwid2symvar h)
 
   let print_wildcard (v:string) (bans:symexpr list) =
     let ban_str = LIST.fold bans (fun (x:symexpr) str ->
@@ -97,31 +96,143 @@ struct
       spydebug ("[env][decl] wild "^(v)^" != "^ban_str);
       ()
 
+  type sym_var_state = SYMEnvDeclared | SYMEnvUsed
+  type sym_vtable = (symvar,sym_var_state) map
+
+  let mk_vtable () : sym_vtable =
+    MAP.make () 
+
+  let vtable_declare (tbl:sym_vtable) (v:symvar) =
+    if MAP.has tbl v then
+      match MAP.get tbl v with
+      | SYMEnvDeclared -> ()
+      | SYMEnvUsed -> noop (MAP.put tbl v SYMEnvDeclared)
+    else
+      noop (MAP.put tbl v SYMEnvDeclared)
+
+  let vtable_use (tbl:sym_vtable) (v:symvar) =
+    if MAP.has tbl v then
+      match MAP.get tbl v with
+      | SYMEnvDeclared -> ()
+      | SYMEnvUsed -> ()
+    else
+      noop (MAP.put tbl v SYMEnvUsed)
+
+
+  let vtable_iter = MAP.iter
+  
+  let to_symvar s = s.tbl.symenv.cnv 
+  let to_symexpr s x : symexpr = ASTLib.to_symcaml x (to_symvar s)
+
+  let to_uvar s (x:symvar) : unid =
+    s.tbl.symenv.icnv s.tbl.mstate s.tbl.hwstate x
+
+  let to_uast s (x:symexpr) : unid ast = ASTLib.from_symcaml x (to_uvar s)
+
+
   let make_symcaml_env (s:runify) =
     let symenv = s.tbl.symenv and hwstate = s.tbl.hwstate and mstate = s.tbl.mstate in
-    let to_symvar = symenv.cnv in
-    let to_symexpr x : symexpr = ASTLib.to_symcaml x (symenv.cnv) in
-    let declared = SET.make_dflt() in
+    let vtable : sym_vtable = mk_vtable  () in
+    (*variable table*)
+    let use_vars_in_expr (e:symexpr) =
+      List.iter (fun v -> vtable_use vtable v) (SymExpr.get_vars e)
+    in
+    (*get list of disabled expressions*)
+    let get_disabled (v: hwvid hwportvar) = 
+      if MAP.has hwstate.disabled v.port then
+          let ban_cfgs = MAP.get hwstate.disabled v.port in
+          List.map (fun (x:hwvarcfg) ->
+              let symexpr = to_symexpr s x.expr in
+              use_vars_in_expr (symexpr);
+              symexpr
+            ) ban_cfgs
+      else []
+    in
     (*declare and then print the wildcard*)
     let decl_wildcard (v: hwvid hwportvar) =
-      let bans : symexpr list =
-        if MAP.has hwstate.disabled v.port then
-          let ban_cfgs = MAP.get hwstate.disabled v.port in
-          List.map (fun (x:hwvarcfg) -> to_symexpr x.expr) ban_cfgs
-        else []
-      in
-      let vname = to_symvar (HwId (HwLib.var2id v)) in
+      let vname : symvar = to_symvar s (HwId (HwLib.var2id v)) in
+      let bans : symexpr list = get_disabled v in
       print_wildcard vname bans;
+      vtable_declare vtable vname;
       SymCaml.define_wildcard symenv.s vname bans;
       ()
     in
+    let decl_var (v:hwvid hwportvar) =
+      let vname = to_symvar s (HwId (HwLib.var2id v)) in
+      begin
+        match ConcCompLib.get_var_config hwstate.cfg v.port with
+        | Some(conc_expr) -> use_vars_in_expr (to_symexpr s conc_expr)
+        | None -> ()
+      end;
+      spydebug ("[env][decl] var "^vname);
+      vtable_declare vtable vname;
+      SymCaml.define_symbol symenv.s vname;
+      ()
+    in
     SymCaml.clear symenv.s;
+    (*iterate over all variables and define them*)
     HwLib.comp_iter_vars hwstate.comp (fun (v:hwvid hwportvar) ->
         if ConcCompLib.is_conc hwstate.cfg v.port = false then
           decl_wildcard v
+        else
+          decl_var v
+      );
+    MathLib.iter_vars mstate.env (fun (v:mid mvar) ->
+        let vname = to_symvar s (MathId (MathLib.var2mid v)) in 
+        spydebug ("[env][decl] mvar "^vname);
+        vtable_declare vtable vname;
+        SymCaml.define_symbol symenv.s vname;
+        ()
     );
-    error "make_symcaml_env" "unimplemented"
-  (*
+    (*declare variable external to component*)
+    noop (vtable_iter vtable (fun v st-> match st with
+        | SYMEnvUsed ->
+          spydebug ("[env][decl] var-used "^v);
+          SymCaml.define_symbol symenv.s v;
+          ()
+        | SYMEnvDeclared -> ()
+    ));
+    ()
+
+  let print_unify (hwexpr:symexpr) (texpr:symexpr) =
+    let hwstr = SymCaml.expr2str hwexpr in
+    let tstr = SymCaml.expr2str texpr in
+    debug ("#unify <?>\n"^
+           "  hw-expr:\n  "^hwstr^"\n\n"^
+           "  m-expr:\n  "^tstr^"\n");
+    ()
+
+  let print_assign (lhs:unid) (rhs:unid ast) =
+    debug (" "^(unid2str lhs)^"="^(uast2str rhs))
+
+  let unify (s:runify) (hwexpr:unid ast) (texpr:unid ast) =
+    (*attempt unification*)
+    let symenv = s.tbl.symenv in
+    let symhwexpr = to_symexpr s hwexpr in
+    let symtexpr = to_symexpr s texpr in
+    print_unify symhwexpr symtexpr;
+    let maybe_assigns =
+      try
+        SymCaml.pattern symenv.s symtexpr symhwexpr
+      with PyCamlWrapperException(_) ->
+        warn "[unify_term][exception] python exception";
+        None 
+    in
+    match maybe_assigns with
+    | Some(assigns) ->
+      debug "[unify][pattern]: ==ASSIGNMENTS==";
+      List.map (fun ((symlhs,symrhs):symvar*symexpr) ->
+          let lhs = to_uvar s symlhs in
+          let rhs = to_uast s symrhs in
+          print_assign lhs rhs;
+          (lhs,rhs)
+      ) assigns 
+    | None ->
+      debug "[unify][pattern]: <no solution>";
+      []
+
+
+(*
   (*apply the state to syncaml*)
   let apply_state (type a) (s: a runify) : ((a, a ast*a rkind) map)*((a, a ast*a rkind) map) =
     let var2symvar = g_conv s.tbl in
@@ -1327,14 +1438,22 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
+           
   let unify_math_var (st:runify) (mvar) =
-    let hwstate = st.tbl.hwstate in 
+    let hwstate = st.tbl.hwstate and mstate = st.tbl.mstate in 
     let hvar = HwLib.comp_getvar hwstate.comp hwstate.target in
+    let compid = (HCMLocal hwstate.comp.name) in 
     ASTUnifySymcaml.make_symcaml_env st; 
     match mvar.bhvr,hvar.bhvr with
     | MBhvVar(mbhv),HWBAnalog(abhv) ->
       error "unify" "unify var with analog"
     | MBhvStateVar(mbhv),HWBAnalogState(abhv) ->
+      let mexpru :unid ast= mast2uast
+          (MathLib.replace_params mstate.env mbhv.rhs) in
+      let hexpru :unid ast =
+        ConcCompLib.concrete_hwexpr compid hwstate.cfg abhv.rhs
+      in
+      ASTUnifySymcaml.unify st hexpru mexpru ;
       error "unify" "unify stvar with analog state"
     | MBhvVar(_),HWBDigital(_) ->
       error "unify" "unify var with digital"

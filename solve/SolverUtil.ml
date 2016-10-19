@@ -15,11 +15,19 @@ let unid2str (a:unid) = match a with
   | HwId(x) -> HwLib.hwvid2str x
   | MathId(x) -> MathLib.mid2str x
 
+let uast2str (a:unid ast) = ASTLib.ast2str a unid2str
+
 let hwid2str (a:hwvid) = HwLib.hwvid2str a
 
-let number_to_ast (a:number) : 'a ast = match a with
-  | Decimal(d) -> Decimal(d)
-  | Integer(i) -> Integer(i)
+let mid2unid (a:mid) = MathId(a)
+
+let hwid2unid (a:hwvid) = HwId(a)
+
+let mast2uast (a:mid ast) =
+  ASTLib.map a (mid2unid)
+
+let hwast2uast (a:hwvid ast) =
+  ASTLib.map a (hwid2unid)
 
 (*
 module UnivLib =
