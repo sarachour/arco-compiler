@@ -333,6 +333,9 @@ module STACK =
 struct
   let make () : 'a stack = REF.mk []
 
+  let size (s) =
+    List.length (REF.dr s)
+
   let push (type a) (s:a stack) (x:a) : a stack =
     let _ : unit = REF.upd s (fun s -> x::s) in s
 

@@ -106,6 +106,7 @@ struct
     if MAP.has tbl v then
       match MAP.get tbl v with
       | SYMEnvDeclared -> ()
+
       | SYMEnvUsed -> noop (MAP.put tbl v SYMEnvDeclared)
     else
       noop (MAP.put tbl v SYMEnvDeclared)
@@ -1393,17 +1394,19 @@ struct
       match target_maybe with
       | Some(target) ->
         begin
-        HwLib.portvar_iter_vars cmp target (fun (v:hwvid) ->
-          match f v with
-          |Some(q) -> noop (SET.add coll q)
-          |None -> ();
-          match v with
-          | HNPort(HWKOutput,_,pname,_) ->
-            if ConcCompLib.is_conc cfg pname = false then
-              noop (SET.add outvars pname)
-          | _ -> ()
-            )
-          end
+          HwLib.portvar_iter_vars cmp target (fun (v:hwvid) ->
+              match f v with
+              |Some(q) -> noop (SET.add coll q)
+              |None -> ();
+                match v with
+                | HNPort(HWKOutput,_,pname,_) ->
+                  if ConcCompLib.is_conc cfg pname = false then
+                    noop (SET.add outvars pname)
+                | _ -> ()
+            );
+          SET.add explored target;
+          _get_involved_vars ()
+        end
       | None -> ()
     in
     SET.add outvars startvar;
@@ -1620,19 +1623,36 @@ struct
 
   (*entanglements*)
 
-  let ctx_backtrack_ununifiable (st:runify) (ctx:unify_ctx) =
-    error "ctx_backtrack_ununifiable" "unimpl"
+  let get_ununifiable (ctx:unify_ctx) : unify_assign list =
+    let entang = get_entanglements ctx in
+    MAP.fold entang (fun k v lst -> match v.expr with
+         | UNIUnunifiable(_) -> v::lst
+         | _ -> lst
+      ) []
 
-  let ctx_backtrack_no_solution (st:runify) (ctx:unify_ctx) =
-    error "ctx_backtrack_no_solution" "unimpl"
+  type unify_result =
+    | UNIRESSuccess of rstep list
+    | UNIRESFailure of unify_assign list
+
+  let ctx_ununifiable (st:runify) (ctx:unify_ctx) =
+    UNIRESFailure(get_ununifiable ctx)
+
+  let ctx_no_solution (st:runify) (ctx:unify_ctx) =
+    let entang = get_entanglements ctx in
+    UNIRESFailure(MAP.to_values entang)
+
+  let ctx_unified (st:runify) (ctx:unify_ctx) =
+    let steps = STACK.fold ctx (fun ops lst ->
+        ops.steps @ lst) []
+    in
+    List.iter (fun x ->
+        noop (ASTUnifyTree.unapply_step st.tbl x)
+      ) steps;
+    UNIRESSuccess(steps)
 
 
   let ctx_unsolvable (st:runify) (ctx:unify_ctx) =
-    let entang = get_entanglements ctx in
-    (List.length
-       (MAP.filter entang (fun k v -> match v.expr with
-            | UNIUnunifiable(_) -> true | _ -> false)) 
-    ) > 0
+    (List.length (get_ununifiable ctx))  > 0
 
   let unify_expr (st:runify) (expr:unid ast) = 
     error "unify_expr" "unimpl"
@@ -1689,12 +1709,11 @@ struct
       error "unify" "unify unsupported"
 
   (*recursively unify*) 
-  let rec unify_recurse (st:runify) (ctx:unify_ctx) =
+  let rec unify_recurse (st:runify) (ctx:unify_ctx) : unify_result =
     let entangled = get_entanglements ctx in
     if ctx_unsolvable st ctx then
       begin
-        ctx_backtrack_ununifiable st ctx;
-        unify_recurse st ctx
+        ctx_ununifiable st ctx
       end
     else
       match MAP.to_values entangled with
@@ -1708,17 +1727,21 @@ struct
                 | UNIMathVar(v) ->
                   unify_math_var st ent.port v
                 | UNIUnunifiable(_) ->
-                  ctx_backtrack_ununifiable st ctx
+                  error "maybe_assigns" "cannot see ununifiable here"
           in
           begin
-          match maybe_assigns with
-            | Some(assigns) -> addctx st ctx (strip_port_from_list st assigns) [ent]
-            | None -> ctx_backtrack_no_solution st ctx
-          end;
-          debug (ctx2str ctx);
-          unify_recurse st ctx
+            match maybe_assigns with
+            | Some(assigns) ->
+              begin
+                addctx st ctx (strip_port_from_list st assigns) [ent];
+                debug (ctx2str ctx);
+                unify_recurse st ctx
+              end 
+            | None ->
+              ctx_no_solution st ctx
+            end
         end
-      | [] -> ctx
+      | [] -> ctx_unified st ctx
 
   let unify (env:runify) = 
     (* get concretized version of component with config substituted in*)
@@ -1726,25 +1749,30 @@ struct
     let hwstate = env.tbl.hwstate in 
     ASTUnifySymcaml.make_symcaml_env env;
     let ctx = mkunifyctx () in 
-    match env.tbl.target with
-    | TRGMathVar(mname) ->
-      begin
-        let mvar = MathLib.getvar env.tbl.mstate.env mname in
-        let rhs = Term(MathId(MathLib.var2mid mvar)) in
-        addctx env ctx [(hwstate.target,rhs)] [];
-        unify_recurse env ctx;
-        error "unify" "commit ctx to tree"
-      end
-    | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
-      addctx env ctx[(hwstate.target,expr)] [];
-      unify_recurse env ctx;
-      error "unify" "commit ctx to tree"
-       
-    | TRGHWVar(HNPort(HWKOutput,_,_,_),expr) ->
-      addctx env ctx[(hwstate.target,expr)] [];
-      unify_recurse env ctx;
-      error "unify" "commit ctx to tree"
-    | _ -> error "unify" "unhandled"
+    let result = match env.tbl.target with
+      | TRGMathVar(mname) ->
+        begin
+          let mvar = MathLib.getvar env.tbl.mstate.env mname in
+          let rhs = Term(MathId(MathLib.var2mid mvar)) in
+          addctx env ctx [(hwstate.target,rhs)] [];
+          unify_recurse env ctx
+        end
+      | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
+        addctx env ctx[(hwstate.target,expr)] [];
+        unify_recurse env ctx
+
+      | TRGHWVar(HNPort(HWKOutput,_,_,_),expr) ->
+        addctx env ctx[(hwstate.target,expr)] [];
+        unify_recurse env ctx
+      | _ -> error "unify" "unhandled"
+    in
+    match result with
+    | UNIRESSuccess(steps) ->
+      error "unify" "failure. Ban these assigns"
+
+    | UNIRESFailure(assigns) ->
+      error "unify" "failure. Ban these assigns"
+
   (*============ UNIFY END ===================*)
 
   (*============ TREE START ===================*)
