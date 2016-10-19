@@ -305,108 +305,141 @@ end
 
 module ASTUnifyTree =
 struct
- let apply_step (type a) (s:rtbl) (st:rstep) : rtbl =
-   begin
-     match st with
+  let remove_disabled (tbl:rtbl) v expr =
+    let s = tbl.hwstate in 
+    let e = ConcCompLib.mkvarcfg expr in
+    if MAP.has s.disabled v then
+      let dsbl = MAP.get s.disabled v in
+      let new_dsbl =
+        List.filter (fun curr_e -> curr_e != e) dsbl
+      in
+      begin
+      match new_dsbl with
+      | h::t -> MAP.put s.disabled v new_dsbl
+      | [] -> MAP.rm s.disabled v
+      end;
+      ()
+    else
+      ()
+
+  let add_disabled (tbl:rtbl) v expr =
+    let s = tbl.hwstate in
+    let e = ConcCompLib.mkvarcfg expr in
+    begin
+    if MAP.has s.disabled v then
+      let dsbl = MAP.get s.disabled v in
+      MAP.put s.disabled v (e::dsbl)
+    else
+      MAP.put s.disabled v [e]
+    end;
+    ()
+
+  let apply_step (type a) (s:rtbl) (st:rstep) : rtbl =
+    begin
+      match st with
+      | RAddParAssign(vr,asgn) ->
+        ConcCompLib.conc_param s.hwstate.cfg vr asgn
+      | RAddOutAssign(vr,asgn) ->
+        ConcCompLib.conc_out s.hwstate.cfg vr asgn
+      | RAddInAssign(vr,asgn) ->
+        ConcCompLib.conc_in s.hwstate.cfg vr asgn
+      | RDisableAssign(vr,asgn) ->
+        add_disabled s vr asgn 
+      | _ -> error "apply" "unimplemented"
+    end;
+    s 
+
+
+  let unapply_step (type a) (s:rtbl) (st:rstep) : rtbl =
+    begin
+      match st with
+        | RAddParAssign(vr,_) ->
+          ConcCompLib.abs_param s.hwstate.cfg vr 
+        | RAddOutAssign(vr,_) ->
+          ConcCompLib.abs_out s.hwstate.cfg vr 
+        | RAddInAssign(vr,_) ->
+          ConcCompLib.abs_in s.hwstate.cfg vr 
+        | RDisableAssign(vr,expr) ->
+          remove_disabled s vr expr
+        | _ -> error "unapply" "unimplemented"
+    end;
+    s
+
+  let step2str (a:rstep) = match a with
     | RAddParAssign(vr,asgn) ->
-      ConcCompLib.conc_param s.hwstate.cfg vr asgn
+          "+par-asgn "^(vr)^"="^(string_of_number asgn)
     | RAddOutAssign(vr,asgn) ->
-      ConcCompLib.conc_out s.hwstate.cfg vr asgn
+          "+out-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
     | RAddInAssign(vr,asgn) ->
-      ConcCompLib.conc_in s.hwstate.cfg vr asgn
-    | _ -> error "apply" "unimplemented"
-   end;
-   s 
- 
+          "+inp-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
+    | RDisableAssign(vr,rhs) ->
+      "-asgn"^(vr)^"="^(ASTLib.ast2str rhs unid2str)
 
- let unapply_step (type a) (s:rtbl) (st:rstep) : rtbl =
-   begin
-    match st with
-      | RAddParAssign(vr,_) ->
-        ConcCompLib.abs_param s.hwstate.cfg vr 
-      | RAddOutAssign(vr,_) ->
-        ConcCompLib.abs_out s.hwstate.cfg vr 
-      | RAddInAssign(vr,_) ->
-        ConcCompLib.abs_in s.hwstate.cfg vr 
-      | _ -> error "unapply" "unimplemented"
-   end;
-   s
+  let order_steps a b = 0
 
- let step2str (a:rstep) = match a with
-  | RAddParAssign(vr,asgn) ->
-        "+par-asgn "^(vr)^"="^(string_of_number asgn)
-  | RAddOutAssign(vr,asgn) ->
-        "+out-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
-  | RAddInAssign(vr,asgn) ->
-        "+inp-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
-  | RDisableAssign(vr,rhs) ->
-    "-asgn"^(vr)^"="^(ASTLib.ast2str rhs unid2str)
+  let score_uniform env steps : sscore =
+      let delta = 0. in
+      let state = 0. in
+      SearchLib.mkscore delta state
 
- let order_steps a b = 0
+  let score_random env steps : sscore =
+      let delta = RAND.rand_norm () in
+      let state = RAND.rand_norm () in
+      SearchLib.mkscore delta state
 
- let score_uniform env steps : sscore =
-    let delta = 0. in
-    let state = 0. in
-    SearchLib.mkscore delta state
+  let score_bans env steps : sscore = 
+      let delta = LIST.fold steps (fun x r -> match x with
+              | RDisableAssign(lhs,rhs) -> 1+(ASTLib.size rhs)+r
+              | _ -> r
+          ) 0
+      in
+      let state = 0. in
+      SearchLib.mkscore (float_of_int delta) state
 
- let score_random env steps : sscore =
-    let delta = RAND.rand_norm () in
-    let state = RAND.rand_norm () in
-    SearchLib.mkscore delta state
-                      
- let score_bans env steps : sscore = 
-    let delta = LIST.fold steps (fun x r -> match x with
-            | RDisableAssign(lhs,rhs) -> 1+(ASTLib.size rhs)+r
-            | _ -> r
-        ) 0
-    in
-    let state = 0. in
-    SearchLib.mkscore (float_of_int delta) state
+    let get_score ()  =
+      match get_glbl_string "uast-selector-branch" with
+      | "uniform" -> score_uniform
+      | "random" -> score_random
+      | "bans" -> score_bans
 
-  let get_score ()  =
-    match get_glbl_string "uast-selector-branch" with
-    | "uniform" -> score_uniform
-    | "random" -> score_random
-    | "bans" -> score_bans
+    let is_wildcard (comp:hwcomp_state) (vr:unid) = match vr with
+      | HwId(HNPort(_,HCMLocal(hname),hwport,_)) -> true
+      | HwId(HNPort(_,HCMGlobal(hname),hwport,_)) -> true
+      | _ -> false
 
-  let is_wildcard (comp:hwcomp_state) (vr:unid) = match vr with
-    | HwId(HNPort(_,HCMLocal(hname),hwport,_)) -> true
-    | HwId(HNPort(_,HCMGlobal(hname),hwport,_)) -> true
-    | _ -> false
-
-  let mk_conccomp_search (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) =
-    let search : (rstep, rtbl) ssearch =
-      SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str)
-    in
-    let hw_st : hwcomp_state = {
-      env=hwenv;
-      comp=comp.d;
-      inst=Some(comp.inst);
-      target=hvar;
-      cfg=comp.cfg;
-      disabled=MAP.make();
-    } in
-    let math_st : math_state = {
-      env=menv;
-      solved=[];
-    } in
-    let sym_st : symcaml_env = {
-      s=SymCaml.init();
-      cnv= ASTUnifySymcaml.unid2symvar;
-      icnv= ASTUnifySymcaml.symvar2unid;
-      is_wildcard = is_wildcard hw_st;
-    } in
-    SymCaml.clear sym_st.s;
-    let tbl : rtbl = {
-      symenv = sym_st;
-      hwstate = hw_st;
-      mstate = math_st;
-      target=TRGNone;
-    } in
-    {
-      tbl=tbl;
-      search=search;
-    }
+    let mk_conccomp_search (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) =
+      let search : (rstep, rtbl) ssearch =
+        SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str)
+      in
+      let hw_st : hwcomp_state = {
+        env=hwenv;
+        comp=comp.d;
+        inst=Some(comp.inst);
+        target=hvar;
+        cfg=comp.cfg;
+        disabled=MAP.make();
+      } in
+      let math_st : math_state = {
+        env=menv;
+        solved=[];
+      } in
+      let sym_st : symcaml_env = {
+        s=SymCaml.init();
+        cnv= ASTUnifySymcaml.unid2symvar;
+        icnv= ASTUnifySymcaml.symvar2unid;
+        is_wildcard = is_wildcard hw_st;
+      } in
+      SymCaml.clear sym_st.s;
+      let tbl : rtbl = {
+        symenv = sym_st;
+        hwstate = hw_st;
+        mstate = math_st;
+        target=TRGNone;
+      } in
+      {
+        tbl=tbl;
+        search=search;
+      }
 
   let mk_newcomp_search  (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) =
     let search : (rstep, rtbl) ssearch =
@@ -1507,7 +1540,7 @@ struct
     | UNIMathExpr(e) -> (mast2uast e)
     | UNIMathVar(v) ->
       let knd = MathLib.getkind st.tbl.mstate.env v in
-      (Term(MathId(knd,v)))
+      (Term(MathId(MNVar(knd,v))))
     | UNIUnunifiable(e) -> (e)
 
   let op2str (op:unify_op) =
@@ -1642,7 +1675,17 @@ struct
     | UNIRESSuccess of rstep list
     | UNIRESFailure of unify_assign list
 
+  let unapply_ctx (st:runify) (ctx) =
+    let steps = STACK.fold ctx (fun ops lst ->
+        ops.steps @ lst) []
+    in
+    List.iter (fun x ->
+        noop (ASTUnifyTree.unapply_step st.tbl x)
+      ) steps;
+    steps
+
   let ctx_ununifiable (st:runify) (ctx:unify_ctx) =
+    unapply_ctx st ctx;
     UNIRESFailure(get_ununifiable ctx)
 
   let ctx_no_solution (st:runify) (ctx:unify_ctx) =
@@ -1650,12 +1693,7 @@ struct
     UNIRESFailure(MAP.to_values entang)
 
   let ctx_unified (st:runify) (ctx:unify_ctx) =
-    let steps = STACK.fold ctx (fun ops lst ->
-        ops.steps @ lst) []
-    in
-    List.iter (fun x ->
-        noop (ASTUnifyTree.unapply_step st.tbl x)
-      ) steps;
+    let steps = unapply_ctx st ctx in 
     UNIRESSuccess(steps)
 
 
@@ -1721,6 +1759,7 @@ struct
     let entangled = get_entanglements ctx in
     if ctx_unsolvable st ctx then
       begin
+        debug (ctx2str ctx);
         ctx_ununifiable st ctx
       end
     else
@@ -1746,10 +1785,13 @@ struct
                 unify_recurse st ctx
               end 
             | None ->
-              ctx_no_solution st ctx
+                debug (ctx2str ctx);
+                ctx_no_solution st ctx
             end
         end
-      | [] -> ctx_unified st ctx
+      | [] ->
+        debug (ctx2str ctx);
+        ctx_unified st ctx
 
   let unify (env:runify) = 
     (* get concretized version of component with config substituted in*)
@@ -1780,8 +1822,9 @@ struct
 
     | UNIRESFailure(assigns) ->
       let restricts = List.map (fun x ->
-          RDisableAssign(x.port,unifyexpr2restriction st x.expr)) assigns in
-      SearchLib.mknode_from_steps env.search restricts;
+          RDisableAssign(x.port,unifyexpr2uast env x.expr)
+        ) assigns in
+      SearchLib.mknode_from_steps env.search env.tbl restricts;
       ()
 
   (*============ UNIFY END ===================*)
@@ -1838,7 +1881,7 @@ struct
         end
     in
     _mnext ();
-    sysmenu "t";
+    usrmenu ();
     _solve ();
     (*let _ = sysmenu "t" in*)
     ()
