@@ -221,15 +221,15 @@ struct
     match maybe_assigns with
     | Some(assigns) ->
       debug "[unify][pattern]: ==ASSIGNMENTS==";
-      List.map (fun ((symlhs,symrhs):symvar*symexpr) ->
+      Some (List.map (fun ((symlhs,symrhs):symvar*symexpr) ->
           let lhs = to_uvar s symlhs in
           let rhs = to_uast s symrhs in
           print_assign lhs rhs;
           (lhs,rhs)
-      ) assigns 
+      ) assigns) 
     | None ->
       debug "[unify][pattern]: <no solution>";
-      []
+      None
 
 
 (*
@@ -1438,7 +1438,8 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
-           
+
+
   let unify_math_var (st:runify) (mvar) =
     let hwstate = st.tbl.hwstate and mstate = st.tbl.mstate in 
     let hvar = HwLib.comp_getvar hwstate.comp hwstate.target in
@@ -1453,8 +1454,19 @@ struct
       let hexpru :unid ast =
         ConcCompLib.concrete_hwexpr compid hwstate.cfg abhv.rhs
       in
-      ASTUnifySymcaml.unify st hexpru mexpru ;
-      error "unify" "unify stvar with analog state"
+      begin
+      match ASTUnifySymcaml.unify st hexpru mexpru with
+      | [] ->  error "unify" "there are no unifications"
+      | assigns ->
+        (*determine if there are conflicts*)
+        begin
+          match find_entanglements st assigns with
+          | Some(entanglements) ->
+            error "unify" "there exist some entanglements"
+          | None ->
+            error "unify" "no entanglements found"
+        end
+      end
     | MBhvVar(_),HWBDigital(_) ->
       error "unify" "unify var with digital"
     | _ ->
