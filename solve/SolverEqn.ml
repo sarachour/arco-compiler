@@ -542,10 +542,11 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     in
       (* add all the compatible available comps *)
       SolverCompLib.iter_avail_comps tbl (fun cmpname cmp ->
+        if SolverCompLib.has_available_insts tbl cmpname  then
           match SolverCompLib.compatible_comp_with_goal cmp g with
-          | [] -> ()
-          | vars -> List.iter (fun v ->
-              noop (PRIOQUEUE.add prio_comps (HWCompNew cmpname,v))) vars
+            | [] -> ()
+            | vars -> List.iter (fun v ->
+                noop (PRIOQUEUE.add prio_comps (HWCompNew cmpname,v))) vars
       );
       (* add all the compatible used comps*)
       SolverCompLib.iter_used_comps tbl (fun cmpid cmp ->

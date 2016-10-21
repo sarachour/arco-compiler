@@ -24,4 +24,6 @@ module StochLib = struct
 
   let get_vars (type a) (st:a stoch) =
     ASTLib.get_vars st.std
+
+  let get_expr (type a) (st:a stoch) = st.std
 end

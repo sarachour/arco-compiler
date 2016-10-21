@@ -18,6 +18,8 @@ open SolverUtil
 
 open SolverCompLib
 
+open StochLib
+
 open HWData
 open MathData
 
@@ -131,11 +133,17 @@ struct
   let to_uast s (x:symexpr) : unid ast = ASTLib.from_symcaml x (to_uvar s)
 
 
+  let wrap_distribution (mu:'a ast) (vr:'a ast) =
+    let mean = OpN(Func("MEAN"),[mu]) in
+    let std = OpN(Func("VAR"),[vr]) in
+    OpN(Add,[mean;std])
+
   let make_symcaml_env (s:runify) =
     let symenv = s.tbl.symenv and hwstate = s.tbl.hwstate and mstate = s.tbl.mstate in
     let vtable : sym_vtable = mk_vtable  () in
     (*variable table*)
-    
+    SymCaml.define_function symenv.s "VAR";
+    SymCaml.define_function symenv.s "MEAN";
     let decl_symvar (vname:symvar) =
         spydebug ("[env][decl] mvar "^vname);
         vtable_declare vtable vname;
@@ -772,16 +780,23 @@ struct
     else
       UNIRESFailure(assigns)
 
+
+
   let ctx_unified (st:runify) (ctx:unify_ctx) =
     let steps = unapply_ctx st ctx in 
     UNIRESSuccess(steps)
 
 
+
   let ctx_unsolvable (st:runify) (ctx:unify_ctx) =
     (List.length (get_ununifiable ctx))  > 0
 
+
+
   let unify_expr (st:runify) (expr:unid ast) = 
     error "unify_expr" "unimpl"
+
+
 
   let strip_port_from_list st (lst:(unid*unid ast) list) : (string*unid ast) list =
     let hcmp = mkcompid st in 
@@ -799,7 +814,11 @@ struct
     match hvar.bhvr with
     | HWBAnalog(abhv) ->
       let hexpru :unid ast =
-        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg abhv.rhs
+        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg (abhv.rhs)
+      in
+      (*TODO*)
+      let hvaru :unid ast =
+        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg (StochLib.get_expr abhv.stoch)
       in
       let mexpru :unid ast= mast2uast
           (MathLib.replace_params mstate.env expr)
@@ -823,11 +842,12 @@ struct
       error "unify" "unify var with analog"
     | MBhvStateVar(mbhv),HWBAnalogState(abhv) ->
       let mexpru :unid ast= mast2uast
-          (MathLib.replace_params mstate.env mbhv.rhs) in
+          (MathLib.replace_params mstate.env mbhv.rhs)
+      in
       let hexpru :unid ast =
         ConcCompLib.concrete_hwexpr cmpid hwstate.cfg abhv.rhs
       in
-      ASTUnifySymcaml.unify st hexpru mexpru
+      ASTUnifySymcaml.unify st hexpru mexpru 
 
     | MBhvVar(_),HWBDigital(_) ->
       error "unify" "unify var with digital"

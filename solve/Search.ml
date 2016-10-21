@@ -199,8 +199,6 @@ struct
   let has_child (type a) (type b) (sr:(a,b) ssearch) (s:a snode) =
     TREE.has_child sr.tree s
 
-
-
   let rm (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
     let _ = match sr.curs with
     | Some(v) -> if v = n then () else ()

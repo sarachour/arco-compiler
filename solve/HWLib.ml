@@ -45,6 +45,9 @@ struct
   | HWCmCopy(x) -> copy_cid x
   | HWCmComp(x) -> x
 
+  let hwcompinst2str (id:hwcompinst) =
+    (hwcompname2str id.name)^"["^(string_of_int id.inst)^"]"
+
   let str2hwcompname (c:string) : hwcompname = match get_special c with
     | Some("copy",prop) -> HWCmCopy(prop)
     | Some("input",prop) -> HWCmInput(prop)

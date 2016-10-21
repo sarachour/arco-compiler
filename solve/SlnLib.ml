@@ -10,6 +10,8 @@ open SolverRslv
 
 open MathData
 
+open AST
+
 exception SolverSlnError of string
 
 let error n m = raise (SolverSlnError (n^":"^m))
@@ -32,6 +34,21 @@ struct
 
   let mkwireconn (src:wireid) (snk:wireid) : wireconn =
     {src=src;dst=snk}
+
+  let wireid2str (x:wireid) =
+    "wire"
+
+  let wireconn2str (x:wireconn) : string =
+    (wireid2str x.src)^"->"^(wireid2str x.dst)
+
+  let label2str (type a) (type b) (x:(a,b) label)
+      (f:a->string) (g:b->string) : string =
+    match x with
+    | MInLabel(lbl) -> (wireid2str lbl.wire)^" > "^(f lbl.var)
+    | MOutLabel(lbl) -> (wireid2str lbl.wire)^" > "^(f lbl.var)
+    | MLocalLabel(lbl) -> (wireid2str lbl.wire)^" > "^(f lbl.var)
+    | MExprLabel(lbl) -> (wireid2str lbl.wire)^" > "^(ASTLib.ast2str lbl.expr g)
+    | ValueLabel(lbl) -> (wireid2str lbl.wire)^" > "^(string_of_number lbl.value)
 
   let add_conn (sln:usln) (conn:wireconn) =
     error "add_conn" "unimplemented"

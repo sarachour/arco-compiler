@@ -117,19 +117,23 @@ struct
 
 
   let slnstep2str (n:sslnctx) = match n with
-    | _ -> "<slnstep2str UNIMPLEMENTED>"
+    | SSlnAddConn(conn) -> "[sln-step] conn "^(SlnLib.wireconn2str conn)
+    | SSlnAddRoute(label) -> "[sln-step] route "^(SlnLib.label2str label ident mid2str)
+    | SSlnAddGen(label) -> "[sln-step] generate "^(SlnLib.label2str label ident mid2str)
 
   let mapstep2str (n:smapctx) = match n with
     | _ -> "<mapstep2str UNIMPLEMENTED>"
 
   let compstep2str (n:scmpctx) = match n with
     | SCMakeConcComp(c) ->
-      "make-comp "^(HwLib.hwcompname2str c.d.name)^(string_of_int c.inst)
-    | SCAddInCfg(id,p,v) -> "cfg-in "^p
-    | SCAddOutCfg(id,p,v) -> "cfg-out "^p
-    | SCAddParCfg(id,p,v) -> "cfg-param "^p
+      "[comp] make-comp "^(HwLib.hwcompname2str c.d.name)^(string_of_int c.inst)
+    | SCAddInCfg(id,p,v) -> "[comp] "^(HwLib.hwcompinst2str id)^" cfg-in "^p
+                            ^"="^(uast2str v.expr)
+    | SCAddOutCfg(id,p,v) -> "[comp] "^(HwLib.hwcompinst2str id)^" cfg-out "^p
+                            ^"="^(uast2str v.expr)
+    | SCAddParCfg(id,p,v) -> "[comp] "^(HwLib.hwcompinst2str id)^" cfg-param "^p
+                            ^"="^(string_of_number v)
 
-    | _ -> "<compstep2str UNIMPLEMENTED"
 
   let step2str (n:sstep) = match n with
     | SModCompCtx(c) -> compstep2str c
