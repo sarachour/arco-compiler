@@ -30,8 +30,7 @@ type hcconn =
 type connid = string*string
 
 type wireid = {
-    comp:hwcompname;
-    inst:int;
+    comp:hwcompinst;
     port:string;
 }
 
@@ -39,6 +38,43 @@ type wireconn = {
   src: wireid;
   dst: wireid;
 }
+
+(*a collection of wires*)
+type wire_coll =
+  | WCollEmpty
+  | WCollOne of wireid
+  | WCollMany of wireid list
+
+(*
+these hardware ids generate variables and values.
+these wires are all outputs fyi
+*)
+
+(*
+this hardware ids require values and variables be routed
+to them.
+*)
+type ('a,'b) sln_labels = {
+  outs: ('a,wire_coll) map;
+  ins: ('a,wire_coll) map;
+  locals: ('a,wire_coll) map;
+  exprs: ('b ast,wire_coll) map;
+  vals: (number,wire_coll) map;
+}
+
+(*
+A solution is comprised of a set of generators and route points.
+A finalized solution is comprised of connections and generators,
+where the generators are exclusively on input and output ports
+(or local wires)
+*)
+type ('a,'b) sln = {
+  (*how many of each component is used *)
+  mutable conns: (wireid, wireid set) map;
+  generate: ('a,'b) sln_labels;
+  route: ('a,'b) sln_labels;
+}
+
 
 (*General Data*)
 type hwvid =

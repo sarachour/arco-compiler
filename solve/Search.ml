@@ -4,7 +4,7 @@ open SearchData
 open Util
 open SolverData
 open SolverUtil
-open SolverSln
+open SlnLib
 open SolverData
 
 open Interactive
@@ -288,6 +288,11 @@ struct
     SStatLib.clear_deadends sr.st;
     new_env
 
+
+  let parent (type a) (type b) (sr:(a,b) ssearch) (node:a snode) =
+    match TREE.parent sr.tree node with
+    | Some(par) -> par
+    | None -> error "parent" "this node doesn't have a parent"
 
   let murder_branch (type a) (type b) (sr:(a,b) ssearch) (leaf:a snode) : unit =
     let rec _kill_branch n =

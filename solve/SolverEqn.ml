@@ -1,7 +1,6 @@
 open Util
 
 open ASTUnifyData
-open ASTUnify
 open ASTXUnify
 
 open AST
@@ -21,8 +20,7 @@ open SolverGoalTable
 open SolverData
 open SolverUtil
 open SolverRslv
-open SolverSln
-open SolverTrivial
+open SlnLib 
 
 
 open GoalLib
@@ -49,7 +47,7 @@ struct
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "s" then
-        let _ = Printf.printf "\n%s\n\n" (SlnLib.sln2str v.sln_ctx) in
+        let _ = Printf.printf "\n%s\n\n" (SlnLib.sln2str v.sln_ctx ident) in
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "goto" then
@@ -395,34 +393,168 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         no
 
 
+
+  (*=========== RSTEP to SSTEP Conversion ==================*)
+  (*specifically for inputs*)
+  let rassign_inp_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) =
+    let wire = SlnLib.mkwire comp.d.name comp.inst v in
+    match cfg.expr with
+    | Term(MathId(MNVar(knd,name))) ->
+      begin
+        match knd with
+        | MInput ->
+          if HwLib.is_inblock_reachable tbl.env.hw wire = false
+          then GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr)
+          else SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire})))
+
+        | MLocal ->
+          SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire})))
+
+        | MOutput ->
+          SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire})))
+      end
+    | Term(HwId(HNPort(knd,cmp,port,prop))) ->
+      begin
+        match cmp,knd with
+        | HCMGlobal(cmp),HWKInput ->
+          error "rstep_to_goal" "cannot connect input to input"
+
+        | HCMGlobal(cmp),HWKOutput ->
+          let dest = SlnLib.mkwire cmp.name cmp.inst port in
+          if HwLib.is_connectable tbl.env.hw wire dest = false
+          then GoalLib.mk_conn_goal tbl wire dest
+          else SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
+
+        | _ -> error "rassign_inp_to_goal" "not expecting a local id"
+      end
+
+    | Integer(i) ->
+      SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire})))
+
+    | Decimal(d)->
+      SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire})))
+
+    | Term(MathId(MNParam(_))) -> error "rstep_to_goal" "not expecting param"
+
+    | Term(HwId(HNParam(_))) -> error "rstep_to_goal" "not expecting param"
+
+    | _ -> error "reassign_inp_to_goal" "unknown"
+
+  let rassign_out_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) =
+    let wire = SlnLib.mkwire comp.d.name comp.inst v in
+    match cfg.expr with
+    | Term(MathId(MNVar(knd,name))) ->
+      begin
+        match knd with
+        |MInput ->
+          error "rassign_out_to_sln" "cannot define a math input using an output hw var"
+
+        |MOutput ->
+          if HwLib.is_outblock_reachable tbl.env.hw wire = false
+          then GoalLib.mk_outblock_goal tbl wire
+          else SModSln(SSlnAddGen(MInLabel({var=name;wire=wire})))
+        |MLocal ->
+          SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire})))
+      end
+    | Term(HwId(HNPort(knd,hcmp,port,prop))) ->
+      begin
+        match hcmp,knd with
+        |HCMGlobal(cmp),HWKInput ->
+          let dest = SlnLib.mkwire cmp.name cmp.inst port in
+          if HwLib.is_connectable tbl.env.hw dest wire = false
+          then GoalLib.mk_conn_goal tbl dest wire
+          else SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
+        |_,HWKOutput -> error "rassign_out_to_sln" "at the moment, cannot connect output with output" 
+        |_ -> error "rassign_out_to_sln" "must have global ids" 
+      end
+
+    | Term(MathId(MNParam(_))) -> error "rstep_to_goal" "not expecting param"
+    | Term(HwId(HNParam(_))) -> error "rstep_to_goal" "not expecting param"
+    | expr ->
+      let mexpr = uast2mast expr in
+      (*note: this should create different solutions*)
+      if MathLib.is_input_expr mexpr  = false
+      then GoalLib.mk_hexpr_goal tbl wire mexpr
+      else SModSln(SSlnAddGen(MExprLabel({expr=mexpr;wire=wire})))
+
+  let rsteps_to_node (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)=
+    let compid = {name=comp.d.name;inst=comp.inst} in 
+    let add_step (rstep:rstep) (ctx:sstep list) : sstep list=
+          match rstep with
+          (*input assignments become goals*)
+          | RAddInAssign(v,cfg) ->
+            let cfg_step = SCAddInCfg(compid,v,cfg) in
+            let goal_step = rassign_inp_to_goal tbl comp v cfg in 
+            SModCompCtx(cfg_step)::goal_step::ctx
+          (*out assignments are already satisfied*)
+          | RAddOutAssign(v,cfg) ->
+            let cfg_step = SCAddOutCfg(compid,v,cfg) in
+            let goal_step = rassign_out_to_goal tbl comp v cfg in
+            SModCompCtx(cfg_step)::goal_step::ctx
+          | RAddParAssign(v,cfg) ->
+            let cfg_step = SCAddParCfg(compid,v,cfg) in
+            SModCompCtx(cfg_step)::ctx
+          | _ -> ctx
+    in
+    let steps = List.fold_right add_step rsteps ssteps in 
+    SearchLib.mknode_child_from_steps tbl.search tbl (steps);
+    ()
+
+  let unify_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
+    let results : rstep list list= match g with
+    | GUMathGoal(mgoal) ->
+      ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
+    | _ -> error "unify_goal_with_comp" "unimplemented"
+    in
+    match results with
+    | h::t ->
+      begin
+        (*create a concrete comp*)
+        let comp : ucomp_conc = SolverCompLib.mk_conc_comp tbl ucomp.d.name in
+        let inits = [SModCompCtx(SCMakeConcComp(comp))] in
+        List.iter (fun rsteps ->
+            rsteps_to_node tbl comp rsteps inits
+        ) results;
+        debug "found results";
+        
+      end
+    | [] -> ()
+
+  let unify_goal_with_conc_comp (tbl:gltbl) (ucomp:ucomp_conc) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
+    let results : rstep list list = match g with
+      | GUMathGoal(mgoal) ->
+        ASTUnifier.unify_conc_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
+      | _ -> error "unify_goal_with_comp" "unimplemented"
+    in
+    ()
+
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
-
-  let unify_math_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (inst:int) (hwvar:hwvid hwportvar) (mvr:mid mvar) =
-    ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mvr.name
-
-  let solve_math_goal (tbl:gltbl) (g:goal_math) =
-      let mvar = g.d in
+  let solve_unifiable_goal (tbl:gltbl) (g:unifiable_goal) =
+      (* make a priority queue that grades the component outputs for the goal*)
       let prio_comps = PRIOQUEUE.make (fun (k,p) -> match k with
           | HWCompNew(xname) ->
             let hwcomp = SolverCompLib.get_avail_comp tbl xname in 
-            SolverCompLib.grade_hwvar_with_mvar hwcomp.d p mvar
+            SolverCompLib.grade_hwvar_with_goal hwcomp.d p g
           | HWCompExisting(xinst) ->
             let hwcomp = SolverCompLib.get_conc_comp tbl xinst in 
-            SolverCompLib.grade_hwvar_with_mvar hwcomp.d p mvar
+            SolverCompLib.grade_hwvar_with_goal hwcomp.d p g
         )
-      in
+    in
+      (* add all the compatible available comps *)
       SolverCompLib.iter_avail_comps tbl (fun cmpname cmp ->
-          match SolverCompLib.compatible_comp_with_mvar cmp mvar with
+          match SolverCompLib.compatible_comp_with_goal cmp g with
           | [] -> ()
           | vars -> List.iter (fun v ->
               noop (PRIOQUEUE.add prio_comps (HWCompNew cmpname,v))) vars
       );
+      (* add all the compatible used comps*)
       SolverCompLib.iter_used_comps tbl (fun cmpid cmp ->
-          match SolverCompLib.compatible_used_comp_with_mvar cmp mvar with
+          match SolverCompLib.compatible_used_comp_with_goal cmp g with
           | [] -> ()
           | vars -> List.iter (fun v ->
               noop (PRIOQUEUE.add prio_comps (HWCompExisting cmpid,v))) vars
         );
+      (* iterate over prioritzed list of comps*)
       let nsols : int ref = REF.mk 0 in 
       PRIOQUEUE.iter prio_comps (fun (prio:int) (cmpkind,hwvar) ->
           begin
@@ -432,15 +564,17 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
               begin
                 debug ("new: ["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
                        "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n"));
-                unify_math_goal_with_comp tbl hwcomp (hwcomp.d.insts) hwvar mvar
+                unify_goal_with_comp tbl hwcomp hwvar g;
+                ()
               end
             | HWCompExisting(compinst) ->
-              let hwcomp = SolverCompLib.get_conc_comp tbl compinst in 
+              let hwcomp : ucomp_conc = SolverCompLib.get_conc_comp tbl compinst in 
               begin
               debug "  [existing comp]";
                      debug ("new: ["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
                 "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n"));
-              error "solve_math_goal" "reusing comp is not implemented"
+              unify_goal_with_conc_comp tbl hwcomp hwvar g;
+              ()
               end
           end;
           ()
@@ -460,7 +594,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     musr ();
     if g.active = false then error "solve_goal" "cannot solve inactive goal"; 
     match g.d with
-    |GMathGoal(g) -> solve_math_goal tbl g 
+    |GUnifiable(g) -> solve_unifiable_goal tbl g 
     | _ -> error "solve_goal" "unimplemented"
   (*solve a goal*)
    (*
@@ -559,6 +693,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
             end
             (*No more subgoals*)
           | None ->
+            debug "[search_tree] could not find another node";
             ()
         end
       end

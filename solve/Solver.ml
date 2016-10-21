@@ -8,7 +8,6 @@ open MathData
 
 open AST
 open ASTUnifyData
-open ASTUnify
 
 open Util
 open Unit
@@ -22,7 +21,7 @@ open Search
 
 open SolverData
 open SolverUtil
-open SolverSln
+open SlnLib
 open SolverSearch
 open SolverRslv
 open SolverGoalTable
@@ -69,7 +68,7 @@ let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   let msearch = MultiSearch.mkmulti sl in
   slvr_print_inter "===== Beginning Interactive Solver ======\n";
   let nslns = Globals.get_glbl_int "slvr-solutions" in
-  let maybe_slns : (sln list) option = MultiSearch.msolve (REF.mk sl) msearch nslns in
+  let maybe_slns : ((string,mid) sln list) option = MultiSearch.msolve (REF.mk sl) msearch nslns in
   match maybe_slns with
   | Some(slns) -> error "solve/maybe_slns" "unimplemented"
   | None -> flush_all(); error "solver" "no solutions found"

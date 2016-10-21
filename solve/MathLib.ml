@@ -338,6 +338,8 @@ struct
     else
       ()
 
+  let is_input_expr (a:mid ast) = false
+
   let inference (e:'a menv) (cnv:'a -> mid) =
     iter_vars e (fun x -> inference_var e x cnv);
     ()

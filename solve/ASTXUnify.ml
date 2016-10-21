@@ -12,7 +12,7 @@ open AST
 open ASTUnifyData
 
 open SolverData
-open SolverSln
+open SlnLib
 open SolverGoalTable
 open SolverUtil
 
@@ -901,7 +901,15 @@ struct
     in
     match result with
     | UNIRESSuccess(steps) ->
-      error "unify" "success. Add solution and randomly ban"
+      let currnode :rnode = SearchLib.cursor env.search in
+      let parnode = SearchLib.parent env.search currnode in 
+      SearchLib.solution env.search currnode;
+      SearchLib.move_cursor env.search env.tbl parnode;
+      List.iter (fun restrict ->
+          SearchLib.mknode_child_from_steps env.search env.tbl [restrict];
+          ()
+      ) steps 
+
 
     (*add child*)
     | UNIRESFailure(assigns) ->
@@ -949,6 +957,14 @@ struct
       debug "!--> Found Enough Solutions, Exiting <--!";
       ()
     in
+    let get_num_slns () =
+      SearchLib.num_solutions sr.search None
+    in
+    let report_num_slns () =
+      let nslns : int = get_num_slns () in
+      debug ("# solutions: "^(string_of_int nslns));
+      nslns
+    in
     let find_more_solutions (curs) solve_fxn =
           unify sr;
           usrmenu ();
@@ -958,7 +974,7 @@ struct
             solve_fxn ()
             end
           else
-           debug "--> Finishing AST Search <--";
+            debug "--> Finishing AST Search <--";
            ()
     in
     let rec _solve () =
@@ -969,10 +985,12 @@ struct
       else
         begin
         (*get the next node*)
-          let nslns : int = SearchLib.num_solutions sr.search None in
-          debug ("# solutions: "^(string_of_int nslns));
+          let nslns : int = get_num_slns() in
           if nslns >= desired_nslns then
-            found_enough_solutions curs 
+            begin
+              report_num_slns ();
+              found_enough_solutions curs
+            end
           else
             find_more_solutions curs _solve
         end
@@ -982,35 +1000,49 @@ struct
     _solve ();
     (*let _ = sysmenu "t" in*)
     ()
- 
-  let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: unid ast)=
+
+   (* take the set of assignments, and convert to steps *)
+  let get_solutions (env:runify) : (rstep list) list=
+    let results : rnode list = SearchLib.get_solutions env.search None in
+    (* convert to eqn steps*)
+    List.map (fun result ->
+        let steps : rstep list = SearchLib.get_path env.search result in
+        steps 
+    ) results
+
+  let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: unid ast) =
     env.tbl.target <- TRGHWVar(hvar,hexpr);
     ASTUnifyTree.init_root env;
     expand_params_tree env;
-    solve env 1
+    solve env 5;
+    get_solutions env 
 
   let unify_with_mvar (env:runify) (mvar:string) =
     env.tbl.target <- TRGMathVar(mvar);
     ASTUnifyTree.init_root env;
     expand_params_tree env;
-    solve env 1
+    solve env 5;
+    get_solutions env 
+
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:unid ast) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
     unify_with_hwvar uenv h2var hexpr
 
-  let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) (mvar:string) =
+  let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv)
+      (comp:ucomp) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
     unify_with_mvar uenv mvar
 
-  let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) =
+  let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
+      (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) (hexpr:unid ast) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    unify_with_hwvar uenv hwvar
+    unify_with_hwvar uenv hwvar hexpr  
 
-  let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) (mvar:string) =
+  let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv)
+      (comp:ucomp_conc) (hvar:string) (mvar:string) =
     let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    unify_with_mvar uenv mvar
-
+    unify_with_mvar uenv mvar 
 
 end

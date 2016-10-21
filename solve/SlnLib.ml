@@ -8,20 +8,30 @@ open SolverUtil
 open Unit
 open SolverRslv
 
+open MathData
+
 exception SolverSlnError of string
 
 let error n m = raise (SolverSlnError (n^":"^m))
 module SlnLib =
 struct
 
-  let mkcomp (sln:sln) (id:hwcompname) =
-    MAP.put sln.comps id (SET.make (),0)
+  let mklabels () :('a,'b) sln_labels = {
+    ins=MAP.make();
+    outs=MAP.make();
+    locals=MAP.make();
+    vals=MAP.make();
+    exprs=MAP.make();
+  }
+  let mksln () : ('a,'b) sln =
+    {conns=MAP.make(); route=mklabels(); generate=mklabels()}
 
 
-  let mksln () : sln =
-    {comps=MAP.make();conns=MAP.make(); labels=MAP.make()}
+  let mkwire (c:hwcompname) (i:int) (p:string) : wireid =
+    {comp={name=c;inst=i};port=p}
 
-
+  let mkwireconn (src:wireid) (snk:wireid) =
+    {src=src;dst=snk}
 (*
   let hwport2wire cm port =
     match cm with
@@ -316,7 +326,7 @@ struct
     ()
 
    *)
-  let sln2str (s:sln) : string=
+  let sln2str (s:('a,'b) sln) (f:'a -> string) : string=
     "<sln2str: unimplemented>"
    (*
     let comp2str cname clist id =

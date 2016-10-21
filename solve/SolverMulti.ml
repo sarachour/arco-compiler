@@ -1,7 +1,6 @@
 open Util
 
 open ASTUnifyData
-open ASTUnify
 
 
 open Interactive
@@ -19,8 +18,7 @@ open SearchData
 open SolverGoalTable
 open SolverData
 open SolverUtil
-open SolverSln
-open SolverTrivial
+open SlnLib 
 open SolverSearch
 open SolverEqn
 
@@ -458,7 +456,7 @@ struct
     results
     *)
 
-  let get_existing_global_solution (ms:musearch) (key:string) (id:int) : sln =
+  let get_existing_global_solution (ms:musearch) (key:string) (id:int) : (string,mid) sln =
     error "get_existing_global_solution" "unimplemented"
 (*
     let gtree = MAP.get ms.state.globals key in
@@ -625,7 +623,7 @@ struct
 
 
 
-    let msolve sl (ms:musearch) (nslns:int): (sln list) option =
+    let msolve sl (ms:musearch) (nslns:int): (((string,mid) sln) list) option =
       let mint,musr = mkmenu ms in
       let _msolve_new id =
           let nnewslns = get_glbl_int "multi-num-partial-solutions" in
@@ -683,11 +681,11 @@ struct
       let _ = musr () in
       let snodes = SearchLib.get_solutions ms.search None in
       let _ = _print_debug ("Number of Solutions:"^(string_of_int (List.length  snodes))) in
-      let slns = List.fold_right (fun (x:mustep snode) (rest:sln list) ->
+      let slns = List.fold_right (fun (x:mustep snode) (rest:(string,mid) sln list) ->
         let _ = SearchLib.move_cursor ms.search ms.state x in
         match ms.state.global with 
         | Some(gid) ->
-                let s :sln  = get_existing_global_solution ms gid.gid gid.inst in
+                let s : (string,mid) sln  = get_existing_global_solution ms gid.gid gid.inst in
                 s::rest
         | None -> rest
       ) snodes []

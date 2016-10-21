@@ -20,7 +20,7 @@ open Search
 
 open SolverData
 open SolverUtil
-open SolverSln
+open SlnLib 
 
 
 exception GoalLibError of string
@@ -36,9 +36,23 @@ struct
     goal
 
   let mk_mathgoal (tbl:gltbl) (m:mid mvar) =
-    let mgoal = GMathGoal({d=m}) in
+    let mgoal = GUnifiable(GUMathGoal({d=m})) in
     mk_goal tbl mgoal
     
+
+  let mk_conn_goal (tbl:gltbl) (src:wireid) (dest:wireid) =
+    error "mk_conn_goal" "unimpl"
+
+  let mk_inblock_goal (tbl:gltbl) (src:wireid) =
+    error "mk_iblock_goal" "unimpl"
+
+  let mk_outblock_goal (tbl:gltbl) (src:wireid) =
+    error "mk_oblock_goal" "unimpl"
+
+  let mk_hexpr_goal (tbl:gltbl) (src:wireid) (expr:mid ast)=
+    error "mk_hexpr_goal" "unimpl"
+
+
 
   let fold_goals (type a) (tbl:gltbl) (f:goal->a->a) (r0:a) =
     MAP.fold tbl.goals (fun gid goal  r -> f goal r) r0
@@ -46,8 +60,9 @@ struct
   let goal2str (g:goal) =
     let data_str =
       match g.d with
-        | GMathGoal(mvar) -> MathLib.mvar2str mvar.d (fun x -> MathLib.mid2str x)
-        | _ -> "goal2str: unimplemented"
+      | GUnifiable(GUMathGoal(mvar)) ->
+        MathLib.mvar2str mvar.d (fun x -> MathLib.mid2str x)
+      | _ -> "goal2str: unimplemented"
     in
     "["^(string_of_int g.id)^"] "^data_str 
 

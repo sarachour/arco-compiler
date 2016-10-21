@@ -20,7 +20,8 @@ open Search
 
 open SolverData
 open SolverUtil
-open SolverSln
+open SlnLib
+
 open SolverSearch
 
 open GoalLib
@@ -136,10 +137,11 @@ struct
   (*make an empty node without the goals*)
   let mktbl (env:uenv) : gltbl =
     let comptbl : (hwcompname,ucomp) map = MAP.make () in
+    let compctxtbl : (hwcompname,ucomp_ctx) map = MAP.make () in
     let sln = SlnLib.mksln () in
     List.iter (fun (hwcomp:hwvid hwcomp)  ->
         MAP.put comptbl hwcomp.name {d=hwcomp};
-        SlnLib.mkcomp sln hwcomp.name;
+        MAP.put compctxtbl hwcomp.name {insts=MAP.make();cnt=0};
         ()
     ) (MAP.to_values env.hw.comps);
     let search= SlvrSearchLib.mksearch () in
@@ -148,7 +150,7 @@ struct
         map_ctx=IntervalLib.mk_map_ctx ();
         goals=MAP.make();
         avail_comps=comptbl;
-        comp_ctx=MAP.make();
+        comp_ctx=compctxtbl;
         sln_ctx=sln;
         search=search;
       } in
@@ -159,9 +161,9 @@ struct
   let mkgoalroot (tbl:gltbl) (enable:mid mvar->bool) : unit =
     let steps :sstep list = MathLib.fold_vars tbl.env.math (fun v r ->
         let goal : goal = GoalLib.mk_mathgoal tbl v in
-        let step = SModifyGoalCtx(SGAddGoal(goal)) in
+        let step = SModGoalCtx(SGAddGoal(goal)) in
         if enable v then step::r
-        else step::SModifyGoalCtx(SGChangeGoalStatus(goal.id,false))::r
+        else step::SModGoalCtx(SGChangeGoalStatus(goal.id,false))::r
       ) []
     in
     SearchLib.setroot tbl.search tbl steps;

@@ -59,30 +59,54 @@ type goal_math = {
 
 (*connect *)
 
-(*connect two ports*)
-type goal_hw_conn = {
-  output_port:hwvid;
-  input_port:hwvid;
-}
+(*connect two ports
+
 (*map to the digital interface*)
 type goal_hw_varmap = {
   expr: mid ast;
   port:hwvid;
 }
-type goal_unify_hwin = {
+*)
+type goal_hw_conn = {
+  output_port:hwvid;
+  input_port:hwvid;
+}
+
+type goal_hw_expr = {
   port: string;
   prop: string;
   comp: hwcompinst;
   expr: mid ast;
 }
+type goal_conn = {
+  src: wireid;
+  dest: wireid;
+}
+type goal_ioblock = {
+  port: string;
+  prop: string;
+  comp: hwcompinst;
+ 
+}
 (*port input goals*)
-type goal_data =
-  | GMathGoal of goal_math
-  | GUnifyHWGoal of goal_unify_hwin
-  (*terminal goal*)
+type unifiable_goal =
+  | GUMathGoal of goal_math
+  | GUHWInExprGoal of goal_hw_expr
+  | GUHWConnPorts of goal_conn
+  | GUHWConnInBlock of goal_ioblock
+  | GUHWConnOutBlock of goal_ioblock
+(*
+not necessarily a satisfiable goal
+*)
+                        
+(*terminal goal
   | GPortConnGoal of goal_hw_conn
   | GInPortMapGoal of goal_hw_varmap  
   | GOutPortMapGoal of goal_hw_varmap  
+*)
+
+type goal_data =
+  |GUnifiable of unifiable_goal
 
 type goal = {
   d: goal_data;
@@ -112,48 +136,53 @@ type ucomp_conc = {
   inst: int;
   mutable cfg: hwcompcfg; 
 }
-type portlabel_expr =
-  |PLbVar of mid
-  |PLbVal of number
-  |PLbExpr of mid ast
 
-(*map an expression to a hardware port*)
-type portlabel = {
-  hwid: hwvid;
-  expr: portlabel_expr;
-}
 
 (*Different kinds of labels*)
 
-type sln = {
-  (*how many of each component is used *)
-  mutable comps: (hwcompname,(int set)*int) map;
-  mutable conns: (wireid, wireid set) map;
-  mutable labels: (wireid, portlabel) map;
+type 'a sslnlabel_var = {
+  var: 'a;
+  wire:wireid;
 }
+type sslnlabel_val = {
+  value: number;
+  wire:wireid;
+}
+type 'a sslnlabel_expr = {
+  expr: 'a ast;
+  wire: wireid;
+}
+type ('a,'b) sslnlabel =
+  | MInLabel of 'a sslnlabel_var
+  | MOutLabel of 'a sslnlabel_var
+  | MLocalLabel of 'a sslnlabel_var
+  | ValueLabel of sslnlabel_val
+  | MExprLabel of 'b sslnlabel_expr
 
+type ('a,'b) sslnctx =
+  | SSlnAddConn of wireconn
+  | SSlnAddRoute of ('a,'b) sslnlabel
+  | SSlnAddGen of ('a,'b) sslnlabel
 
-type sslnctx =
-  | SSolUseNode of hwcompname*int
-  | SSolAddConn of wireconn
-  | SSolAddLabel of portlabel
-  | SSolRemoveLabel of portlabel
-
-type scmpctx =
-  | SCAddUsedComp of ucomp*int
 
 type sgoalctx =
   | SGAddGoal of goal
   | SGRemoveGoal of goal 
   | SGChangeGoalStatus of int*bool
 
+type scmpctx =
+  | SCMakeConcComp of ucomp_conc 
+  | SCAddOutCfg of hwcompinst*string*hwvarcfg
+  | SCAddInCfg of hwcompinst*string*hwvarcfg
+  | SCAddParCfg of hwcompinst*string*number
+
 type smapctx = unit
   
 type sstep =
-  | SModifySln of sslnctx 
-  | SModifyCompCtx of scmpctx
-  | SModifyGoalCtx of sgoalctx
-  | SModifyMapCtx of smapctx
+  | SModSln of (string,mid) sslnctx 
+  | SModCompCtx of scmpctx
+  | SModGoalCtx of sgoalctx
+  | SModMapCtx of smapctx
   (*add a relation for a node*)
 
 
@@ -162,14 +191,18 @@ type uenv =  {
   math: mid menv;
   mutable goal_cnt:int;
 }
+type ucomp_ctx = {
+  insts: (int,ucomp_conc) map;
+  mutable cnt: int;
+}
 type gltbl = {
   (*solution env*)
   env: uenv;
-  mutable sln_ctx: sln;
-  mutable comp_ctx : (hwcompinst,ucomp_conc) map;
+  mutable sln_ctx: (string,mid) sln;
+  mutable comp_ctx : (hwcompname,ucomp_ctx) map;
   mutable map_ctx : hwvid map_ctx; 
   mutable avail_comps : (hwcompname, ucomp) map;
   (*state of table*)
   mutable goals : (int,goal) map;
   mutable search: (sstep,gltbl) ssearch;
-  }
+}

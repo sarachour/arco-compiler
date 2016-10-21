@@ -1,10 +1,12 @@
 open Util
 open SolverData
 open SolverUtil
-open SolverSln
+open SlnLib
 open SolverData
 open Search
 open SearchData
+
+open MathData
 
 open Globals
 open Interactive
@@ -105,7 +107,7 @@ struct
                                     (if st then "enabled" else "disabled")
 
 
-  let slnstep2str (n:sslnctx) = match n with
+  let slnstep2str (n:(string,mid) sslnctx) = match n with
     | _ -> "<slnstep2str UNIMPLEMENTED>"
 
   let mapstep2str (n:smapctx) = match n with
@@ -115,10 +117,10 @@ struct
     | _ -> "<compstep2str UNIMPLEMENTED"
 
   let step2str (n:sstep) = match n with
-    | SModifyCompCtx(c) -> compstep2str c
-    | SModifyGoalCtx(c) -> goalstep2str c
-    | SModifyMapCtx(c) -> mapstep2str c
-    | SModifySln(c) -> slnstep2str c
+    | SModCompCtx(c) -> compstep2str c
+    | SModGoalCtx(c) -> goalstep2str c
+    | SModMapCtx(c) -> mapstep2str c
+    | SModSln(c) -> slnstep2str c
     | _ -> error "step2str" "unimplemented"
 
   (*
@@ -148,7 +150,7 @@ struct
       debug  ("> do step "^(step2str s)^"\n");
       begin
         match s with
-        | SModifyGoalCtx(g) -> apply_goal_step tbl g 
+        | SModGoalCtx(g) -> apply_goal_step tbl g 
         | _ -> error "apply_step" "unimplemented"
       end;
       tbl
@@ -170,12 +172,12 @@ struct
       *)
 
   let priority x : int = match x with
-    | SModifyGoalCtx(SGAddGoal(_)) -> 1
-    | SModifyGoalCtx(SGChangeGoalStatus(_)) ->2
-    | SModifyCompCtx(_) -> 3
-    | SModifySln(_) -> 3
-    | SModifyMapCtx(_) -> 3
-    | SModifyGoalCtx(SGRemoveGoal(_)) -> 4
+    | SModGoalCtx(SGAddGoal(_)) -> 1
+    | SModGoalCtx(SGChangeGoalStatus(_)) ->2
+    | SModCompCtx(_) -> 3
+    | SModSln(_) -> 3
+    | SModMapCtx(_) -> 3
+    | SModGoalCtx(SGRemoveGoal(_)) -> 4
     
   let order_steps x y =
     let score_x = priority x in
@@ -194,7 +196,7 @@ struct
       debug  ("> undo step %s\n"^(step2str s));
       begin
         match s with
-        | SModifyGoalCtx(g) -> unapply_goal_step tbl g 
+        | SModGoalCtx(g) -> unapply_goal_step tbl g 
         | _ -> error "apply_step" "unimplemented"
       end;
       tbl

@@ -272,6 +272,10 @@ struct
       MAP.get c.params iname
 
 
+  let mkinst e cname =
+    let c : 'a hwcomp = getcomp e cname in
+    c.insts
+
   let comp_isstvar comp iname =
     let v = comp_getvar comp iname in
     match v.bhvr with
@@ -621,4 +625,10 @@ struct
         inference_comp env x cnv);
     ()
 
+
+  let is_outblock_reachable (type a) (env:a hwenv) (wire:wireid) : bool = true
+
+  let is_inblock_reachable (type a) (env:a hwenv) (wire:wireid) : bool = true
+
+  let is_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool = true
 end
