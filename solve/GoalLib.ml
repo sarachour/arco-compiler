@@ -95,14 +95,18 @@ struct
   let fold_goals (type a) (tbl:gltbl) (f:goal->a->a) (r0:a) =
     MAP.fold tbl.goals (fun gid goal  r -> f goal r) r0
 
+  let portprop2str comp port prop =
+    (HwLib.hwcompinst2str comp)^"."^port^":"^prop 
   let goal2str (g:goal) =
     let data_str =
       match g.d with
       | GUnifiable(GUMathGoal(mvar)) ->
         MathLib.mvar2str mvar.d (fun x -> MathLib.mid2str x)
-      | GUnifiable(GUHWInExprGoal(hdata)) ->
-        let wire = (HwLib.hwcompinst2str hdata.comp)^"."^hdata.port^" "^hdata.prop in
-        wire^"="^(MathLib.mast2str hdata.expr)
+      | GUnifiable(GUHWInExprGoal(dat)) ->
+        (portprop2str dat.comp dat.port dat.prop)^"="^(MathLib.mast2str dat.expr)
+      | GUnifiable(GUHWConnInBlock(dat)) ->
+        "in-block "^(portprop2str dat.comp dat.port dat.prop)
+
       | _ -> "goal2str: unimplemented"
     in
     "["^(string_of_int g.id)^"] "^data_str 

@@ -70,26 +70,21 @@ type goal_hw_varmap = {
 
 
 type goal_hw_expr = {
-  port: string;
+  wire: wireid;
   prop: string;
-  comp: hwcompinst;
   expr: mid ast;
 }
-type goal_conn = {
-  src: wireid;
-  dest: wireid;
-}
+type goal_conn = wireconn
 type goal_ioblock = {
-  port: string;
+  wire: wireid;
   prop: string;
-  comp: hwcompinst;
  
 }
 (*port input goals*)
 type unifiable_goal =
   | GUMathGoal of goal_math
   | GUHWInExprGoal of goal_hw_expr
-  | GUHWConnPorts of goal_conn
+  | GUHWConnPorts of goal_conn 
   | GUHWConnInBlock of goal_ioblock
   | GUHWConnOutBlock of goal_ioblock
 (*
