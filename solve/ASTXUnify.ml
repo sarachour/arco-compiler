@@ -226,7 +226,6 @@ struct
     print_unify symhwexpr symtexpr;
     let maybe_assigns =
       try
-        SymCaml.set_debug symenv.s true;
         SymCaml.pattern symenv.s symtexpr symhwexpr
       with PyCamlWrapperException(_) ->
         warn "[unify_term][exception] python exception";
@@ -321,6 +320,12 @@ struct
           "+inp-asgn "^(vr)^"="^(ConcCompLib.varcfg2str asgn)
     | RDisableAssign(vr,rhs) ->
           "-asgn "^(vr)^"="^(ASTLib.ast2str rhs unid2str)
+
+  let step2restrict (step:rstep) =  match step with
+          | RAddInAssign(vr,cfg) -> Some (RDisableAssign(vr,cfg.expr))
+          | RAddOutAssign(vr,cfg) -> Some (RDisableAssign(vr,cfg.expr))
+          | RDisableAssign(_) -> Some (step)
+          | _ -> None
 
   let order_steps a b = 0
 
@@ -922,12 +927,15 @@ struct
     match result with
     | UNIRESSuccess(steps) ->
       let currnode :rnode = SearchLib.cursor env.search in
-      let parnode = SearchLib.parent env.search currnode in 
-      SearchLib.solution env.search currnode;
-      SearchLib.move_cursor env.search env.tbl parnode;
-      List.iter (fun restrict ->
-          SearchLib.mknode_child_from_steps env.search env.tbl [restrict];
-          ()
+      let slnnode : rnode =
+        SearchLib.mknode_child_from_steps env.search env.tbl steps
+      in
+      SearchLib.solution env.search slnnode;
+      List.iter (fun step ->
+          match ASTUnifyTree.step2restrict step with
+          | Some(restrict) ->
+              noop (SearchLib.mknode_child_from_steps env.search env.tbl [restrict])
+          | None -> ()
       ) steps 
 
 

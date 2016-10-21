@@ -297,6 +297,26 @@ struct
     ((getins e cname)) @
     ((getouts e cname)) 
 
+  let getin e cname port =
+    let c = getcomp e cname in
+    MAP.get c.ins port
+
+  let getout e cname port =
+    let c = getcomp e cname in
+    MAP.get c.outs port
+
+
+  let getvar e cname port =
+    let c = getcomp e cname in
+    if MAP.has c.outs port then
+      MAP.get c.outs port
+    else
+      MAP.get c.ins port
+
+  let getprop e cname port =
+    let v = getvar e cname port in
+    v.prop
+
   let getcomps e  =
     MAP.to_values e.comps
 
@@ -365,6 +385,7 @@ struct
     let outport = mkid HWKOutput name in
     hwcompname2str name,(inport),(outport)
 
+  
   let mkadefs () :  hwadefs =
     {
       ival=IntervalLib.mkdflt_ival();

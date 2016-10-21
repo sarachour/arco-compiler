@@ -117,9 +117,9 @@ struct
 
 
   let slnstep2str (n:sslnctx) = match n with
-    | SSlnAddConn(conn) -> "[sln-step] conn "^(SlnLib.wireconn2str conn)
-    | SSlnAddRoute(label) -> "[sln-step] route "^(SlnLib.label2str label ident mid2str)
-    | SSlnAddGen(label) -> "[sln-step] generate "^(SlnLib.label2str label ident mid2str)
+    | SSlnAddConn(conn) -> "[sln] conn "^(SlnLib.wireconn2str conn)
+    | SSlnAddRoute(label) -> "[sln] route "^(SlnLib.label2str label ident mid2str)
+    | SSlnAddGen(label) -> "[sln] generate "^(SlnLib.label2str label ident mid2str)
 
   let mapstep2str (n:smapctx) = match n with
     | _ -> "<mapstep2str UNIMPLEMENTED>"
@@ -206,10 +206,10 @@ struct
     | SModGoalCtx(SGAddGoal(_)) -> 1
     | SModGoalCtx(SGChangeGoalStatus(_)) ->2
     | SModCompCtx(SCMakeConcComp(_)) -> 3
-    | SModSln(_) -> 3
-    | SModMapCtx(_) -> 3
-    | SModCompCtx(_) -> 4
-    | SModGoalCtx(SGRemoveGoal(_)) -> 5
+    | SModSln(_) -> 4
+    | SModMapCtx(_) -> 5
+    | SModCompCtx(_) -> 6
+    | SModGoalCtx(SGRemoveGoal(_)) -> 7
     
   let order_steps x y =
     let score_x = priority x in

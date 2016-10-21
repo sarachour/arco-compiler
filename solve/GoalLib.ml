@@ -50,8 +50,46 @@ struct
     error "mk_oblock_goal" "unimpl"
 
   let mk_hexpr_goal (tbl:gltbl) (src:wireid) (expr:mid ast)=
-    error "mk_hexpr_goal" "unimpl"
+    let prop = HwLib.getprop tbl.env.hw src.comp.name src.port in
+    let data : goal_hw_expr =
+      {comp=src.comp; port=src.port; prop=prop;expr=expr}
+    in
+    let goal : goal_data = GUnifiable(GUHWInExprGoal(data)) in
+    mk_goal tbl goal
+      
 
+
+
+  let _get_goal (type a) (tbl:gltbl) (filter:goal_data->bool) : goal option =
+    let results =
+      MAP.fold tbl.goals (fun id (goal:goal) (lst:goal list) ->
+          if filter goal.d
+          then goal::lst
+          else lst
+        ) []
+    in
+    match results with
+    | [h] -> Some h
+    | [] -> None
+    | _ -> error "_get_goal" "more than one match"
+
+  let get_math_goal (type a) (tbl:gltbl) (targ:string) =
+    let filter g = match g with
+      | GUnifiable(GUMathGoal(v)) -> v.d.name = targ
+      | _ -> false
+    in
+    match _get_goal tbl filter with
+    | Some(g) -> g
+    | _ -> error "get_math_goal" "goal doesn't exist"
+
+  let get_hwexpr_goal (type a) (tbl:gltbl) (wire:wireid) (expr:mid ast) =
+    let filter g = match g with
+      | GUnifiable(GUHWInExprGoal(v)) -> error "get_hwexpr_goal" "unimpl"
+      | _ -> false
+    in
+    match _get_goal tbl filter with
+    | Some(g) -> g
+    | _ -> error "get_math_goal" "goal doesn't exist"
 
 
   let fold_goals (type a) (tbl:gltbl) (f:goal->a->a) (r0:a) =
@@ -62,6 +100,9 @@ struct
       match g.d with
       | GUnifiable(GUMathGoal(mvar)) ->
         MathLib.mvar2str mvar.d (fun x -> MathLib.mid2str x)
+      | GUnifiable(GUHWInExprGoal(hdata)) ->
+        let wire = (HwLib.hwcompinst2str hdata.comp)^"."^hdata.port^" "^hdata.prop in
+        wire^"="^(MathLib.mast2str hdata.expr)
       | _ -> "goal2str: unimplemented"
     in
     "["^(string_of_int g.id)^"] "^data_str 

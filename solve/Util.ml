@@ -394,7 +394,10 @@ struct
   type sortorder =
     SortAscending | SortDescending
   
- 
+
+  let length2str lst =
+    string_of_int (List.length lst)
+
   let has lst n =
       List.length (List.filter (fun x -> n = x) lst) > 0
 

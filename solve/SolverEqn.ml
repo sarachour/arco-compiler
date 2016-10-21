@@ -313,7 +313,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
   let test_node_validity (tbl:gltbl) (node:sstep snode) (depth:int) : bool=
     begin
       let old_cursor, old_depth = backup_and_move_cursor tbl node in 
-      _print_debug ("-> testing validity: "^(string_of_int node.id));
+      _print_debug ("-> [valid?] testing node "^(string_of_int node.id));
       let is_valid : bool =
         if old_depth >= depth then
           begin
@@ -402,16 +402,24 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     | Term(MathId(MNVar(knd,name))) ->
       begin
         match knd with
+        (*assign a math input to a hardware input*)
         | MInput ->
-          if HwLib.is_inblock_reachable tbl.env.hw wire = false
-          then GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr)
-          else SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire})))
+          let router = if HwLib.is_inblock_reachable tbl.env.hw wire = false
+          then
+            let goal = GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr) in
+            SModGoalCtx(SGAddGoal(goal))
+          else
+            SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire})))
+          in
+          [router]
 
         | MLocal ->
-          SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire})))
+          let router = SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire}))) in
+          [router]
 
         | MOutput ->
-          SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire})))
+          let router = SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire}))) in
+          [router]
       end
     | Term(HwId(HNPort(knd,cmp,port,prop))) ->
       begin
@@ -421,61 +429,96 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
 
         | HCMGlobal(cmp),HWKOutput ->
           let dest = SlnLib.mkwire cmp.name cmp.inst port in
-          if HwLib.is_connectable tbl.env.hw wire dest = false
-          then GoalLib.mk_conn_goal tbl wire dest
-          else SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
+          let connect = if HwLib.is_connectable tbl.env.hw wire dest = false
+            then GoalLib.mk_conn_goal tbl wire dest
+            else
+              SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
+          in
+          [connect]
 
         | _ -> error "rassign_inp_to_goal" "not expecting a local id"
       end
 
     | Integer(i) ->
-      SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire})))
+      let route = SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))) in
+      [route]
 
     | Decimal(d)->
-      SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire})))
+      let route = SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))) in
+      [route]
 
     | Term(MathId(MNParam(_))) -> error "rstep_to_goal" "not expecting param"
 
     | Term(HwId(HNParam(_))) -> error "rstep_to_goal" "not expecting param"
+    (*assignment over inputs to output*)
+    | expr ->
+       let mexpr = uast2mast expr in
+      (*note: this should create different solutions*)
+       let route =
+         if MathLib.is_input_expr mexpr  = false
+         then
+           let goal = GoalLib.mk_hexpr_goal tbl wire mexpr in
+           SModGoalCtx(SGAddGoal(goal))
+         else
+           SModSln(SSlnAddRoute(MExprLabel({expr=mexpr;wire=wire})))
+       in
+       [route]
 
-    | _ -> error "reassign_inp_to_goal" "unknown"
 
-  let rassign_out_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) =
+
+  (*resolve output port assignments*)
+  let rassign_out_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) :
+    sstep list =
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
     match cfg.expr with
     | Term(MathId(MNVar(knd,name))) ->
       begin
         match knd with
+        (*an output port should not generate an input *)
         |MInput ->
-          error "rassign_out_to_sln" "cannot define a math input using an output hw var"
-
+          let generator = SModSln(SSlnAddGen(MInLabel({var=name;wire=wire}))) in
+          [generator]
+        
+        (*this is a generator for an output. remove the math goal*)
         |MOutput ->
-          if HwLib.is_outblock_reachable tbl.env.hw wire = false
-          then GoalLib.mk_outblock_goal tbl wire
-          else SModSln(SSlnAddGen(MInLabel({var=name;wire=wire})))
+          let generator = if HwLib.is_outblock_reachable tbl.env.hw wire = false
+          then
+            GoalLib.mk_outblock_goal tbl wire
+          else
+            SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire})))
+          in
+          let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
+          [generator;SModGoalCtx(SGRemoveGoal(goal_to_remove))]
+
+        (*this is a generator for an local. remove the math goal*)
         |MLocal ->
-          SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire})))
+          let generator = SModSln(SSlnAddGen(MLocalLabel({var=name;wire=wire}))) in
+          let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
+          [generator;SModGoalCtx(SGRemoveGoal(goal_to_remove))]
       end
+    (*if we found a connection*)
     | Term(HwId(HNPort(knd,hcmp,port,prop))) ->
       begin
         match hcmp,knd with
         |HCMGlobal(cmp),HWKInput ->
           let dest = SlnLib.mkwire cmp.name cmp.inst port in
-          if HwLib.is_connectable tbl.env.hw dest wire = false
-          then GoalLib.mk_conn_goal tbl dest wire
-          else SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
-        |_,HWKOutput -> error "rassign_out_to_sln" "at the moment, cannot connect output with output" 
-        |_ -> error "rassign_out_to_sln" "must have global ids" 
+          let connection =
+            if HwLib.is_connectable tbl.env.hw dest wire = false
+            then GoalLib.mk_conn_goal tbl dest wire
+            else SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
+          in
+          [connection]
+        |_,HWKOutput ->
+          error "rassign_out_to_sln" "at the moment, cannot connect output with output"
+
+        |_ ->
+          error "rassign_out_to_sln" "must have global ids"
       end
 
     | Term(MathId(MNParam(_))) -> error "rstep_to_goal" "not expecting param"
     | Term(HwId(HNParam(_))) -> error "rstep_to_goal" "not expecting param"
     | expr ->
-      let mexpr = uast2mast expr in
-      (*note: this should create different solutions*)
-      if MathLib.is_input_expr mexpr  = false
-      then GoalLib.mk_hexpr_goal tbl wire mexpr
-      else SModSln(SSlnAddGen(MExprLabel({expr=mexpr;wire=wire})))
+      []
 
   let rsteps_to_node (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)=
     let compid = {name=comp.d.name;inst=comp.inst} in 
@@ -484,13 +527,13 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
           (*input assignments become goals*)
           | RAddInAssign(v,cfg) ->
             let cfg_step = SCAddInCfg(compid,v,cfg) in
-            let goal_step = rassign_inp_to_goal tbl comp v cfg in 
-            SModCompCtx(cfg_step)::goal_step::ctx
+            let goal_steps = rassign_inp_to_goal tbl comp v cfg in 
+            (SModCompCtx(cfg_step)::goal_steps) @ ctx
           (*out assignments are already satisfied*)
           | RAddOutAssign(v,cfg) ->
             let cfg_step = SCAddOutCfg(compid,v,cfg) in
-            let goal_step = rassign_out_to_goal tbl comp v cfg in
-            SModCompCtx(cfg_step)::goal_step::ctx
+            let goal_steps = rassign_out_to_goal tbl comp v cfg in
+            (SModCompCtx(cfg_step)::goal_steps) @ ctx
           | RAddParAssign(v,cfg) ->
             let cfg_step = SCAddParCfg(compid,v,cfg) in
             SModCompCtx(cfg_step)::ctx
@@ -513,10 +556,10 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         let comp : ucomp_conc = SolverCompLib.mk_conc_comp tbl ucomp.d.name in
         let inits = [SModCompCtx(SCMakeConcComp(comp))] in
         List.iter (fun rsteps ->
+            debug (" -> found unify solution with "^(LIST.length2str rsteps)^" steps");
             rsteps_to_node tbl comp rsteps inits
         ) results;
-        debug "found results";
-        
+        debug ("[unify!] Found "^(LIST.length2str results)^" results")
       end
     | [] -> ()
 
@@ -688,6 +731,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
               (*move to node*)
               SearchLib.move_cursor tbl.search tbl next_node;
               let next_goal = get_best_valid_goal tbl in
+              musr();
               (*solves the goal*)
               solve_goal tbl next_goal;
               rec_solve_subtree root

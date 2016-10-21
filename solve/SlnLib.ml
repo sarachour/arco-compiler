@@ -36,7 +36,7 @@ struct
     {src=src;dst=snk}
 
   let wireid2str (x:wireid) =
-    "wire"
+    (HwLib.hwcompinst2str x.comp)^"."^x.port
 
   let wireconn2str (x:wireconn) : string =
     (wireid2str x.src)^"->"^(wireid2str x.dst)

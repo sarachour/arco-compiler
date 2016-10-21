@@ -55,6 +55,8 @@ struct
   let mvar2str (type a) (m:a mvar) (f:a->string) : string =
     (kind2str m.knd)^" "^m.name^" :> "^(mbhv2str m.name m.bhvr f)^" {"^
     (mdef2str m.name m.defs)^"}"
+
+  let mast2str (type a) (m:mid ast) = ASTLib.ast2str m mid2str
 (*
   let rel2str (v:mrel) : string = match v with
     | MRState(l,r,MNParam(_,ic,_)) -> (ASTLib.ast2str r (fun x -> mid2str x))^" | ic = "^(string_of_number ic)

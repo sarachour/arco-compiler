@@ -67,10 +67,7 @@ type goal_hw_varmap = {
   port:hwvid;
 }
 *)
-type goal_hw_conn = {
-  output_port:hwvid;
-  input_port:hwvid;
-}
+
 
 type goal_hw_expr = {
   port: string;
