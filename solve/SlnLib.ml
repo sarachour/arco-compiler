@@ -16,7 +16,7 @@ let error n m = raise (SolverSlnError (n^":"^m))
 module SlnLib =
 struct
 
-  let mklabels () :('a,'b) sln_labels = {
+  let mklabels () :('a,'b) labels = {
     ins=MAP.make();
     outs=MAP.make();
     locals=MAP.make();
@@ -30,8 +30,111 @@ struct
   let mkwire (c:hwcompname) (i:int) (p:string) : wireid =
     {comp={name=c;inst=i};port=p}
 
-  let mkwireconn (src:wireid) (snk:wireid) =
+  let mkwireconn (src:wireid) (snk:wireid) : wireconn =
     {src=src;dst=snk}
+
+  let add_conn (sln:usln) (conn:wireconn) =
+    error "add_conn" "unimplemented"
+
+  let rm_conn (sln:usln) (conn:wireconn) =
+    error "rm_conn" "unimplemented"
+
+
+  let _add_wire_to_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
+    if MAP.has m key then
+      let ncoll = match MAP.get m key with
+      | WCollEmpty -> WCollOne(wire)
+      | WCollOne(wire2) -> WCollMany([wire2;wire])
+      | WCollMany(wires) -> WCollMany(wire::wires)
+      in
+      noop (MAP.put m key ncoll)
+    else
+      noop (MAP.put m key (WCollOne(wire)))
+
+  let _rm_wire_from_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
+    if MAP.has m key then
+      let ncoll = match MAP.get m key with
+      | WCollEmpty -> WCollEmpty
+      | WCollOne(cwire) -> if cwire = wire then  WCollEmpty
+          else error "rm_wire_from_label" "this wire is not assigned to the variable"
+      | WCollMany(h::t) -> if LIST.has (h::t) wire
+        then
+          match List.filter (fun x -> x != wire) (h::t) with
+          | [] -> WCollEmpty
+          | [h] -> WCollOne(h)
+          | h::t -> WCollMany(h::t)
+        else error "rm_wire_From_label" "this wire is not assigned"
+      | WCollMany([]) -> error "rm_wire_from_label" "cannot have no elements in many cllection"
+      in
+      noop (MAP.put m key ncoll)
+    else
+      noop (MAP.put m key (WCollOne(wire)))
+
+
+  let add_route (type a) (type b) (sln:(a,b)sln) (lbl:(a,b)label) =
+    begin
+      match lbl with
+      | MInLabel(lbl) ->
+        _add_wire_to_label sln.route.ins lbl.var lbl.wire
+      | MOutLabel(lbl) ->
+        _add_wire_to_label sln.route.outs lbl.var lbl.wire
+      | MLocalLabel(lbl) ->
+        _add_wire_to_label sln.route.locals lbl.var lbl.wire
+      | ValueLabel(lbl) ->      
+        _add_wire_to_label sln.route.vals lbl.value lbl.wire
+      | MExprLabel(lbl) ->
+        _add_wire_to_label sln.route.exprs lbl.expr lbl.wire
+    end;
+    ()
+
+  let add_generate (type a) (type b) (sln:(a,b) sln) (lbl: (a,b) label) =
+    begin
+      match lbl with
+      | MInLabel(lbl) ->
+        _add_wire_to_label sln.generate.ins lbl.var lbl.wire
+      | MOutLabel(lbl) ->
+        _add_wire_to_label sln.generate.outs lbl.var lbl.wire
+      | MLocalLabel(lbl) ->
+        _add_wire_to_label sln.generate.locals lbl.var lbl.wire
+      | ValueLabel(lbl) ->      
+        _add_wire_to_label sln.generate.vals lbl.value lbl.wire
+      | MExprLabel(lbl) ->
+        _add_wire_to_label sln.generate.exprs lbl.expr lbl.wire
+    end;
+    ()
+
+  let rm_generate (type a) (type b) (sln:(a,b) sln) (lbl: (a,b) label)  = 
+    begin
+      match lbl with
+      | MInLabel(lbl) ->
+        _rm_wire_from_label sln.generate.ins lbl.var lbl.wire
+      | MOutLabel(lbl) ->
+        _rm_wire_from_label sln.generate.outs lbl.var lbl.wire
+      | MLocalLabel(lbl) ->
+        _rm_wire_from_label sln.generate.locals lbl.var lbl.wire
+      | ValueLabel(lbl) ->      
+        _rm_wire_from_label sln.generate.vals lbl.value lbl.wire
+      | MExprLabel(lbl) ->
+        _rm_wire_from_label sln.generate.exprs lbl.expr lbl.wire
+    end;
+    ()
+
+  let rm_route (type a) (type b) (sln:(a,b) sln) (lbl: (a,b) label)  = 
+    begin
+      match lbl with
+      | MInLabel(lbl) ->
+        _rm_wire_from_label sln.route.ins lbl.var lbl.wire
+      | MOutLabel(lbl) ->
+        _rm_wire_from_label sln.route.outs lbl.var lbl.wire
+      | MLocalLabel(lbl) ->
+        _rm_wire_from_label sln.route.locals lbl.var lbl.wire
+      | ValueLabel(lbl) ->      
+        _rm_wire_from_label sln.route.vals lbl.value lbl.wire
+      | MExprLabel(lbl) ->
+        _rm_wire_from_label sln.route.exprs lbl.expr lbl.wire
+    end;
+    ()
+
 (*
   let hwport2wire cm port =
     match cm with

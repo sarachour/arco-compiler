@@ -193,7 +193,7 @@ struct
     ()
 
   let unapply_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (st:a list) =
-    let _ = List.iter (fun x -> let _ = sr.unapply env x in ()) st in
+    let _ = List.iter (fun x -> let _ = sr.unapply env x in ()) (st) in
     ()
 
   let has_child (type a) (type b) (sr:(a,b) ssearch) (s:a snode) =
@@ -224,7 +224,7 @@ struct
   let unapply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
       (*let _ = upd_score sr env node in*)
       let steps = List.sort (sr.order) node.s in
-      let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) steps env in
+      let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) (LIST.rev steps) env in
       nenv
 
 

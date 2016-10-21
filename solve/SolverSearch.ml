@@ -12,6 +12,15 @@ open Globals
 open Interactive
 open GoalLib
 
+open SolverCompLib
+
+open HWLib
+
+exception SolverSearchLibError of string
+
+let error n m = raise (SolverSearchLibError (n^":"^m))
+
+
 let debug : string -> unit = print_debug 4 "slvrsearch"
 let m_menu = menu 1
 let m_print_inter = print_inter 1
@@ -107,13 +116,19 @@ struct
                                     (if st then "enabled" else "disabled")
 
 
-  let slnstep2str (n:(string,mid) sslnctx) = match n with
+  let slnstep2str (n:sslnctx) = match n with
     | _ -> "<slnstep2str UNIMPLEMENTED>"
 
   let mapstep2str (n:smapctx) = match n with
     | _ -> "<mapstep2str UNIMPLEMENTED>"
 
   let compstep2str (n:scmpctx) = match n with
+    | SCMakeConcComp(c) ->
+      "make-comp "^(HwLib.hwcompname2str c.d.name)^(string_of_int c.inst)
+    | SCAddInCfg(id,p,v) -> "cfg-in "^p
+    | SCAddOutCfg(id,p,v) -> "cfg-out "^p
+    | SCAddParCfg(id,p,v) -> "cfg-param "^p
+
     | _ -> "<compstep2str UNIMPLEMENTED"
 
   let step2str (n:sstep) = match n with
@@ -137,7 +152,6 @@ struct
   | SMakeGoalActive(v) -> "activate "^(UnivLib.goal2str v)
   | SMakeGoalPassive(v) -> "inactive "^(UnivLib.goal2str v)
   *)
-    "<step2str UNIMPLEMENTED>"
 
   let apply_goal_step (tbl:gltbl) (s:sgoalctx) : unit = match s with
     | SGAddGoal(g) -> noop (MAP.put tbl.goals g.id g)
@@ -145,12 +159,25 @@ struct
     | SGChangeGoalStatus(gid,st) -> 
       let goal = GoalLib.get_goal_by_id tbl gid in
       goal.active <- st
-   
+
+  let apply_sln_step (tbl:gltbl) (s:sslnctx) : unit = match s with
+    | SSlnAddConn(conn) -> SlnLib.add_conn tbl.sln_ctx conn 
+    | SSlnAddGen(label) -> SlnLib.add_generate tbl.sln_ctx label
+    | SSlnAddRoute(label) -> SlnLib.add_route tbl.sln_ctx label
+
+  let apply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
+    | SCMakeConcComp(cmp) -> SolverCompLib.add_conc_comp tbl cmp
+    | SCAddInCfg(cmpid,inp,ctx) -> SolverCompLib.conc_in tbl cmpid inp ctx
+    | SCAddOutCfg(cmpid,out,ctx) -> SolverCompLib.conc_out tbl cmpid out ctx
+    | SCAddParCfg(cmpid,v,num) -> SolverCompLib.conc_param tbl cmpid v num
+
   let apply_step (tbl:gltbl) (s:sstep) : gltbl =
       debug  ("> do step "^(step2str s)^"\n");
       begin
         match s with
         | SModGoalCtx(g) -> apply_goal_step tbl g 
+        | SModSln(s) -> apply_sln_step tbl s
+        | SModCompCtx(c) -> apply_comp_step tbl c
         | _ -> error "apply_step" "unimplemented"
       end;
       tbl
@@ -174,10 +201,11 @@ struct
   let priority x : int = match x with
     | SModGoalCtx(SGAddGoal(_)) -> 1
     | SModGoalCtx(SGChangeGoalStatus(_)) ->2
-    | SModCompCtx(_) -> 3
+    | SModCompCtx(SCMakeConcComp(_)) -> 3
     | SModSln(_) -> 3
     | SModMapCtx(_) -> 3
-    | SModGoalCtx(SGRemoveGoal(_)) -> 4
+    | SModCompCtx(_) -> 4
+    | SModGoalCtx(SGRemoveGoal(_)) -> 5
     
   let order_steps x y =
     let score_x = priority x in
@@ -192,12 +220,26 @@ struct
         let goal = GoalLib.get_goal_by_id tbl gid in
         goal.active <- true
 
+  let unapply_sln_step (tbl:gltbl) (s:sslnctx) : unit = match s with
+    | SSlnAddConn(conn) -> SlnLib.rm_conn tbl.sln_ctx conn 
+    | SSlnAddGen(label) -> SlnLib.rm_generate tbl.sln_ctx label
+    | SSlnAddRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
+
+  let unapply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
+    | SCMakeConcComp(cmp) -> SolverCompLib.rm_conc_comp tbl cmp
+    | SCAddInCfg(cmpid,inp,ctx) -> SolverCompLib.abs_in tbl cmpid inp ctx
+    | SCAddOutCfg(cmpid,out,ctx) -> SolverCompLib.abs_out tbl cmpid out ctx
+    | SCAddParCfg(cmpid,v,num) -> SolverCompLib.abs_param tbl cmpid v num
+
+
   let unapply_step (tbl:gltbl) (s:sstep) =
       debug  ("> undo step %s\n"^(step2str s));
       begin
         match s with
         | SModGoalCtx(g) -> unapply_goal_step tbl g 
-        | _ -> error "apply_step" "unimplemented"
+        | SModSln(s) -> unapply_sln_step tbl s
+        | SModCompCtx(c) -> unapply_comp_step tbl c
+        | _ -> error "unapply_step" "unimplemented"
       end;
       tbl
     (*let _ = Printf.printf "> undo step %s\n" (step2str s) in*)

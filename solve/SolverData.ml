@@ -138,31 +138,15 @@ type ucomp_conc = {
 }
 
 
+type usln = (string,mid) sln
+type ulabel = (string,mid) label
 (*Different kinds of labels*)
 
-type 'a sslnlabel_var = {
-  var: 'a;
-  wire:wireid;
-}
-type sslnlabel_val = {
-  value: number;
-  wire:wireid;
-}
-type 'a sslnlabel_expr = {
-  expr: 'a ast;
-  wire: wireid;
-}
-type ('a,'b) sslnlabel =
-  | MInLabel of 'a sslnlabel_var
-  | MOutLabel of 'a sslnlabel_var
-  | MLocalLabel of 'a sslnlabel_var
-  | ValueLabel of sslnlabel_val
-  | MExprLabel of 'b sslnlabel_expr
 
-type ('a,'b) sslnctx =
+type sslnctx =
   | SSlnAddConn of wireconn
-  | SSlnAddRoute of ('a,'b) sslnlabel
-  | SSlnAddGen of ('a,'b) sslnlabel
+  | SSlnAddRoute of ulabel
+  | SSlnAddGen of ulabel
 
 
 type sgoalctx =
@@ -179,7 +163,7 @@ type scmpctx =
 type smapctx = unit
   
 type sstep =
-  | SModSln of (string,mid) sslnctx 
+  | SModSln of sslnctx 
   | SModCompCtx of scmpctx
   | SModGoalCtx of sgoalctx
   | SModMapCtx of smapctx
@@ -198,7 +182,7 @@ type ucomp_ctx = {
 type gltbl = {
   (*solution env*)
   env: uenv;
-  mutable sln_ctx: (string,mid) sln;
+  mutable sln_ctx: usln;
   mutable comp_ctx : (hwcompname,ucomp_ctx) map;
   mutable map_ctx : hwvid map_ctx; 
   mutable avail_comps : (hwcompname, ucomp) map;

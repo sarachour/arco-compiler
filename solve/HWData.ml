@@ -54,13 +54,33 @@ these wires are all outputs fyi
 this hardware ids require values and variables be routed
 to them.
 *)
-type ('a,'b) sln_labels = {
+
+type ('a,'b) labels = {
   outs: ('a,wire_coll) map;
   ins: ('a,wire_coll) map;
   locals: ('a,wire_coll) map;
   exprs: ('b ast,wire_coll) map;
   vals: (number,wire_coll) map;
 }
+
+type 'a label_var = {
+  var: 'a;
+  wire:wireid;
+}
+type label_val = {
+  value: number;
+  wire:wireid;
+}
+type 'a label_expr = {
+  expr: 'a ast;
+  wire: wireid;
+}
+type ('a,'b) label =
+  | MInLabel of 'a label_var
+  | MOutLabel of 'a label_var
+  | MLocalLabel of 'a label_var
+  | ValueLabel of label_val
+  | MExprLabel of 'b label_expr
 
 (*
 A solution is comprised of a set of generators and route points.
@@ -71,8 +91,8 @@ where the generators are exclusively on input and output ports
 type ('a,'b) sln = {
   (*how many of each component is used *)
   mutable conns: (wireid, wireid set) map;
-  generate: ('a,'b) sln_labels;
-  route: ('a,'b) sln_labels;
+  generate: ('a,'b) labels;
+  route: ('a,'b) labels;
 }
 
 
