@@ -129,6 +129,16 @@ struct
   let hwportvar2str (h:'a hwportvar) (f:'a -> string) =
     (kind2str h.knd)^" "^(h.port)^"."^(h.prop)^"\n"^(bhv2str h.bhvr f)^"\n"^(def2str h.defs)^"\n"
 
+  let hwparam2str (h:hwparam)  =
+    h.name^(List.fold_right (fun x s -> s^","^(string_of_number x)) h.value " ")
+
+  let hwcomp2str c f =
+      let str = "" in
+      let str = MAP.fold c.params (fun k v s -> s^(hwparam2str v)^"\n") str in
+      let str = MAP.fold c.ins (fun k v s-> s^(hwportvar2str v f)^"\n") str in
+      let str = MAP.fold c.outs (fun k v s-> s^(hwportvar2str v f)^"\n") str in
+      str
+
   let to_buf e fb =
     let os x = output_string fb x in
     let print_var prefix (x:hwvid hwportvar) =

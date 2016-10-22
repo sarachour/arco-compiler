@@ -20,7 +20,9 @@ open SolverGoalTable
 open SolverData
 open SolverUtil
 open SolverRslv
-open SlnLib 
+open SolverMapper
+
+open SlnLib
 
 
 open GoalLib
@@ -40,14 +42,18 @@ struct
 
 
   let mkmenu (v:gltbl) (currgoal:goal option) =
-    let menu_desc = "t=search-tree, s=sol, g=goals, any-key=continue, q=quit" in
+    let menu_desc = "t=search-tree, s=sol, @=curr, g=goals, c=conc-comps, m=mapping any-key=continue, q=quit" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
         let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str v.search) in
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "s" then
-        let _ = Printf.printf "\n%s\n\n" (SlnLib.sln2str v.sln_ctx ident) in
+        let _ = Printf.printf "\n%s\n\n" (SlnLib.sln2str v.sln_ctx ident mid2str) in
+        let _ = on_finished() in
+        ()
+      else if STRING.startswith inp "c" then
+        let _ = Printf.printf "\n%s\n\n" (SolverCompLib.ccomps2str v ) in
         let _ = on_finished() in
         ()
       else if STRING.startswith inp "goto" then
@@ -70,12 +76,20 @@ struct
         in
         let _ = on_finished() in
         ()
-      else if STRING.startswith inp "c" then
-        let _ = match currgoal with
-          | Some(g) -> let _ = Printf.printf ">>> target goal: %s\n\n\n" (GoalLib.goal2str g)  in ()
-          | None -> Printf.printf "<no goal>\n\n\n"
-        in
-        ()
+      else if STRING.startswith inp "@" then
+        begin
+          begin
+            match currgoal with
+            | Some(g) ->
+              Printf.printf ">>> target goal: %s\n\n\n" (GoalLib.goal2str g) 
+            | None -> Printf.printf "<no goal>\n\n\n"
+          end;
+          ()
+        end
+      else if STRING.startswith inp "m" then
+        begin
+          SolverMapper.derive_all v
+        end
       else
         ()
     in

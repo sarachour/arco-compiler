@@ -446,8 +446,46 @@ struct
     ()
 
    *)
-  let sln2str (s:('a,'b) sln) (f:'a -> string) : string=
-    "<sln2str: unimplemented>"
+  let wirecoll2str (a:wire_coll) = match a with
+    | WCollEmpty -> "{}"
+    | WCollOne(wire) -> wireid2str wire
+    | WCollMany(h::t) -> "["^
+                         (List.fold_right (fun wire str->
+                              str^","^(wireid2str wire)) t (wireid2str h))^"]"
+    | WCollMany([]) -> "[]"
+
+  let labels2str (type a) (type b) (labels:(a,b) labels) (f:a->string) (g:b->string)= 
+    let str = "" in
+    let str = MAP.fold labels.ins
+        (fun v coll str -> str^"in "^(f v)^" -> "^(wirecoll2str coll)^"\n") str in
+    let str = MAP.fold labels.locals
+        (fun v coll str -> str^"lc "^(f v)^" -> "^(wirecoll2str coll)^"\n") str in
+    let str = MAP.fold labels.outs
+        (fun v coll str -> str^"out "^(f v) ^" -> "^(wirecoll2str coll)^"\n") str in
+    let str = MAP.fold labels.vals
+        (fun v coll str -> str^"val "^(string_of_number v)^" -> "^(wirecoll2str coll)^"\n") (str^"\n") in
+    let str = MAP.fold labels.exprs
+        (fun v coll str -> str^"exp "^(ASTLib.ast2str v g) ^" -> "^(wirecoll2str coll)^"\n") (str^"\n") in
+    str
+
+  let conns2str (s: ('a,'b) sln) =
+    MAP.fold s.conns (fun src dests str ->
+        let srcstr = (wireid2str src)^" -> " in
+        let deststr = SET.fold dests (fun dest dstr->
+            dstr^" "^(wireid2str dest)) srcstr
+        in
+        str^srcstr^deststr^"\n"
+      ) ""
+
+  let sln2str (s:('a,'b) sln) (f:'a -> string) (g:'b->string) : string=
+    let str = "\n=== Route ===\n"^
+              (labels2str s.route f g)^
+              "\n=== Generate ===\n"^
+              (labels2str s.generate f g)^
+              "\n=== Connect ===\n"^
+              (conns2str s)
+    in
+    str
    (*
     let comp2str cname clist id =
       let instlist2str lst =

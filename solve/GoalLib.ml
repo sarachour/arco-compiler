@@ -52,7 +52,7 @@ struct
   let mk_hexpr_goal (tbl:gltbl) (src:wireid) (expr:mid ast)=
     let prop = HwLib.getprop tbl.env.hw src.comp.name src.port in
     let data : goal_hw_expr =
-      {comp=src.comp; port=src.port; prop=prop;expr=expr}
+      {wire=src; prop=prop;expr=expr}
     in
     let goal : goal_data = GUnifiable(GUHWInExprGoal(data)) in
     mk_goal tbl goal
@@ -95,18 +95,22 @@ struct
   let fold_goals (type a) (tbl:gltbl) (f:goal->a->a) (r0:a) =
     MAP.fold tbl.goals (fun gid goal  r -> f goal r) r0
 
-  let portprop2str comp port prop =
-    (HwLib.hwcompinst2str comp)^"."^port^":"^prop 
+  let portprop2str wire prop =
+    (SlnLib.wireid2str wire)^"<"^prop^">" 
+
   let goal2str (g:goal) =
     let data_str =
       match g.d with
       | GUnifiable(GUMathGoal(mvar)) ->
         MathLib.mvar2str mvar.d (fun x -> MathLib.mid2str x)
       | GUnifiable(GUHWInExprGoal(dat)) ->
-        (portprop2str dat.comp dat.port dat.prop)^"="^(MathLib.mast2str dat.expr)
+        (portprop2str dat.wire dat.prop)^"="^(MathLib.mast2str dat.expr)
       | GUnifiable(GUHWConnInBlock(dat)) ->
-        "in-block "^(portprop2str dat.comp dat.port dat.prop)
-
+        "in-block "^(portprop2str dat.wire dat.prop)
+      | GUnifiable(GUHWConnOutBlock(dat)) ->
+        "out-block "^(portprop2str dat.wire dat.prop)
+      | GUnifiable(GUHWConnPorts(dat)) ->
+        "conn "^(SlnLib.wireconn2str dat)
       | _ -> "goal2str: unimplemented"
     in
     "["^(string_of_int g.id)^"] "^data_str 
