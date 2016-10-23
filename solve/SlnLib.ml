@@ -56,6 +56,18 @@ struct
   let rm_conn (sln:usln) (conn:wireconn) =
     error "rm_conn" "unimplemented"
 
+  let _get_mapped_wires (type a) (type b) (lbls:(a,b) labels) (name:a) =
+    if MAP.has lbls.ins name then
+      Some (MAP.get lbls.ins name)
+    else if MAP.has lbls.outs name then
+      Some (MAP.get lbls.outs name)
+    else if MAP.has lbls.locals name then
+      Some (MAP.get lbls.locals name)
+    else
+      None
+
+  let get_generating_wires (type a) (type b) (sln:(a,b) sln) (name:a) =
+    _get_mapped_wires sln.generate name
 
   let _add_wire_to_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
     if MAP.has m key then
