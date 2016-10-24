@@ -164,6 +164,9 @@ struct
      let els : r = List.fold_right apply_fxn (TREE.get_path sr.tree n) ic in
      els
 
+  let get_steps (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : a list =
+    n.s
+
   let get_path (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : a list =
      fold_path sr n (fun x r -> x::r) []
 

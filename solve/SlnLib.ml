@@ -25,8 +25,11 @@ struct
     vals=MAP.make();
     exprs=MAP.make();
   }
+  let mkconns () : conn_env =
+    {src2dest=MAP.make(); dest2src=MAP.make()}
+
   let mksln () : ('a,'b) sln =
-    {conns=MAP.make(); route=mklabels(); generate=mklabels()}
+    {conns=mkconns(); route=mklabels(); generate=mklabels()}
 
 
   let mkwire (c:hwcompname) (i:int) (p:string) : wireid =
@@ -68,6 +71,12 @@ struct
 
   let get_generating_wires (type a) (type b) (sln:(a,b) sln) (name:a) =
     _get_mapped_wires sln.generate name
+
+  let getsrcs (type a) (type b) (sln:(a,b) sln) (dest:wireid) =
+    WCollEmpty 
+
+  let getdests (type a) (type b) (sln:(a,b) sln) (dest:wireid) =
+    WCollEmpty
 
   let _add_wire_to_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
     if MAP.has m key then
@@ -481,7 +490,7 @@ struct
     str
 
   let conns2str (s: ('a,'b) sln) =
-    MAP.fold s.conns (fun src dests str ->
+    MAP.fold s.conns.src2dest (fun src dests str ->
         let srcstr = (wireid2str src)^" -> " in
         let deststr = SET.fold dests (fun dest dstr->
             dstr^" "^(wireid2str dest)) srcstr

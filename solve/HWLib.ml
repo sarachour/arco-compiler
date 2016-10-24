@@ -354,6 +354,7 @@ struct
       error "comp_port_to_hwid" "unknown variable"
 
 
+
   let mkcompid (x:hwcompname) (i:int option) = match i with
     | Some(inst) -> HCMGlobal({name=x;inst=inst})
     | None -> HCMLocal(x)

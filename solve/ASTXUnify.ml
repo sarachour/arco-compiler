@@ -545,7 +545,7 @@ struct
     ()
   (*============ EXPAND PARAMS END ===================*)
   (*============ UNIFY  START ===================*)
-  let mkcompid (s:runify)  =
+  let mkcompid (s:runify)  : compid =
     HwLib.mkcompid s.tbl.hwstate.comp.name s.tbl.hwstate.inst
 
   let find_entanglements s assigns : (string*unid ast) list =
@@ -815,15 +815,15 @@ struct
   let unify_math_expr (st:runify) (port:string) (expr:mid ast) =
     let hwstate = st.tbl.hwstate and mstate = st.tbl.mstate in 
     let hvar = HwLib.comp_getvar hwstate.comp port in
-    let cmpid = mkcompid st in 
+    let cmpid : compid = mkcompid st in 
     match hvar.bhvr with
     | HWBAnalog(abhv) ->
       let hexpru :unid ast =
-        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg (abhv.rhs)
+        ConcCompLib.concrete_hwexpr_from_compid cmpid hwstate.cfg (abhv.rhs)
       in
       (*TODO*)
       let hvaru :unid ast =
-        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg (StochLib.get_expr abhv.stoch)
+        ConcCompLib.concrete_hwexpr_from_compid cmpid hwstate.cfg (StochLib.get_expr abhv.stoch)
       in
       let mexpru :unid ast= mast2uast
           (MathLib.replace_params mstate.env expr)
@@ -850,7 +850,7 @@ struct
           (MathLib.replace_params mstate.env mbhv.rhs)
       in
       let hexpru :unid ast =
-        ConcCompLib.concrete_hwexpr cmpid hwstate.cfg abhv.rhs
+        ConcCompLib.concrete_hwexpr_from_compid cmpid hwstate.cfg abhv.rhs
       in
       ASTUnifySymcaml.unify st hexpru mexpru 
 
@@ -1035,8 +1035,8 @@ struct
     (* convert to eqn steps*)
     List.map (fun result ->
         let steps : rstep list = SearchLib.get_path env.search result in
-        steps 
-    ) results
+        LIST.uniq steps
+      ) results
 
   let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: unid ast) =
     env.tbl.target <- TRGHWVar(hvar,hexpr);

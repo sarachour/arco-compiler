@@ -88,9 +88,14 @@ A finalized solution is comprised of connections and generators,
 where the generators are exclusively on input and output ports
 (or local wires)
 *)
+type conn_env = {
+  src2dest: (wireid, wireid set) map;
+  dest2src: (wireid, wireid set) map;
+
+}
 type ('a,'b) sln = {
   (*how many of each component is used *)
-  mutable conns: (wireid, wireid set) map;
+  mutable conns: conn_env;
   generate: ('a,'b) labels;
   route: ('a,'b) labels;
 }

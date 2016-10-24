@@ -88,8 +88,7 @@ struct
         end
       else if STRING.startswith inp "m" then
         begin
-          let vr = List.nth (STRING.split inp " ") 1 in 
-          SolverMapper.derive_mapping v vr 
+          SolverMapper.infer v 
         end
       else
         ()
@@ -500,6 +499,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
           then
             GoalLib.mk_outblock_goal tbl wire
           else
+            debug ("out-sln name:"^name);
             SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire})))
           in
           let goal_to_remove : goal= GoalLib.get_math_goal tbl name in

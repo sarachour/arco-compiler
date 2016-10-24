@@ -848,6 +848,12 @@ struct
   let get (type a) (type b) (x:(a,b) map) (k:a) : b =
     Hashtbl.find x k
 
+  let ifget (type a) (type b) (x:(a,b) map) (k:a) : b option =
+    if has x k then
+      Some (get x k)
+    else
+      None
+
   let upd (type a) (type b) (x:(a,b) map) (f:b->b) (k:a) : (a,b) map =
     let va = get x k in
     let vap = f va in
