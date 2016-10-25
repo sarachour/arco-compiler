@@ -4,6 +4,7 @@ type z3expr =
   | Z3Mult of z3expr*z3expr
   | Z3Var of string
   | Z3Int of int
+  | Z3Real of float
   | Z3Not of z3expr
   | Z3Plus of z3expr*z3expr
   | Z3Bool of bool
@@ -31,6 +32,7 @@ type z3st =
 type z3assign =
   | Z3SetBool of string*bool
   | Z3SetInt of string*int
+  | Z3SetFloat of string*float
 
 type z3model = z3assign list
 

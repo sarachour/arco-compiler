@@ -2,6 +2,8 @@ open Z3Data
 open Compile
 open Util
 open Interactive
+open AST
+
 exception Z3Error of string
 
 let error n m = raise (Z3Error (n^":"^m))
@@ -88,6 +90,14 @@ struct
       _s b;
       os ")"
       end
+    | Z3Mult(a,b) ->
+      begin
+      os "(* ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
     | Z3IfThenElse(a,b,c) ->
       begin
       os "(ite ";
@@ -132,9 +142,10 @@ struct
       end
     | Z3Var(v) -> os v
     | Z3Int(i) -> os (string_of_int i)
+    | Z3Real(i) -> os (string_of_float i)
     | Z3Bool(true) -> os "true"
     | Z3Bool(false) -> os "false"
-    | _ -> error "z3" "unexpected"
+    | _ -> error "z3" "unexpected term when writing to buf"
     in
     _s x
 
@@ -143,6 +154,7 @@ struct
     match x with
     | Z3Bool -> os "Bool"
     | Z3Int -> os "Int"
+    | Z3Real -> os "Real"
 
   let z3st2buf fb x =
     let os x = output_string fb x in
@@ -161,6 +173,18 @@ struct
       end
     | Z3SAT -> os "(check-sat)"
     | Z3DispModel -> os "(get-model)"
+    | Z3Minimize(q) ->
+      begin
+      os "(minimize ";
+      z3expr2buf fb q;
+      os ")"
+      end
+    | Z3Maximize(q) ->
+      begin
+      os "(maximize ";
+      z3expr2buf fb q;
+      os ")"
+      end
 
   let z3stmts2buf fb x =
     let os x = output_string fb x in
@@ -173,6 +197,10 @@ struct
       | [h] -> h
       | [] -> error "and_all" "failure"
 
+  let eq_all (x) =
+    fn_all x (fun x r -> Z3Eq(x,r))
+
+
   let add_all (x) =
     fn_all x (fun x r -> Z3And(x,r))
 
@@ -181,6 +209,20 @@ struct
 
   let plus_all (x:z3expr list) =
     fn_all x (fun x r -> Z3Plus(x,r))
+
+  let ast2z3 (x:'a ast)(f:'a -> z3expr) =
+    let rec _ast2z3 el = 
+      match el with
+      | Term(name) -> f name 
+      | OpN(Add,lst) ->
+        fn_all (List.map (fun e -> _ast2z3 e) lst) (fun a b-> Z3Plus(a,b))
+      | OpN(Mult,lst) ->
+        fn_all (List.map (fun e -> _ast2z3 e) lst) (fun a b-> Z3Mult(a,b))
+      | Integer(i) -> Z3Int(i)
+      | Decimal(d) -> Z3Real(d)
+      | _ -> error "ast2z3" "unsupported"
+    in
+    _ast2z3 x
 
   let sln2str (x:z3sln) =
     let assign2str a = match a with
@@ -207,14 +249,14 @@ struct
     | (_,Z3SAT) -> -1
     | _ -> if x = y then 0 else 1
     in
-    let fname =  ".tmp."^root^".z3" in
+    let fname =  "z3-tmp."^root^".z3" in
     let oc = open_out fname in
     let x = List.sort sortsts (LIST.uniq x) in
     let _ = z3stmts2buf oc x in
     let _ = close_out oc in
     let _ = z3_print_debug "---> Executing SMT Solver\n" in
     let _ = flush_all () in
-    let res = ".res."^root^".z3" in
+    let res = "z3-res."^root^".z3" in
     let _ = Sys.command ("z3 -smt2 "^fname^" > "^res) in
     let _ = z3_print_debug "---> Finished Search\n" in
     let _ = flush_all () in

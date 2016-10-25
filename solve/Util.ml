@@ -322,6 +322,9 @@ struct
     ) in
     x
 
+  let destroy (type a) (type b) (x:a queue) : unit =
+    ()
+
   let back (type a) (x:a queue) : a =
     let rec _back (r:a list) =
       match (r) with

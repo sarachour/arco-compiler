@@ -107,11 +107,11 @@ comp deriv_iadd
     output Z {I:mA}
     output X {I:mA}
     rel I(X) = I(XT) - K*I(Z)
-    def I(X) map scale=1/(A*B)   
+    def I(X) map scale=(A*B)   
  
     output Y {I:mA}
     rel I(Y) =  I(YT) - K*I(Z)
-    def I(X) map scale=1/(A*B)
+    def I(X) map scale=(A*B)
 
     rel ddt I(Z) = EN_F*I(X)*I(Y) - EN_B*I(P)*I(Z) init I(Z0)
     var ddt I(Z) = I(Z)*0.00001 shape GAUSS

@@ -13,6 +13,7 @@ let whitespace = ['\t'' ']*
 let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
 let str = '"' [^ '"']* '"'
 let integer = '-'? ['0'-'9']+
+let float = '-'? ['0'-'9']+'.'['0'-'9']*
 let op = ['[' ']' '+' '-' '*' '^' '.' '/']+
 let z3var = "z3name!"['!''A'-'Z''a'-'z''0'-'9''_' '<' '>']*
 
@@ -23,6 +24,7 @@ rule env = parse
   | "sat"                   {SAT}
   | "unsat"                 {UNSAT}
   | "Bool"                  {BOOLTYPE}
+  | "Real"                  {REALTYPE}
   | "Int"                   {INTTYPE}
   | "model"                 {MODEL}
   | "error"                 {ERROR}
@@ -30,6 +32,7 @@ rule env = parse
   | ")"                     {CPARAN}
   | "false"                 {BOOL(false)}
   | "true"                  {BOOL(true)}
+  | float as i              {FLOAT(float_of_string i)}
   | integer as i            {INTEGER(int_of_string i)}
   | str as st               {STRING(st)}
   | z3var as tok            {Z3VAR(tok)}

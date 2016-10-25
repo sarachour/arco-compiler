@@ -14,10 +14,11 @@
 
 
 %token EOF EOL OPARAN CPARAN
-%token SAT UNSAT BOOLTYPE INTTYPE MODEL DEFINEFUN ERROR
+%token SAT UNSAT BOOLTYPE INTTYPE REALTYPE MODEL DEFINEFUN ERROR
 
 %token <string> TOKEN STRING Z3VAR
 %token <int> INTEGER
+%token <float> FLOAT
 %token <bool> BOOL
 
 %type <unit> errorst
@@ -46,16 +47,27 @@ assignm:
     let v = $7 in
     Some (Z3SetInt(n,v))
   }
+  | OPARAN DEFINEFUN TOKEN OPARAN CPARAN REALTYPE FLOAT CPARAN {
+    let n = $3 in
+    let v = $7 in
+    Some (Z3SetFloat(n,v))
+  }
   | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN INTTYPE INTEGER CPARAN {
     let n = $3 in
     let v = $7 in
     None
   }
-  | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN BOOLTYPE INTEGER CPARAN {
+  | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN BOOLTYPE BOOL CPARAN {
     let n = $3 in
     let v = $7 in
     None
   }
+  | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN REALTYPE FLOAT CPARAN {
+    let n = $3 in
+    let v = $7 in
+    None
+  }
+
 
 assignms:
   | assignm          {
