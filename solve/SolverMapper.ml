@@ -277,13 +277,13 @@ struct
       end
     | MAPOffset(data) ->
       begin
-        declare_class Scale (Integer 0) wire;
+        declare_class Scale (Integer 1) wire;
         declare_class Offset data.offset wire;
         ()
       end
     | MAPDirect ->
       begin
-        declare_class Scale (Integer 0) wire;
+        declare_class Scale (Integer 1) wire;
         declare_class Offset (Integer 0) wire;
         ()
       end
