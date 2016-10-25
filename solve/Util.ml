@@ -256,6 +256,9 @@ struct
   let enqueue (type a) (s:a queue) (x:a) : a queue =
     let _ : unit = REF.upd s (fun s -> s @ [x]) in s
 
+  let to_list (type a) (s:a queue) : a list =
+    REF.dr s
+
   let enqueue_front (type a) (s:a queue) (x:a) : a queue =
     let _ : unit = REF.upd s (fun s -> x::s) in s
 

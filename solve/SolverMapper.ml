@@ -28,54 +28,108 @@ open SolverCompLib
 open IntervalData
 open IntervalLib
 
+open Z3Data
+
 exception SolverEqnError of string
 
 let error n m = raise (SolverEqnError (n^":"^m))
 
 let debug = print_debug 2 "eqn"
+(*declare math scale variables*)
+
+(*defines the inference variable, including a slack variable,
+  a scaling and descaling value*)
+
+type inf_var = {
+  ival:interval;
+  id:int;
+}
+type inf_cover = {
+  wire:wireid;
+  weight:float;
+}
+type inf_problem = {
+  mutable mvars: (string,inf_var) map;
+  mutable inhvars: (wireid,inf_var) map;
+  mutable outhvars: (wireid,inf_var) map;
+  mutable cover: (string,inf_cover) map;
+  mutable cnt : int;
+}
+module InferenceProblem =
+struct
+
+
+  let mkproblem () =
+    {
+      mvars=MAP.make();
+      inhvars=MAP.make();
+      outhvars=MAP.make();
+      cover=MAP.make();
+      cnt=0;
+    }
+
+  let declare_mexpr (iprob:inf_problem) expr ival =
+    let mstr = mast2str expr in
+    MAP.put iprob.mvars mstr {ival=ival;id=iprob.cnt};
+    iprob.cnt <- iprob.cnt + 1;
+    ()
+
+  let declare_in_wire (iprob:inf_problem) wire ival =
+    MAP.put iprob.inhvars wire {ival=ival;id=iprob.cnt};
+    iprob.cnt <- iprob.cnt + 1;
+    ()
+
+  let declare_out_wire (iprob:inf_problem) (wire) (ival) =
+    MAP.put iprob.outhvars wire {ival=ival;id=iprob.cnt};
+    iprob.cnt <- iprob.cnt + 1;
+    ()
+
+  (*cover*)
+  let cover (iprob:inf_problem) wire expr weight =
+    let mstr = mast2str expr in
+    MAP.put iprob.cover mstr {wire=wire;weight=weight}
+
+  let generate (iprob:inf_problem) =
+    (*helper function*)
+    let id2offset s = "os_"^(string_of_int s) in
+    let id2scale s = "sc_"^(string_of_int s) in
+    let id2minslack s = "sl_min_"^(string_of_int s) in
+    let id2maxslack s = "sl_min_"^(string_of_int s) in
+    (*Instruction Queue*)
+    let insts = QUEUE.make() in
+    let enq inststk =
+      List.iter (fun inst -> noop (QUEUE.enqueue insts inst)) inststk
+    in
+    (*declare variables*)
+    MAP.iter iprob.mvars (fun mvar mdata ->
+        enq [
+          Z3ConstDecl(id2scale mdata.id,Z3Real);
+          Z3ConstDecl(id2offset mdata.id,Z3Real);
+          Z3ConstDecl(id2minslack mdata.id,Z3Real);
+          Z3ConstDecl(id2macslack mdata.id,Z3Real)
+        ]
+      );
+    MAP.iter iprob.outhvars (fun wire wdata ->
+        enq [
+          Z3ConstDecl(id2scale wdata.id,Z3Real);
+          Z3ConstDecl(id2offset wdata.id,Z3Real);
+          Z3ConstDecl(id2minslack wdata.id,Z3Real);
+          Z3ConstDecl(id2macslack wdata.id,Z3Real)
+        ]
+      );
+    enq [Z3CheckSat,Z3Model];
+    let result = Z3Lib.exec "mapper" (QUEUE.to_list insts) in
+    ()
+    (*instructions*)
+    
+end
 
 module SolverMapper =
 struct
 
-  let derive_var_wire_mapping (tbl:gltbl) (wire:wireid) (mvar:mid mvar) =
-    let hwcomp = SolverCompLib.get_conc_comp tbl wire.comp in
-    let hwvar = HwLib.comp_getvar hwcomp.d wire.port in
-    match mvar.defs,hwvar.defs with
-    | MDefVar(mdef),HWDAnalog(hwdef) ->
-      debug ("Math Range: "^(IntervalLib.interval2str mdef.ival)^" "
-             ^"HW Range: "^(IntervalLib.interval2str hwdef.ival))
-    | MDefStVar(mdef),HWDAnalogState(hwdef) ->
-      debug ("Deriv Math Range: "^(IntervalLib.interval2str mdef.deriv.ival)^" "
-             ^"HW Range: "^(IntervalLib.interval2str hwdef.deriv.ival));
-      debug ("Stvar Math Range: "^(IntervalLib.interval2str mdef.deriv.ival)^" "
-             ^"HW Range: "^(IntervalLib.interval2str hwdef.deriv.ival))
-    | _ ->
-      error "derive_var_wire_mapping" "unimplemented"
 
-  let derive_mapping (tbl:gltbl) (var:string) =
-    let sln = tbl.sln_ctx in
-    let mvar = MathLib.getvar tbl.env.math var in 
-    debug ("getting derivation for: "^var);
-    match SlnLib.get_generating_wires sln var with
-    | Some(wcoll) ->
-      begin
-        match wcoll with
-        |WCollEmpty -> error "derive_mapping" "unmapped"
-        |WCollOne(wire) ->
-          begin
-            debug ("Mapped to "^(SlnLib.wireid2str wire));
-            derive_var_wire_mapping tbl wire mvar;
-            ()
-          end
-        | WCollMany(wires) ->
-          begin
-            error "derive_mapping" "unhandled"
-          end
 
-      end
-    | None ->
-      debug ("unmapped: "^var)
-
+  (*if you have a dangling math expression on a port, find the [expr], and then*)
   let infer_dangling_math_expr (tbl:gltbl) (uast:unid ast) =
     let unid2ival (id:unid) = match id with
       |MathId(MNVar(MInput,v)) ->
@@ -98,21 +152,29 @@ struct
       | _ ->
         error "infer_dangling_math_expr" "hwid id undefined"
     in
-    IntervalLib.derive_interval uast unid2ival
+    let math_interval = IntervalLib.derive_interval uast unid2ival in
+    math_interval
 
   (*an unconnected input that may route local and outputs that are mapped*)
   let infer_dangling_input_wire (tbl:gltbl) (cmp:ucomp_conc) (wire:wireid) (cfg:hwvarcfg) =
-    let hvar = HwLib.comp_getvar cmp.d wire.port in
     let ival2str (x:interval) = IntervalLib.interval2str x in 
+    let hvar : hwvid hvar = HwLib.comp_getvar cmp.d wire.port in
     let mival = infer_dangling_math_expr tbl cfg.expr in 
     match hvar.defs with
     | HWDAnalogState(hdef) ->
-      error "infer_dangling_input_wire" "analog state" 
+      error "infer_dangling_input_wire" "cannot have analog state wire"
 
     | HWDAnalog(hdef) ->
       let hival : interval = hdef.ival in
       debug ((wire.port)^"="^(uast2str cfg.expr)^
              " / map "^(ival2str mival)^" to "^(ival2str hival));
+      (*
+      declare the expression variable and the wire, and then
+      maximize the mapping onto the wire
+      *)
+      InferProblem.declare_mexpr cfg.expr mival;
+      InferProblem.declare_wire wire hival;
+      InferProblem.maximize_mapping wire cfg.expr;
       ()
     | _ ->
       error "infer_dangling_input_wire" "unknown"

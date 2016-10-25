@@ -120,8 +120,8 @@ comp deriv_iadd
     var ddt I(Z) = I(Z)*0.00001 shape GAUSS
 
     def I(Z) mag = [0,1] mA
-    def I(Z) imap scale=1/(A*B) 
-    def ddt I(Z) imap scale=1/(A*B) 
+    def I(Z) map scale=(A*B) with (EN_B*I(P))
+    def ddt I(Z) map scale=(A*B) 
    
 end
 

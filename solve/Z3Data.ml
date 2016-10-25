@@ -24,6 +24,8 @@ type z3st =
   | Z3ConstDecl of string*z3vartyp
   | Z3Assert of z3expr
   | Z3SAT
+  | Z3Minimize of z3expr
+  | Z3Maximize of z3expr
   | Z3DispModel
 
 type z3assign =

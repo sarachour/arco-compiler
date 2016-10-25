@@ -197,7 +197,7 @@ struct
     in
     sat^"\n\n"^mdl
 
-  let exec (x:z3st list) : z3sln=
+  let exec (root:string) (x:z3st list) : z3sln=
     let sortsts (x:z3st) (y:z3st) : int = match (x,y) with
     | (Z3ConstDecl(_),Z3Assert(_)) -> -1
     | (Z3Assert(_),Z3ConstDecl(_)) -> 1
@@ -207,14 +207,14 @@ struct
     | (_,Z3SAT) -> -1
     | _ -> if x = y then 0 else 1
     in
-    let fname =  "__tmp__.z3" in
+    let fname =  ".tmp."^root^".z3" in
     let oc = open_out fname in
     let x = List.sort sortsts (LIST.uniq x) in
     let _ = z3stmts2buf oc x in
     let _ = close_out oc in
     let _ = z3_print_debug "---> Executing SMT Solver\n" in
     let _ = flush_all () in
-    let res = "__res__.z3" in
+    let res = ".res."^root^".z3" in
     let _ = Sys.command ("z3 -smt2 "^fname^" > "^res) in
     let _ = z3_print_debug "---> Finished Search\n" in
     let _ = flush_all () in

@@ -1,4 +1,4 @@
-true: package(threads,core,pycaml,str,camlp4,Z3,Z3overlay)
+true: package(threads,core,pycaml,str,camlp4)
 true: thread,debug
 <symcaml>: include
 "interval": include
