@@ -53,6 +53,15 @@ struct
     | MAPOffset(d) -> "@"^"+"^(ASTLib.ast2str d.offset f)
     | MAPDirect -> "@"
 
+  let get_max (x) = match x with
+    | Interval(x) ->
+      begin match x.max with
+        | BNDNum(n) -> n
+        | _ -> error "get_max" "unbounded"
+      end
+    | IntervalUnknown(_) -> error "get_max" "cannot get max of unknown interval"
+    | _ -> error "get_max" "haven't thought of it yet"
+
   let stdmapper2str mpr = mapper2str mpr ident
 
   let float_to_dir (n:float) : bound_dir =

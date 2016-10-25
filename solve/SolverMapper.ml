@@ -194,6 +194,21 @@ struct
           Z3ConstDecl(id2offset wdata.id,Z3Real);
         ]
       );
+    MAP.iter iprob.cover (fun mvar cover ->
+        let mi = MAP.get iprob.mvars mvar in
+        let hi = MAP.get iprob.hvars cover.wire in
+        let mexpr =
+          Z3Plus(
+            Z3Plus(
+              Z3Mult(Z3Var(id2scale mi.id),Z3Real(IntervalLib.get_max mi.ival)),
+              Z3Var(id2offset mi.id)
+            ),
+            Z3Var(id2maxslack mi.id)
+          )
+        in
+        enq [Z3Assert(Z3Eq(mexpr,Z3Real(IntervalLib.get_max hi.ival)))]
+        
+    );
     LIST.iter  (fun cstr -> match cstr with
         | ICSTEqExpr(varexpr) ->
           let expr = Z3Lib.ast2z3 varexpr.expr infvar_to_z3var in 
