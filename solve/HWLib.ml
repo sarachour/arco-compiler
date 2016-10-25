@@ -117,13 +117,17 @@ struct
 
   let avardef2str (st:string) (v:hwadefs) =
     "["^st^"]="^(IntervalLib.interval2str v.ival)^
-    " {"^st^"}->["^st^"]="^(IntervalLib.mapper2str v.conv)^
-    " ["^st^"]->{"^st^"}="^(IntervalLib.mapper2str v.iconv)
+    " {"^st^"}->["^st^"]="^(IntervalLib.stdmapper2str v.conv)
+
+  let astvardef2str (st:string) (v:hwastvardefs) =
+    "["^st^"]="^(IntervalLib.interval2str v.ival)^
+    " {"^st^"}->["^st^"]="^(IntervalLib.stdmapper2str v.conv)^
+    " {"^st^"}->*["^st^"]="^(IntervalLib.mapper2str v.proxy hwvid2str)
 
   let def2str (v:hwdefs) = match v with
     | HWDAnalog(d) -> "<analog> "^(avardef2str "v" d)
     | HWDAnalogState(d) -> "<analog-st> "^(avardef2str "ddt v" d.deriv)^"\n"^
-                           "<analog-st> "^(avardef2str "v" d.stvar)
+                           "<analog-st> "^(astvardef2str "v" d.stvar)
     | HWDDigital(d) -> "<digital>"
 
   let hwportvar2str (h:'a hwportvar) (f:'a -> string) =
@@ -400,12 +404,19 @@ struct
   let mkadefs () :  hwadefs =
     {
       ival=IntervalLib.mkdflt_ival();
+      conv=MAPDirect
+    }
+ 
+  let mkastvardefs () :  hwastvardefs =
+    {
+      ival=IntervalLib.mkdflt_ival();
       conv=MAPDirect;
-      iconv=MAPDirect
+      proxy=MAPDirect
     }
 
+
   let mkastatedefs () :  hwastatedefs =
-    {stvar=mkadefs();deriv=mkadefs()}
+    {stvar=mkastvardefs();deriv=mkadefs()}
 
   let mkddefs () : hwddefs =
     {repr=(1,4,7); freq=(Integer 0,"?")}

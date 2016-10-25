@@ -135,7 +135,7 @@
 %token DEF
 %token REPR MANTISSA EXPO SIGN
 %token MAG SAMPLE
-%token MAP IMAP DIRECT LINEAR SCALE OFFSET MAPVAR 
+%token MAP IMAP WITH DIRECT LINEAR SCALE OFFSET MAPVAR 
 
 %token PROP TIME  
 %token COMP INPUT OUTPUT PARAM END SIM
@@ -156,8 +156,11 @@
 %type<number list> numlist
 %type<string list> strlist
 %type <string> sexpr
-%type <range> rng
+%type <string ast> map_expr
 %type <hwvid ast> expr
+
+%type <range> rng
+
 %type <unt> typ
 %type <(string*untid) list> proptyplst
 %type <Util.number> number
@@ -167,6 +170,9 @@
 %type <index list> inds
 %type <conn> connterm
 %type <HWData.hwcompname> compname
+%type <'a IntervalData.mapper> map_strategy
+%type <IntervalData.std_mapper> mapvar_map_strategy
+%type <hwvid IntervalData.mapper> hwexpr_map_strategy
 %type <unit> schem
 %type <unit> comp
 %type <unit> block
@@ -267,28 +273,81 @@ typ:
   | NONE {UNone}
   | QMARK {UVariant}
 
-map_strategy:
-  | SCALE EQ map_expr OFFSET EQ map_expr {
-    let scale_expr : mapvar ast = $3 in
-    let offset_expr : mapvar ast = $6 in
-    let data = {scale=scale_expr; offset=offset_expr} in 
+map_strategy(EXPR):
+  | SCALE EQ EXPR OFFSET EQ EXPR {
+    let scale_expr : 'a ast = $3 in
+    let offset_expr : 'a ast = $6 in
+    let data  : 'a linear_mapper = {scale=scale_expr; offset=offset_expr} in 
     MAPLinear(data)
   }
 
-  | SCALE EQ map_expr {
-      let scale_expr : mapvar ast = $3 in
-      let data = {scale=scale_expr} in
+  | SCALE EQ EXPR {
+      let scale_expr : 'a ast = $3 in
+      let data : 'a scale_mapper = {scale=scale_expr} in
       MAPScale(data)
   }
 
-  | OFFSET EQ map_expr {
-      let offset_expr : mapvar ast =$3 in
-      let data = {offset=offset_expr} in
-      MAPOffset(data)
+  | OFFSET EQ EXPR {
+      let offset_expr : 'a ast = $3 in
+      let data : 'a offset_mapper = {offset=offset_expr} in
+      let mapper :'a mapper = MAPOffset(data) in
+      mapper 
   }
   | DIRECT {
       MAPDirect
   }
+
+mapvar_map_strategy:
+  | SCALE EQ map_expr OFFSET EQ map_expr {
+    let scale_expr : 'a ast = $3 in
+    let offset_expr : 'a ast = $6 in
+    let data  : 'a linear_mapper = {scale=scale_expr; offset=offset_expr} in 
+    MAPLinear(data)
+  }
+
+  | SCALE EQ map_expr {
+      let scale_expr : 'a ast = $3 in
+      let data : 'a scale_mapper = {scale=scale_expr} in
+      MAPScale(data)
+  }
+
+  | OFFSET EQ map_expr {
+      let offset_expr : 'a ast = $3 in
+      let data : 'a offset_mapper = {offset=offset_expr} in
+      let mapper :'a mapper = MAPOffset(data) in
+      mapper 
+  }
+  | DIRECT {
+      MAPDirect
+  }
+
+
+
+hwexpr_map_strategy:
+ | SCALE EQ expr OFFSET EQ expr {
+    let scale_expr : hwvid ast = $3 in
+    let offset_expr : hwvid ast = $6 in
+    let data  : hwvid linear_mapper = {scale=scale_expr; offset=offset_expr} in 
+    MAPLinear(data)
+  }
+
+  | SCALE EQ expr {
+      let scale_expr : hwvid ast = $3 in
+      let data : hwvid scale_mapper = {scale=scale_expr} in
+      MAPScale(data)
+  }
+
+  | OFFSET EQ expr {
+      let offset_expr : hwvid ast = $3 in
+      let data : hwvid offset_mapper = {offset=offset_expr} in
+      let mapper :hwvid mapper = MAPOffset(data) in
+      mapper 
+  }
+  | DIRECT {
+      MAPDirect
+  }
+
+
 
 mag:
 | OBRAC numlist CBRAC TOKEN {List.map (fun x -> NUMBER.float_of_number x) $2}
@@ -408,15 +467,8 @@ digital:
       HwLib.upd_mapvars dat vars cname;
       ()
   }
-  | digital DEF portprop IMAP map_strategy EOL {
-      let comp = get_cmpname() in
-      let port,prop = $3 and strat = $5 in
-      HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.iconv <- strat; b 
-        ) comp port;
-      ()
-  }
-  | digital DEF portprop MAP map_strategy EOL {
+
+  | digital DEF portprop MAP mapvar_map_strategy EOL {
       let comp = get_cmpname() in
       let port,prop = $3 and strat = $5 in
       HwLib.upd_defs dat (fun b -> match b with
@@ -424,14 +476,7 @@ digital:
         ) comp port;
       ()
   }
-  | digital DEF portprop IMAP map_strategy EOL {
-      let comp = get_cmpname() in
-      let port,prop = $3 and strat : mapper = $5 in
-      HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.iconv <- strat; b
-        ) comp port;
-      ()
-  }
+
 
   | digital SIM TOKEN tokenlist EOL {
       let cname = get_cmpname() in
@@ -524,24 +569,36 @@ comp:
       comp.vars <- comp.vars @ vars ;
       ()
   }
-  | comp DEF portprop MAP map_strategy EOL {
-      let port,prop = $3 and comp = get_cmpname() and strat = $5 in
+  | comp DEF portprop MAP mapvar_map_strategy EOL {
+      let port,prop = $3 and comp = get_cmpname() and
+      strat : std_mapper = $5 in
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.iconv <- strat; b
-          | HWDAnalogState(defs) -> defs.stvar.conv <- strat; b
+          | HWDAnalog(defs) -> defs.conv <- strat; b
+          | HWDAnalogState(defs) ->
+            begin
+            defs.stvar.conv <- strat; b
+            end
           ) comp port;
         ()
   }
-  
-  | comp DEF portprop IMAP map_strategy EOL {
-      let port,prop = $3 and comp = get_cmpname() and strat = $5 in
+  | comp DEF portprop MAP mapvar_map_strategy WITH hwexpr_map_strategy EOL {
+      let port,prop = $3 and comp = get_cmpname()
+      and strat : std_mapper= $5 and proxy : hwvid mapper = $7 in
       HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalog(defs) -> defs.iconv <- strat; b
-          | HWDAnalogState(defs) -> defs.stvar.iconv <- strat; b
+          | HWDAnalog(defs) ->
+            error "def map with" "cannot use a proxy for an input variable"
+          | HWDAnalogState(defs) ->
+          begin
+            defs.stvar.conv <- strat;
+            defs.stvar.proxy <- proxy;
+            b
+
+          end
           ) comp port;
         ()
   }
-  | comp DEF DDT portprop MAP map_strategy EOL {
+
+  | comp DEF DDT portprop MAP mapvar_map_strategy EOL {
       let port,prop = $4 and comp = get_cmpname() and strat = $6 in
       HwLib.upd_defs dat (fun b -> match b with
           | HWDAnalogState(defs) -> defs.deriv.conv <- strat; b
@@ -550,14 +607,7 @@ comp:
         ()
   }
   
-  | comp DEF DDT portprop IMAP map_strategy EOL {
-      let port,prop = $4 and comp = get_cmpname() and strat = $6 in
-      HwLib.upd_defs dat (fun b -> match b with
-          | HWDAnalogState(defs) -> defs.deriv.iconv <- strat; b
-          | _ -> error "def ddt imap" "must be a state variable"
-          ) comp port;
-        ()
-  }
+
   | comp DEF portprop MAG EQ mag EOL {
       let port,prop = $3 and comp = get_cmpname() in
       let bound : float list = $6 and typ = "" in

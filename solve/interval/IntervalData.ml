@@ -35,29 +35,30 @@ type canon_interval_ast = interval ast
 type mapvar = string
 
 (*mapping variables*)
-type linear_mapper = {
-  scale:mapvar ast;
-  offset:mapvar ast;
+type 'a linear_mapper = {
+  scale:'a ast;
+  offset:'a ast;
 }
 (*MAPPING VARIABLES*)
-type scale_mapper = {
-  scale:mapvar ast;
+type 'a scale_mapper = {
+  scale:'a  ast;
 }
 
-type offset_mapper = {
-  offset:mapvar ast;
+type 'a offset_mapper = {
+  offset:'a ast;
 }
 
-type mapper =
-  | MAPLinear of linear_mapper
-  | MAPScale of scale_mapper
-  | MAPOffset of offset_mapper
+type 'a mapper =
+  | MAPLinear of 'a linear_mapper
+  | MAPScale of 'a scale_mapper
+  | MAPOffset of 'a offset_mapper
   | MAPDirect
 
+type std_mapper = mapvar mapper
 (*the mapping environment that each component has*)
 type 'a mapper_env = {
   mutable vars: mapvar list;
-  mutable mappings: ('a,mapper) map;
+  mutable mappings: ('a,'a mapper) map;
 }
 
 type 'a interval_env = {
@@ -70,7 +71,7 @@ type 'a map_ctx = {
   mutable usedin: (string*int, 'a) map;
   mutable uses: ('a,string*int) map;
   (*convert the hardware intervals to effective math intervals*)
-  mutable conv : ('a,mapper) map;
+  mutable conv : ('a,'a mapper) map;
   (*the hardware interval*)
   mutable ival_phys : ('a,interval) map;
   (*the interval you're imposing*)

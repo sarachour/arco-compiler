@@ -46,12 +46,14 @@ struct
     | IntervalUnknown(_) -> "TODO"
     | _ -> "UNIMPLEMENTED"
 
-  let mapper2str (mpr:mapper) : string = match mpr with
-    | MAPLinear(d) -> "@"^"*"^(ASTLib.ast2str (d.scale) ident)^
-                      " + "^(ASTLib.ast2str d.offset ident)
-    | MAPScale(d) -> "@"^"*"^(ASTLib.ast2str d.scale ident)
-    | MAPOffset(d) -> "@"^"+"^(ASTLib.ast2str d.offset ident)
+  let mapper2str (mpr:'a mapper) (f:'a->string) : string = match mpr with
+    | MAPLinear(d) -> "@"^"*"^(ASTLib.ast2str (d.scale) f)^
+                      " + "^(ASTLib.ast2str d.offset f)
+    | MAPScale(d) -> "@"^"*"^(ASTLib.ast2str d.scale f)
+    | MAPOffset(d) -> "@"^"+"^(ASTLib.ast2str d.offset f)
     | MAPDirect -> "@"
+
+  let stdmapper2str mpr = mapper2str mpr ident
 
   let float_to_dir (n:float) : bound_dir =
     if n >= 0. then QDPositive

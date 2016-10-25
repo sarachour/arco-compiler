@@ -119,13 +119,19 @@ type port_prop = string*string
 
 type hwadefs = {
   mutable ival: interval;
-  mutable conv:  mapper;
-  mutable iconv:  mapper;
+  mutable conv:  std_mapper;
 }
+
+type hwastvardefs = {
+  mutable ival: interval;
+  mutable conv:  std_mapper;
+  mutable proxy:  hwvid mapper;
+}
+
 
 type hwastatedefs = {
   mutable deriv : hwadefs;
-  mutable stvar : hwadefs;
+  mutable stvar : hwastvardefs;
 }
 
 type hwddefs = {

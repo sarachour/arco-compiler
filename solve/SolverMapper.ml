@@ -29,6 +29,7 @@ open IntervalData
 open IntervalLib
 
 open Z3Data
+open Z3Lib
 
 exception SolverEqnError of string
 
@@ -59,7 +60,7 @@ module InferenceProblem =
 struct
 
 
-  let mkproblem () =
+  let mk () =
     {
       mvars=MAP.make();
       inhvars=MAP.make();
@@ -69,12 +70,12 @@ struct
     }
 
   let declare_mexpr (iprob:inf_problem) expr ival =
-    let mstr = mast2str expr in
+    let mstr = uast2str expr in
     MAP.put iprob.mvars mstr {ival=ival;id=iprob.cnt};
     iprob.cnt <- iprob.cnt + 1;
     ()
 
-  let declare_in_wire (iprob:inf_problem) wire ival =
+  let declare_inp_wire (iprob:inf_problem) wire ival =
     MAP.put iprob.inhvars wire {ival=ival;id=iprob.cnt};
     iprob.cnt <- iprob.cnt + 1;
     ()
@@ -85,8 +86,8 @@ struct
     ()
 
   (*cover*)
-  let cover (iprob:inf_problem) wire expr weight =
-    let mstr = mast2str expr in
+  let declare_cover (iprob:inf_problem) wire expr weight =
+    let mstr = uast2str expr in
     MAP.put iprob.cover mstr {wire=wire;weight=weight}
 
   let generate (iprob:inf_problem) =
@@ -106,7 +107,7 @@ struct
           Z3ConstDecl(id2scale mdata.id,Z3Real);
           Z3ConstDecl(id2offset mdata.id,Z3Real);
           Z3ConstDecl(id2minslack mdata.id,Z3Real);
-          Z3ConstDecl(id2macslack mdata.id,Z3Real)
+          Z3ConstDecl(id2maxslack mdata.id,Z3Real)
         ]
       );
     MAP.iter iprob.outhvars (fun wire wdata ->
@@ -114,10 +115,10 @@ struct
           Z3ConstDecl(id2scale wdata.id,Z3Real);
           Z3ConstDecl(id2offset wdata.id,Z3Real);
           Z3ConstDecl(id2minslack wdata.id,Z3Real);
-          Z3ConstDecl(id2macslack wdata.id,Z3Real)
+          Z3ConstDecl(id2maxslack wdata.id,Z3Real)
         ]
       );
-    enq [Z3CheckSat,Z3Model];
+    enq [Z3SAT;Z3DispModel];
     let result = Z3Lib.exec "mapper" (QUEUE.to_list insts) in
     ()
     (*instructions*)
@@ -137,7 +138,7 @@ struct
           let mvar = MathLib.getvar tbl.env.math v in
           match mvar.defs with
           | MDefVar(def) -> def.ival
-          | _ -> error "infer_dangling_math_expr" "state variable cannot be input" 
+          | _ -> error "infer_dangling_math_expr" "state variable cannom be input" 
         end
       |MathId(MNVar(MInput,v)) ->
         begin
@@ -156,9 +157,9 @@ struct
     math_interval
 
   (*an unconnected input that may route local and outputs that are mapped*)
-  let infer_dangling_input_wire (tbl:gltbl) (cmp:ucomp_conc) (wire:wireid) (cfg:hwvarcfg) =
+  let infer_dangling_input_wire (infprob) (tbl:gltbl) (cmp:ucomp_conc) (wire:wireid) (cfg:hwvarcfg) =
     let ival2str (x:interval) = IntervalLib.interval2str x in 
-    let hvar : hwvid hvar = HwLib.comp_getvar cmp.d wire.port in
+    let hvar : hwvid hwportvar = HwLib.comp_getvar cmp.d wire.port in
     let mival = infer_dangling_math_expr tbl cfg.expr in 
     match hvar.defs with
     | HWDAnalogState(hdef) ->
@@ -172,9 +173,9 @@ struct
       declare the expression variable and the wire, and then
       maximize the mapping onto the wire
       *)
-      InferProblem.declare_mexpr cfg.expr mival;
-      InferProblem.declare_wire wire hival;
-      InferProblem.maximize_mapping wire cfg.expr;
+      InferenceProblem.declare_mexpr infprob cfg.expr mival;
+      InferenceProblem.declare_inp_wire infprob wire hival;
+      InferenceProblem.declare_cover infprob wire cfg.expr;
       ()
     | _ ->
       error "infer_dangling_input_wire" "unknown"
@@ -190,6 +191,7 @@ struct
       error "infer_dangling_output_wire" "unexpected combo"
 
   let infer (tbl:gltbl) =
+    let infprob = InferenceProblem.mk() in 
     let infer_comp (tbl:gltbl) (mvar:string) (wire:wireid) =
       let hwcomp : ucomp_conc = ConcCompLib.get_conc_comp tbl wire.comp in
       let hwcfg : hwcompcfg = hwcomp.cfg in
@@ -200,7 +202,7 @@ struct
             begin
               match SlnLib.getsrcs tbl.sln_ctx (wire) with
               | WCollEmpty ->
-                infer_dangling_input_wire tbl hwcomp ({comp=wire.comp;port=inp}) varcfg  
+                infer_dangling_input_wire infprob tbl hwcomp ({comp=wire.comp;port=inp}) varcfg  
               | WCollOne(_) ->
                 error "infer_comp" "unimpl 1"
               | WCollMany(_) ->

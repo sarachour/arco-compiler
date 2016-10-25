@@ -62,6 +62,7 @@ rule env = parse
 
   | "map"                   {MAP}
   | "imap"                   {IMAP}
+  | "with"                   {WITH}
   | "map-var"               {MAPVAR}
   | "linear"                {LINEAR}
   | "scale"                 {SCALE}

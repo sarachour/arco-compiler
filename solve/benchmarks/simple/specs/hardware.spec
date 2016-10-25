@@ -46,8 +46,6 @@ comp iadd
     def I(Y) map scale=A offset=B2
 
     output Z{I:mA}
-    %hardware to symbolic 
-    def I(Z) imap scale=1/A offset=-(B1+B2)/A
     %symbolic to hardware 
     def I(Z) map scale=A offset=(B1+B2)
     
@@ -72,7 +70,6 @@ comp imul
     def I(Z) map scale=A3
 
     output W {I:mA}
-    def I(W) imap scale=A3/(A1+A2)
     def I(W) map scale=(A1+A2)/A3
 
     rel I(W) = ((I(X)*I(Y))/I(Z))
@@ -120,7 +117,7 @@ comp deriv_iadd
     var ddt I(Z) = I(Z)*0.00001 shape GAUSS
 
     def I(Z) mag = [0,1] mA
-    def I(Z) map scale=(A*B) with (EN_B*I(P))
+    def I(Z) map scale=(A*B) with scale=(EN_B*I(P))
     def ddt I(Z) map scale=(A*B) 
    
 end
