@@ -191,19 +191,27 @@ struct
     in
     let var2infvar v (e:float) =
       let parts = STRING.split v "_" in
-      let prefix = List.nth parts 0
-      and id = int_of_string (List.nth parts 1)
-      in
+      let prefix = List.nth parts 0 in
       match prefix with
-      | "os" -> upd_map_result id (fun x -> x.offset <- e)
-      | "sc" -> upd_map_result id (fun x -> x.scale <- e)
-      | "slmin" -> upd_map_result id (fun x -> x.slack_min <- e)
-      | "slmax" -> upd_map_result id (fun x -> x.slack_max <- e)
-      | _ -> error "z3result2mapresult.var2infvar" "unexpected variable prefix"
+      | "os" ->
+        let id = int_of_string (List.nth parts 1) in
+        upd_map_result id (fun x -> x.offset <- e)
+      | "sc" ->
+        let id = int_of_string (List.nth parts 1) in
+        upd_map_result id (fun x -> x.scale <- e)
+      | "slmin" ->
+        let id = int_of_string (List.nth parts 1) in
+        upd_map_result id (fun x -> x.slack_min <- e)
+      | "slmax" ->
+        let id = int_of_string (List.nth parts 1) in
+        upd_map_result id (fun x -> x.slack_max <- e)
+      | _ -> warn
+               "z3result2mapresult.var2infvar" ("unexpected variable prefix "^prefix)
     in
     List.iter (fun asgn -> match asgn with
-        | Z3SetFloat(s,f) -> var2infvar s f
-        | Z3SetInt(s,f) -> var2infvar s (float_of_int f)
+        | Z3Set(s,Z3QFloat(f)) -> var2infvar s f
+        | Z3Set(s,Z3QInt(f)) -> var2infvar s (float_of_int f)
+        | Z3Set(s,Z3QInterval(Z3QRange(min,max))) -> var2infvar s (max)
         | _ -> error "z3result2mapresult" "unhandled"
     ) asgns;
     MAP.iter data (fun id tmpdata ->
@@ -213,6 +221,7 @@ struct
             let mdata = MAP.get infprob.mvars m in
             debug ("[math] math-var "^m^
                    ": "^(string_of_float tmpdata.scale)^"*@ + "^(string_of_float tmpdata.offset));
+            debug ("> hw-slack ["^(string_of_float tmpdata.slack_min)^", "^(string_of_float tmpdata.slack_max)^"]");
             ()
           end
         | INFHVar(h) ->
@@ -242,18 +251,26 @@ struct
     let enq inststk =
       List.iter (fun inst -> noop (QUEUE.enqueue insts inst)) inststk
     in
-
+    let absval (expr) =
+      Z3IfThenElse(Z3GTE(expr,Z3Int(0)),expr, Z3Neg(expr))
+    in
     (*declare variables*)
     enq [(Z3Comment "");(Z3Comment "math variable decls")];
     MAP.iter iprob.mvars (fun mvar mdata ->
+        let mmax = IntervalLib.get_max mdata.ival in
+        let mmin= IntervalLib.get_min mdata.ival in
         enq [
           Z3ConstDecl(id2scale mdata.id,Z3Real);
           Z3ConstDecl(id2offset mdata.id,Z3Real);
-          Z3ConstDecl(id2minslack mdata.id,Z3Real);
-          Z3ConstDecl(id2maxslack mdata.id,Z3Real)
-        ]
+        ];
+        begin
+          if mmax != mmin then
+            enq [
+            Z3ConstDecl(id2minslack mdata.id,Z3Real);
+            Z3ConstDecl(id2maxslack mdata.id,Z3Real)
+            ]
+        end
       );
-
     enq [(Z3Comment "");(Z3Comment "hw variable decles")];
     MAP.iter iprob.hvars (fun wire wdata ->
         enq [
@@ -267,28 +284,58 @@ struct
     MAP.iter iprob.cover (fun mvar cover ->
         let mi = MAP.get iprob.mvars mvar in
         let hi = MAP.get iprob.hvars cover.wire in
-        let mmaxexpr =
-          Z3Plus(
+        let mmax = IntervalLib.get_max mi.ival and mmin= IntervalLib.get_min mi.ival in
+        let hmax = IntervalLib.get_max hi.ival and hmin =IntervalLib.get_min hi.ival in
+        if mmax = mmin then
+          let mnumexpr =
+              Z3Plus(
+                Z3Mult(Z3Var(id2scale mi.id),Z3Real(mmax)),
+                Z3Var(id2offset mi.id)
+              )
+          in
+          enq [
+            Z3Comment("");
+            Z3Comment(mvar^" -> "^(SlnLib.wireid2str cover.wire));
+            Z3Assert(Z3LTE(mnumexpr,Z3Real(hmax)));
+            Z3Assert(Z3GTE(mnumexpr,Z3Real(hmin)));
+
+            Z3Assert(Z3Eq(Z3Var(id2scale mi.id),Z3Var(id2scale hi.id)));
+            Z3Assert(Z3GT(Z3Var(id2scale mi.id),Z3Real(0.)));
+
+            Z3Assert(Z3Eq(Z3Var(id2offset mi.id),Z3Var(id2offset hi.id)));
+            Z3Assert(Z3LTE(Z3Var(id2offset mi.id),Z3Real(hmax)));
+          ]
+        else
+          let mmaxexpr =
             Z3Plus(
-              Z3Mult(Z3Var(id2scale mi.id),Z3Real(IntervalLib.get_max mi.ival)),
-              Z3Var(id2offset mi.id)
-            ),
-            Z3Var(id2maxslack mi.id)
-          )
-        in
-        let mminexpr =
-          Z3Plus(
+              Z3Plus(
+                Z3Mult(Z3Var(id2scale mi.id),Z3Real(mmax)),
+                Z3Var(id2offset mi.id)
+              ),
+              Z3Var(id2maxslack mi.id)
+            )
+          in
+          let mminexpr =
             Z3Plus(
-              Z3Mult(Z3Var(id2scale mi.id),Z3Real(IntervalLib.get_min mi.ival)),
-              Z3Var(id2offset mi.id)
-            ),
-            Z3Var(id2minslack mi.id)
-          )
-        in
-        enq [
-          Z3Assert(Z3Eq(mmaxexpr,Z3Real(IntervalLib.get_max hi.ival)));
-          Z3Assert(Z3Eq(mminexpr,Z3Real(IntervalLib.get_min hi.ival)))
-        ]
+              Z3Plus(
+                Z3Mult(Z3Var(id2scale mi.id),Z3Real(mmin)),
+                Z3Var(id2offset mi.id)
+              ),
+              Z3Var(id2minslack mi.id)
+            )
+          in
+          enq [
+            Z3Comment("");
+            Z3Comment(mvar^" -> "^(SlnLib.wireid2str cover.wire));
+            Z3Assert(Z3Eq(mmaxexpr,Z3Real(hmax)));
+            Z3Assert(Z3Eq(mminexpr,Z3Real(hmin)));
+            Z3Assert(Z3Eq(Z3Var(id2scale mi.id),Z3Var(id2scale hi.id)));
+            Z3Assert(Z3LTE(Z3Var(id2scale mi.id),Z3Real((hmax-.hmin)/.(mmax-.mmin))));
+            Z3Assert(Z3GT(Z3Var(id2scale mi.id),Z3Real(0.)));
+
+            Z3Assert(Z3Eq(Z3Var(id2offset mi.id),Z3Var(id2offset hi.id)));
+            Z3Assert(Z3LTE(Z3Var(id2offset mi.id),Z3Real(hmax)));
+          ]
         
       );
 
@@ -305,26 +352,29 @@ struct
 
     (*add minimization function*)
     let summands = MAP.fold iprob.cover (fun mvar cover summands ->
-        let mid = (MAP.get iprob.mvars mvar).id in 
-        let min_slack = id2minslack mid and max_slack = id2maxslack mid in
-        let expr =
-          Z3Mult(Z3Plus(Z3Var(min_slack),Z3Var(max_slack)),Z3Real(cover.weight))
-        in
-        expr::summands
+        let mdata = (MAP.get iprob.mvars mvar) in
+        let mmin = IntervalLib.get_min mdata.ival in 
+        let mmax = IntervalLib.get_max mdata.ival in 
+        let min_slack = id2minslack mdata.id and max_slack = id2maxslack mdata.id in
+        if mmin = mmax then
+          summands
+        else
+          let expr =
+            Z3Mult(absval (Z3Plus(Z3Var(min_slack),Z3Var(max_slack))),Z3Real(cover.weight))
+          in
+          expr::summands
       ) []
     in
-    enq [Z3Minimize (Z3Lib.sum_all summands)];
-    (*add constraint solving commands*)
-    enq [Z3SAT;Z3DispModel];
     (*query solving problem*)
     let stmts = QUEUE.to_list insts in
     QUEUE.destroy insts;
-    stmts
+    stmts,(Z3Lib.plus_all summands)
 
   let solve (iprob:inf_problem) =
     (*helper function*)
-    let stmts = infprob2z3prob iprob in 
-    let result = Z3Lib.exec "mapper" (stmts) in
+    let stmts,minexpr = infprob2z3prob iprob in 
+    let result : z3sln =
+      Z3Lib.minimize "mapper" (stmts) minexpr 0. 1. in
     if result.sat then
       begin
       match result.model with

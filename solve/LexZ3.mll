@@ -11,6 +11,7 @@ let report lexbuf q =
 
 let whitespace = ['\t'' ']*
 let token = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_']*
+let tmpvar = ['A'-'Z''a'-'z''_']['A'-'Z''a'-'z''0'-'9''_''!']*
 let str = '"' [^ '"']* '"'
 let integer = '-'? ['0'-'9']+
 let float = '-'? ['0'-'9']+'.'['0'-'9']*
@@ -34,6 +35,10 @@ rule env = parse
   | "/"                     {DIV}
   | "+"                     {PLUS}
   | "-"                     {MINUS}
+  | ">="                    {GTE}
+  | "<="                    {LTE}
+  | ">"                     {GT}
+  | "<"                     {LT}
   | "*"                     {MULT}
   | "oo"                    {INFTY}
   | "false"                 {BOOL(false)}
@@ -43,5 +48,6 @@ rule env = parse
   | str as st               {STRING(st)}
   | z3var as tok            {Z3VAR(tok)}
   | token as tok            {TOKEN(tok)}
+  | tmpvar as tok            {TOKEN(tok)}
   | eof                     {EOF}
   | _ as q                  { report lexbuf q }

@@ -84,6 +84,15 @@ struct
       res
     | None -> error "file_to_formula" "could not parse the z3 environment"
 
+  let file_to_drealsln fn =
+    let close_file,lb = file_to_lexbuf fn in
+    let res = parse_lexbuf "dreal" (fun x -> ParseDReal.env LexDReal.env x) lb in
+    let _ = close_file () in
+    match res with
+    | Some (v) -> let res = v in
+      res
+    | None -> error "file_to_formula" "could not parse the z3 environment"
+
 
   let string_to_formula fn =
     let lb = string_to_lexbuf fn in

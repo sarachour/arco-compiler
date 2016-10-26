@@ -20,7 +20,7 @@
 
 %token EOF EOL OPARAN CPARAN
 %token SAT UNSAT BOOLTYPE INTTYPE REALTYPE MODEL DEFINEFUN DIV ERROR
-%token PLUS MULT MINUS INFTY OBJECTIVES
+%token PLUS MULT MINUS LT LTE GT GTE INFTY OBJECTIVES
 %token <string> TOKEN STRING Z3VAR
 %token <int> INTEGER
 %token <float> FLOAT
@@ -48,22 +48,29 @@ expr:
   | OPARAN PLUS lst(expr) CPARAN {OpN(Add,$3)}
   | OPARAN MULT lst(expr) CPARAN {OpN(Mult,$3)}
   | OPARAN MINUS lst(expr) CPARAN {OpN(Sub,$3)}
+  | OPARAN TOKEN lst(expr) CPARAN {OpN(Func($2),$3)}
   | FLOAT                        {Decimal($1)}
   | INTEGER                      {Integer($1)}
   | TOKEN                        {Term($1)}
+  | OPARAN LTE lst(expr) CPARAN      {Term("?")}  
+  | OPARAN GTE lst(expr) CPARAN      {Term("?")}  
+  | OPARAN LT lst(expr) CPARAN      {Term("?")}  
+  | OPARAN GT lst(expr) CPARAN      {Term("?")}  
+  | OPARAN lst(expr) CPARAN      {Term("?")}  
 
 bnd:
   | INTEGER                     {()}
   | FLOAT                       {()}
   | OPARAN MINUS bnd CPARAN     {()}
   | INFTY                       {()}
-
-rng:
+  
+cost:
   | OPARAN MULT bnd bnd CPARAN  {()}
+  | INTEGER                     {()}
 
 objectives:
   | OPARAN OBJECTIVES
-           OPARAN expr rng CPARAN
+           OPARAN expr cost CPARAN
     CPARAN
     {
       ()
@@ -93,17 +100,17 @@ assignm:
   | OPARAN DEFINEFUN TOKEN OPARAN CPARAN BOOLTYPE BOOL CPARAN {
     let n = $3 in
     let v = $7 in
-    Some (Z3SetBool(n,v))
+    Some (Z3Set(n,Z3QBool(v)))
   }
   | OPARAN DEFINEFUN TOKEN OPARAN CPARAN INTTYPE INTEGER CPARAN {
     let n = $3 in
     let v = $7 in
-    Some (Z3SetInt(n,v))
+    Some (Z3Set(n,Z3QInt(v)))
   }
   | OPARAN DEFINEFUN TOKEN OPARAN CPARAN REALTYPE real CPARAN {
     let n = $3 in
     let v : float = $7 in
-    Some (Z3SetFloat(n,v))
+    Some (Z3Set(n,Z3QFloat(v)))
   }
   | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN INTTYPE INTEGER CPARAN {
     let n = $3 in

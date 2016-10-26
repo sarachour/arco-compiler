@@ -12,6 +12,7 @@ let error n m = raise (Z3Error (n^":"^m))
 type z3doc = z3st list
 
 let z3_print_debug = print_debug 1
+let debug = print_debug 1
 
 module Z3Lib =
 struct
@@ -140,7 +141,21 @@ struct
       _s b;
       os ")"
       end
+    | Z3Fun(name,args) ->
+      begin
+        os ("(");
+        os name;
+        List.iter (fun arg ->
+            os " "; _s arg) args;
+        os ")"
+        end
     | Z3Var(v) -> os v
+    | Z3Neg(v) ->
+      begin
+        os "(- ";
+        _s v;
+        os ")"
+      end
     | Z3Int(i) -> os (string_of_int i)
     | Z3Real(i) -> os (string_of_float i)
     | Z3Bool(true) -> os "true"
@@ -161,10 +176,13 @@ struct
     match x with
     | Z3ConstDecl(s,u) ->
       begin
-      os ("(declare-const "^s^" ");
+        (*os ("(declare-const "^s^" ");*)
+      os ("(declare-fun "^s^" () ");
       z3vartyp2buf fb u;
       os ")"
       end
+    | Z3Stmt(s) ->
+      os s
     | Z3Assert(q) ->
       begin
       os "(assert ";
@@ -226,9 +244,12 @@ struct
     _ast2z3 x
 
   let sln2str (x:z3sln) =
+    let qty2str a = match a with
+      |Z3QInt(i) -> string_of_int i
+      | _ -> "UNIMPL"
+    in
     let assign2str a = match a with
-    | Z3SetBool(n,v) -> "bool "^n^"="^(string_of_bool v)
-    | Z3SetInt(n,v) -> "int "^n^"="^(string_of_int v)
+    | Z3Set(n,v) -> "set "^n^"="^(qty2str v)
     in
     let assigns2str a =
       List.fold_right (fun x r -> r^"\n"^(assign2str x)) a ""
@@ -240,29 +261,100 @@ struct
     in
     sat^"\n\n"^mdl
 
-  let exec (root:string) (x:z3st list) : z3sln=
-    let rankst (x:z3st) = match x with
-      | Z3ConstDecl(_) -> 1
-      | Z3Assert(_) -> 2
-      | Z3Minimize(_) -> 3
-      | Z3Maximize(_) -> 3
-      | Z3SAT -> 4
-      | Z3DispModel -> 5
-      | Z3Comment(_) -> 6
-    in
-    let sortsts (x:z3st) (y:z3st) : int = (rankst x) - (rankst y)  in
-    let fname =  "z3-tmp."^root^".z3" in
-    let oc = open_out fname in
-    (*let x = List.sort sortsts (LIST.uniq x) in*)
-    let _ = z3stmts2buf oc x in
-    let _ = close_out oc in
-    let _ = z3_print_debug "---> Executing SMT Solver\n" in
-    let _ = flush_all () in
-    let res = "z3-res."^root^".z3" in
-    let _ = Sys.command ("z3 -smt2 "^fname^" > "^res) in
-    let _ = z3_print_debug "---> Finished Search\n" in
-    let _ = flush_all () in
-    let z = ParserGenerator.file_to_z3sln res in
-    z
+  let use_dreal = true
 
+  let exec (root:string) (stmts:z3st list) : z3sln=
+    let stmts =
+      if use_dreal then
+        (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT]
+      else
+        stmts @ [Z3SAT; Z3DispModel]
+    in
+    let smtfile =  "z3-tmp."^root^".smt2" in
+    let resfile = "z3-res."^root^".res" in
+    let oc = open_out smtfile in
+    (*let x = List.sort sortsts (LIST.uniq x) in*)
+    z3stmts2buf oc stmts;
+    close_out oc;
+    z3_print_debug "---> Executing SMT Solver\n";
+    flush_all ();
+    begin
+      if use_dreal then
+        Sys.command ("dReal --model "^smtfile^" > "^resfile)
+      else
+        Sys.command ("z3 -smt2 "^smtfile^" > "^resfile)
+    end;
+    z3_print_debug "---> Finished Search\n";
+    flush_all ();
+    begin
+      let z =
+        if use_dreal then ParserGenerator.file_to_drealsln resfile
+        else ParserGenerator.file_to_z3sln resfile
+      in
+      z
+    end
+
+  let get_min_val (v:z3qty) repl =
+    let possible_v = match v with
+    | Z3QInt(i) -> (float_of_int i)
+    | Z3QFloat(i) -> (i)
+    | Z3QInterval(Z3QRange(vmin,vmax)) -> (vmin)
+    | Z3QInterval(Z3QLowerBound(vmin)) -> (vmin)
+    | Z3QInterval(Z3QUpperBound(vmax)) -> (vmax)
+    | Z3QInterval(_) -> repl
+    | _ -> error "compute_bounds" "unhandled"
+    in
+    if possible_v < repl then possible_v else repl
+
+  let minimize (root:string) (stmts:z3st list) (expr:z3expr) (minbnd:float) (maxbnd:float) : z3sln=
+    if use_dreal then
+      begin
+        let minvar = "__minima__" in
+        let has_solution sln =
+          if sln.sat = false || sln.model = None then None else sln.model
+        in
+        let get_min_qty model = List.fold_right (fun q minval ->
+                  match q with
+                  |Z3Set(name,vr) -> if name = minvar
+                    then vr else minval
+                ) model (Z3QInterval Z3QAny) 
+        in
+        let min_decl = Z3ConstDecl(minvar,Z3Real) in 
+        let min_stmt = Z3Assert(Z3Eq(Z3Var(minvar),expr)) in 
+        (*
+           the minimize subroutine
+        *)
+        let rec _minimize min max (depth:int): z3sln option=
+          if depth > 5 || min = max then None else
+            let midpoint = (min+.max)/. 2. in
+            (*compute using the midpoint as a bound*)
+            debug "_minimize" (">>> DReal running with max minval = "^(string_of_float midpoint));
+            let result: z3sln =
+                let min_expr = Z3Assert(Z3LTE(Z3Var(minvar),Z3Real(midpoint))) in
+                exec root ((min_decl::stmts)@[min_stmt;min_expr]) 
+            in
+            match has_solution result with
+            | Some(model) ->
+              let new_midpoint = get_min_val (get_min_qty model) midpoint in 
+              let better_result = _minimize min new_midpoint (depth+1) in
+              begin
+                match better_result with
+                | Some(better_result) -> Some better_result
+                | _ -> Some result
+              end
+            | None ->
+              _minimize midpoint max (depth+1) 
+        in
+        match _minimize minbnd maxbnd 0 with
+        | Some(result) -> result
+        | None ->
+          begin
+            exec root ((min_decl::stmts)@[min_stmt]) 
+          end
+
+      end
+    else
+      begin
+        exec root (stmts @ [Z3Minimize expr])
+      end
 end
