@@ -28,8 +28,14 @@ rule env = parse
   | "Int"                   {INTTYPE}
   | "model"                 {MODEL}
   | "error"                 {ERROR}
+  | "objectives"            {OBJECTIVES}
   | "("                     {OPARAN}
   | ")"                     {CPARAN}
+  | "/"                     {DIV}
+  | "+"                     {PLUS}
+  | "-"                     {MINUS}
+  | "*"                     {MULT}
+  | "oo"                    {INFTY}
   | "false"                 {BOOL(false)}
   | "true"                  {BOOL(true)}
   | float as i              {FLOAT(float_of_string i)}

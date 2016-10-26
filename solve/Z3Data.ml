@@ -28,6 +28,7 @@ type z3st =
   | Z3Minimize of z3expr
   | Z3Maximize of z3expr
   | Z3DispModel
+  | Z3Comment of string
 
 type z3assign =
   | Z3SetBool of string*bool

@@ -171,6 +171,7 @@ struct
       z3expr2buf fb q;
       os ")"
       end
+    | Z3Comment(str) -> os ("; "^str)
     | Z3SAT -> os "(check-sat)"
     | Z3DispModel -> os "(get-model)"
     | Z3Minimize(q) ->
@@ -201,8 +202,8 @@ struct
     fn_all x (fun x r -> Z3Eq(x,r))
 
 
-  let add_all (x) =
-    fn_all x (fun x r -> Z3And(x,r))
+  let sum_all (x) =
+    fn_all x (fun x r -> Z3Plus(x,r))
 
   let or_all (x:z3expr list) =
     fn_all x (fun x r -> Z3Or(x,r))
@@ -240,18 +241,19 @@ struct
     sat^"\n\n"^mdl
 
   let exec (root:string) (x:z3st list) : z3sln=
-    let sortsts (x:z3st) (y:z3st) : int = match (x,y) with
-    | (Z3ConstDecl(_),Z3Assert(_)) -> -1
-    | (Z3Assert(_),Z3ConstDecl(_)) -> 1
-    | (Z3DispModel,_) -> 1
-    | (_,Z3DispModel) -> -1
-    | (Z3SAT,_) -> 1
-    | (_,Z3SAT) -> -1
-    | _ -> if x = y then 0 else 1
+    let rankst (x:z3st) = match x with
+      | Z3ConstDecl(_) -> 1
+      | Z3Assert(_) -> 2
+      | Z3Minimize(_) -> 3
+      | Z3Maximize(_) -> 3
+      | Z3SAT -> 4
+      | Z3DispModel -> 5
+      | Z3Comment(_) -> 6
     in
+    let sortsts (x:z3st) (y:z3st) : int = (rankst x) - (rankst y)  in
     let fname =  "z3-tmp."^root^".z3" in
     let oc = open_out fname in
-    let x = List.sort sortsts (LIST.uniq x) in
+    (*let x = List.sort sortsts (LIST.uniq x) in*)
     let _ = z3stmts2buf oc x in
     let _ = close_out oc in
     let _ = z3_print_debug "---> Executing SMT Solver\n" in

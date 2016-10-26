@@ -1,5 +1,6 @@
 %{
   open Z3Data
+  open AST
   open Util
 
 
@@ -10,18 +11,24 @@
     let _ = flush_all () in
     raise (ParseZ3Error(s,n))
 
+  let debug (s:string) =
+    Printf.printf "[z3-debug] %s\n" s;
+    flush_all ();
+    ()
 %}
 
 
 %token EOF EOL OPARAN CPARAN
-%token SAT UNSAT BOOLTYPE INTTYPE REALTYPE MODEL DEFINEFUN ERROR
-
+%token SAT UNSAT BOOLTYPE INTTYPE REALTYPE MODEL DEFINEFUN DIV ERROR
+%token PLUS MULT MINUS INFTY OBJECTIVES
 %token <string> TOKEN STRING Z3VAR
 %token <int> INTEGER
 %token <float> FLOAT
 %token <bool> BOOL
 
 %type <unit> errorst
+%type <string AST.ast> expr
+%type <float> real
 %type <Z3Data.z3assign option> assignm
 %type <Z3Data.z3assign list> assignms
 %type <Z3Data.z3model> model
@@ -33,8 +40,54 @@
 %%
 
 
+lst(E):
+  | E                            {[$1]}
+  | E lst(E)                     {$1::$2}
+
+expr:
+  | OPARAN PLUS lst(expr) CPARAN {OpN(Add,$3)}
+  | OPARAN MULT lst(expr) CPARAN {OpN(Mult,$3)}
+  | OPARAN MINUS lst(expr) CPARAN {OpN(Sub,$3)}
+  | FLOAT                        {Decimal($1)}
+  | INTEGER                      {Integer($1)}
+  | TOKEN                        {Term($1)}
+
+bnd:
+  | INTEGER                     {()}
+  | FLOAT                       {()}
+  | OPARAN MINUS bnd CPARAN     {()}
+  | INFTY                       {()}
+
+rng:
+  | OPARAN MULT bnd bnd CPARAN  {()}
+
+objectives:
+  | OPARAN OBJECTIVES
+           OPARAN expr rng CPARAN
+    CPARAN
+    {
+      ()
+    }
+
+
 errorst:
-  | OPARAN ERROR STRING CPARAN {()}
+  | OPARAN ERROR STRING CPARAN {
+    debug ("[Z3-Error] "^$3);
+    ()
+}
+
+real:
+  | OPARAN DIV FLOAT FLOAT CPARAN {
+    let numer = $3 and denom = $4 in
+    numer/.denom
+  }
+  | FLOAT {
+    $1
+  }
+  | OPARAN MINUS real CPARAN {
+    let v = $3 in
+    0.0 -. v
+  }
 
 assignm:
   | OPARAN DEFINEFUN TOKEN OPARAN CPARAN BOOLTYPE BOOL CPARAN {
@@ -47,9 +100,9 @@ assignm:
     let v = $7 in
     Some (Z3SetInt(n,v))
   }
-  | OPARAN DEFINEFUN TOKEN OPARAN CPARAN REALTYPE FLOAT CPARAN {
+  | OPARAN DEFINEFUN TOKEN OPARAN CPARAN REALTYPE real CPARAN {
     let n = $3 in
-    let v = $7 in
+    let v : float = $7 in
     Some (Z3SetFloat(n,v))
   }
   | OPARAN DEFINEFUN Z3VAR OPARAN CPARAN INTTYPE INTEGER CPARAN {
@@ -107,6 +160,11 @@ stmts:
     let x = $1 in
     let mdl = $2 in
     let _ = x.model <- Some mdl in
+    x
+  }
+  | stmts objectives {
+    let x = $1 in
+    let obj = $2 in
     x
   }
   | stmts errorst {
