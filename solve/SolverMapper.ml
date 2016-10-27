@@ -185,64 +185,7 @@ struct
     mutable slack_max: float;
   }
 
-  let z3result2mapresult infprob (asgns:z3assign list) =
-    let data = MAP.make () in
-    let upd_map_result id fxn =
-      if MAP.has data id = false then
-        noop (MAP.put data id {
-            offset=999.;
-            scale=999.;
-            slack_min=999.;
-            slack_max=999.});
-      fxn (MAP.get data id)
-    in
-    let var2infvar v (e:float) =
-      let parts = STRING.split v "_" in
-      let prefix = List.nth parts 0 in
-      match prefix with
-      | "os" ->
-        let id = int_of_string (List.nth parts 1) in
-        upd_map_result id (fun x -> x.offset <- e)
-      | "sc" ->
-        let id = int_of_string (List.nth parts 1) in
-        upd_map_result id (fun x -> x.scale <- e)
-      | "slmin" ->
-        let id = int_of_string (List.nth parts 1) in
-        upd_map_result id (fun x -> x.slack_min <- e)
-      | "slmax" ->
-        let id = int_of_string (List.nth parts 1) in
-        upd_map_result id (fun x -> x.slack_max <- e)
-      | _ -> warn
-               "z3result2mapresult.var2infvar" ("unexpected variable prefix "^prefix)
-    in
-    List.iter (fun asgn -> match asgn with
-        | Z3Set(s,Z3QFloat(f)) -> var2infvar s f
-        | Z3Set(s,Z3QInt(f)) -> var2infvar s (float_of_int f)
-        | Z3Set(s,Z3QInterval(Z3QRange(min,max))) -> var2infvar s (max)
-        | _ -> error "z3result2mapresult" "unhandled"
-    ) asgns;
-    let print_map i =
-      if i = 999. then "?" else string_of_float i 
-    in
-    MAP.iter data (fun id tmpdata ->
-        match MAP.get infprob.vars id with
-        | INFMVar(m) ->
-          begin
-            let mdata = MAP.get infprob.mvars m in
-            debug ("[math] math-var "^m^
-                   ": "^(print_map tmpdata.scale)^"*@ + "^(print_map tmpdata.offset));
-            debug ("> hw-slack ["^(print_map tmpdata.slack_min)^", "^(print_map tmpdata.slack_max)^"]");
-            ()
-          end
-        | INFHVar(h) ->
-          begin
-          debug ("[hw] "^(SlnLib.wireid2str h)^
-                 ": "^(print_map tmpdata.scale)^"*@ + "^(print_map tmpdata.offset));
-          ()
-          end
 
-      );
-    ()
   
   let infprob2z3prob (iprob) =
     let id2offset s = "os_"^(string_of_int s) in
@@ -445,23 +388,47 @@ struct
         id
       end
 
+  let id2wire symtbl id : wireid =
+    MAP.get symtbl.id2w id
+
   let linearid2name symtbl x = match x with
     | (SVScaleVar(w)) ->
       let id = wire2id symtbl w in
       "sc_"^(string_of_int id)
     | (SVOffsetVar(w)) ->
       let id = wire2id symtbl w in
-      "os_"^(string_of_int id)
+      "of_"^(string_of_int id)
 
   let linearsmtid2name symtbl x = match x with
     | SVLinVar(x) ->
       linearid2name symtbl x
     | SVSlackVar(SVMin,_,w) ->
       let id = wire2id symtbl w in
-      "sl_bot_"^(string_of_int id)
+      "slbot_"^(string_of_int id)
     | SVSlackVar(SVMax,_,w) ->
       let id = wire2id symtbl w in
-      "sl_top_"^(string_of_int id)
+      "sltop_"^(string_of_int id)
+
+  let name2linearsmtid symtbl x : linear_smt_id option=
+    match STRING.split x "_" with
+    | ["sc";id] ->
+      let id = int_of_string id in
+      let w = id2wire symtbl id in 
+      Some (SVLinVar(SVScaleVar(w)))
+    | ["of";id] ->
+      let id = int_of_string id in
+      let w = id2wire symtbl id in 
+      Some (SVLinVar(SVOffsetVar(w)))
+    | ["slbot";id] ->
+      let id = int_of_string id in
+      let w = id2wire symtbl id in 
+      Some (SVSlackVar(SVMin,-1.0,w))
+    | ["sltop";id] ->
+      let id = int_of_string id in
+      let w = id2wire symtbl id in 
+      Some (SVSlackVar(SVMax,-1.0,w))
+    | h::t -> None 
+    | [] -> error "name2linearsmtid" ("empty string ")
 
   let linearid2str (x:linear_id) = match x with
     | (SVScaleVar(w)) -> "sc."^(SlnLib.wireid2str w)
@@ -494,6 +461,70 @@ struct
       ">= "^(_plst lst linearsmtexpr2str)
     | SVDeclMapVar(id) ->
       "decl "^(linearsmtid2str id)
+
+
+  type hw_mapping = {
+    mutable scale:float;
+    mutable offset:float;
+    mutable slack_min:float;
+    mutable slack_max:float;
+  }
+  let mkhwmapping () =
+    {
+      offset=999.;
+      scale=999.;
+      slack_min=999.;
+      slack_max=999.
+    }
+
+  let hwmapping2str (wire:wireid) (x:hw_mapping) =
+    let f2s x = if x = 999. then "?" else string_of_float x in
+    (SlnLib.wireid2str wire)^": "^(f2s x.scale)^"* [ ] + "^(f2s x.offset)^"\n"^
+    "-> ["^(f2s x.slack_min)^","^(f2s x.slack_max)^"]"
+
+  let z3result2mapping symtbl (asgns:z3assign list) =
+    let data = MAP.make () in
+    let upd_map_result id fxn =
+      if MAP.has data id = false then
+        noop (MAP.put data id (mkhwmapping()));
+        fxn (MAP.get data id)
+    in
+    let upd_result_of_id s f = match s with
+      | Some(SVLinVar(SVOffsetVar(w))) ->
+        upd_map_result w (fun x -> x.offset <- f)
+      | Some(SVLinVar(SVScaleVar(w))) ->
+        upd_map_result w (fun x -> x.scale <- f)
+      | Some(SVSlackVar(SVMax,_,w)) ->
+        upd_map_result w (fun x -> x.slack_max <- f)
+      | Some(SVSlackVar(SVMin,_,w)) ->
+        upd_map_result w (fun x -> x.slack_min <- f)
+      | _ -> ()
+    in
+    (*create result map*)
+    List.iter (fun asgn -> match asgn with
+        | Z3Set(s,Z3QFloat(f)) ->
+          let id = name2linearsmtid symtbl s in
+          upd_result_of_id id f
+        | Z3Set(s,Z3QInt(f)) ->
+          let id = name2linearsmtid symtbl s in
+          upd_result_of_id id (float_of_int f)
+        | Z3Set(s,Z3QInterval(Z3QRange(min,max))) ->
+          let id = name2linearsmtid symtbl s in
+          if min = max then
+            upd_result_of_id id (max)
+          else
+            begin
+            warn "z3result2mapsln" ("interval is not equal: "^
+                  (string_of_float min)^" "^(string_of_float max));
+            upd_result_of_id id (max)
+            end
+             
+        | _ -> error "z3result2mapresult" "unhandled"
+    ) asgns;
+    MAP.iter data (fun wire data ->
+        debug (hwmapping2str wire data) 
+    ); 
+    ()
 
   let to_z3prob stmts : (symtbl*z3st list*z3expr) =
     let tbl = {id2w=MAP.make();w2id=MAP.make()} in
@@ -567,7 +598,6 @@ struct
       error "error" "how are there no slack variables"
      (*tbl,z3stmts,Z3Int(0)*)
 
-  let z3result2mapping tbl (model:z3assign list)= ()
 
   let solve (stmts:linear_stmt list) =
     (*helper function*)
@@ -580,11 +610,12 @@ struct
       | Some(model) ->
         begin
         z3result2mapping tbl model;
-        debug "found model"
+        debug "<<< MODEL EXISTS >>>"
         end
       | None -> debug "no model"
-      end;
-    ()
+      end
+    else
+      debug "===[[[NO MODEL]]]==="
 end
 
 module SolverMapper =
@@ -895,10 +926,8 @@ struct
         let hival : interval = compute_hw_interval tbl comp inst cfg port in
         let queue_quant v h =
           enq [
-        (*
             SVCoverLTE([(scale wire v);Decimal(bound_to_number h.max)]);
             SVCoverGTE([(scale wire v);Decimal(bound_to_number h.min)])
-        *)
           ]
         in
         match mival,hival with

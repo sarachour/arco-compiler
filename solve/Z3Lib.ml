@@ -220,7 +220,7 @@ struct
 
   let fn_all (x:z3expr list) (fxn)=
       match x with
-      | h::h2::t -> List.fold_right fxn (h2::t) h
+      | h::h2::t -> List.fold_left fxn h (h2::t) 
       | [h] -> h
       | [] -> error "fn_all" "failure"
 
@@ -368,7 +368,7 @@ struct
         | Some(init_sln) ->
           let min = get_min_val (get_min_qty init_sln) maxbnd in
           begin
-            match _minimize minbnd (MATH.min [min;maxbnd]) 0 with
+            match _minimize minbnd min 0 with
             | Some(result) -> result
             | None -> initial_result
           end

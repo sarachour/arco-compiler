@@ -829,11 +829,13 @@ struct
           (MathLib.replace_params mstate.env expr)
       in
       ASTUnifySymcaml.unify st hexpru mexpru
-
+    | HWBAnalogState(_) ->
+      warn "unify_math_expr" ("cannot unify math expression with analog state variable");
+      None
     | HWBDigital(_) ->
       error "unify" "unify var with digital"
     | _ ->
-      error "unify" "unify unsupported"
+      error "unify_math_expr" "unify unsupported"
 
 
   (*unify with math variable*)
@@ -844,7 +846,14 @@ struct
     let cmpid = mkcompid st in 
     match mvar.bhvr,hvar.bhvr with
     | MBhvVar(mbhv),HWBAnalog(abhv) ->
-      error "unify" "unify var with analog"
+      let mexpru : unid ast = mast2uast
+          (MathLib.replace_params mstate.env mbhv.rhs)
+      in
+      let hexpru : unid ast =
+        ConcCompLib.concrete_hwexpr_from_compid cmpid hwstate.cfg abhv.rhs
+      in
+      ASTUnifySymcaml.unify st hexpru mexpru
+
     | MBhvStateVar(mbhv),HWBAnalogState(abhv) ->
       let mexpru :unid ast= mast2uast
           (MathLib.replace_params mstate.env mbhv.rhs)
@@ -857,7 +866,7 @@ struct
     | MBhvVar(_),HWBDigital(_) ->
       error "unify" "unify var with digital"
     | _ ->
-      error "unify" "unify unsupported"
+      error "unify_math_var" "unify unsupported"
 
   (*recursively unify*) 
   let rec unify_recurse (st:runify) (ctx:unify_ctx) : unify_result =
