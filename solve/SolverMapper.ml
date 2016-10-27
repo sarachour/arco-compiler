@@ -40,7 +40,7 @@ let debug = print_debug 2 "eqn"
 
 (*defines the inference variable, including a slack variable,
   a scaling and descaling value*)
-
+(*
 type inf_abs_var_knd =
   | INFMVar of string
   | INFHVar of wireid
@@ -87,10 +87,12 @@ type inf_problem = {
   mutable cnt : int;
   mutable scratch: inf_scratch;
 }
+*)
+
 module InferenceProblem =
 struct
 
-
+(*
   let mkscratch () =
     {
       cls=MAP.make();
@@ -377,7 +379,6 @@ struct
     let stmts = QUEUE.to_list insts in
     QUEUE.destroy insts;
     stmts,(Z3Lib.plus_all summands)
-
   let solve (iprob:inf_problem) =
     (*helper function*)
     let stmts,minexpr = infprob2z3prob iprob in 
@@ -396,6 +397,190 @@ struct
     ()
     (*instructions*)
     
+*)
+
+end
+(*determines the kind of variable*)
+type linear_slack_dir =
+  | SVMin | SVMax
+
+type linear_id =
+  | SVScaleVar of wireid
+  | SVOffsetVar of wireid
+
+type linear_smt_id =
+  | SVLinVar of linear_id
+  | SVSlackVar of linear_slack_dir*float*wireid
+
+type linear_stmt =
+  | SVEquals of (linear_id ast) list
+  | SVCoverEq of (linear_smt_id ast) list
+  | SVCoverLTE of (linear_smt_id ast) list
+  | SVCoverGTE of (linear_smt_id ast) list
+  | SVDeclMapVar of linear_smt_id
+
+
+type linear_mapping = {
+  scale : linear_id ast;
+  offset : linear_id ast;
+  term: hwvid ast;
+}
+module MappingResolver =
+struct
+
+  type symtbl = {
+    id2w: (int,wireid) map;
+    w2id: (wireid,int) map;
+  }
+  let wire2id symtbl w : int=
+    if MAP.has symtbl.w2id w then
+      begin
+        MAP.get symtbl.w2id w
+      end
+    else
+      let id = MAP.size symtbl.w2id in 
+      begin
+        MAP.put symtbl.w2id w id;
+        MAP.put symtbl.id2w id w;
+        id
+      end
+
+  let linearid2name symtbl x = match x with
+    | (SVScaleVar(w)) ->
+      let id = wire2id symtbl w in
+      "sc_"^(string_of_int id)
+    | (SVOffsetVar(w)) ->
+      let id = wire2id symtbl w in
+      "os_"^(string_of_int id)
+
+  let linearsmtid2name symtbl x = match x with
+    | SVLinVar(x) ->
+      linearid2name symtbl x
+    | SVSlackVar(SVMin,_,w) ->
+      let id = wire2id symtbl w in
+      "sl_bot_"^(string_of_int id)
+    | SVSlackVar(SVMax,_,w) ->
+      let id = wire2id symtbl w in
+      "sl_top_"^(string_of_int id)
+
+  let linearid2str (x:linear_id) = match x with
+    | (SVScaleVar(w)) -> "sc."^(SlnLib.wireid2str w)
+    | (SVOffsetVar(w)) -> "of."^(SlnLib.wireid2str w)
+
+  let linearsmtid2str (x:linear_smt_id) : string = match x with
+    | SVLinVar(x) -> linearid2str x
+    | SVSlackVar(SVMin,_,w) -> "sl.min."^(SlnLib.wireid2str w)
+    | SVSlackVar(SVMax,_,w) -> "sl.max."^(SlnLib.wireid2str w)
+
+  let linearexpr2str (x:linear_id ast) : string =
+    ASTLib.ast2str x linearid2str
+
+  let linearsmtexpr2str (x:linear_smt_id ast) : string =
+    ASTLib.ast2str x linearsmtid2str
+
+
+  let linearstmt2str (x:linear_stmt) :string =
+    let _plst (lst) (f) :string =
+      List.fold_left (fun r x -> r^" {"^(f x)^"}") "" lst 
+    in
+    match x with
+    | SVEquals(lst) ->
+      "= "^(_plst lst linearexpr2str)
+    | SVCoverEq(lst) ->
+      "= "^(_plst lst linearsmtexpr2str)
+    | SVCoverGTE(lst) ->
+      "<= "^(_plst lst linearsmtexpr2str)
+    | SVCoverLTE(lst) ->
+      ">= "^(_plst lst linearsmtexpr2str)
+    | SVDeclMapVar(id) ->
+      "decl "^(linearsmtid2str id)
+
+  let to_z3prob stmts : (symtbl*z3st list*z3expr) =
+    let tbl = {id2w=MAP.make();w2id=MAP.make()} in
+    let slackvars : (string,float) map= MAP.make() in
+    let stmtq = QUEUE.make () in
+    let enq x = begin QUEUE.enqueue stmtq x; () end in
+    let smtexpr_to_z3prob (s:linear_smt_id ast) :z3expr =
+      Z3Lib.ast2z3 s (fun x -> Z3Var(linearsmtid2name tbl x))
+    in
+    let expr_to_z3prob (s:linear_id ast) :z3expr =
+      Z3Lib.ast2z3 s (fun x -> Z3Var(linearid2name tbl x))
+    in
+    let mkeq lst = match lst with
+      | h::h2::t ->
+        Z3Assert(Z3Lib.fn_all
+                   (List.map (fun x -> Z3Eq(h,x))(h2::t))
+                   (fun x y -> Z3And(x,y))
+                )
+      | [h] -> Z3Comment("removed single elem eq")
+      | [] -> Z3Comment("removed zero elem eq")
+    in
+    let stmt_to_z3prob s = match s with
+      | SVDeclMapVar(SVLinVar(x)) ->
+        enq (Z3ConstDecl(linearid2name tbl x,Z3Real))
+      | SVDeclMapVar(SVSlackVar(dir,weight,x)) ->
+        let svar_name = linearsmtid2name tbl (SVSlackVar(dir,weight,x)) in
+        MAP.put slackvars svar_name weight;
+        enq (Z3ConstDecl(svar_name,Z3Real))
+      | SVEquals(lst) ->
+        let z3lst : z3expr list= List.map expr_to_z3prob lst in
+        enq (Z3Comment "");
+        enq (Z3Comment(linearstmt2str s));
+        enq (mkeq (z3lst))
+      | SVCoverGTE(lst) ->
+        let z3lst : z3expr list= List.map smtexpr_to_z3prob lst in
+        enq (Z3Comment "");
+        enq (Z3Comment(linearstmt2str s));
+        enq (Z3Assert(Z3Lib.fn_all z3lst (fun x y -> Z3GTE(x,y))))
+      | SVCoverLTE(lst) ->
+        let z3lst : z3expr list= List.map smtexpr_to_z3prob lst in
+        enq (Z3Comment "");
+        enq (Z3Comment(linearstmt2str s));
+        enq (Z3Assert(Z3Lib.fn_all z3lst (fun x y -> Z3LTE(x,y))))
+      | SVCoverEq(lst) ->
+        let z3lst : z3expr list= List.map smtexpr_to_z3prob lst in
+        enq (Z3Comment "");
+        enq (Z3Comment(linearstmt2str s));
+        enq (mkeq (z3lst))
+    in
+    (*traverse statements*)
+    List.iter stmt_to_z3prob stmts;
+    let z3stmts = QUEUE.to_list stmtq in 
+    QUEUE.destroy stmtq;
+    let absval (expr) =
+      Z3IfThenElse(Z3GTE(expr,Z3Int(0)),expr, Z3Neg(expr))
+    in
+    let z3minterms : z3expr list = MAP.map slackvars
+        (fun svar weight ->
+           Z3Mult(absval(Z3Var(svar)),Z3Real(weight)))
+    in
+    match z3minterms with
+    | h::h2::t ->
+      tbl,z3stmts,(Z3Lib.fn_all z3minterms (fun x y -> Z3Plus(x,y)))
+    | [stmt] ->
+      tbl,z3stmts,stmt
+    | [] ->
+      error "error" "how are there no slack variables"
+     (*tbl,z3stmts,Z3Int(0)*)
+
+  let z3result2mapping tbl (model:z3assign list)= ()
+
+  let solve (stmts:linear_stmt list) =
+    (*helper function*)
+    let tbl,stmts,minexpr = to_z3prob stmts in 
+    let result : z3sln =
+      Z3Lib.minimize "mapper" (stmts) minexpr 0. 1. in
+    if result.sat then
+      begin
+      match result.model with
+      | Some(model) ->
+        begin
+        z3result2mapping tbl model;
+        debug "found model"
+        end
+      | None -> debug "no model"
+      end;
+    ()
 end
 
 module SolverMapper =
@@ -404,32 +589,59 @@ struct
 
 
   (*if you have a dangling math expression on a port, find the [expr], and then*)
-  let infer_dangling_math_expr (tbl:gltbl) (uast:unid ast) =
+  let compute_math_interval (tbl:gltbl) (uast:unid ast) : interval =
     let unid2ival (id:unid) = match id with
       |MathId(MNVar(MInput,v)) ->
         begin
           let mvar = MathLib.getvar tbl.env.math v in
           match mvar.defs with
           | MDefVar(def) -> def.ival
-          | _ -> error "infer_dangling_math_expr" "state variable cannom be input" 
+          | _ -> error "ccompute_math_interval" "state variable cannom be input" 
         end
-      |MathId(MNVar(MInput,v)) ->
+      |MathId(MNVar(MOutput,v)) ->
         begin
           let mvar = MathLib.getvar tbl.env.math v in
           match mvar.defs with
-          | MDefVar(_) -> error "infer_dangling_math_expr" "unimplemented out var"
-          | MDefStVar(_) -> error "infer_dangling_math_expr" "unimplmenented out stvar" 
+          | MDefVar(def) -> def.ival
+          | MDefStVar(def) -> def.stvar.ival
         end
 
       | MathId(MNParam(par,num)) ->
         Quantize([float_of_number num])
+      | HwId(_) ->
+        error "compute_math_interval" "unexpected hardware id"
       | _ ->
-        error "infer_dangling_math_expr" "hwid id undefined"
+        error "compute_math_interval" "hwid id undefined"
     in
     let math_interval = IntervalLib.derive_interval uast unid2ival in
     math_interval
 
-  (*declare equivalence classes for a mapping*)
+  let compute_hw_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
+    let hwid2ival (x:hwvid) : interval=
+      match x with
+      |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
+      | HNPort(knd,cmp,port,param) ->
+        begin
+          match (HwLib.comp_getvar comp port).defs with
+          | HWDAnalog(x) -> x.ival
+          | HWDAnalogState(x) -> x.stvar.ival
+        end
+      | _ -> error "compute hw interval" "unexpected"
+    in
+    let vr = HwLib.comp_getvar comp port in
+    match vr.bhvr,vr.defs with
+    | HWBInput,HWDAnalog(defs) -> defs.ival
+    | HWBAnalog(bhvr),_ ->
+      let conc_rhs =
+        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
+      in
+      IntervalLib.derive_interval conc_rhs hwid2ival
+    | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
+      defs.stvar.ival
+    | _ -> error "compute_hw_interval" "unexpected"
+      
+      (*declare equivalence classes for a mapping*)
+  (*
   let _infer_fxn_mapping (infprob) (map:std_mapper) (wire:wireid) =
     let declare_class knd expr wire = match expr with
       | Term(x) -> InferenceProblem.scratch_add_to_class infprob knd x wire
@@ -461,6 +673,7 @@ struct
         ()
       end
 
+*)
   (*
       K*M/N = A*B, K, M, N already have hardware variables
       (A_k*K + B_k)*(A_m*M+B_m)/(A_n*N + B_n) = A*B*strip(K*M/N)
@@ -470,95 +683,241 @@ struct
       if it isn't numerical, then the mapping must be direct
   *)
 
-  (*determines the kind of variable*)
-  type linear_id =
-    | SVScaleVar of wireid
-    | SVOffsetVar of wireid
 
-  type linear_cstr =
-    | SVEquals of (linear_id ast) list
-
-  type linear_mapping = {
-    scale : linear_id ast;
-    offset : linear_id ast;
-    term: hwvid ast;
-    cstrs: linear_cstr list;
-  }
   (*propagate wire rules for *)
-  let derive_scaling_factor (node:hwvid ast) : linear_mapping =
+  let derive_scaling_factor (node:hwvid ast) (feedback:wireid list) (cfg:hwcompcfg)
+    : (linear_stmt list)*linear_mapping =
     let decompose_list (args:hwvid ast list) (fn:hwvid ast -> linear_mapping)  =
       List.fold_right (fun farg (scales,offsets,terms) ->
           let arg = fn farg in 
           (arg.scale::scales,arg.offset::offsets,arg.term::terms)
         ) args ([],[],[])
     in
-    let cstrs = QUEUE.make () in 
-    let add_cstr x = noop (QUEUE.enqueue cstrs x) in
+    let cstrs : linear_stmt queue = QUEUE.make () in 
+    let add_cstr x =
+      debug ("expr+ "^(MappingResolver.linearstmt2str x));
+      noop (QUEUE.enqueue cstrs x)
+    in
     let rec _derive_scaling_factor (node) : (linear_mapping) =
       match node with
       | Term(HNPort(knd,HCMGlobal(cmp),port,prop)) ->
         let wire = SlnLib.mkwire cmp.name cmp.inst port in
-        {
-          scale=Term(SVScaleVar(wire));
-          offset=Term(SVOffsetVar(wire));
-          term=node;cstrs=[]
-        }
+        begin
+          match LIST.has feedback wire with
+          | true ->
+            {
+              scale=Integer(1);
+              offset=Integer(0);
+              term=node;
+            }
+          | false ->
+            let new_node = match ConcCompLib.get_var_config cfg port with
+              | Some(Integer(i)) -> Integer(i)
+              | Some(Decimal(i)) -> Decimal(i)
+              | Some(_) -> node
+              | None -> node
+            in
+            {
+              scale=Term(SVScaleVar(wire));
+              offset=Term(SVOffsetVar(wire));
+              term=node;
+            }
+        end
          
       | Term(HNParam(cmp,name)) ->
-        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+        begin
+          match ConcCompLib.get_param_config cfg name with
+          | Some(Decimal value) ->
+            {scale=Integer(1); offset=Integer(0);term=Decimal(value);}
+          | Some(Integer value) ->
+            {scale=Integer(1); offset=Integer(0);term=Integer(value);}
+          | None ->
+            {scale=Integer(1); offset=Integer(0);term=node;}
+        end
+
       | Term(HNTime) ->
-        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+        {scale=Integer(1); offset=Integer(0);term=node;}
       (*no offset unless the value is resolvable as a number*)
+
       | OpN(Mult,args) ->
         let (scales,offsets,terms) = decompose_list args _derive_scaling_factor in
-        (*all offsets must equal zero*)
-        add_cstr (SVEquals(Integer(0)::offsets));
-        {scale=OpN(Mult,scales);offset=Integer(0);node}
-
+        (*if this aggregate term is zero, then*)
+        if LIST.count terms (fun term -> term = Integer(0) || term = Decimal(0.)) > 0 then
+          {scale=OpN(Mult,scales);offset=Integer(0);term=Integer(0);}
+        else
+          begin
+          (*all offsets must equal zero*)
+          add_cstr (SVEquals(Integer(0)::offsets));
+          {scale=OpN(Mult,scales);offset=Integer(0);term=node;}
+          end
       | OpN(Add,args) ->
         let (scales,offsets,terms) = decompose_list args _derive_scaling_factor in
-        add_cstr (SVEquals(Integer(0)::scales));
+        add_cstr (SVEquals(scales));
         {scale=List.nth scales 0; offset=OpN(Add,offsets); term=node;
-        cstrs=[]}
+        }
         
       | OpN(Sub,args) ->
         let (scales,offsets,terms) = decompose_list args _derive_scaling_factor in
-        add_cstr (SVEquals(Integer(0)::scales));
-        {scale=List.nth scales 0; offset=Op1(Neg,OpN(Add,offsets));term=node,cstrs=[]}
+        add_cstr (SVEquals(scales));
+        {scale=List.nth scales 0;offset=OpN(Sub,offsets);term=node;}
         
       | Op2(Div,num,denom) ->
-        let scnum,offnum,termnum = decompose (_derive_scaling_factor num) in
-        let scdenom,offdenom,termdenom = decompose (_derive_scaling_factor denom) in
+        let ln = _derive_scaling_factor num in
+        let ld = _derive_scaling_factor denom in
         (*all offsets must equal zero*)
-        add_cstr (SVEquals([Integer(0);offnum;offdenom]));
-        {scale=Op2(Div,scnum,scdenom);offset=Integer(0);node}
+        add_cstr (SVEquals([Integer(0);ln.offset;ld.offset]));
+        {scale=Op2(Div,ln.scale,ld.scale);offset=Integer(0);term=node;}
 
       | Op1(Exp,expr) ->
-        let scexpr,offexpr,termexpr = decompose (_derive_scaling_factor expr) in
-        add_cstr (SVEquals([Integer(0);scexpr]));
-        {scale=Op1(Exp,offexpr); offset=Integer(0); term=node; cstr=[]}
+        let expr = _derive_scaling_factor expr in
+        add_cstr (SVEquals([Integer(1);expr.scale]));
+        {scale=Op1(Exp,expr.offset); offset=Integer(0); term=node; }
 
       | Op1(Neg,expr) ->
-        let scexpr,offexpr,termexpr = decompose (_derive_scaling_factor expr) in
-        {scale=Op1(Neg,scexpr);offset=Op1(Neg,offexpr);term=node;cstr=[]}
+        let expr = _derive_scaling_factor expr in
+        {scale=Op1(Neg,expr.scale);offset=Op1(Neg,expr.offset);term=node;}
 
       | Op2(Power,base,exp) ->
-        let scexp,offexp,termexp = decompose (_derive_scaling_factor exp) in
-        let scbase,offbase,termbase = decompose (_derive_scaling_factor base) in
-        add_cstr (SVEquals([Integer(0);offbase;scexp;offexp;scbase]));
-        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+        let exp = _derive_scaling_factor exp in
+        let base = _derive_scaling_factor base in
+        add_cstr (SVEquals([Integer(1);base.scale;exp.scale]));
+        add_cstr (SVEquals([Integer(0);base.offset;exp.offset]));
+        {scale=Integer(1); offset=Integer(0);term=node;}
 
       | Integer(i) -> 
-        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+        {scale=Integer(1); offset=Integer(0);term=node;}
       | Decimal(d) -> 
-        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+        {scale=Integer(1); offset=Integer(0);term=node;}
       | _ -> error "derive_scaling_factor" "unhandled"
     in
     let scaling = _derive_scaling_factor node in
-    scaling.cstrs <- (QUEUE.to_list cstrs);
+    let stmts = QUEUE.to_list cstrs in 
     QUEUE.destroy cstrs;
-    scaling
+    stmts,scaling
 
+  let hwvar_derive_scaling_factors (comp:hwcompinst) cfg (v:hwvid hwportvar) : linear_stmt list =
+      let wire = SlnLib.mkwire comp.name comp.inst v.port in
+      let stmtq = QUEUE.make() in
+      let enq x =
+        debug ("+ hwvar "^(MappingResolver.linearstmt2str x));
+        (*noop (QUEUE.enqueue stmtq x)*)
+      in
+      let enqs x = List.iter enq x in
+      begin
+        match v.bhvr with
+          | HWBAnalog(bhvr) ->
+            let cstrs,linear = derive_scaling_factor bhvr.rhs [] cfg in
+            enqs cstrs;
+            enq (SVEquals([Term(SVScaleVar(wire));linear.scale]));
+            enq (SVEquals([Term(SVOffsetVar(wire));linear.offset]));
+            ()
+          | HWBAnalogState(bhvr) ->
+            let icport,_ = bhvr.ic in 
+            let cstrs,linear = derive_scaling_factor bhvr.rhs [wire] cfg in
+            let icwire = SlnLib.mkwire comp.name comp.inst icport in
+            enqs cstrs;
+            enq (SVEquals([Term(SVScaleVar(wire));linear.scale]));
+            enq (SVEquals([Term(SVOffsetVar(wire));linear.offset;Integer(0)]));
+            (*initial condition constraints*)
+            enq (SVEquals([Term(SVScaleVar(icwire));linear.scale]));
+            enq (SVEquals([Term(SVOffsetVar(icwire));linear.offset])); 
+            ()
+
+          | _ -> error "hw_derive_scaling_factor" "unhandled"
+      end;
+      let lst = QUEUE.to_list stmtq in
+      QUEUE.destroy stmtq;
+      lst
+
+  let hwcomp_derive_scaling_factors tbl (comp:hwvid hwcomp) inst (cfg:hwcompcfg) = 
+    let stmts = QUEUE.make () in
+    let enq xs = List.iter (fun x -> noop(QUEUE.enqueue stmts x)) xs in
+    let decl_mapvar (n:wireid) =
+      enq [
+        SVDeclMapVar(SVLinVar(SVScaleVar(n)));
+        SVDeclMapVar(SVLinVar(SVOffsetVar(n)))
+      ]
+    in
+    (*add decls*)
+    HwLib.comp_iter_vars comp (fun var ->
+        let wire = SlnLib.mkwire comp.name inst var.port in 
+        noop (decl_mapvar wire)
+    );
+    (*add behavior cstrs*)
+    HwLib.comp_iter_outs comp (fun outvar ->
+        let cstrlst : linear_stmt list =
+          hwvar_derive_scaling_factors {name=comp.name;inst=inst} cfg outvar 
+        in
+        enq cstrlst;
+        ()
+      );
+    let scale wire mval : linear_smt_id ast =
+      OpN(Add,[
+          OpN(Mult,[
+              Term(SVLinVar(SVScaleVar(wire)));
+                   Decimal(mval)
+            ]);
+          Term(SVLinVar(SVOffsetVar(wire)))
+        ])
+    in
+    let decl_slack wire =
+      enq [SVDeclMapVar(SVSlackVar(SVMin,1.0,wire));
+           SVDeclMapVar(SVSlackVar(SVMax,1.0,wire))]
+    in
+    let add_slack dir id expr =
+      OpN(Add,[expr;Term(SVSlackVar(dir,1.0,id))])
+    in
+    let bound_to_number bnd = match bnd with
+      | BNDNum(x) -> x
+      | _ -> error "bound_to_number" "expected number"
+    in
+    (*iterate for each math variable*)
+    ConcCompLib.iter_var_cfg cfg
+      (fun (port:string) (x:hwvarcfg) ->
+        let wire = SlnLib.mkwire comp.name inst port in
+        let mival : interval = compute_math_interval tbl x.expr in
+        let hival : interval = compute_hw_interval tbl comp inst cfg port in
+        let queue_quant v h =
+          enq [
+        (*
+            SVCoverLTE([(scale wire v);Decimal(bound_to_number h.max)]);
+            SVCoverGTE([(scale wire v);Decimal(bound_to_number h.min)])
+        *)
+          ]
+        in
+        match mival,hival with
+        | (Quantize([v]),Interval(h)) ->
+          queue_quant v h
+        | (Interval(m),Interval(h)) ->
+          begin
+            let mmin = bound_to_number m.min and mmax = bound_to_number m.max in
+            if mmin =mmax then
+              queue_quant mmin h
+            else
+              begin
+                decl_slack wire;
+                enq [
+                  SVCoverEq([add_slack SVMin wire (scale wire (mmin));
+                        Decimal(bound_to_number h.min)]);
+                  SVCoverEq([add_slack SVMax wire (scale wire (mmax));
+                        Decimal(bound_to_number h.max)])
+                ]
+              end
+          end
+        | (Quantize([v]),MixedInterval(_)) ->
+          error "compute_cover" "quantize-mixed-interval"
+        | (Interval(ival),MixedInterval(_)) ->
+          error "compute_cover" "interval-mixed-interval"
+        | (Quantize(_),Quantize(_)) ->
+          error "compute_cover" "quantize-quantize"
+        | _ -> error "compute cover" "unsupported"
+      )
+      (fun (param:string) (x:number) -> ());
+    let cstrs = QUEUE.to_list stmts in
+    QUEUE.destroy stmts;
+    cstrs
+
+  (*
   let __infer_stvar_mapping infprob
       (tbl:gltbl) (bhvr:hwvid hwbhvr) (cfg:hwcompcfg)
       (conv:std_mapper) (proxy:hwvid mapper) (wire:wireid) =
@@ -619,9 +978,20 @@ struct
       ()
     | _ ->
       error "infer_dangling_output_wire" "unexpected combo"
-
+  *)
   let infer (tbl:gltbl) =
-    let infprob = InferenceProblem.mk() in 
+ MAP.iter tbl.sln_ctx.generate.outs (fun (mvar:string) (wires:wire_coll) ->
+        match wires with
+        | WCollEmpty -> error "infer" "does not exist"
+        | WCollOne(wire) ->
+          let conc_comp = ConcCompLib.get_conc_comp tbl wire.comp in
+          let stmts = hwcomp_derive_scaling_factors tbl conc_comp.d conc_comp.inst conc_comp.cfg in
+          let sln = MappingResolver.solve stmts in
+          sln
+        | WCollMany(_) -> error "infer" "many is unhandled"
+      );   
+
+    (*let infprob = InferenceProblem.mk() in
     let infer_comp (tbl:gltbl) (mvar:string) (wire:wireid) =
       let hwcomp : ucomp_conc = ConcCompLib.get_conc_comp tbl wire.comp in
       let hwcfg : hwcompcfg = hwcomp.cfg in
@@ -672,6 +1042,6 @@ struct
       );
     InferenceProblem.solve infprob;
     ()
-
+    *)
 
 end

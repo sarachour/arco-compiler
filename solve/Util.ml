@@ -407,8 +407,11 @@ struct
   let has lst n =
       List.length (List.filter (fun x -> n = x) lst) > 0
 
-  let count lst n =
+  let count_val lst n =
       List.length (List.filter (fun x -> n = x) lst)
+
+  let count lst (fn:'a -> bool) =
+      List.length (List.filter (fun x -> fn x) lst)
 
   let empty x =
     List.length x = 0
@@ -428,7 +431,7 @@ struct
 
 
   let uniq a =
-    List.fold_right (fun x r -> if count r x = 0 then x::r else r) a []
+    List.fold_right (fun x r -> if count_val r x = 0 then x::r else r) a []
 
   let exclude lst v =
     List.filter (fun x -> x <> v) lst

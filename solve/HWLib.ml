@@ -554,6 +554,13 @@ struct
     else
       error "comp_getparam" "could not find param in comp"
 
+  let comp_getinterval (type a) (x:a hwcomp) (f:string) =
+    let hwvar = comp_getvar x f in
+    match hwvar.defs with
+    | HWDAnalog(x) -> x.ival
+    | HWDAnalogState(x) -> x.stvar.ival
+    | HWDDigital(_) -> error "comp_getinterval" "unhandled"
+
   let comp_get_param_values (type a) (x:a hwcomp) (f:string) : number list=
     let par = comp_getparam x f in
     par.value

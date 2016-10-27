@@ -63,6 +63,12 @@ struct
     else
       None
 
+  let iter_var_cfg (cfg:hwcompcfg) (v:string->hwvarcfg->unit) (p:string->number->unit) =
+    MAP.iter cfg.inps (fun x cfg -> v x cfg);
+    MAP.iter cfg.outs (fun x cfg -> v x cfg);
+    MAP.iter cfg.pars (fun x vl -> p x vl);
+    ()
+
   let get_param_config (cfg:hwcompcfg) (v:string) =
     if MAP.has cfg.pars v then
       Some (MAP.get cfg.pars v)
@@ -101,8 +107,8 @@ struct
         | HNParam(cmp,name) ->
           if MAP.has cfg.pars name && cmp = enc_cmp then
             (number_to_ast (MAP.get cfg.pars name))
-          else Term(HwId(node))
-        | _ -> Term(HwId(node))
+          else Term((node))
+        | _ -> Term((node))
       )
 
   let specialize_params_hwexpr_from_compinst (cmp:hwvid hwcomp) (inst:int) (cfg:hwcompcfg) (expr:hwvid ast) =

@@ -91,6 +91,14 @@ struct
       _s b;
       os ")"
       end
+    | Z3Sub(a,b) ->
+      begin
+      os "(- ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
     | Z3Mult(a,b) ->
       begin
       os "(* ";
@@ -214,7 +222,8 @@ struct
       match x with
       | h::h2::t -> List.fold_right fxn (h2::t) h
       | [h] -> h
-      | [] -> error "and_all" "failure"
+      | [] -> error "fn_all" "failure"
+
 
   let eq_all (x) =
     fn_all x (fun x r -> Z3Eq(x,r))
@@ -237,9 +246,15 @@ struct
         fn_all (List.map (fun e -> _ast2z3 e) lst) (fun a b-> Z3Plus(a,b))
       | OpN(Mult,lst) ->
         fn_all (List.map (fun e -> _ast2z3 e) lst) (fun a b-> Z3Mult(a,b))
+      | OpN(Sub,h::h2::t) ->
+        Z3Sub(_ast2z3 h, _ast2z3 (OpN(Add,h2::t)) )
+      | Op1(Neg,arg) -> Z3Neg(_ast2z3 arg)
       | Integer(i) -> Z3Int(i)
       | Decimal(d) -> Z3Real(d)
-      | _ -> error "ast2z3" "unsupported"
+      | OpN(_) -> error "ast2z3" "opn unsupported"
+      | Op2(_) -> error "ast2z3" "op2 unsupported"
+      | Op1(_) -> error "ast2z3" "op1 unsupported"
+      | _ -> error "ast2z3" "acc/en unsupported"
     in
     _ast2z3 x
 
@@ -325,7 +340,7 @@ struct
            the minimize subroutine
         *)
         let rec _minimize min max (depth:int): z3sln option=
-          if depth > 5 || min = max then None else
+          if depth > 5 then None else
             let midpoint = (min+.max)/. 2. in
             (*compute using the midpoint as a bound*)
             debug "_minimize" (">>> DReal running with max minval = "^(string_of_float midpoint));
@@ -345,13 +360,18 @@ struct
             | None ->
               _minimize midpoint max (depth+1) 
         in
-        match _minimize minbnd maxbnd 0 with
-        | Some(result) -> result
-        | None ->
+        debug "_minimize" (">>> DReal running feasibility with no minimizer ceiling");
+        let initial_result = exec root (stmts) in
+        match has_solution initial_result with
+        | Some(init_sln) ->
+          let min = get_min_val (get_min_qty init_sln) maxbnd in
           begin
-            exec root ((min_decl::stmts)@[min_stmt]) 
+            match _minimize minbnd (MATH.min [min;maxbnd]) 0 with
+            | Some(result) -> result
+            | None -> initial_result
           end
-
+        | None -> initial_result
+        
       end
     else
       begin
