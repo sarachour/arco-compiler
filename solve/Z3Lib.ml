@@ -276,7 +276,8 @@ struct
     in
     sat^"\n\n"^mdl
 
-  let use_dreal = true
+  let use_dreal = true 
+    
 
   let exec (root:string) (stmts:z3st list) : z3sln=
     let stmts =
@@ -351,17 +352,18 @@ struct
             match has_solution result with
             | Some(model) ->
               let new_midpoint = get_min_val (get_min_qty model) midpoint in 
-              let better_result = _minimize min new_midpoint (depth+1) in
-              begin
-                match better_result with
-                | Some(better_result) -> Some better_result
-                | _ -> Some result
-              end
+              if midpoint = new_midpoint then Some result else
+                let better_result = _minimize min new_midpoint (depth+1) in
+                begin
+                  match better_result with
+                  | Some(better_result) -> Some better_result
+                  | _ -> Some result
+                end
             | None ->
               _minimize midpoint max (depth+1) 
         in
         debug "_minimize" (">>> DReal running feasibility with no minimizer ceiling");
-        let initial_result = exec root (stmts) in
+        let initial_result = exec root ((min_decl::stmts)@[min_stmt]) in
         match has_solution initial_result with
         | Some(init_sln) ->
           let min = get_min_val (get_min_qty init_sln) maxbnd in

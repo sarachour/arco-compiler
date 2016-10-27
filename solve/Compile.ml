@@ -91,7 +91,7 @@ struct
     match res with
     | Some (v) -> let res = v in
       res
-    | None -> error "file_to_formula" "could not parse the z3 environment"
+    | None -> error "file_to_dreal" "could not parse the z3 environment"
 
 
   let string_to_formula fn =

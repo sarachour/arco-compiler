@@ -501,10 +501,14 @@ struct
     let stmtq = QUEUE.make () in
     let enq x = begin QUEUE.enqueue stmtq x; () end in
     let smtexpr_to_z3prob (s:linear_smt_id ast) :z3expr =
-      Z3Lib.ast2z3 s (fun x -> Z3Var(linearsmtid2name tbl x))
+      match ASTLib.compute s with 
+      | Some(f) -> Z3Real(f)
+      | None -> Z3Lib.ast2z3 s (fun x -> Z3Var(linearsmtid2name tbl x))
     in
     let expr_to_z3prob (s:linear_id ast) :z3expr =
-      Z3Lib.ast2z3 s (fun x -> Z3Var(linearid2name tbl x))
+      match ASTLib.compute s with
+      | Some(f) ->Z3Real(f)
+      | None -> Z3Lib.ast2z3 s (fun x -> Z3Var(linearid2name tbl x))
     in
     let mkeq lst = match lst with
       | h::h2::t ->
@@ -630,12 +634,17 @@ struct
     in
     let vr = HwLib.comp_getvar comp port in
     match vr.bhvr,vr.defs with
-    | HWBInput,HWDAnalog(defs) -> defs.ival
+    | HWBInput,HWDAnalog(defs) ->
+      defs.ival
     | HWBAnalog(bhvr),_ ->
       let conc_rhs =
         ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
       in
-      IntervalLib.derive_interval conc_rhs hwid2ival
+      debug ("computing interval "^(HwLib.hast2str conc_rhs));
+      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
+      debug ("  -> "^IntervalLib.interval2str ival);
+      ival
+
     | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
       defs.stvar.ival
     | _ -> error "compute_hw_interval" "unexpected"
@@ -784,9 +793,16 @@ struct
         add_cstr (SVEquals([Integer(0);base.offset;exp.offset]));
         {scale=Integer(1); offset=Integer(0);term=node;}
 
+      | Integer(0) ->
+        {scale=Integer(0); offset=Integer(0);term=node;}
+
+      | Decimal(0.) ->
+        {scale=Integer(0); offset=Integer(0);term=node;}
+
       | Integer(i) -> 
         {scale=Integer(1); offset=Integer(0);term=node;}
-      | Decimal(d) -> 
+
+      | Decimal(d) ->
         {scale=Integer(1); offset=Integer(0);term=node;}
       | _ -> error "derive_scaling_factor" "unhandled"
     in
@@ -800,7 +816,7 @@ struct
       let stmtq = QUEUE.make() in
       let enq x =
         debug ("+ hwvar "^(MappingResolver.linearstmt2str x));
-        (*noop (QUEUE.enqueue stmtq x)*)
+        noop (QUEUE.enqueue stmtq x)
       in
       let enqs x = List.iter enq x in
       begin

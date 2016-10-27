@@ -102,6 +102,8 @@ struct
    let port,prop = pp in 
    port^"."^prop
 
+ let hast2str x = ASTLib.ast2str x hwvid2str
+
  let bhv2str (v:'a hwbhv) (tostr:'a->string): string = match v with
       |HWBUndef -> "<undefined>"
       |HWBInput -> "<input>"
