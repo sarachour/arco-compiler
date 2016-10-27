@@ -59,14 +59,19 @@ type inf_var = {
   wire: wireid;
   knd: inf_var_type;
 }
-type 'a inf_cstr_expr = {
-  expr: 'a ast;
+
+type scratch_inf_wire_data = {
+  expr: mapvar ast;
   knd: inf_var_type;
   wire: wireid;
 }
+type scratch_inf_cstr =
+  | IScratchCSTWireExpr of scratch_inf_wire_data
+  | IScratchCSTGenEquals of (inf_var ast)*(inf_var ast)
+
 type inf_scratch = {
   mutable cls:(mapvar,inf_var list) map;
-  mutable cstr:mapvar inf_cstr_expr list;
+  mutable cstr:mapvar scratch_inf_cstr list;
 }
 type inf_cstr =
   | ICSTEquiv of inf_var list
@@ -214,20 +219,23 @@ struct
         | Z3Set(s,Z3QInterval(Z3QRange(min,max))) -> var2infvar s (max)
         | _ -> error "z3result2mapresult" "unhandled"
     ) asgns;
+    let print_map i =
+      if i = 999. then "?" else string_of_float i 
+    in
     MAP.iter data (fun id tmpdata ->
         match MAP.get infprob.vars id with
         | INFMVar(m) ->
           begin
             let mdata = MAP.get infprob.mvars m in
             debug ("[math] math-var "^m^
-                   ": "^(string_of_float tmpdata.scale)^"*@ + "^(string_of_float tmpdata.offset));
-            debug ("> hw-slack ["^(string_of_float tmpdata.slack_min)^", "^(string_of_float tmpdata.slack_max)^"]");
+                   ": "^(print_map tmpdata.scale)^"*@ + "^(print_map tmpdata.offset));
+            debug ("> hw-slack ["^(print_map tmpdata.slack_min)^", "^(print_map tmpdata.slack_max)^"]");
             ()
           end
         | INFHVar(h) ->
           begin
           debug ("[hw] "^(SlnLib.wireid2str h)^
-                 ": "^(string_of_float tmpdata.scale)^"*@ + "^(string_of_float tmpdata.offset));
+                 ": "^(print_map tmpdata.scale)^"*@ + "^(print_map tmpdata.offset));
           ()
           end
 
@@ -452,6 +460,123 @@ struct
         declare_class Offset (Integer 0) wire;
         ()
       end
+
+  (*
+      K*M/N = A*B, K, M, N already have hardware variables
+      (A_k*K + B_k)*(A_m*M+B_m)/(A_n*N + B_n) = A*B*strip(K*M/N)
+      (we need a derivation function)
+      where K must be numerical.
+
+      if it isn't numerical, then the mapping must be direct
+  *)
+
+  (*determines the kind of variable*)
+  type linear_id =
+    | SVScaleVar of wireid
+    | SVOffsetVar of wireid
+
+  type linear_cstr =
+    | SVEquals of (linear_id ast) list
+
+  type linear_mapping = {
+    scale : linear_id ast;
+    offset : linear_id ast;
+    term: hwvid ast;
+    cstrs: linear_cstr list;
+  }
+  (*propagate wire rules for *)
+  let derive_scaling_factor (node:hwvid ast) : linear_mapping =
+    let decompose_list (args:hwvid ast list) (fn:hwvid ast -> linear_mapping)  =
+      List.fold_right (fun farg (scales,offsets,terms) ->
+          let arg = fn farg in 
+          (arg.scale::scales,arg.offset::offsets,arg.term::terms)
+        ) args ([],[],[])
+    in
+    let cstrs = QUEUE.make () in 
+    let add_cstr x = noop (QUEUE.enqueue cstrs x) in
+    let rec _derive_scaling_factor (node) : (linear_mapping) =
+      match node with
+      | Term(HNPort(knd,HCMGlobal(cmp),port,prop)) ->
+        let wire = SlnLib.mkwire cmp.name cmp.inst port in
+        {
+          scale=Term(SVScaleVar(wire));
+          offset=Term(SVOffsetVar(wire));
+          term=node;cstrs=[]
+        }
+         
+      | Term(HNParam(cmp,name)) ->
+        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+      | Term(HNTime) ->
+        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+      (*no offset unless the value is resolvable as a number*)
+      | OpN(Mult,args) ->
+        let (scales,offsets,terms) = decompose_list args _derive_scaling_factor in
+        (*all offsets must equal zero*)
+        add_cstr (SVEquals(Integer(0)::offsets));
+        {scale=OpN(Mult,scales);offset=Integer(0);node}
+
+      | OpN(Add,args) ->
+        let (scales,offsets,terms) = decompose_list args _derive_scaling_factor in
+        add_cstr (SVEquals(Integer(0)::scales));
+        {scale=List.nth scales 0; offset=OpN(Add,offsets); term=node;
+        cstrs=[]}
+        
+      | OpN(Sub,args) ->
+        let (scales,offsets,terms) = decompose_list args _derive_scaling_factor in
+        add_cstr (SVEquals(Integer(0)::scales));
+        {scale=List.nth scales 0; offset=Op1(Neg,OpN(Add,offsets));term=node,cstrs=[]}
+        
+      | Op2(Div,num,denom) ->
+        let scnum,offnum,termnum = decompose (_derive_scaling_factor num) in
+        let scdenom,offdenom,termdenom = decompose (_derive_scaling_factor denom) in
+        (*all offsets must equal zero*)
+        add_cstr (SVEquals([Integer(0);offnum;offdenom]));
+        {scale=Op2(Div,scnum,scdenom);offset=Integer(0);node}
+
+      | Op1(Exp,expr) ->
+        let scexpr,offexpr,termexpr = decompose (_derive_scaling_factor expr) in
+        add_cstr (SVEquals([Integer(0);scexpr]));
+        {scale=Op1(Exp,offexpr); offset=Integer(0); term=node; cstr=[]}
+
+      | Op1(Neg,expr) ->
+        let scexpr,offexpr,termexpr = decompose (_derive_scaling_factor expr) in
+        {scale=Op1(Neg,scexpr);offset=Op1(Neg,offexpr);term=node;cstr=[]}
+
+      | Op2(Power,base,exp) ->
+        let scexp,offexp,termexp = decompose (_derive_scaling_factor exp) in
+        let scbase,offbase,termbase = decompose (_derive_scaling_factor base) in
+        add_cstr (SVEquals([Integer(0);offbase;scexp;offexp;scbase]));
+        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+
+      | Integer(i) -> 
+        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+      | Decimal(d) -> 
+        {scale=Integer(1); offset=Integer(0);term=node;cstrs=[]}
+      | _ -> error "derive_scaling_factor" "unhandled"
+    in
+    let scaling = _derive_scaling_factor node in
+    scaling.cstrs <- (QUEUE.to_list cstrs);
+    QUEUE.destroy cstrs;
+    scaling
+
+  let __infer_stvar_mapping infprob
+      (tbl:gltbl) (bhvr:hwvid hwbhvr) (cfg:hwcompcfg)
+      (conv:std_mapper) (proxy:hwvid mapper) (wire:wireid) =
+    let is_numeric : bool ref = true in
+    let conv_ast_to_infvar_ast (x:hwvid) : inf_var ast = match x with
+      | HNPort(knd,HCMGlobal(data),port,prop) ->
+        let wire : wireid = SlnLib.mkwire data.name data.inst port in
+        let mexpr = MAP.get (ConcCompLib.get_var_config port) in
+        begin
+          let scale = {wire=wire;knd=Scale} in
+          let offset = {wire=wire;knd=Offset} in
+          match mexpr with
+          | Integer(x) ->
+            Some (OpN(Add,[OpN(Mult,[scale;Integer(x)]);offset]))
+          | Decimal(x) ->
+            Some(OpN(Sub,[OpN(Mult,[scale;Decimal(x)]);offset]))
+        end
+      | HNParam(_,v) -> Decimal(v)
   (*an unconnected input that may route local and outputs that are mapped*)
   let infer_dangling_input_wire (infprob) (tbl:gltbl) (cmp:ucomp_conc) (wire:wireid) (cfg:hwvarcfg) =
     let ival2str (x:interval) = IntervalLib.interval2str x in 
@@ -483,7 +608,10 @@ struct
     match hvar.bhvr,hvar.defs with
     | HWBAnalogState(hbhv),HWDAnalogState(hdef) ->
       let hival: interval = hdef.stvar.ival in 
+      (*get the mapping functions*)
       InferenceProblem.declare_wire infprob wire hival;
+      InferenceProblem.declare_cover infprob wire cfg.expr 1.0;
+      __infer_stvar_mapping infprob hbhv.rhs hdef.conv hdef.proxy wire;
       ()
     | HWBAnalog(hbhv),HWDAnalog(hdef) ->
       let hival: interval = hdef.ival in 
