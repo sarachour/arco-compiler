@@ -85,8 +85,8 @@ type unifiable_goal =
   | GUMathGoal of goal_math
   | GUHWInExprGoal of goal_hw_expr
   | GUHWConnPorts of goal_conn 
-  | GUHWConnInBlock of goal_ioblock
-  | GUHWConnOutBlock of goal_ioblock
+  | GUHWConnInBlock of goal_hw_expr
+  | GUHWConnOutBlock of goal_hw_expr
 (*
 not necessarily a satisfiable goal
 *)

@@ -21,6 +21,7 @@ open SolverData
 open SolverUtil
 open SolverRslv
 open SolverMapper
+open GoalLib 
 
 open SlnLib
 
@@ -401,14 +402,11 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     | NonTrivialGoal(v) -> 1. +. RAND.rand_norm()
 *)
 
-  let score_goal_trivial (g) = match g with
-    | GUnifiable(v) -> 1.
-    | _ -> 0.
 
   let best_goal_function () =
     let typ = get_glbl_string "eqn-selector-goal" in
     match typ with
-    | "trivial" -> score_goal_trivial
+    | "trivial" -> ( fun x -> 0. -. GoalLib.goal_difficulty x)
     | _ ->
       error "best_goal_function" ("goal selector named <"^typ^"> doesn't exist")
 
@@ -417,7 +415,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     let goals = GoalLib.get_active_goals v in
     let score_goal = best_goal_function() in
     if List.length goals > 0  then
-      let _,targ_goal = LIST.max (fun (x:goal) -> score_goal x.d) goals in
+      let _,targ_goal = LIST.max (fun (x:goal) -> 0. -. (score_goal x.d)) goals in
       targ_goal
     else
       error "get_best_valid_goal" ("non-visited node has no goals: "^(string_of_int cursor.id))
@@ -445,12 +443,13 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         match knd with
         (*assign a math input to a hardware input*)
         | MInput ->
-          let router = if HwLib.is_inblock_reachable tbl.env.hw wire = false
-          then
-            let goal = GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr) in
-            SModGoalCtx(SGAddGoal(goal))
-          else
-            SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire})))
+          let router =
+            if HwLib.is_inblock_reachable tbl.env.hw wire = false
+            then
+              let goal = GoalLib.mk_inblock_goal tbl wire (uast2mast cfg.expr) in
+              SModGoalCtx(SGAddGoal(goal))
+            else
+              SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire})))
           in
           [router]
 
@@ -506,10 +505,15 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         |MOutput ->
           let generator = if HwLib.is_outblock_reachable tbl.env.hw wire = false
           then
-            GoalLib.mk_outblock_goal tbl wire
+            begin
+              let goal = GoalLib.mk_outblock_goal tbl wire (uast2mast cfg.expr) in
+              SModGoalCtx(SGAddGoal(goal))
+            end
           else
-            debug ("out-sln name:"^name);
-            SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire})))
+            begin
+               debug ("out-sln name:"^name);
+               SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire})))
+            end
           in
           let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
           [generator;SModGoalCtx(SGRemoveGoal(goal_to_remove))]
@@ -568,7 +572,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     in
     [
       SModSln(SSlnAddConn({src=outwire;dst=hgoal.wire}));
-      SModSln(SSlnRmRoute(MExprLabel({wire=hgoal.wire;expr=hgoal.expr})));
+      (*SModSln(SSlnRmRoute(MExprLabel({wire=hgoal.wire;expr=hgoal.expr})));*)
       SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=hgoal.expr})))
     ] @ rm_goal_steps
 

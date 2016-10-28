@@ -29,7 +29,7 @@ let error n m = raise (GoalLibError (n^":"^m))
 
 module GoalLib =
 struct
-  let mk_goal (tbl:gltbl) (g:goal_data) =
+  let mk_goal (tbl:gltbl) (g:goal_data) : goal =
     let cnt = tbl.env.goal_cnt in
     let goal = {d=g;active=true;id=cnt} in
     tbl.env.goal_cnt <- tbl.env.goal_cnt + 1;
@@ -47,11 +47,15 @@ struct
   let mk_conn_goal (tbl:gltbl) (src:wireid) (dest:wireid) =
     error "mk_conn_goal" "unimpl"
 
-  let mk_inblock_goal (tbl:gltbl) (src:wireid) =
-    error "mk_iblock_goal" "unimpl"
+  let mk_inblock_goal (tbl:gltbl) (src:wireid) (expr:mid ast) =
+    let hvar = HwLib.getvar tbl.env.hw src.comp.name src.port in
+    let data = {wire=src;prop=hvar.prop;expr=expr} in 
+    mk_goal tbl (GUnifiable(GUHWConnInBlock data))
 
-  let mk_outblock_goal (tbl:gltbl) (src:wireid) =
-    error "mk_oblock_goal" "unimpl"
+  let mk_outblock_goal (tbl:gltbl) (src:wireid) (expr:mid ast)=
+    let hvar = HwLib.getvar tbl.env.hw src.comp.name src.port in
+    let data = {wire=src;prop=hvar.prop;expr=expr} in 
+    mk_goal tbl (GUnifiable(GUHWConnOutBlock data))
 
   let mk_hexpr_goal (tbl:gltbl) (src:wireid) (expr:mid ast)=
     let prop = HwLib.getprop tbl.env.hw src.comp.name src.port in
@@ -114,15 +118,15 @@ struct
     let data_str =
       match g.d with
       | GUnifiable(GUMathGoal(mvar)) ->
-        MathLib.mvar2str mvar.d (fun x -> MathLib.mid2str x)
+        ("[MATH]")^MathLib.mvar2str mvar.d (fun x -> MathLib.mid2str x)
       | GUnifiable(GUHWInExprGoal(dat)) ->
-        (portprop2str dat.wire dat.prop)^"="^(MathLib.mast2str dat.expr)
+        ("[EXPR]")^(portprop2str dat.wire dat.prop)^"="^(MathLib.mast2str dat.expr)
       | GUnifiable(GUHWConnInBlock(dat)) ->
-        "in-block "^(portprop2str dat.wire dat.prop)
+        "[IN] "^(portprop2str dat.wire dat.prop)
       | GUnifiable(GUHWConnOutBlock(dat)) ->
-        "out-block "^(portprop2str dat.wire dat.prop)
+        "[OUT] "^(portprop2str dat.wire dat.prop)
       | GUnifiable(GUHWConnPorts(dat)) ->
-        "conn "^(SlnLib.wireconn2str dat)
+        "[CONN] "^(SlnLib.wireconn2str dat)
       | _ -> "goal2str: unimplemented"
     in
     "["^(string_of_int g.id)^"] "^data_str 
@@ -141,6 +145,25 @@ struct
       MAP.get tbl.goals i
     else
       error "get_goal_by_id" ("goal with id "^(string_of_int i)^" does not exist")
+
+  (*higher is more valuable*)
+  let scalar_goal_difficulty (g) = match g with
+    | GUnifiable(GUMathGoal(_)) -> 3.
+    | GUnifiable(GUHWInExprGoal(_)) -> 2.
+    | GUnifiable(GUHWConnInBlock(_)) -> 1.
+    | GUnifiable(GUHWConnOutBlock(_)) -> 1.
+    | _ -> 0.
+
+  let ast_size_goal_difficulty (g) = match g with
+    | GUnifiable(GUMathGoal(e)) -> 999.
+    | GUnifiable(GUHWInExprGoal(e)) -> 2.*.(float_of_int (ASTLib.size e.expr))
+    | GUnifiable(GUHWConnInBlock(_)) -> 1.
+    | GUnifiable(GUHWConnOutBlock(_)) -> 1.
+    | _ -> 0.
+
+
+  let goal_difficulty = ast_size_goal_difficulty 
+
 end
 
 

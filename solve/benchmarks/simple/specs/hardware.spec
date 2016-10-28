@@ -133,6 +133,7 @@ schematic
    conn input(I) -> iadd
    conn input(I) -> imul 
    conn input(I) -> deriv_iadd
+   conn iadd -> output(I)
    conn deriv_iadd -> output(I)
    conn imul -> iadd
    conn imul -> deriv_iadd

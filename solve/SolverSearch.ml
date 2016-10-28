@@ -97,17 +97,28 @@ struct
 
   
 *)
+
   let score_uniform (tbl:gltbl) (s:sstep list) =
     let state = 0. in
     let delta = 0. in
     SearchLib.mkscore state delta
   
-
+  let score_by_goal_count (tbl:gltbl) (s:sstep list) =
+    let score_single st = match st with
+      | SModGoalCtx(SGAddGoal(g)) -> 0. -. (GoalLib.goal_difficulty g.d)
+      | SModGoalCtx(SGRemoveGoal(g)) ->  (GoalLib.goal_difficulty g.d)
+      | SModGoalCtx(_) ->  0.
+      | _ -> 0.
+    in
+    let state = 0. in
+    let delta = LIST.sum score_single s in
+    SearchLib.mkscore state delta
+ 
 
   let score_step () =
     let typ = get_glbl_string "eqn-selector-branch" in
     match typ with
-    | _ -> score_uniform
+    | _ -> score_by_goal_count
 
   let goalstep2str (n:sgoalctx) = match n with
     | SGAddGoal(g) -> "add-goal "^(GoalLib.goal2str g)

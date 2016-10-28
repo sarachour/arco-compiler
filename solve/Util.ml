@@ -516,6 +516,9 @@ struct
     let _, v = List.fold_right nfxn lst (0,init) in
     v
 
+  let sum fxn lst =
+    List.fold_left (fun r x -> r +. (fxn x)) 0. lst
+
   let sub (type a) (t:a) (v:a) (lst:a list) =
     List.map (fun x -> if x = t then v else x) lst
 

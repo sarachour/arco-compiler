@@ -194,6 +194,10 @@ struct
     | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar hv mgoal.d
     | GUHWInExprGoal(hgoal) ->
       compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop hgoal.expr
+    | GUHWConnOutBlock(hgoal) ->
+      compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop (Integer(0))
+    | GUHWConnInBlock(hgoal) ->
+      compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop (Integer(0))
     | _ -> error "compatible_hwvar_with_goal" "unimpl"
 
   let compatible_comp_with_goal tbl (c:ucomp) (mv:unifiable_goal) : 'a hwportvar list =

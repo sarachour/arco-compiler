@@ -121,8 +121,11 @@ struct
     if MAP.has m key then
       let ncoll = match MAP.get m key with
       | WCollEmpty -> WCollEmpty
-      | WCollOne(cwire) -> if cwire = wire then  WCollEmpty
-          else error "rm_wire_from_label" "this wire is not assigned to the variable"
+      | WCollOne(cwire) ->
+        if cwire = wire
+          then  WCollEmpty
+          else error "rm_wire_from_label"
+              ("this wire is not assigned to the variable:"^(wireid2str wire)^"!=@"^(wireid2str cwire))
       | WCollMany(h::t) -> if LIST.has (h::t) wire
         then
           match List.filter (fun x -> x != wire) (h::t) with
