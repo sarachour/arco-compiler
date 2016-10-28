@@ -228,7 +228,7 @@ struct
   let mk_conc_comp (tbl:gltbl) (f:hwcompname) : ucomp_conc =
     let cmp_ctx : ucomp_ctx = MAP.get tbl.comp_ctx f in 
     let cmpinst = cmp_ctx.cnt in
-    cmp_ctx.cnt <- 1;
+    cmp_ctx.cnt <- cmp_ctx.cnt + 1;
     mk_conc_comp_of_inst tbl f cmpinst 
     
   

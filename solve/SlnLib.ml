@@ -54,10 +54,31 @@ struct
     | ValueLabel(lbl) -> (wireid2str lbl.wire)^" > "^(string_of_number lbl.value)
 
   let add_conn (sln:usln) (conn:wireconn) =
-    error "add_conn" "unimplemented"
+    let get_set (map:(wireid,wireid set) map) (key:wireid) : wireid set =
+      if MAP.has map key then
+        MAP.get map key
+      else
+        begin
+          let s = SET.make_dflt () in
+          MAP.put map key s; 
+          s
+        end
+    in
+    SET.add (get_set sln.conns.src2dest conn.src) conn.dst;
+    SET.add (get_set sln.conns.dest2src conn.dst) conn.src;
+    ()
 
   let rm_conn (sln:usln) (conn:wireconn) =
-    error "rm_conn" "unimplemented"
+    match MAP.has sln.conns.src2dest conn.src, MAP.has sln.conns.dest2src conn.dst with
+    | true,true ->
+      begin
+        SET.rm (MAP.get sln.conns.src2dest conn.src) conn.dst;
+        SET.rm (MAP.get sln.conns.dest2src conn.dst) conn.src;
+        ()
+      end
+    | false,false -> error "rm_conn"
+                       ("cannot remove connection that doesn't exist "^(wireconn2str conn))
+    | _ -> error "rm_conn" "only part of conn exists"
 
   let _get_mapped_wires (type a) (type b) (lbls:(a,b) labels) (name:a) =
     if MAP.has lbls.ins name then
@@ -493,9 +514,12 @@ struct
     MAP.fold s.conns.src2dest (fun src dests str ->
         let srcstr = (wireid2str src)^" -> " in
         let deststr = SET.fold dests (fun dest dstr->
-            dstr^" "^(wireid2str dest)) srcstr
+            dstr^" "^(wireid2str dest)) "" 
         in
-        str^srcstr^deststr^"\n"
+        if SET.size dests > 0 then
+          str^srcstr^deststr^"\n"
+        else
+          str
       ) ""
 
   let sln2str (s:('a,'b) sln) (f:'a -> string) (g:'b->string) : string=

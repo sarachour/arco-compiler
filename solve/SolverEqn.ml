@@ -602,6 +602,10 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
             begin
              let steps = match g with
               | GUMathGoal(_) -> rsteps_to_ssteps tbl ucomp rsteps []
+              | GUHWInExprGoal(hgoal) ->
+                  (rslvd_hwingoal_to_ssteps tbl ucomp hwvar hgoal) @
+                  (rsteps_to_ssteps tbl ucomp rsteps [])
+
               | _ -> error "unify_goal_with_conc_comp" "rstep->sstep conversion unimplemented"
              in
              SearchLib.mknode_child_from_steps tbl.search tbl (steps);

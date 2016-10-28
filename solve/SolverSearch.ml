@@ -120,6 +120,7 @@ struct
     | SSlnAddConn(conn) -> "[sln] conn "^(SlnLib.wireconn2str conn)
     | SSlnAddRoute(label) -> "[sln] route "^(SlnLib.label2str label ident mid2str)
     | SSlnAddGen(label) -> "[sln] generate "^(SlnLib.label2str label ident mid2str)
+    | SSlnRmRoute(label) -> "[sln] rm-route "^(SlnLib.label2str label ident mid2str)
 
   let mapstep2str (n:smapctx) = match n with
     | _ -> "<mapstep2str UNIMPLEMENTED>"
@@ -168,15 +169,18 @@ struct
     | SSlnAddConn(conn) -> SlnLib.add_conn tbl.sln_ctx conn 
     | SSlnAddGen(label) -> SlnLib.add_generate tbl.sln_ctx label
     | SSlnAddRoute(label) -> SlnLib.add_route tbl.sln_ctx label
-
+    | SSlnRmRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
+    | _ -> error "apply_sln_step" "handler for step casedoes not exist"
+  
   let apply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
     | SCMakeConcComp(cmp) -> SolverCompLib.add_conc_comp tbl cmp
     | SCAddInCfg(cmpid,inp,ctx) -> SolverCompLib.conc_in tbl cmpid inp ctx
     | SCAddOutCfg(cmpid,out,ctx) -> SolverCompLib.conc_out tbl cmpid out ctx
     | SCAddParCfg(cmpid,v,num) -> SolverCompLib.conc_param tbl cmpid v num
+    | _ -> error "apply_comp_step" "handler for step case does not exist"
 
   let apply_step (tbl:gltbl) (s:sstep) : gltbl =
-      debug  ("> do step "^(step2str s)^"\n");
+      debug  ("> do step "^(step2str s)^"");
       begin
         match s with
         | SModGoalCtx(g) -> apply_goal_step tbl g 
@@ -228,6 +232,8 @@ struct
     | SSlnAddConn(conn) -> SlnLib.rm_conn tbl.sln_ctx conn 
     | SSlnAddGen(label) -> SlnLib.rm_generate tbl.sln_ctx label
     | SSlnAddRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
+    | SSlnRmRoute(label) -> SlnLib.add_route tbl.sln_ctx label
+    | _ -> error "unapply_sln_step" "handler for step casedoes not exist"
 
   let unapply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
     | SCMakeConcComp(cmp) -> SolverCompLib.rm_conc_comp tbl cmp
@@ -237,7 +243,7 @@ struct
 
 
   let unapply_step (tbl:gltbl) (s:sstep) =
-      debug  ("> undo step %s\n"^(step2str s));
+      debug  ("> undo step "^(step2str s));
       begin
         match s with
         | SModGoalCtx(g) -> unapply_goal_step tbl g 
