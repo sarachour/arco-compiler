@@ -43,13 +43,13 @@ comp iadd
 
     input Y {I:mA}
     def I(Y) mag=[0,1] mA
-    def I(Y) map scale=A offset=B2
+    %def I(Y) map scale=A offset=B2
 
     output Z{I:mA}
     %symbolic to hardware 
-    def I(Z) map scale=A offset=(B1+B2)
+    %def I(Z) map scale=A offset=(B1+B2)
     
-    rel I(Z) = I(X) + I(Y)
+    rel I(Z) = 0.5*(I(X) + I(Y))
     var I(Z) = I(Z)*0.00001 shape GAUSS
 end
 
@@ -70,7 +70,7 @@ comp imul
     def I(Z) map scale=A3
 
     output W {I:mA}
-    def I(W) map scale=(A1+A2)/A3
+    def I(W) map scale=(A1*A2)/A3
 
     rel I(W) = ((I(X)*I(Y))/I(Z))
     var I(W) = (I(W)*0.000001) shape GAUSS

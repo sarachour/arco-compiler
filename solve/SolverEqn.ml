@@ -70,6 +70,11 @@ struct
         in
         let _ = on_finished() in
         ()
+      else if STRING.startswith inp "m" then
+        begin
+          Printf.printf ("---- Inferring ------\n");
+          SolverMapper.infer v
+        end
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===\n" in
         let _ = Printf.printf "%s\n" (GoalLib.goals2str v) in
@@ -95,10 +100,6 @@ struct
             | None -> Printf.printf "<no goal>\n\n\n"
           end;
           ()
-        end
-      else if STRING.startswith inp "m" then
-        begin
-          SolverMapper.infer v 
         end
       else
         ()
@@ -435,7 +436,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
 
   (*=========== RSTEP to SSTEP Conversion ==================*)
   (*specifically for inputs*)
-  let rassign_inp_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) =
+  let rassign_inp_to_goal (stepq:sstep queue) (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) : unit =
+    let enq s = noop (QUEUE.enqueue stepq s) in
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
     match uast2mast cfg.expr with
     | Term(MNVar(knd,name)) ->
@@ -443,54 +445,46 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         match knd with
         (*assign a math input to a hardware input*)
         | MInput ->
-          let router =
             if HwLib.is_inblock_reachable tbl.env.hw wire = false
             then
               let goal = GoalLib.mk_inblock_goal tbl wire (uast2mast cfg.expr) in
-              SModGoalCtx(SGAddGoal(goal))
+              enq (SModGoalCtx(SGAddGoal(goal)))
             else
-              SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire})))
-          in
-          [router]
+              enq (SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire}))))
 
         | MLocal ->
-          let router = SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire}))) in
-          [router]
+          enq (SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire}))))
 
         | MOutput ->
-          let router = SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire}))) in
-          [router]
+          enq (SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire}))))
+          
       end
     
 
     | Integer(i) ->
-      let route = SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))) in
-      [route]
+      enq (SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))))
 
     | Decimal(d)->
-      let route = SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))) in
-      [route]
+      enq (SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))))
 
     | Term(MNParam(_)) -> error "rstep_to_goal" "not expecting param"
 
     (*assignment over inputs to output*)
     | expr ->
       (*note: this should create different solutions*)
-       let route =
-         if MathLib.is_input_expr expr  = false
-         then
-           let goal = GoalLib.mk_hexpr_goal tbl wire expr in
-           SModGoalCtx(SGAddGoal(goal))
-         else
-           SModSln(SSlnAddRoute(MExprLabel({expr=expr;wire=wire})))
-       in
-       [route]
+      if MathLib.is_input_expr expr  = false
+      then
+        let goal = GoalLib.mk_hexpr_goal tbl wire expr in
+        enq (SModGoalCtx(SGAddGoal(goal)))
+      else
+        enq (SModSln(SSlnAddRoute(MExprLabel({expr=expr;wire=wire}))))
 
 
 
   (*resolve output port assignments*)
-  let rassign_out_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) :
-    sstep list =
+  let rassign_out_to_goal (stepq:sstep queue )(tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) :
+    unit =
+    let enq s = noop (QUEUE.enqueue stepq s) in
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
     match uast2mast cfg.expr with
     | Term(MNVar(knd,name)) ->
@@ -498,58 +492,53 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         match knd with
         (*an output port should not generate an input *)
         |MInput ->
-          let generator = SModSln(SSlnAddGen(MInLabel({var=name;wire=wire}))) in
-          [generator]
+          enq (SModSln(SSlnAddGen(MInLabel({var=name;wire=wire}))))
         
         (*this is a generator for an output. remove the math goal*)
         |MOutput ->
-          let generator = if HwLib.is_outblock_reachable tbl.env.hw wire = false
-          then
+          let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
+          enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
+          enq (SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire}))));
+          if HwLib.is_outblock_reachable tbl.env.hw wire = false then
             begin
               let goal = GoalLib.mk_outblock_goal tbl wire (uast2mast cfg.expr) in
-              SModGoalCtx(SGAddGoal(goal))
+              enq (SModGoalCtx(SGAddGoal(goal)))
             end
-          else
-            begin
-               debug ("out-sln name:"^name);
-               SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire})))
-            end
-          in
-          let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
-          [generator;SModGoalCtx(SGRemoveGoal(goal_to_remove))]
 
         (*this is a generator for an local. remove the math goal*)
         |MLocal ->
-          let generator = SModSln(SSlnAddGen(MLocalLabel({var=name;wire=wire}))) in
           let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
-          [generator;SModGoalCtx(SGRemoveGoal(goal_to_remove))]
+          enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
+          enq (SModSln(SSlnAddGen(MLocalLabel({var=name;wire=wire}))))
       end
     (*if we found a connection*)
     | Term((MNParam(_))) -> error "rstep_to_goal" "not expecting param"
     | expr ->
-      []
+      enq (SModSln(SSlnAddGen(MExprLabel({expr=expr;wire=wire}))))
 
   let rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)=
     let compid = {name=comp.d.name;inst=comp.inst} in 
-    let add_step (rstep:rstep) (ctx:sstep list) : sstep list=
+    let sstepq = QUEUE.make () in
+    let enq x = noop (QUEUE.enqueue sstepq x) in
+    let add_step (rstep:rstep) : unit =
           match rstep with
           (*input assignments become goals*)
           | RAddInAssign(v,cfg) ->
-            let cfg_step = SCAddInCfg(compid,v,cfg) in
-            let goal_steps = rassign_inp_to_goal tbl comp v cfg in 
-            (SModCompCtx(cfg_step)::goal_steps) @ ctx
+            enq (SModCompCtx(SCAddInCfg(compid,v,cfg)));
+            rassign_inp_to_goal sstepq tbl comp v cfg 
           (*out assignments are already satisfied*)
           | RAddOutAssign(v,cfg) ->
-            let cfg_step = SCAddOutCfg(compid,v,cfg) in
-            let goal_steps = rassign_out_to_goal tbl comp v cfg in
-            (SModCompCtx(cfg_step)::goal_steps) @ ctx
+            enq (SModCompCtx(SCAddOutCfg(compid,v,cfg)));
+            rassign_out_to_goal sstepq tbl comp v cfg
           | RAddParAssign(v,cfg) ->
-            let cfg_step = SCAddParCfg(compid,v,cfg) in
-            SModCompCtx(cfg_step)::ctx
-          | _ -> ctx
+            enq (SModCompCtx(SCAddParCfg(compid,v,cfg)))
+          | _ -> ()
     in
-    let steps = List.fold_right add_step rsteps ssteps in 
-    steps
+    List.iter add_step rsteps;
+    let steps = QUEUE.to_list sstepq in
+    QUEUE.destroy sstepq;
+    ssteps @ steps
+    
 
   (*todo, we should automatically *)
   (*

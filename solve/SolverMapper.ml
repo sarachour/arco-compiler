@@ -1024,7 +1024,7 @@ struct
       error "infer_dangling_output_wire" "unexpected combo"
   *)
   let infer (tbl:gltbl) =
- MAP.iter tbl.sln_ctx.generate.outs (fun (mvar:string) (wires:wire_coll) ->
+    MAP.iter tbl.sln_ctx.generate.outs (fun (mvar:string) (wires:wire_coll) ->
         match wires with
         | WCollEmpty -> error "infer" "does not exist"
         | WCollOne(wire) ->
