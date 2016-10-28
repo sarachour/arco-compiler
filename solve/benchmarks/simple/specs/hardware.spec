@@ -113,7 +113,7 @@ comp deriv_iadd
     rel I(Y) =  I(YT) - K*I(Z)
     def I(Y) map scale=(A*B)
 
-    rel ddt I(Z) = EN_F*I(X)*I(Y) - EN_B*I(P)*I(Z) init I(Z0)
+    rel ddt I(Z) = (EN_F*I(X)*I(Y))- EN_B*I(P)*I(Z) init I(Z0)
     var ddt I(Z) = I(Z)*0.00001 shape GAUSS
 
     def I(Z) mag = [0,1] mA
@@ -125,8 +125,8 @@ end
 
 schematic
    inst imul : 4
-   inst iadd  : 0
-   inst deriv_iadd: 0
+   inst iadd  : 2
+   inst deriv_iadd: 1
    inst output I : 10
    inst input I : 50
 
@@ -134,5 +134,8 @@ schematic
    conn input(I) -> imul 
    conn input(I) -> deriv_iadd
    conn deriv_iadd -> output(I)
+   conn imul -> iadd
+   conn imul -> deriv_iadd
+   conn iadd -> deriv_iadd
 
 end

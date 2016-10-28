@@ -412,8 +412,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
   (*specifically for inputs*)
   let rassign_inp_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) =
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
-    match cfg.expr with
-    | Term(MathId(MNVar(knd,name))) ->
+    match uast2mast cfg.expr with
+    | Term(MNVar(knd,name)) ->
       begin
         match knd with
         (*assign a math input to a hardware input*)
@@ -435,23 +435,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
           let router = SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire}))) in
           [router]
       end
-    | Term(HwId(HNPort(knd,cmp,port,prop))) ->
-      begin
-        match cmp,knd with
-        | HCMGlobal(cmp),HWKInput ->
-          error "rstep_to_goal" "cannot connect input to input"
-
-        | HCMGlobal(cmp),HWKOutput ->
-          let dest = SlnLib.mkwire cmp.name cmp.inst port in
-          let connect = if HwLib.wires_are_connectable tbl.env.hw wire dest = false
-            then GoalLib.mk_conn_goal tbl wire dest
-            else
-              SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
-          in
-          [connect]
-
-        | _ -> error "rassign_inp_to_goal" "not expecting a local id"
-      end
+    
 
     | Integer(i) ->
       let route = SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))) in
@@ -461,20 +445,18 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       let route = SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))) in
       [route]
 
-    | Term(MathId(MNParam(_))) -> error "rstep_to_goal" "not expecting param"
+    | Term(MNParam(_)) -> error "rstep_to_goal" "not expecting param"
 
-    | Term(HwId(HNParam(_))) -> error "rstep_to_goal" "not expecting param"
     (*assignment over inputs to output*)
     | expr ->
-       let mexpr = uast2mast expr in
       (*note: this should create different solutions*)
        let route =
-         if MathLib.is_input_expr mexpr  = false
+         if MathLib.is_input_expr expr  = false
          then
-           let goal = GoalLib.mk_hexpr_goal tbl wire mexpr in
+           let goal = GoalLib.mk_hexpr_goal tbl wire expr in
            SModGoalCtx(SGAddGoal(goal))
          else
-           SModSln(SSlnAddRoute(MExprLabel({expr=mexpr;wire=wire})))
+           SModSln(SSlnAddRoute(MExprLabel({expr=expr;wire=wire})))
        in
        [route]
 
@@ -484,8 +466,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
   let rassign_out_to_goal (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) :
     sstep list =
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
-    match cfg.expr with
-    | Term(MathId(MNVar(knd,name))) ->
+    match uast2mast cfg.expr with
+    | Term(MNVar(knd,name)) ->
       begin
         match knd with
         (*an output port should not generate an input *)
@@ -512,30 +494,11 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
           [generator;SModGoalCtx(SGRemoveGoal(goal_to_remove))]
       end
     (*if we found a connection*)
-    | Term(HwId(HNPort(knd,hcmp,port,prop))) ->
-      begin
-        match hcmp,knd with
-        |HCMGlobal(cmp),HWKInput ->
-          let dest = SlnLib.mkwire cmp.name cmp.inst port in
-          let connection =
-            if HwLib.wires_are_connectable tbl.env.hw dest wire = false
-            then GoalLib.mk_conn_goal tbl dest wire
-            else SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
-          in
-          [connection]
-        |_,HWKOutput ->
-          error "rassign_out_to_sln" "at the moment, cannot connect output with output"
-
-        |_ ->
-          error "rassign_out_to_sln" "must have global ids"
-      end
-
-    | Term(MathId(MNParam(_))) -> error "rstep_to_goal" "not expecting param"
-    | Term(HwId(HNParam(_))) -> error "rstep_to_goal" "not expecting param"
+    | Term((MNParam(_))) -> error "rstep_to_goal" "not expecting param"
     | expr ->
       []
 
-  let rsteps_to_node (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)=
+  let rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)=
     let compid = {name=comp.d.name;inst=comp.inst} in 
     let add_step (rstep:rstep) (ctx:sstep list) : sstep list=
           match rstep with
@@ -555,13 +518,48 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
           | _ -> ctx
     in
     let steps = List.fold_right add_step rsteps ssteps in 
-    SearchLib.mknode_child_from_steps tbl.search tbl (steps);
-    ()
+    steps
+
+  (*todo, we should automatically *)
+  (*
+     TODO: Return a set of global steps.
+     On MkHWConn ->
+           (1) remove route to input port 
+           (2) add connection to solution
+           (3) copy input port assignment to output port
+           (4) remove relevent match statements (use uast2mast cast in to-node)
+  *)
+  let rslvd_hwingoal_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (hwvar:hwvid hwportvar) (hgoal:goal_hw_expr) = 
+    let incomp : ucomp_conc = ConcCompLib.get_conc_comp tbl hgoal.wire.comp in
+    let invar : hwvid hwportvar = HwLib.comp_getvar incomp.d hgoal.wire.port in
+    let outwire :wireid = SlnLib.mkwire hwvar.comp comp.inst hwvar.port in
+    let inid : hwvid = HwLib.var2id invar (Some incomp.inst) in
+    let matched_goals : (int*goal) list=
+      GoalLib.find_goals tbl (GUnifiable(GUHWInExprGoal(hgoal))) in
+    let rm_goal_steps :sstep list=
+      List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
+    in
+    [
+      SModSln(SSlnAddConn({src=outwire;dst=hgoal.wire}));
+      SModSln(SSlnRmRoute(MExprLabel({wire=hgoal.wire;expr=hgoal.expr})));
+      SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=hgoal.expr})))
+    ] @ rm_goal_steps
 
   let unify_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
     let results : rstep list list= match g with
     | GUMathGoal(mgoal) ->
       ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
+
+    | GUHWInExprGoal(hgoal) ->
+      let incomp : ucomp_conc = ConcCompLib.get_conc_comp tbl hgoal.wire.comp in
+      let invar : hwvid hwportvar = HwLib.comp_getvar incomp.d hgoal.wire.port in
+      let inid : hwvid = HwLib.var2id invar (Some incomp.inst) in
+      let result =
+        ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math ucomp hwvar.port
+          (inid) (mast2uast hgoal.expr)
+      in
+      (*add the config after the fact*)
+      result
     | _ -> error "unify_goal_with_comp" "unimplemented"
     in
     match results with
@@ -572,8 +570,19 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         let inits = [SModCompCtx(SCMakeConcComp(comp))] in
         List.iter (fun rsteps ->
             debug (" -> found unify solution with "^(LIST.length2str rsteps)^" steps");
-            rsteps_to_node tbl comp rsteps inits
-        ) results;
+            begin
+              let steps : sstep list =
+                match g with
+                | GUMathGoal(mgoal) -> rsteps_to_ssteps tbl comp rsteps inits
+                | GUHWInExprGoal(hgoal) ->
+                  (rslvd_hwingoal_to_ssteps tbl comp hwvar hgoal) @
+                  (rsteps_to_ssteps tbl comp rsteps inits)
+                | _ -> error "unify_goal_with_comp" "rstep->sstep conversion unimplemented"
+              in
+              SearchLib.mknode_child_from_steps tbl.search tbl (steps);
+              ()
+            end
+          ) results;
         debug ("[unify!] Found "^(LIST.length2str results)^" results");
         List.length results
       end
@@ -590,7 +599,14 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       begin
         List.iter (fun rsteps ->
             debug (" -> found unify solution with "^(LIST.length2str rsteps)^" steps");
-            rsteps_to_node tbl ucomp rsteps []
+            begin
+             let steps = match g with
+              | GUMathGoal(_) -> rsteps_to_ssteps tbl ucomp rsteps []
+              | _ -> error "unify_goal_with_conc_comp" "rstep->sstep conversion unimplemented"
+             in
+             SearchLib.mknode_child_from_steps tbl.search tbl (steps);
+            ()
+            end
         ) results;
         debug ("[unify!] Found "^(LIST.length2str results)^" results");
         List.length results

@@ -338,8 +338,9 @@ struct
     | Some(inst) -> HCMGlobal({name=x;inst=inst})
     | None -> HCMLocal(x)
 
-  let var2id (v:'a hwportvar) : hwvid =
-    HNPort(v.knd,HCMLocal(v.comp),v.port,v.prop)
+  let var2id (v:'a hwportvar) (inst:int option) : hwvid = match inst with
+    | Some(inst) -> HNPort(v.knd,HCMGlobal({name=v.comp;inst=inst}),v.port,v.prop)
+    | None -> HNPort(v.knd,HCMLocal(v.comp),v.port,v.prop)
 
   let var2kind (id:hwvid) =
     match id with

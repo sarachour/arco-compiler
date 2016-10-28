@@ -138,6 +138,7 @@ type ulabel = (string,mid) label
 type sslnctx =
   | SSlnAddConn of wireconn
   | SSlnAddRoute of ulabel
+  | SSlnRmRoute of ulabel
   | SSlnAddGen of ulabel
 
 

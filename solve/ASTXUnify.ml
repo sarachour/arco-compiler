@@ -166,7 +166,7 @@ struct
     in
     (*declare and then print the wildcard*)
     let decl_wildcard (v: hwvid hwportvar) =
-      let vname : symvar = to_symvar s (HwId (HwLib.var2id v)) in
+      let vname : symvar = to_symvar s (HwId (HwLib.var2id v None)) in
       let bans : symexpr list = get_disabled v in
       print_wildcard vname bans;
       vtable_declare vtable vname;
@@ -174,7 +174,7 @@ struct
       ()
     in
     let decl_var (v:hwvid hwportvar) =
-      let vname = to_symvar s (HwId (HwLib.var2id v)) in
+      let vname = to_symvar s (HwId (HwLib.var2id v None)) in
       begin
         match ConcCompLib.get_var_config hwstate.cfg v.port with
         | Some(conc_expr) -> use_vars_in_expr (to_symexpr s conc_expr)
