@@ -443,7 +443,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
 
         | HCMGlobal(cmp),HWKOutput ->
           let dest = SlnLib.mkwire cmp.name cmp.inst port in
-          let connect = if HwLib.is_connectable tbl.env.hw wire dest = false
+          let connect = if HwLib.wires_are_connectable tbl.env.hw wire dest = false
             then GoalLib.mk_conn_goal tbl wire dest
             else
               SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
@@ -518,7 +518,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         |HCMGlobal(cmp),HWKInput ->
           let dest = SlnLib.mkwire cmp.name cmp.inst port in
           let connection =
-            if HwLib.is_connectable tbl.env.hw dest wire = false
+            if HwLib.wires_are_connectable tbl.env.hw dest wire = false
             then GoalLib.mk_conn_goal tbl dest wire
             else SModSln(SSlnAddConn(SlnLib.mkwireconn wire dest))
           in
@@ -601,14 +601,14 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       (* add all the compatible available comps *)
       SolverCompLib.iter_avail_comps tbl (fun cmpname cmp ->
         if SolverCompLib.has_available_insts tbl cmpname  then
-          match SolverCompLib.compatible_comp_with_goal cmp g with
+          match SolverCompLib.compatible_comp_with_goal tbl cmp g with
             | [] -> ()
             | vars -> List.iter (fun v ->
                 noop (PRIOQUEUE.add prio_comps (HWCompNew cmpname,v))) vars
       );
       (* add all the compatible used comps*)
       SolverCompLib.iter_used_comps tbl (fun cmpid cmp ->
-          match SolverCompLib.compatible_used_comp_with_goal cmp g with
+          match SolverCompLib.compatible_used_comp_with_goal tbl cmp g with
           | [] -> ()
           | vars -> List.iter (fun v ->
               noop (PRIOQUEUE.add prio_comps (HWCompExisting cmpid,v))) vars
@@ -642,9 +642,17 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       PRIOQUEUE.delete prio_comps;
       (*if there are any solutions*)
       if REF.dr nsols > 0 then
-        ()
+        begin
+          debug ("[FOUND-SOLS] ===> Found some solutions");
+          ()
+        end
       else
-        ()
+        begin
+          debug ("//NO-SOLS// ===> Found no solutions");
+          SearchLib.deadend tbl.search (SearchLib.cursor tbl.search) tbl;
+          ()
+        end
+
 
   let solve_goal (tbl:gltbl) (g:goal) =
     let root = SearchLib.cursor tbl.search in

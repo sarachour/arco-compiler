@@ -14,6 +14,47 @@ type hwcompinst = {
   name : hwcompname;
   inst : int;
 }
+module HwCompName = struct
+  let copy_cid prop = "copy."^prop
+  let input_cid prop = "input."^prop
+  let output_cid prop = "output."^prop
+
+  let get_special nm =
+    match STRING.split nm "." with
+    | ["copy";q] -> Some("copy",q)
+    | ["input";q] -> Some("input",q)
+    | ["output";q] -> Some("output",q)
+    | _ -> None
+
+  let hwcompname2str (id:hwcompname) = match id with
+    | HWCmInput(x) -> input_cid x
+    | HWCmOutput(x) -> output_cid x
+    | HWCmCopy(x) -> copy_cid x
+    | HWCmComp(x) -> x
+
+  let hwcompinst2str (id:hwcompinst) =
+    (hwcompname2str id.name)^"["^(string_of_int id.inst)^"]"
+
+  let str2hwcompname (c:string) : hwcompname = match get_special c with
+    | Some("copy",prop) -> HWCmCopy(prop)
+    | Some("input",prop) -> HWCmInput(prop)
+    | Some("output",prop) -> HWCmOutput(prop)
+    | Some(_) -> error "name2HWCmt" "illegal name"
+    | None -> HWCmComp c
+
+
+  let is_special nm = match get_special nm with
+  | Some(_) -> true
+  | None -> false
+
+
+  let hwcompname2str (id:hwcompname) = match id with
+    | HWCmInput(x) -> input_cid x
+    | HWCmOutput(x) -> output_cid x
+    | HWCmCopy(x) -> copy_cid x
+    | HWCmComp(x) -> x
+end
+
 
 type hwvkind = HWKInput | HWKOutput
 
@@ -27,7 +68,7 @@ type hcconn =
   | HCCIndiv of int
 
 (*port to port*)
-type connid = string*string
+type connid = hwcompname*string
 
 type wireid = {
     comp:hwcompinst;
@@ -185,7 +226,7 @@ type 'a hwcomp = {
   mutable sim: (string*(string list)) option;
 }
 
-
+  
 type 'a hwenv = {
   mutable units : unt_env;
   mutable props : (string, untid set) map;

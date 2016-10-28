@@ -341,7 +341,7 @@ struct
            the minimize subroutine
         *)
         let rec _minimize min max (depth:int): z3sln option=
-          if depth > 5 then None else
+          if depth >= 3 then None else
             let midpoint = (min+.max)/. 2. in
             (*compute using the midpoint as a bound*)
             debug "_minimize" (">>> DReal running with max minval = "^(string_of_float midpoint));

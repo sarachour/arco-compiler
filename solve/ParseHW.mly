@@ -23,17 +23,17 @@
 
   type conn =
     | AllConn
-    | CompConn of string
-    | CompPortConn of string*string
-    | InstConn of string*(index list)
-    | InstPortConn of string*(index list)*string
+    | CompConn of hwcompname 
+    | CompPortConn of hwcompname*string
+    | InstConn of hwcompname*(index list)
+    | InstPortConn of hwcompname*(index list)*string
 
 
   type conntype = Input | Output
 
   type pid =  (string*string*int)
 
-  let conn_iter (c:conn) (conntype:conntype) (fxn:(string*string)->index->unit)  =
+  let conn_iter (c:conn) (conntype:conntype) (fxn:(hwcompname*string)->index->unit)  =
     let conntype = if conntype = Input then HWKInput else HWKOutput in
     (*determine if this is what we're filtering against*)
     let isconntype v = v.knd = conntype in
@@ -44,8 +44,8 @@
       in
       let hwcnv name = HwLib.hwcompname2str name in 
       match conntype with
-      | HWKInput -> MAP.iter cmp.ins (fun vname vr -> fxn (hwcnv cmp.name,vname) gidx)
-      | HWKOutput -> MAP.iter cmp.outs (fun vname vr -> fxn (hwcnv cmp.name,vname) gidx)
+      | HWKInput -> MAP.iter cmp.ins (fun vname vr -> fxn (cmp.name,vname) gidx)
+      | HWKOutput -> MAP.iter cmp.outs (fun vname vr -> fxn (cmp.name,vname) gidx)
       ;
       ()
     in
@@ -55,13 +55,13 @@
       let itercmp cmp = List.iter (fun cmp -> itercmp cmp None) cmps in
       ()
     | CompConn(c) ->
-      let cmp = HwLib.getcomp dat (HwLib.str2hwcompname c) in
+      let cmp = HwLib.getcomp dat (c) in
       itercmp cmp None
     | CompPortConn(c,p) ->
-      let ident = (c,p) in
+      let ident : connid = (c,p) in
       fxn ident (IToEnd 0)
     | InstConn(c,i) ->
-      let cmp = HwLib.getcomp dat (HwLib.str2hwcompname c) in
+      let cmp = HwLib.getcomp dat c in
       let _ = List.iter (fun idx ->
         itercmp cmp (Some idx)) i
       in
@@ -73,8 +73,8 @@
       in
       ()
 
-  let idx2hcconn (c:string) (idx:index) : hcconn =
-    let comp : hwvid hwcomp = HwLib.getcomp dat (HwLib.str2hwcompname c) in
+  let idx2hcconn (c:hwcompname) (idx:index) : hcconn =
+    let comp : hwvid hwcomp = HwLib.getcomp dat c in
     let res = match idx with
     | IIndex(i) -> HCCIndiv(i)
     | IRange(r) -> HCCRange(r)
@@ -122,7 +122,7 @@
     ASTLib.ast2str e (fun x -> HwLib.hwvid2str x)
 
   let mkdfl cname iname =
-    let mk p = HwConnLib.mk dat (HwLib.hwcompname2str cname) iname p in
+    let mk p = HwConnLib.mk dat (cname) iname p in
     MAP.iter (dat.props) (fun k v -> mk k); 
     ()
 %}
@@ -657,10 +657,10 @@ inds:
 
 connterm:
   | STAR                      {AllConn}
-  | TOKEN                     {let name = $1 in CompConn name}
-  | COPY OPARAN TOKEN CPARAN { let name = HwLib.copy_cid $3 in CompConn name }
-  | INPUT OPARAN TOKEN CPARAN { let name = HwLib.input_cid $3 in CompConn name}
-  | OUTPUT OPARAN TOKEN CPARAN { let name = HwLib.output_cid $3 in CompConn name}
+  | TOKEN                     {let name = HWCmComp $1 in CompConn name}
+  | COPY OPARAN TOKEN CPARAN { let name = HWCmCopy $3 in CompConn name }
+  | INPUT OPARAN TOKEN CPARAN { let name = HWCmInput $3 in CompConn name}
+  | OUTPUT OPARAN TOKEN CPARAN { let name = HWCmOutput $3 in CompConn name}
   | connterm OBRAC inds CBRAC {
     let basic = $1 and inds = $3 in
     match basic with

@@ -2,7 +2,52 @@ open HWData
 open Util
 
 module HwConnLib = struct
-let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
+
+  let hwcompname2str = HwCompName.hwcompname2str
+
+  let hcconn2str (c:hcconn) = match c with
+    | HCCAll -> "*"
+    | HCCIndiv(i) -> string_of_int i
+    | HCCRange((s,e)) -> (string_of_int s)^":"^(string_of_int e)
+
+  let connid2str (c:connid):string =
+      let comp,port = c in
+      (hwcompname2str comp)^"."^port
+
+  let conncstr2str (c:connid) (r:hcconn) =
+      (connid2str c)^"["^(hcconn2str r)^"]"
+
+  let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
+    let ksrc = (srccomp,srcport) and ksnk = (destcomp,destport) in
+    let _ = if MAP.has e.conns ksrc = false then
+      let _ = MAP.put e.conns ksrc (MAP.make()) in ()
+    in
+    let _ = if MAP.has e.conns ksnk = false  then
+      let _ = MAP.put e.conns ksnk (MAP.make()) in ()
+    in
+    let mapsrc = MAP.get e.conns ksrc in
+    let mapsnk = MAP.get e.conns ksnk in
+    let _ = if MAP.has mapsrc ksnk = false
+      then MAP.put mapsrc ksnk (SET.make_dflt ()) else mapsrc in
+    let _ = if MAP.has mapsnk ksrc = false
+      then MAP.put mapsnk ksrc (SET.make_dflt ()) else mapsnk in
+    let setsrc = MAP.get mapsrc ksnk in
+    let setsnk = MAP.get mapsnk ksrc in
+    let _ = SET.add setsrc (srcconn,destconn) in
+    let _ = SET.add setsnk (destconn,srcconn) in
+    e
+
+
+  let mk  e cname pname prop =
+    let _ = if MAP.has e.conns (cname,pname) = false then
+      MAP.put e.conns (cname,pname) (MAP.make ())
+      else e.conns
+    in
+    ()
+
+
+(*
+  let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
     let ksrc = (srccomp,srcport) and ksnk = (destcomp,destport) in
     let _ = if MAP.has e.conns ksrc = false then
       let _ = MAP.put e.conns ksrc (MAP.make()) in ()
@@ -45,19 +90,7 @@ let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
      (_valid_conn hcs dest_comp dest_port src_comp src_port ) 
   
 
-  let hcconn2str (c:hcconn) = match c with
-  | HCCAll -> "*"
-  | HCCIndiv(i) -> string_of_int i
-  | HCCRange((s,e)) -> (string_of_int s)^":"^(string_of_int e)
-
-  let connid2str (c:connid) =
-    let comp,port = c in
-    comp^"."^port
-
-  let coll2str (c:connid) (r:hcconn) =
-    (connid2str c)^"["^(hcconn2str r)^"]"
-
-  let to_buf e fb =
+    let to_buf e fb =
     let oc x = output_string fb x in
     let pr_conns (c,p) v =
       let pr_conn sc sp dc dp is id =
@@ -74,5 +107,5 @@ let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
     let cnstr = MAP.fold e.conns (apply pr_conns) "" in
     let _ = oc (cnstr^"\n") in
     ()
-
+*)
 end

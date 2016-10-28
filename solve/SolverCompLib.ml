@@ -168,22 +168,39 @@ struct
     | _,MBhvUndef-> error "compatible_hwvar_with_mvar" "cannot unify undefined"
     | _ -> false
 
-  let compatible_hwvar_with_goal (hv:'a hwportvar) (v:unifiable_goal) : bool =
+  let compatible_hwvar_with_hwexpr (env:'a hwenv) (hv:'a hwportvar) (dest_wire:wireid)
+      (prop:string) (expr:'b ast) : bool =
+    if hv.prop = prop then
+      if HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port then
+        begin
+          match hv.bhvr with
+          | HWBAnalog(_) -> true
+          | _ -> false
+        end
+      else
+        false
+    (*not the same property*)
+    else
+      false
+
+  let compatible_hwvar_with_goal tbl (hv:'a hwportvar) (v:unifiable_goal) : bool =
     match v with
     | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar hv mgoal.d
+    | GUHWInExprGoal(hgoal) ->
+      compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop hgoal.expr
     | _ -> error "compatible_hwvar_with_goal" "unimpl"
 
-  let compatible_comp_with_goal (c:ucomp) (mv:unifiable_goal) : 'a hwportvar list =
+  let compatible_comp_with_goal tbl (c:ucomp) (mv:unifiable_goal) : 'a hwportvar list =
     let comp_vars : 'a hwportvar list = HwLib.comp_fold_outs c.d (fun hv lst ->
-        if compatible_hwvar_with_goal hv mv
+        if compatible_hwvar_with_goal tbl hv mv
         then hv::lst else lst
       ) []
     in
     comp_vars
 
-  let compatible_used_comp_with_goal (c:ucomp_conc) (mv:unifiable_goal) : 'a hwportvar list =
+  let compatible_used_comp_with_goal tbl (c:ucomp_conc) (mv:unifiable_goal) : 'a hwportvar list =
     let comp_vars : 'a hwportvar list = HwLib.comp_fold_outs c.d (fun hv lst ->
-        if compatible_hwvar_with_goal hv mv && ConcCompLib.is_conc c.cfg hv.port
+        if compatible_hwvar_with_goal tbl hv mv && ConcCompLib.is_conc c.cfg hv.port
         then hv::lst else lst
       ) []
     in

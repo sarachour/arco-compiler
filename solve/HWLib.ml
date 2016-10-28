@@ -28,39 +28,7 @@ struct
     time=None
   }
 
-  let copy_cid prop = "copy."^prop
-  let input_cid prop = "input."^prop
-  let output_cid prop = "output."^prop
-
-  let get_special nm =
-  match STRING.split nm "." with
-  | ["copy";q] -> Some("copy",q)
-  | ["input";q] -> Some("input",q)
-  | ["output";q] -> Some("output",q)
-  | _ -> None
-
-  let hwcompname2str (id:hwcompname) = match id with
-  | HWCmInput(x) -> input_cid x
-  | HWCmOutput(x) -> output_cid x
-  | HWCmCopy(x) -> copy_cid x
-  | HWCmComp(x) -> x
-
-  let hwcompinst2str (id:hwcompinst) =
-    (hwcompname2str id.name)^"["^(string_of_int id.inst)^"]"
-
-  let str2hwcompname (c:string) : hwcompname = match get_special c with
-    | Some("copy",prop) -> HWCmCopy(prop)
-    | Some("input",prop) -> HWCmInput(prop)
-    | Some("output",prop) -> HWCmOutput(prop)
-    | Some(_) -> error "name2HWCmt" "illegal name"
-    | None -> HWCmComp c
-
-
-  let is_special nm = match get_special nm with
-  | Some(_) -> true
-  | None -> false
-
-
+  
   let hwid2port hwid = match hwid with
   | HNPort(k,HCMGlobal(c),n,p) -> k,c.name,n,p,Some(c.inst)
   | HNPort(k,HCMLocal(c),n,p) -> k,c,n,p,None
@@ -82,6 +50,11 @@ struct
     | HNPort(x1,c,x2,x3) -> HNPort(x1,fn c,x2,x3)
     | HNParam(c,x1) -> HNParam(fn c,x1)
     | HNTime -> HNTime
+
+  let hwcompname2str = HwCompName.hwcompname2str
+  let hwcompinst2str = HwCompName.hwcompinst2str
+
+  let str2hwcompname = HwCompName.str2hwcompname
 
   let hwvid2str e =
     let c2str c = match c with
@@ -171,7 +144,7 @@ struct
     | None -> os"(no time variable defined)\n"
    in
    let print_conn src srng dst drng =
-     os ((HwConnLib.coll2str src srng)^"->"^(HwConnLib.coll2str dst drng)^"\n")
+     os ((HwConnLib.conncstr2str src srng)^"->"^(HwConnLib.conncstr2str dst drng)^"\n")
    in
    let _ = os "==== Units ====\n" in
    let _ = UnitLib.to_buf (e.units) fb in
@@ -685,5 +658,18 @@ struct
 
   let is_inblock_reachable (type a) (env:a hwenv) (wire:wireid) : bool = true
 
-  let is_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool = true
+  let is_connectable (type a) (env:a hwenv)
+      (srccmp:hwcompname) (srcport) (destcmp:hwcompname) (destport) : bool =
+    if MAP.has env.conns (srccmp,srcport) then
+      let dests = MAP.get env.conns (srccmp,srcport) in
+      if MAP.has dests (destcmp,destport) then
+        let insts = MAP.get dests (destcmp,destport) in
+        SET.size insts > 0
+      else
+        false
+    else
+      false
+
+  let wires_are_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool =
+    is_connectable env src.comp.name src.port dest.comp.name dest.port
 end
