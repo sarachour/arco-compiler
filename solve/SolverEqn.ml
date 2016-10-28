@@ -560,7 +560,9 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       in
       (*add the config after the fact*)
       result
-    | _ -> error "unify_goal_with_comp" "unimplemented"
+    | GUHWConnInBlock(_) -> error "unify_goal_with_comp" "conn-in unimplemented"
+    | GUHWConnOutBlock(_) -> error "unify_goal_with_comp" "conn-out unimplemented"
+    | GUHWConnPorts(_) -> error "unify_goal_with_comp" "conn-ports unimplemented"
     in
     match results with
     | h::t ->
