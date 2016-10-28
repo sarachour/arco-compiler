@@ -158,6 +158,12 @@ end
 module SolverCompLib =
 struct
 
+  let wireid2hwid (tbl:gltbl) (w:wireid) =
+      let incomp : ucomp_conc = ConcCompLib.get_conc_comp tbl w.comp in
+      let invar : hwvid hwportvar = HwLib.comp_getvar incomp.d w.port in
+      let inid : hwvid = HwLib.var2id invar (Some incomp.inst) in
+      inid
+
   let grade_hwvar_with_goal (c:'a hwcomp) (hv:'a hwportvar) (m:unifiable_goal) = 0
 
   let compatible_hwvar_with_mvar (hv:'a hwportvar) (v:mid mvar) : bool =

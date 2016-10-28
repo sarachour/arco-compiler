@@ -110,7 +110,11 @@ struct
   let is_visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
     SStatLib.is_visited sr.st n
 
-  let _steps2str (type a) (type b) (indent: int) (sr:(a,b) ssearch) (n:a snode) =
+  let steps2str (type a) (type b) (indent: int) (sr:(a,b)ssearch) (lst:a list) : string =
+    let spcs = STRING.repeat "  " indent  in
+    List.fold_right (fun x r -> r^spcs^" "^(sr.tostr x)^"\n") lst ""
+
+  let _stepnode2str (type a) (type b) (indent: int) (sr:(a,b) ssearch) (n:a snode) =
     let spcs = STRING.repeat "  " indent  in
     let id = (
       if is_deadend sr n then "[XX]"
@@ -121,10 +125,10 @@ struct
     | Some(c) -> if c = n then "{{C}}"^id else id
     | None -> id
     in
-    spcs^prefix^":\n"^(List.fold_right (fun x r -> r^spcs^" "^(sr.tostr x)^"\n") n.s "")
+    spcs^prefix^":\n"^(steps2str indent sr n.s)
 
-  let steps2str (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
-    _steps2str 0 sr n
+  let stepnode2str (type a) (type b) (sr:(a,b) ssearch) (n:a snode) =
+    _stepnode2str 0 sr n
 
   let score2str (e:sscore) =
     "state="^(string_of_float e.state )^",delta="^(string_of_float e.delta)
@@ -134,7 +138,7 @@ struct
       let spcs = STRING.repeat "  " indent in
       spcs^"<score>:"^(score2str v)
     in
-    TREE.tostr sr.tree (fun i x -> (_steps2str i sr x)) (fun i y -> _score2str i y)
+    TREE.tostr sr.tree (fun i x -> (_stepnode2str i sr x)) (fun i y -> _score2str i y)
 
   let print_frontier sr =
     let prefix = "Frnt "^(string_of_int( ORDSET.length sr.frontier))^":"  in 

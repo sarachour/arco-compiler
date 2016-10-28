@@ -507,7 +507,7 @@ struct
     let str = MAP.fold labels.vals
         (fun v coll str -> str^"val "^(string_of_number v)^" -> "^(wirecoll2str coll)^"\n") (str^"\n") in
     let str = MAP.fold labels.exprs
-        (fun v coll str -> str^"exp "^(ASTLib.ast2str v g) ^" -> "^(wirecoll2str coll)^"\n") (str^"\n") in
+        (fun v coll str -> str^"ast "^(ASTLib.ast2str v g) ^" -> "^(wirecoll2str coll)^"\n") (str^"\n") in
     str
 
   let conns2str (s: ('a,'b) sln) =

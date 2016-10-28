@@ -42,7 +42,8 @@ struct
 
 
   let mkmenu (v:gltbl) (currgoal:goal option) =
-    let menu_desc = "t=search-tree, s=sol, @=curr, g=goals, c=conc-comps, m=mapping any-key=continue, q=quit" in
+    let menu_desc = "t=search-tree, s=sol, @=curr, g=goals, c=conc-comps\n"^
+                    "n=node-steps m=mapping any-key=continue, q=quit" in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
         let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str v.search) in
@@ -76,6 +77,14 @@ struct
         in
         let _ = on_finished() in
         ()
+      else if STRING.startswith inp "n" then
+        begin
+          match SearchLib.cursor v.search with
+          | Some(cursor) ->
+            let path = SearchLib.get_path v.search cursor in
+            Printf.printf (SearchLib.steps2str 1 v.search path)
+          | None -> Printf.printf "<No Cursor>"
+        end
       else if STRING.startswith inp "@" then
         begin
           begin
@@ -547,22 +556,15 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
 
   let unify_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
     let results : rstep list list= match g with
-    | GUMathGoal(mgoal) ->
-      ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
+      | GUMathGoal(mgoal) ->
+        ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
 
-    | GUHWInExprGoal(hgoal) ->
-      let incomp : ucomp_conc = ConcCompLib.get_conc_comp tbl hgoal.wire.comp in
-      let invar : hwvid hwportvar = HwLib.comp_getvar incomp.d hgoal.wire.port in
-      let inid : hwvid = HwLib.var2id invar (Some incomp.inst) in
-      let result =
+      | GUHWInExprGoal(hgoal) ->
         ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math ucomp hwvar.port
-          (inid) (mast2uast hgoal.expr)
-      in
-      (*add the config after the fact*)
-      result
-    | GUHWConnInBlock(_) -> error "unify_goal_with_comp" "conn-in unimplemented"
-    | GUHWConnOutBlock(_) -> error "unify_goal_with_comp" "conn-out unimplemented"
-    | GUHWConnPorts(_) -> error "unify_goal_with_comp" "conn-ports unimplemented"
+            (SolverCompLib.wireid2hwid tbl hgoal.wire) (mast2uast hgoal.expr)
+      | GUHWConnInBlock(_) -> error "unify_goal_with_comp" "conn-in unimplemented"
+      | GUHWConnOutBlock(_) -> error "unify_goal_with_comp" "conn-out unimplemented"
+      | GUHWConnPorts(_) -> error "unify_goal_with_comp" "conn-ports unimplemented"
     in
     match results with
     | h::t ->
@@ -577,8 +579,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
                 match g with
                 | GUMathGoal(mgoal) -> rsteps_to_ssteps tbl comp rsteps inits
                 | GUHWInExprGoal(hgoal) ->
-                  (rslvd_hwingoal_to_ssteps tbl comp hwvar hgoal) @
-                  (rsteps_to_ssteps tbl comp rsteps inits)
+                  ((rslvd_hwingoal_to_ssteps tbl comp hwvar hgoal) @
+                  (rsteps_to_ssteps tbl comp rsteps inits))
                 | _ -> error "unify_goal_with_comp" "rstep->sstep conversion unimplemented"
               in
               SearchLib.mknode_child_from_steps tbl.search tbl (steps);
@@ -594,7 +596,13 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     let results : rstep list list = match g with
       | GUMathGoal(mgoal) ->
         ASTUnifier.unify_conc_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
-      | _ -> error "unify_goal_with_comp" "unimplemented"
+      | GUHWInExprGoal(hgoal) ->
+        ASTUnifier.unify_conc_comp_with_hwvar tbl.env.hw tbl.env.math ucomp hwvar.port
+          (SolverCompLib.wireid2hwid tbl hgoal.wire) (mast2uast hgoal.expr)
+      | GUHWConnInBlock(_) -> error "unify_goal_with_conc_comp" "conn-in unimplemented"
+      | GUHWConnOutBlock(_) -> error "unify_goal_with_conc_comp" "conn-out unimplemented"
+      | GUHWConnPorts(_) -> error "unify_goal_with_conc_comp" "conn-ports unimplemented"
+      | _ -> error "unify_goal_with_conc_comp" "unimplemented"
     in
     match results with
     | h::t ->
@@ -605,8 +613,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
              let steps = match g with
               | GUMathGoal(_) -> rsteps_to_ssteps tbl ucomp rsteps []
               | GUHWInExprGoal(hgoal) ->
-                  (rslvd_hwingoal_to_ssteps tbl ucomp hwvar hgoal) @
-                  (rsteps_to_ssteps tbl ucomp rsteps [])
+                  ((rslvd_hwingoal_to_ssteps tbl ucomp hwvar hgoal) @
+                  (rsteps_to_ssteps tbl ucomp rsteps []))
 
               | _ -> error "unify_goal_with_conc_comp" "rstep->sstep conversion unimplemented"
              in
