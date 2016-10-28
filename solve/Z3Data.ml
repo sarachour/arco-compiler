@@ -19,6 +19,7 @@ type z3expr =
   | Z3Fun of string*(z3expr list)
   | Z3Neg of z3expr
   | Z3Sub of z3expr*z3expr
+  | Z3Div of z3expr*z3expr
 
 type z3vartyp =
   | Z3Bool

@@ -8,7 +8,11 @@ param KDfw : none = 10
 param ratC4 : none = 1
 param ratC7 : none = 1
 
+
 time t: none
 
-rel deriv(A,t) = ((10*(10/KDfw)*kr1 - kr1*A) + (kr1/KDrv)*B*B) - kr2*ratC7*A with A(0) = 0
-rel deriv(B,t) = kr1*A*2 - (kr1/KDrv)*B*B*2 - kr2*ratC4*B with B(0) = 0
+rel ddt A = ((10*(10/KDfw)*kr1 - kr1*A) + (kr1/KDrv)*B*B) - kr2*ratC7*A init 0
+def A mag=[0,1] M
+
+rel ddt B = kr1*A*2 - (kr1/KDrv)*B*B*2 - kr2*ratC4*B init 0
+def B mag=[0,1] M

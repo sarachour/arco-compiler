@@ -558,6 +558,7 @@ struct
   let inference_var (type a) (env:a hwenv) (cmp:a hwcomp) (v:a hwportvar) (cnv:a -> hwvid) : unit =
     let lookup (x:a) : interval = match cnv x with
       | HNPort(HWKInput,_,port,_) ->
+        debug ("looking up "^port^"\n");
         let vr : a hwportvar = getvar env (cmp.name) port in
         begin
           match vr.defs with
@@ -566,6 +567,7 @@ struct
           | HWDDigital(def) -> error "lookup" "cannot do interval analysis on digital values"
         end
       | HNPort(HWKOutput,_,port,_) ->
+        debug ("looking up "^port^"\n");
         let vr : a hwportvar = getvar env (cmp.name) port in
         begin
           match vr.defs with
@@ -603,7 +605,8 @@ struct
         error "inference_var" ("cannot infer interval for input ["^
                                (hwcompname2str cmp.name)^":"^v.port^"."^v.prop^"]")
       | HWBUndef ->
-        error "inference_var" "cannot infer interval of undefined output"
+        error "inference_var" ("cannot infer interval with undefined behaviour: ["^
+        (hwcompname2str cmp.name)^":"^v.port^"."^v.prop^"]")
       | _ ->
         error "inference_var" "unimplemented"
 

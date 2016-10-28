@@ -657,7 +657,7 @@ struct
       | HNPort(knd,cmp,port,param) ->
         begin
           match (HwLib.comp_getvar comp port).defs with
-          | HWDAnalog(x) -> x.ival
+          | HWDAnalog(d) -> d.ival
           | HWDAnalogState(x) -> x.stvar.ival
         end
       | _ -> error "compute hw interval" "unexpected"
@@ -915,7 +915,7 @@ struct
     in
     let bound_to_number bnd = match bnd with
       | BNDNum(x) -> x
-      | _ -> error "bound_to_number" "expected number"
+      | _ -> error "bound_to_number" "expected a finite numerical bound"
     in
     (*iterate for each math variable*)
     ConcCompLib.iter_var_cfg cfg

@@ -338,11 +338,11 @@ struct
     match num,denom with
     | BNDNum(av),BNDNum(bv) ->
       begin
-        match bound_is_zero denom, bound_is_zero num with
+        match bound_is_zero num, bound_is_zero denom with
         | true,true -> error "bound_div" "0/0 = NaN"
         | true,false -> BNDNum(0.)
         | false,true -> BNDInf(float_to_dir av)
-        | _ -> BNDNum (av /. bv)
+        | false,false -> BNDNum (av /. bv)
       end
     | BNDNum(_),BNDInf(_) ->BNDNum(0.)
     | BNDInf(adir),BNDNum(bv) -> BNDInf(derive_dir adir (float_to_dir bv))

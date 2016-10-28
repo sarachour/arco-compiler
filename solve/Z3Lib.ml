@@ -107,6 +107,14 @@ struct
       _s b;
       os ")"
       end
+    | Z3Div(a,b) ->
+      begin
+      os "(/ ";
+      _s a;
+      os " ";
+      _s b;
+      os ")"
+      end
     | Z3IfThenElse(a,b,c) ->
       begin
       os "(ite ";
@@ -248,6 +256,7 @@ struct
         fn_all (List.map (fun e -> _ast2z3 e) lst) (fun a b-> Z3Mult(a,b))
       | OpN(Sub,h::h2::t) ->
         Z3Sub(_ast2z3 h, _ast2z3 (OpN(Add,h2::t)) )
+      | Op2(Div,arg1,arg2) -> Z3Div(_ast2z3 arg1,_ast2z3 arg2)
       | Op1(Neg,arg) -> Z3Neg(_ast2z3 arg)
       | Integer(i) -> Z3Int(i)
       | Decimal(d) -> Z3Real(d)

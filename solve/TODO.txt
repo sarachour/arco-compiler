@@ -1,0 +1,3 @@
+1. Inference Variable - Recursively update undefined variable
+2. Ensure inference works for the protchip hardware model.
+3. Run solver on protchip hardware model and see what happens.

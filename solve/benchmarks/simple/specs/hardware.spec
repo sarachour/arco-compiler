@@ -66,13 +66,13 @@ comp imul
     def I(Y) map scale=A2
 
     input Z {I:mA}
-    def I(Z) mag=[0.0001,1] mA
+    def I(Z) mag=[0.5,1] mA
     def I(Z) map scale=A3
 
     output W {I:mA}
     def I(W) map scale=(A1*A2)/A3
 
-    rel I(W) = ((I(X)*I(Y))/I(Z))
+    rel I(W) = ((I(X)*I(Y))/(I(Z)))
     var I(W) = (I(W)*0.000001) shape GAUSS
 
 end 
@@ -113,7 +113,7 @@ comp deriv_iadd
     rel I(Y) =  I(YT) - K*I(Z)
     def I(Y) map scale=(A*B)
 
-    rel ddt I(Z) = (EN_F*I(X)*I(Y))- EN_B*I(P)*I(Z) init I(Z0)
+    rel ddt I(Z) = (EN_F*(I(X)+I(Y)))- EN_B*I(P)*I(Z) init I(Z0)
     var ddt I(Z) = I(Z)*0.00001 shape GAUSS
 
     def I(Z) mag = [0,1] mA
