@@ -43,6 +43,7 @@ struct
   let find_goals (tbl:gltbl) (gd:goal_data) =
     MAP.filter tbl.goals (fun id (g:goal) -> g.d = gd)
 
+
   let mk_conn_goal (tbl:gltbl) (src:wireid) (dest:wireid) =
     error "mk_conn_goal" "unimpl"
 
@@ -97,6 +98,14 @@ struct
 
   let fold_goals (type a) (tbl:gltbl) (f:goal->a->a) (r0:a) =
     MAP.fold tbl.goals (fun gid goal  r -> f goal r) r0
+
+  let get_active_goals (t:gltbl) =
+    fold_goals t (fun g lst -> if g.active then g::lst else lst) []
+
+
+ let num_active_goals (t:gltbl) =
+    List.length (get_active_goals t)
+
 
   let portprop2str wire prop =
     (SlnLib.wireid2str wire)^"<"^prop^">" 

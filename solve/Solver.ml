@@ -24,7 +24,6 @@ open SolverUtil
 open SlnLib
 open SolverSearch
 open SolverRslv
-open SolverGoalTable
 open SolverMulti
 
 

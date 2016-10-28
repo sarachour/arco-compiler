@@ -1,48 +1,108 @@
 open HWData
 open Util
 
+
+
+exception HwConnLibError of string
+
+let error n m = raise (HwConnLibError (n^":"^m))
+
+
 module HwConnLib = struct
 
   let hwcompname2str = HwCompName.hwcompname2str
 
-  let hcconn2str (c:hcconn) = match c with
+  let hwinstcoll2str (c:hwinst_coll) = match c with
     | HCCAll -> "*"
     | HCCIndiv(i) -> string_of_int i
     | HCCRange((s,e)) -> (string_of_int s)^":"^(string_of_int e)
 
-  let connid2str (c:connid):string =
-      let comp,port = c in
-      (hwcompname2str comp)^"."^port
+  let wireclass2str (c:wireclass):string =
+      (hwcompname2str c.comp)^"."^c.port
 
-  let conncstr2str (c:connid) (r:hcconn) =
-      (connid2str c)^"["^(hcconn2str r)^"]"
-
-  let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
-    let ksrc = (srccomp,srcport) and ksnk = (destcomp,destport) in
-    let _ = if MAP.has e.conns ksrc = false then
-      let _ = MAP.put e.conns ksrc (MAP.make()) in ()
+  let hwinstconn2str (c:hwinst_conn) =
+    (hwinstcoll2str c.src)^"->"^(hwinstcoll2str c.dst
+                                )
+  let mkconn (e:'a hwenv) (srccomp:hwcompname) (srcport:string)
+      (destcomp:hwcompname) (destport:string) (srcconn:hwinst_coll) (destconn:hwinst_coll) =
+    let add_to_map map key v =
+      if MAP.has map key then
+        let st=  MAP.get map key in
+        noop (MAP.put map key (v::st))
+      else
+        noop (MAP.put map key ([v]))
     in
-    let _ = if MAP.has e.conns ksnk = false  then
-      let _ = MAP.put e.conns ksnk (MAP.make()) in ()
+    let add_to_deep_map map (key1:wireclass) (key2:wireclass) (v:hwinst_conn) =
+      if MAP.has map key1 then
+        let st = MAP.get map key1 in
+        add_to_map st key2 v
+      else
+        let st = MAP.make () in
+        add_to_map st key2 v;
+        noop (MAP.put map key1 st)
     in
-    let mapsrc = MAP.get e.conns ksrc in
-    let mapsnk = MAP.get e.conns ksnk in
-    let _ = if MAP.has mapsrc ksnk = false
-      then MAP.put mapsrc ksnk (SET.make_dflt ()) else mapsrc in
-    let _ = if MAP.has mapsnk ksrc = false
-      then MAP.put mapsnk ksrc (SET.make_dflt ()) else mapsnk in
-    let setsrc = MAP.get mapsrc ksnk in
-    let setsnk = MAP.get mapsnk ksrc in
-    let _ = SET.add setsrc (srcconn,destconn) in
-    let _ = SET.add setsnk (destconn,srcconn) in
-    e
+    let srccls = {comp=srccomp;port=srcport} and dstcls = {comp=destcomp;port=destport} in
+    let inst_coll :hwinst_conn = {src=srcconn;dst=destconn} in
+    add_to_map e.conns.src2dest srccls dstcls;
+    add_to_map e.conns.dest2src srccls dstcls;
+    add_to_deep_map e.conns.inst_conns srccls dstcls inst_coll;
+    ()
+    
 
+
+
+  let get_sources (e) (destcomp:hwcompname) (destport:string) =
+   let dstcls = {comp=destcomp;port=destport} in
+   if MAP.has e.conns.dest2src dstcls then
+     MAP.get e.conns.dest2src dstcls
+   else
+     []
+
+  let get_inst_conns e (srccomp:hwcompname) (srcport:string)
+      (destcomp:hwcompname) (destport:string) =
+    let srccls = {comp=srccomp;port=srcport} and dstcls = {comp=destcomp;port=destport} in
+    let dests =
+      if MAP.has e.conns.inst_conns srccls
+      then MAP.get e.conns.inst_conns srccls
+      else
+        error "get_inst_conns" ("no source wire class in connection matrix: "^(wireclass2str srccls))
+    in
+    let insts =
+      if MAP.has dests dstcls
+      then MAP.get dests dstcls
+      else
+        error "get_inst_conns" ("no dest wire class in connection matrix: "^(wireclass2str dstcls))
+    in
+    insts
+
+  (*determine if the source dest combo is connectable*)
+  let is_connectable e (srccomp:hwcompname) (srcport:string)
+      (destcomp:hwcompname) (destport:string) =
+    let srccls = {comp=srccomp;port=srcport} and dstcls = {comp=destcomp;port=destport} in
+    if MAP.has e.conns.src2dest srccls then
+      let dests = MAP.get e.conns.src2dest srccls in
+      if LIST.has dests dstcls then
+        true
+      else
+        false
+    else
+      false
+
+  let env2str e : string =
+    let ic2str src snk insts =
+      List.fold_right (fun inst str ->
+                       str^"\n"^
+                       (wireclass2str src)^"->"^(wireclass2str snk)
+                       ^" : "^(hwinstconn2str inst)) insts ""
+    in
+    MAP.fold e.inst_conns(fun x ymap s1 ->
+        MAP.fold ymap (fun y insts s2 ->
+            s2^(ic2str x y insts)) s1)  ""
+
+  let mkenv () :avail_conn_env =
+    {src2dest = MAP.make();dest2src=MAP.make();inst_conns=MAP.make()}
 
   let mk  e cname pname prop =
-    let _ = if MAP.has e.conns (cname,pname) = false then
-      MAP.put e.conns (cname,pname) (MAP.make ())
-      else e.conns
-    in
     ()
 
 

@@ -58,7 +58,7 @@
       let cmp = HwLib.getcomp dat (c) in
       itercmp cmp None
     | CompPortConn(c,p) ->
-      let ident : connid = (c,p) in
+      let ident  = (c,p) in
       fxn ident (IToEnd 0)
     | InstConn(c,i) ->
       let cmp = HwLib.getcomp dat c in
@@ -73,7 +73,7 @@
       in
       ()
 
-  let idx2hcconn (c:hwcompname) (idx:index) : hcconn =
+  let idx2hcconn (c:hwcompname) (idx:index) : hwinst_coll=
     let comp : hwvid hwcomp = HwLib.getcomp dat c in
     let res = match idx with
     | IIndex(i) -> HCCIndiv(i)

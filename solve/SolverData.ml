@@ -140,7 +140,7 @@ type sslnctx =
   | SSlnAddRoute of ulabel
   | SSlnRmRoute of ulabel
   | SSlnAddGen of ulabel
-
+  | SSlnAddComp of hwcompinst
 
 type sgoalctx =
   | SGAddGoal of goal

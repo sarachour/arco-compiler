@@ -15,7 +15,7 @@ open MathLib
 open Search
 open SearchData
 
-open SolverGoalTable
+open SolverGoalTableFactory 
 open SolverData
 open SolverUtil
 open SlnLib 
@@ -477,8 +477,8 @@ struct
       error "get_partial_search" "no partial search tree exists"
 
   let make_new_partial_table ms vname =
-    let tbl = GoalTableLib.mktbl ms.state.env in
-    GoalTableLib.mkgoalroot tbl (fun v -> v.name == vname);
+    let tbl = GoalTableFactory.mktbl ms.state.env in
+    GoalTableFactory.mkgoalroot tbl (fun v -> v.name == vname);
     debug ("made a partial tree with "^(string_of_int (GoalLib.num_goals tbl))^" goals");
     MAP.put ms.state.partials vname tbl.search;
     ()
@@ -490,7 +490,7 @@ struct
         make_new_partial_table ms id;
         ()
     end;
-    let tbl = GoalTableLib.mktbl ms.state.env in
+    let tbl = GoalTableFactory.mktbl ms.state.env in
     (*get the current state*)
     (tbl.search <- get_partial_search ms id);
     let maybe_root = SearchLib.root tbl.search in
@@ -701,8 +701,8 @@ struct
 
   let mkmulti (env:uenv) : musearch =
     (*make a top level table with default goals*)
-    let scratch = GoalTableLib.mktbl env in
-    let _ = GoalTableLib.mkgoalroot scratch  in
+    let scratch = GoalTableFactory.mktbl env in
+    let _ = GoalTableFactory.mkgoalroot scratch  in
     (*create ordering*)
     let order = QUEUE.make () in
     MathLib.iter_vars  env.math (fun v -> order_var order v);

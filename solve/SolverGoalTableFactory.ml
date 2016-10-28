@@ -30,15 +30,8 @@ exception GoalTableError of string
 
 let error n m = raise (GoalTableError (n^":"^m))
 
-module GoalTableLib =
+module GoalTableFactory =
 struct
-
-  let get_active_goals (t:gltbl) =
-    GoalLib.fold_goals t (fun g lst -> if g.active then g::lst else lst) []
-
-  let num_active_goals (t:gltbl) =
-    List.length (get_active_goals t)
-
 
 (*
   let wrap_goal = GoalStubLib.wrap_goal

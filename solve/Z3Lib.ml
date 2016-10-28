@@ -276,10 +276,9 @@ struct
     in
     sat^"\n\n"^mdl
 
-  let use_dreal = true 
     
 
-  let exec (root:string) (stmts:z3st list) : z3sln=
+  let exec (root:string) (stmts:z3st list) use_dreal : z3sln=
     let stmts =
       if use_dreal then
         (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT]
@@ -322,7 +321,7 @@ struct
     in
     if possible_v < repl then possible_v else repl
 
-  let minimize (root:string) (stmts:z3st list) (expr:z3expr) (minbnd:float) (maxbnd:float) : z3sln=
+  let minimize (root:string) (stmts:z3st list) (expr:z3expr) (minbnd:float) (maxbnd:float) use_dreal: z3sln=
     if use_dreal then
       begin
         let minvar = "__minima__" in
@@ -347,7 +346,7 @@ struct
             debug "_minimize" (">>> DReal running with max minval = "^(string_of_float midpoint));
             let result: z3sln =
                 let min_expr = Z3Assert(Z3LTE(Z3Var(minvar),Z3Real(midpoint))) in
-                exec root ((min_decl::stmts)@[min_stmt;min_expr]) 
+                exec root ((min_decl::stmts)@[min_stmt;min_expr]) use_dreal 
             in
             match has_solution result with
             | Some(model) ->
@@ -363,7 +362,7 @@ struct
               _minimize midpoint max (depth+1) 
         in
         debug "_minimize" (">>> DReal running feasibility with no minimizer ceiling");
-        let initial_result = exec root ((min_decl::stmts)@[min_stmt]) in
+        let initial_result = exec root ((min_decl::stmts)@[min_stmt]) use_dreal in
         match has_solution initial_result with
         | Some(init_sln) ->
           let min = get_min_val (get_min_qty init_sln) maxbnd in
@@ -377,6 +376,6 @@ struct
       end
     else
       begin
-        exec root (stmts @ [Z3Minimize expr])
+        exec root (stmts @ [Z3Minimize expr]) use_dreal
       end
 end

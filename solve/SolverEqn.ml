@@ -16,7 +16,7 @@ open MathLib
 open Search
 open SearchData
 
-open SolverGoalTable
+open SolverGoalTableFactory
 open SolverData
 open SolverUtil
 open SolverRslv
@@ -27,6 +27,8 @@ open SlnLib
 
 open GoalLib
 open SolverCompLib
+
+open HWConnRslvr
 
 
 exception SolverEqnError of string
@@ -79,11 +81,9 @@ struct
         ()
       else if STRING.startswith inp "n" then
         begin
-          match SearchLib.cursor v.search with
-          | Some(cursor) ->
-            let path = SearchLib.get_path v.search cursor in
-            Printf.printf (SearchLib.steps2str 1 v.search path)
-          | None -> Printf.printf "<No Cursor>"
+            let path = SearchLib.get_path v.search (SearchLib.cursor v.search) in
+            Printf.printf "steps:\n%s\n" (SearchLib.steps2str 1 v.search path);
+            ()
         end
       else if STRING.startswith inp "@" then
         begin
@@ -311,7 +311,21 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
 *)
 
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
-    error "mark_if_solution" "unimplemented"
+    debug "[mark-if-solution] testing if solution.";
+    if GoalLib.num_active_goals v = 0 then
+      if HwConnRslvrLib.consistent v then
+        begin
+          debug "[mark-if-solution] found concrete hardware. marking as solution.";
+          noop (SearchLib.solution v.search curr)
+        end
+      else
+        begin
+          debug "[mark-if-solution] cannot concretize hardware.";
+          noop (SearchLib.deadend v.search curr v)
+        end
+    else
+      debug "[mark-if-solution] there are still goals left.";
+      ()
 (*
     let _ = _print_debug "[mark-if-solution] testing if solution." in
     let _ = SearchLib.move_cursor v.search (s,v) curr in
@@ -345,7 +359,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
             SearchLib.deadend tbl.search node tbl;
             false
           end
-        else if (GoalTableLib.num_active_goals tbl) = 0 then
+        else if (GoalLib.num_active_goals tbl) = 0 then
         begin
           (*found all goals*)
           _print_debug "[test-node-validity] found a valid solution";
@@ -387,19 +401,23 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     | NonTrivialGoal(v) -> 1. +. RAND.rand_norm()
 *)
 
+  let score_goal_trivial (g) = match g with
+    | GUnifiable(v) -> 1.
+    | _ -> 0.
+
   let best_goal_function () =
     let typ = get_glbl_string "eqn-selector-goal" in
     match typ with
-    | "trivial" -> score_goal_uniform
+    | "trivial" -> score_goal_trivial
     | _ ->
       error "best_goal_function" ("goal selector named <"^typ^"> doesn't exist")
 
   let get_best_valid_goal (v:gltbl) : goal =
     let cursor = SearchLib.cursor v.search in
-    let goals = GoalTableLib.get_active_goals v in
+    let goals = GoalLib.get_active_goals v in
     let score_goal = best_goal_function() in
     if List.length goals > 0  then
-      let _,targ_goal = LIST.max (fun x -> score_goal x) goals in
+      let _,targ_goal = LIST.max (fun (x:goal) -> score_goal x.d) goals in
       targ_goal
     else
       error "get_best_valid_goal" ("non-visited node has no goals: "^(string_of_int cursor.id))
@@ -819,7 +837,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         begin
         SearchLib.move_cursor tbl.search tbl root;
         debug "[search-tree] positioned cursor";
-        if List.length ( GoalTableLib.get_active_goals tbl ) = 0 then
+        if List.length ( GoalLib.get_active_goals tbl ) = 0 then
           begin
             mark_if_solution tbl root;
             debug "[search-tree] there are no active goals. beginning search anyway";

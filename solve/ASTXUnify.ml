@@ -13,7 +13,6 @@ open ASTUnifyData
 
 open SolverData
 open SlnLib
-open SolverGoalTable
 open SolverUtil
 
 open SolverCompLib

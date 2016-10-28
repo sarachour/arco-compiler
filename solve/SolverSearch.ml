@@ -170,6 +170,7 @@ struct
     | SSlnAddGen(label) -> SlnLib.add_generate tbl.sln_ctx label
     | SSlnAddRoute(label) -> SlnLib.add_route tbl.sln_ctx label
     | SSlnRmRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
+    | SSlnAddComp(compinst) -> SlnLib.add_comp tbl.sln_ctx compinst
     | _ -> error "apply_sln_step" "handler for step casedoes not exist"
   
   let apply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
@@ -233,6 +234,7 @@ struct
     | SSlnAddGen(label) -> SlnLib.rm_generate tbl.sln_ctx label
     | SSlnAddRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
     | SSlnRmRoute(label) -> SlnLib.add_route tbl.sln_ctx label
+    | SSlnAddComp(compinst) -> SlnLib.rm_comp tbl.sln_ctx compinst
     | _ -> error "unapply_sln_step" "handler for step casedoes not exist"
 
   let unapply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with

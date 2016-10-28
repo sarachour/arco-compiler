@@ -4,9 +4,7 @@ open SolverData
 open HWData
 open HWLib
 open MathLib
-open SolverUtil
 open Unit
-open SolverRslv
 
 open MathData
 
@@ -15,6 +13,7 @@ open AST
 exception SolverSlnError of string
 
 let error n m = raise (SolverSlnError (n^":"^m))
+
 module SlnLib =
 struct
 
@@ -29,7 +28,7 @@ struct
     {src2dest=MAP.make(); dest2src=MAP.make()}
 
   let mksln () : ('a,'b) sln =
-    {conns=mkconns(); route=mklabels(); generate=mklabels()}
+    {comps=SET.make_dflt();conns=mkconns(); route=mklabels(); generate=mklabels()}
 
 
   let mkwire (c:hwcompname) (i:int) (p:string) : wireid =
@@ -80,6 +79,14 @@ struct
                        ("cannot remove connection that doesn't exist "^(wireconn2str conn))
     | _ -> error "rm_conn" "only part of conn exists"
 
+  let add_comp (sln:usln) compinst =
+    SET.add sln.comps compinst;
+    ()
+
+  let rm_comp (sln:usln) compinst =
+    SET.rm sln.comps compinst;
+    ()
+
   let _get_mapped_wires (type a) (type b) (lbls:(a,b) labels) (name:a) =
     if MAP.has lbls.ins name then
       Some (MAP.get lbls.ins name)
@@ -125,7 +132,10 @@ struct
         else error "rm_wire_From_label" "this wire is not assigned"
       | WCollMany([]) -> error "rm_wire_from_label" "cannot have no elements in many cllection"
       in
-      noop (MAP.put m key ncoll)
+      if WCollEmpty = ncoll then
+        noop (MAP.rm m key)
+      else
+        noop (MAP.put m key ncoll)
     else
       noop (MAP.put m key (WCollOne(wire)))
 
@@ -194,6 +204,13 @@ struct
     end;
     ()
 
+  
+  let iter_conns (sln:usln) fn : unit =
+    MAP.iter sln.conns.src2dest (fun src dests ->
+        MAP.iter dests (fun dest  ->
+            fn src dest
+          )
+    )
 (*
   let hwport2wire cm port =
     match cm with
@@ -488,6 +505,7 @@ struct
     ()
 
    *)
+
   let wirecoll2str (a:wire_coll) = match a with
     | WCollEmpty -> "{}"
     | WCollOne(wire) -> wireid2str wire

@@ -16,7 +16,6 @@ open MathLib
 open Search
 open SearchData
 
-open SolverGoalTable
 open SolverData
 open SolverUtil
 
@@ -603,7 +602,7 @@ struct
     (*helper function*)
     let tbl,stmts,minexpr = to_z3prob stmts in 
     let result : z3sln =
-      Z3Lib.minimize "mapper" (stmts) minexpr 0. 1. in
+      Z3Lib.minimize "mapper" (stmts) minexpr 0. 1. true in
     if result.sat then
       begin
       match result.model with

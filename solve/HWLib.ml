@@ -22,7 +22,7 @@ struct
 
   let mkenv () = {
     units=UnitLib.mkenv();
-    conns=MAP.make();
+    conns=HwConnLib.mkenv();
     comps=MAP.make();
     props=MAP.make();
     time=None
@@ -143,9 +143,6 @@ struct
     | Some(x,v) -> print_prop x v
     | None -> os"(no time variable defined)\n"
    in
-   let print_conn src srng dst drng =
-     os ((HwConnLib.conncstr2str src srng)^"->"^(HwConnLib.conncstr2str dst drng)^"\n")
-   in
    let _ = os "==== Units ====\n" in
    let _ = UnitLib.to_buf (e.units) fb in
    let _ = os"==== Props ====\n" in
@@ -155,8 +152,7 @@ struct
    let _ = os "==== Components =====\n" in
    let _ = MAP.iter e.comps (fun k v -> print_comp v) in
    let _ = os "==== Schematic =====\n" in
-   MAP.iter e.conns (fun src dests -> MAP.iter dests (fun dest rngs ->
-       SET.iter rngs (fun (srng,drng) -> print_conn src srng dest drng)));
+   os (HwConnLib.env2str e.conns);
    ()
 
   let to_file e file =
@@ -655,21 +651,39 @@ struct
     ()
 
 
-  let is_outblock_reachable (type a) (env:a hwenv) (wire:wireid) : bool = true
+  let is_outblock_reachable (type a) (env:a hwenv) (wire:wireid) : bool = 
+    let hwvar = getvar env wire.comp.name wire.port in
+      match hwvar.knd with
+      | HWKOutput ->
+        let srcs = HwConnLib.get_sources env hwvar.comp hwvar.port in
+          let compat_inp_blocks = List.filter (fun (x:wireclass) ->
+              match x.comp with
+              | HWCmOutput(in_prop) -> in_prop = hwvar.prop
+              | _ -> false
+            ) srcs in
+          (List.length compat_inp_blocks) > 0
 
-  let is_inblock_reachable (type a) (env:a hwenv) (wire:wireid) : bool = true
+      | HWKInput ->
+        error "is_outblock_reachable" "it makes no sense to try and connect an input to an output block"
+
+
+  let is_inblock_reachable (type a) (env:a hwenv) (wire:wireid) : bool =
+    let hwvar = getvar env wire.comp.name wire.port in
+    match hwvar.knd with
+    | HWKInput ->
+      let srcs = HwConnLib.get_sources env hwvar.comp hwvar.port in
+      let compat_inp_blocks = List.filter (fun (x:wireclass) ->
+          match x.comp with
+          | HWCmInput(in_prop) -> in_prop = hwvar.prop
+          | _ -> false
+        ) srcs in
+      (List.length compat_inp_blocks) > 0
+    | HWKOutput ->
+      error "is_inblock_reachable" "it makes no sense to try and connect an output to an input block"
 
   let is_connectable (type a) (env:a hwenv)
       (srccmp:hwcompname) (srcport) (destcmp:hwcompname) (destport) : bool =
-    if MAP.has env.conns (srccmp,srcport) then
-      let dests = MAP.get env.conns (srccmp,srcport) in
-      if MAP.has dests (destcmp,destport) then
-        let insts = MAP.get dests (destcmp,destport) in
-        SET.size insts > 0
-      else
-        false
-    else
-      false
+    HwConnLib.is_connectable env srccmp srcport destcmp destport
 
   let wires_are_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool =
     is_connectable env src.comp.name src.port dest.comp.name dest.port

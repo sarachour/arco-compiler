@@ -62,13 +62,12 @@ type compid =
   | HCMLocal of hwcompname 
   | HCMGlobal of hwcompinst
 
-type hcconn =
+type hwinst_coll =
   | HCCAll
   | HCCRange of irange
   | HCCIndiv of int
 
 (*port to port*)
-type connid = hwcompname*string
 
 type wireid = {
     comp:hwcompinst;
@@ -132,13 +131,26 @@ where the generators are exclusively on input and output ports
 type conn_env = {
   src2dest: (wireid, wireid set) map;
   dest2src: (wireid, wireid set) map;
-
+}
+type wireclass= {
+    comp:hwcompname;
+    port:string;
+}
+type hwinst_conn= {
+  src: hwinst_coll;
+  dst: hwinst_coll;
+}
+type avail_conn_env = {
+  src2dest: (wireclass, wireclass list) map;
+  dest2src: (wireclass, wireclass list) map;
+  inst_conns: (wireclass, (wireclass,hwinst_conn list) map) map;
 }
 type ('a,'b) sln = {
   (*how many of each component is used *)
   mutable conns: conn_env;
   generate: ('a,'b) labels;
   route: ('a,'b) labels;
+  mutable comps: hwcompinst set;
 }
 
 
@@ -230,7 +242,7 @@ type 'a hwcomp = {
 type 'a hwenv = {
   mutable units : unt_env;
   mutable props : (string, untid set) map;
-  conns: (connid, (connid,(hcconn*hcconn) set) map) map;
+  conns: avail_conn_env;
   mutable comps : (string,'a hwcomp) map;
   mutable time : (string*(untid set)) option;
 }
