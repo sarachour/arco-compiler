@@ -321,7 +321,7 @@ struct
     | RDisableAssign(vr,rhs) ->
           "-asgn "^(vr)^"="^(ASTLib.ast2str rhs unid2str)
 
-  let step2restrict (step:rstep) =  match step with
+  let step2restrict (step:rstep) :rstep option =  match step with
           | RAddInAssign(vr,cfg) -> Some (RDisableAssign(vr,cfg.expr))
           | RAddOutAssign(vr,cfg) -> Some (RDisableAssign(vr,cfg.expr))
           | RDisableAssign(_) -> Some (step)
@@ -915,21 +915,25 @@ struct
     (* get bhvr of hardware *)
     let hwstate = env.tbl.hwstate in 
     ASTUnifySymcaml.make_symcaml_env env;
-    let ctx = mkunifyctx () in 
+    let ctx = mkunifyctx () in
+    let req_assign : (string*unid ast) ref = REF.mk ("?",Integer(0)) in
     let result = match env.tbl.target with
       | TRGMathVar(mname) ->
         begin
           let mvar = MathLib.getvar env.tbl.mstate.env mname in
           let rhs = Term(MathId(MathLib.var2mid mvar)) in
           addctx env ctx [(hwstate.target,rhs)] [];
+          REF.set req_assign (hwstate.target,rhs);
           unify_recurse env ctx
         end
       | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
         addctx env ctx[(hwstate.target,expr)] [];
+        REF.set req_assign (hwstate.target,expr);
         unify_recurse env ctx
 
       | TRGHWVar(HNPort(HWKOutput,_,_,_),expr) ->
         addctx env ctx[(hwstate.target,expr)] [];
+        REF.set req_assign (hwstate.target,expr);
         unify_recurse env ctx
       | _ -> error "unify" "unhandled"
     in
@@ -942,8 +946,14 @@ struct
       SearchLib.solution env.search slnnode;
       List.iter (fun step ->
           match ASTUnifyTree.step2restrict step with
-          | Some(restrict) ->
+          | Some(RDisableAssign(lhs,rhs)) ->
+            let init_lhs,init_rhs = REF.dr req_assign in
+            if lhs = init_lhs && rhs = init_rhs then
+              ()
+            else
+              let restrict = RDisableAssign(lhs,rhs) in
               noop (SearchLib.mknode_child_from_steps env.search env.tbl [restrict])
+          | Some(_) -> error "unify" "expected restriction steps only"
           | None -> ()
       ) steps 
 

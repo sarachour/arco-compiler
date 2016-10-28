@@ -574,9 +574,10 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
             debug (" -> found unify solution with "^(LIST.length2str rsteps)^" steps");
             rsteps_to_node tbl comp rsteps inits
         ) results;
-        debug ("[unify!] Found "^(LIST.length2str results)^" results")
+        debug ("[unify!] Found "^(LIST.length2str results)^" results");
+        List.length results
       end
-    | [] -> ()
+    | [] -> 0
 
   let unify_goal_with_conc_comp (tbl:gltbl) (ucomp:ucomp_conc) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
     let results : rstep list list = match g with
@@ -584,7 +585,17 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         ASTUnifier.unify_conc_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
       | _ -> error "unify_goal_with_comp" "unimplemented"
     in
-    ()
+    match results with
+    | h::t ->
+      begin
+        List.iter (fun rsteps ->
+            debug (" -> found unify solution with "^(LIST.length2str rsteps)^" steps");
+            rsteps_to_node tbl ucomp rsteps []
+        ) results;
+        debug ("[unify!] Found "^(LIST.length2str results)^" results");
+        List.length results
+      end
+    | [] -> 0
 
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
   let solve_unifiable_goal (tbl:gltbl) (g:unifiable_goal) =
@@ -623,7 +634,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
               begin
                 debug ("new: ["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
                        "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n"));
-                unify_goal_with_comp tbl hwcomp hwvar g;
+                let nslns = unify_goal_with_comp tbl hwcomp hwvar g in
+                REF.upd nsols (fun x -> x + nslns);
                 ()
               end
             | HWCompExisting(compinst) ->
@@ -632,7 +644,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
               debug "  [existing comp]";
                      debug ("new: ["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
                 "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n"));
-              unify_goal_with_conc_comp tbl hwcomp hwvar g;
+              let nslns = unify_goal_with_conc_comp tbl hwcomp hwvar g in
+              REF.upd nsols (fun x -> x + nslns);
               ()
               end
           end;
