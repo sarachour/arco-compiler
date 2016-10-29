@@ -342,9 +342,6 @@ struct
            (4) remove relevent match statements (use uast2mast cast in to-node)
   *)
   let rslvd_goal_to_ssteps_inexp (tbl:gltbl) (comp:ucomp_conc) (hwvar:hwvid hwportvar) (goal:goal_hw_expr) = 
-    (*the input port that the expression in the goal was over*)
-    let incomp : ucomp_conc = ConcCompLib.get_conc_comp tbl goal.wire.comp in
-    let invar : hwvid hwportvar = HwLib.comp_getvar incomp.d goal.wire.port in
     (*the output port that generates the expression after goal resolution *)
     let outwire :wireid = SlnLib.mkwire hwvar.comp comp.inst hwvar.port in
     (*the goals to remove*)
@@ -363,23 +360,21 @@ struct
   let rslvd_goal_to_ssteps_outblock (tbl:gltbl) (incomp:ucomp_conc)
       (invar:hwvid hwportvar) (outvar:hwvid hwportvar) (goal:goal_ioblock) =
     (*the output port from the goal that needs to be connected to the output block*)
-    let outcomp : ucomp_conc = ConcCompLib.get_conc_comp tbl goal.wire.comp in
-    let outvar : hwvid hwportvar = HwLib.comp_getvar outcomp.d goal.wire.port in
+    (*wires belonging to the newly created component *)
     (*the input port from the new block that generates the expression*)
+    let inwire : wireid = SlnLib.mkwire invar.comp incomp.inst invar.port in 
     (*the output port from the new block that generates the expression*)
+    let outwire : wireid = SlnLib.mkwire invar.comp incomp.inst invar.port in 
     (*the goals from the new block that generate the expression*)
     let matched_goals : (int*goal) list=
       GoalLib.find_goals tbl (GUnifiable(GUHWConnOutBlock(goal))) in
     let rm_goal_steps :sstep list=
       List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
     in
-    (*
     [
       SModSln(SSlnAddConn({dst=goal.wire;src=inwire}));
-      SModSln(SSlnAddGen(MExprLabel({})))
+      SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=goal.expr})))
     ] @ rm_goal_steps
-       *)
-    []
   (*
      this unification algorithm tries to pass through a value to a component without creating
      more instances of that value.
@@ -482,7 +477,10 @@ struct
           )
         in
         commit_results results (fun ccomp ((input,rsteps):string*rstep list) inits ->
-            error "hwconninblock" "unimplemented"
+            let invar = HwLib.comp_getvar ccomp.d input in 
+            let outvar = hwvar in 
+            ((rslvd_goal_to_ssteps_outblock tbl ccomp invar outvar hgoal) @
+                  (rsteps_to_ssteps tbl ccomp rsteps inits))
         )
 
       | GUHWConnPorts(_) -> error "unify_goal_with_comp" "conn-ports unimplemented"
