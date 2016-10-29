@@ -189,16 +189,49 @@ struct
     else
       false
 
+  let compatible_hwvar_with_inblock_extend env hv src_wire prop =
+    compatible_hwvar_with_hwexpr env hv src_wire prop (Integer(0))
+
+  (*given an output port, get the inputs that can be connected to the source wire*)
+  let get_extendable_inputs  (env:'a hwenv) (hv:'a hwportvar) (src_wire:wireid)
+      (prop:string) : hwvid list=
+      match hv.bhvr with
+      | HWBAnalog(bhvr) ->
+        begin
+            let vars = ASTLib.get_vars bhvr.rhs in
+            List.filter (fun (vr:hwvid) ->
+                match vr with
+                | HNPort(HWKInput,_,vport,vprop) ->
+                  begin
+                    let is_conn = 
+                      HwLib.is_connectable env src_wire.comp.name src_wire.port hv.comp vport
+                    in
+                    debug ("   -> port "^vport^"."^vprop^" -> connectable:"^(string_of_bool is_conn)^"\n");
+                    prop = vprop && is_conn
+                  end
+                | _ -> false
+              ) vars
+        end
+     | _ -> [] 
+
+
+  let compatible_hwvar_with_outblock_extend  (env:'a hwenv) (hv:'a hwportvar) (src_wire:wireid)
+      (prop:string) : bool =
+     (List.length (get_extendable_inputs env hv src_wire prop )) > 0 
+      
   let compatible_hwvar_with_goal tbl (hv:'a hwportvar) (v:unifiable_goal) : bool =
-    match v with
-    | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar hv mgoal.d
-    | GUHWInExprGoal(hgoal) ->
-      compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop hgoal.expr
-    | GUHWConnOutBlock(hgoal) ->
-      compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop (Integer(0))
-    | GUHWConnInBlock(hgoal) ->
-      compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop (Integer(0))
-    | _ -> error "compatible_hwvar_with_goal" "unimpl"
+    let compat : bool = match v with
+      | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar hv mgoal.d
+      | GUHWInExprGoal(hgoal) ->
+        compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop hgoal.expr
+      | GUHWConnOutBlock(hgoal) ->
+        compatible_hwvar_with_outblock_extend tbl.env.hw hv hgoal.wire hgoal.prop 
+      | GUHWConnInBlock(hgoal) ->
+        compatible_hwvar_with_inblock_extend tbl.env.hw hv hgoal.wire hgoal.prop 
+      | _ -> error "compatible_hwvar_with_goal" "unimpl"
+    in
+    debug ((HwLib.hwcompname2str hv.comp)^"."^hv.port^" -> "^(string_of_bool compat)^"\n");
+    compat
 
   let compatible_comp_with_goal tbl (c:ucomp) (mv:unifiable_goal) : 'a hwportvar list =
     let comp_vars : 'a hwportvar list = HwLib.comp_fold_outs c.d (fun hv lst ->
@@ -210,7 +243,8 @@ struct
 
   let compatible_used_comp_with_goal tbl (c:ucomp_conc) (mv:unifiable_goal) : 'a hwportvar list =
     let comp_vars : 'a hwportvar list = HwLib.comp_fold_outs c.d (fun hv lst ->
-        if compatible_hwvar_with_goal tbl hv mv && ConcCompLib.is_conc c.cfg hv.port
+        if compatible_hwvar_with_goal tbl hv mv &&
+           ConcCompLib.is_conc c.cfg hv.port = false
         then hv::lst else lst
       ) []
     in
