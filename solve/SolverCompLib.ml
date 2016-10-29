@@ -214,23 +214,32 @@ struct
           end
      | _ -> [] 
 
-
-  let compatible_hwvar_with_outblock_extend  (env:'a hwenv) cfg (hv:'a hwportvar) (src_wire:wireid)
-      (prop:string) : bool =
+  let get_extendable_inputs_for_outblock_goal  (env:'a hwenv) cfg (hv:'a hwportvar) (src_wire:wireid)
+      (prop:string) : hwvid list =
     let test_input (vport:string) (vprop:string) =
       let is_conn =
         HwLib.is_connectable env src_wire.comp.name src_wire.port hv.comp vport
       in
       prop = vprop && is_conn
     in
-    (List.length (get_extendable_inputs env cfg hv test_input)) > 0
+    get_extendable_inputs env cfg hv test_input
 
-  let compatible_hwvar_with_inblock_extend env cfg hv (dest_wire:wireid) (prop:string) =
+
+  let get_extendable_inputs_for_inblock_goal env cfg hv (dest_wire:wireid) (prop:string) =
     let test_input (vport:string) (vprop:string) =
       true
     in
+    get_extendable_inputs env cfg hv test_input
+
+
+  let compatible_hwvar_with_outblock_extend  (env:'a hwenv) cfg (hv:'a hwportvar) (src_wire:wireid)
+      (prop:string) : bool =
+    (List.length (get_extendable_inputs_for_outblock_goal env cfg hv src_wire prop)) > 0
+
+  let compatible_hwvar_with_inblock_extend env cfg hv (dest_wire:wireid) (prop:string) =
     let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
-    (List.length (get_extendable_inputs env cfg hv test_input)) > 0 && is_conn
+    (List.length (get_extendable_inputs_for_inblock_goal env cfg hv dest_wire prop)) > 0
+    && is_conn && hv.prop = prop
 
      
   let compatible_hwvar_with_goal tbl cfg (hv:'a hwportvar) (v:unifiable_goal) : bool =
