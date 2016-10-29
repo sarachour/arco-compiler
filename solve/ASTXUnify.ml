@@ -359,16 +359,16 @@ struct
       | HwId(HNPort(_,HCMGlobal(hname),hwport,_)) -> true
       | _ -> false
 
-    let mk_conccomp_search (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp_conc) (hvar:string) =
+    let mk_comp_search (hwenv:hwvid hwenv) (menv:mid menv) (comp:hwvid hwcomp) (inst) (cfg:hwcompcfg) (hvar:string) =
       let search : (rstep, rtbl) ssearch =
         SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str)
       in
       let hw_st : hwcomp_state = {
         env=hwenv;
-        comp=comp.d;
-        inst=Some(comp.inst);
+        comp=comp;
+        inst=inst;
         target=hvar;
-        cfg=comp.cfg;
+        cfg=cfg;
         disabled=MAP.make();
       } in
       let math_st : math_state = {
@@ -393,41 +393,7 @@ struct
         search=search;
       }
 
-  let mk_newcomp_search  (hwenv:hwvid hwenv) (menv:mid menv) (comp:ucomp) (hvar:string) =
-    let search : (rstep, rtbl) ssearch =
-      SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str)
-    in
-    let hw_st : hwcomp_state = {
-      env=hwenv;
-      comp=comp.d;
-      inst=None;
-      target=hvar;
-      cfg=ConcCompLib.mkhwcompcfg ();
-      disabled=MAP.make();
-    } in
-    let math_st : math_state = {
-      env=menv;
-      solved=[];
-    } in
-    let sym_st : symcaml_env = {
-      s=SymCaml.init();
-      cnv= ASTUnifySymcaml.unid2symvar;
-      icnv= ASTUnifySymcaml.symvar2unid;
-      is_wildcard = is_wildcard hw_st;
-    } in
-    SymCaml.clear sym_st.s;
-    let tbl : rtbl = {
-      symenv = sym_st;
-      hwstate = hw_st;
-      mstate = math_st;
-      target=TRGNone;
-    } in
-    {
-      tbl=tbl;
-      search=search;
-    }
-
-  let init_root st =
+  let init_root st init_steps =
     match st.tbl.target with
     | TRGMathVar(name) ->
       let mvar = MathLib.getvar st.tbl.mstate.env name in
@@ -440,12 +406,13 @@ struct
         let icport,_ = h.ic in
         let iccfg = ConcCompLib.mkvarcfg (number_to_ast s.ic) in 
         let ic_asgn = RAddInAssign(icport,iccfg) in
-        SearchLib.setroot st.search st.tbl [ic_asgn;asgn]
+        SearchLib.setroot st.search st.tbl (ic_asgn::asgn::init_steps)
       | _ -> 
-        SearchLib.setroot st.search st.tbl [asgn]
+        SearchLib.setroot st.search st.tbl (asgn::init_steps)
       end
-    | TRGHWVar(hwid,_) ->
-      SearchLib.setroot st.search st.tbl []
+    | TRGHWVar(hwexpr) ->
+      let asgn = RAddOutAssign(st.tbl.hwstate.target, {expr=hwexpr}) in
+      SearchLib.setroot st.search st.tbl (asgn::init_steps)
     | TRGNone -> error "init_root" "must have a target at root creation"
       
   let rec get_best_valid_node (type a) (sr:runify) (root:(rnode) option)  : (rnode) option =
@@ -886,7 +853,9 @@ struct
                 | UNIMathExpr(expr) ->
                   unify_math_expr st ent.port expr 
                 | UNIMathVar(v) ->
-                  unify_math_var st ent.port v
+                  begin
+                    unify_math_var st ent.port v
+                  end
                 | UNIUnunifiable(_) ->
                   error "maybe_assigns" "cannot see ununifiable here"
           in
@@ -925,15 +894,11 @@ struct
           REF.set req_assign (hwstate.target,rhs);
           unify_recurse env ctx
         end
-      | TRGHWVar(HNPort(HWKInput,_,_,_),expr) ->
+      | TRGHWVar(expr) ->
         addctx env ctx[(hwstate.target,expr)] [];
         REF.set req_assign (hwstate.target,expr);
         unify_recurse env ctx
 
-      | TRGHWVar(HNPort(HWKOutput,_,_,_),expr) ->
-        addctx env ctx[(hwstate.target,expr)] [];
-        REF.set req_assign (hwstate.target,expr);
-        unify_recurse env ctx
       | _ -> error "unify" "unhandled"
     in
     match result with
@@ -1056,39 +1021,31 @@ struct
         LIST.uniq steps
       ) results
 
-  let unify_with_hwvar (env:runify) (hvar:hwvid) (hexpr: unid ast) =
-    env.tbl.target <- TRGHWVar(hvar,hexpr);
-    ASTUnifyTree.init_root env;
+  let unify_with_hwvar (env:runify) (hexpr: unid ast) steps =
+    env.tbl.target <- TRGHWVar(hexpr);
+    ASTUnifyTree.init_root env steps;
     expand_params_tree env;
     solve env 5;
     get_solutions env 
 
-  let unify_with_mvar (env:runify) (mvar:string) =
+  let unify_with_mvar (env:runify) (mvar:string) steps =
     env.tbl.target <- TRGMathVar(mvar);
-    ASTUnifyTree.init_root env;
+    ASTUnifyTree.init_root env steps;
     expand_params_tree env;
     solve env 5;
     get_solutions env 
 
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
-      (comp:ucomp) (hvar:string) (h2var:hwvid) (hexpr:unid ast) =
-    let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
-    unify_with_hwvar uenv h2var hexpr
+      (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
+      (hvar:string) (hexpr:unid ast) (steps:rstep list)=
+    let uenv :runify = ASTUnifyTree.mk_comp_search hwenv menv comp inst cfg hvar in
+    unify_with_hwvar uenv hexpr steps
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv)
-      (comp:ucomp) (hvar:string) (mvar:string) =
-    let uenv = ASTUnifyTree.mk_newcomp_search hwenv menv comp hvar in
-    unify_with_mvar uenv mvar
-
-  let unify_conc_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
-      (comp:ucomp_conc) (hvar:string) (hwvar:hwvid) (hexpr:unid ast) =
-    let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    unify_with_hwvar uenv hwvar hexpr  
-
-  let unify_conc_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv)
-      (comp:ucomp_conc) (hvar:string) (mvar:string) =
-    let uenv = ASTUnifyTree.mk_conccomp_search hwenv menv comp hvar in
-    unify_with_mvar uenv mvar 
+      (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
+      (hvar:string) (mvar:string) =
+    let uenv :runify = ASTUnifyTree.mk_comp_search hwenv menv comp inst cfg hvar in
+    unify_with_mvar uenv mvar []
 
 end

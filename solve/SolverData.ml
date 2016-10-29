@@ -78,15 +78,15 @@ type goal_conn = wireconn
 type goal_ioblock = {
   wire: wireid;
   prop: string;
- 
+  expr: mid ast; 
 }
 (*port input goals*)
 type unifiable_goal =
   | GUMathGoal of goal_math
   | GUHWInExprGoal of goal_hw_expr
   | GUHWConnPorts of goal_conn 
-  | GUHWConnInBlock of goal_hw_expr
-  | GUHWConnOutBlock of goal_hw_expr
+  | GUHWConnInBlock of goal_ioblock
+  | GUHWConnOutBlock of goal_ioblock
 (*
 not necessarily a satisfiable goal
 *)

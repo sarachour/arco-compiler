@@ -49,12 +49,12 @@ struct
 
   let mk_inblock_goal (tbl:gltbl) (src:wireid) (expr:mid ast) =
     let hvar = HwLib.getvar tbl.env.hw src.comp.name src.port in
-    let data = {wire=src;prop=hvar.prop;expr=expr} in 
+    let data : goal_ioblock = {wire=src;prop=hvar.prop;expr=expr} in 
     mk_goal tbl (GUnifiable(GUHWConnInBlock data))
 
   let mk_outblock_goal (tbl:gltbl) (src:wireid) (expr:mid ast)=
     let hvar = HwLib.getvar tbl.env.hw src.comp.name src.port in
-    let data = {wire=src;prop=hvar.prop;expr=expr} in 
+    let data :goal_ioblock = {wire=src;prop=hvar.prop;expr=expr} in 
     mk_goal tbl (GUnifiable(GUHWConnOutBlock data))
 
   let mk_hexpr_goal (tbl:gltbl) (src:wireid) (expr:mid ast)=
@@ -122,9 +122,9 @@ struct
       | GUnifiable(GUHWInExprGoal(dat)) ->
         ("[EXPR]")^(portprop2str dat.wire dat.prop)^"="^(MathLib.mast2str dat.expr)
       | GUnifiable(GUHWConnInBlock(dat)) ->
-        "[IN] "^(portprop2str dat.wire dat.prop)
+        "[IN] "^(portprop2str dat.wire dat.prop)^"="^(MathLib.mast2str dat.expr)
       | GUnifiable(GUHWConnOutBlock(dat)) ->
-        "[OUT] "^(portprop2str dat.wire dat.prop)
+        "[OUT] "^(portprop2str dat.wire dat.prop)^"="^(MathLib.mast2str dat.expr)
       | GUnifiable(GUHWConnPorts(dat)) ->
         "[CONN] "^(SlnLib.wireconn2str dat)
       | _ -> "goal2str: unimplemented"

@@ -341,96 +341,166 @@ struct
            (3) copy input port assignment to output port
            (4) remove relevent match statements (use uast2mast cast in to-node)
   *)
-  let rslvd_hwingoal_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (hwvar:hwvid hwportvar) (hgoal:goal_hw_expr) = 
-    let incomp : ucomp_conc = ConcCompLib.get_conc_comp tbl hgoal.wire.comp in
-    let invar : hwvid hwportvar = HwLib.comp_getvar incomp.d hgoal.wire.port in
+  let rslvd_goal_to_ssteps_inexp (tbl:gltbl) (comp:ucomp_conc) (hwvar:hwvid hwportvar) (goal:goal_hw_expr) = 
+    (*the input port that the expression in the goal was over*)
+    let incomp : ucomp_conc = ConcCompLib.get_conc_comp tbl goal.wire.comp in
+    let invar : hwvid hwportvar = HwLib.comp_getvar incomp.d goal.wire.port in
+    (*the output port that generates the expression after goal resolution *)
     let outwire :wireid = SlnLib.mkwire hwvar.comp comp.inst hwvar.port in
-    let inid : hwvid = HwLib.var2id invar (Some incomp.inst) in
+    (*the goals to remove*)
     let matched_goals : (int*goal) list=
-      GoalLib.find_goals tbl (GUnifiable(GUHWInExprGoal(hgoal))) in
+      GoalLib.find_goals tbl (GUnifiable(GUHWInExprGoal(goal))) in
     let rm_goal_steps :sstep list=
       List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
     in
     [
-      SModSln(SSlnAddConn({src=outwire;dst=hgoal.wire}));
+      SModSln(SSlnAddConn({src=outwire;dst=goal.wire}));
       (*SModSln(SSlnRmRoute(MExprLabel({wire=hgoal.wire;expr=hgoal.expr})));*)
-      SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=hgoal.expr})))
+      SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=goal.expr})))
     ] @ rm_goal_steps
 
-  let unify_goal_with_comp (tbl:gltbl) (ucomp:ucomp) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
-    let results : rstep list list= match g with
+
+  let rslvd_goal_to_ssteps_outblock (tbl:gltbl) (incomp:ucomp_conc)
+      (invar:hwvid hwportvar) (outvar:hwvid hwportvar) (goal:goal_ioblock) =
+    (*the output port from the goal that needs to be connected to the output block*)
+    let outcomp : ucomp_conc = ConcCompLib.get_conc_comp tbl goal.wire.comp in
+    let outvar : hwvid hwportvar = HwLib.comp_getvar outcomp.d goal.wire.port in
+    (*the input port from the new block that generates the expression*)
+    (*the output port from the new block that generates the expression*)
+    (*the goals from the new block that generate the expression*)
+    let matched_goals : (int*goal) list=
+      GoalLib.find_goals tbl (GUnifiable(GUHWConnOutBlock(goal))) in
+    let rm_goal_steps :sstep list=
+      List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
+    in
+    (*
+    [
+      SModSln(SSlnAddConn({dst=goal.wire;src=inwire}));
+      SModSln(SSlnAddGen(MExprLabel({})))
+    ] @ rm_goal_steps
+       *)
+    []
+  (*
+     this unification algorithm tries to pass through a value to a component without creating
+     more instances of that value.
+  *)
+  let pass_through_unify tbl (comp:hwvid hwcomp) (cfg:hwcompcfg)
+      (inputs:hwvid list) (hwvar:hwvid hwportvar) (extend:goal_ioblock)
+      (unify:rstep list->rstep list list) : (string*rstep list) list =
+    let expr = {expr=mast2uast extend.expr} in
+    let resultq = QUEUE.make () in
+    let enq i lst = List.iter (fun x -> noop (QUEUE.enqueue resultq (i,x))) lst in
+    let mkrstep (sel:string) rest (x:hwvid) = match x with
+      | HNPort(_,_,port,_) ->
+        if port != sel then
+          RDisableAssign(port,expr.expr)::rest
+        else
+          rest
+      | _ -> error "pass_through_unify" "a parameter is not a viable input port"
+    in
+    let mkrsteps (sel:hwvid) = match sel with
+      | HNPort(_,_,port,_) -> port,(List.fold_left (fun rest x -> mkrstep port rest x) [] inputs)
+      | HNParam(_) -> error "pass_through_unify" "a parameter is not a viable input port"
+    in
+    List.iter (fun inp ->
+        let port,rsteps = mkrsteps inp in
+        let results = unify rsteps in
+        enq port results
+      )
+      inputs;
+    let results = QUEUE.to_list resultq in
+    QUEUE.destroy resultq;
+    results
+
+  (*HACK a super grody hack where we add zero to make it so the term pattern matching
+  doesn't work*)
+  let hackit x = match x with
+    | Term(_) -> OpN(Add,[x;Integer(0)])
+    | _ -> x
+
+  (* Component unification algorithm*)
+  let __unify_goal_with_comp (tbl:gltbl) (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
+      (hwvar:hwvid hwportvar) (g:unifiable_goal)
+      (initialize:unit->ucomp_conc*sstep list) =
+
+    let commit_results results fxn =
+      let comp,init = initialize () in
+      List.iter (fun (rsteps) ->
+          let ssteps = fxn comp rsteps init in
+          debug ("    -> converted to "^(LIST.length2str ssteps)^" ssteps");
+          SearchLib.mknode_child_from_steps tbl.search tbl (ssteps);
+          ()
+      ) results;
+      List.length results
+    in
+    match g with
       | GUMathGoal(mgoal) ->
-        ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
+        begin
+          let results =
+            ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math
+              comp cfg inst hwvar.port mgoal.d.name
+          in
+          commit_results results (fun ccomp (rsteps) inits ->
+              rsteps_to_ssteps tbl ccomp rsteps inits
+            )
+        end
 
       | GUHWInExprGoal(hgoal) ->
-        ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math ucomp hwvar.port
-            (SolverCompLib.wireid2hwid tbl hgoal.wire) (mast2uast hgoal.expr)
-      | GUHWConnInBlock(_) -> error "unify_goal_with_comp" "conn-in unimplemented"
-      | GUHWConnOutBlock(_) -> error "unify_goal_with_comp" "conn-out unimplemented"
+        let results =
+          ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
+            comp cfg inst hwvar.port (hackit (mast2uast hgoal.expr)) []
+        in
+        commit_results results (fun ccomp rsteps inits ->
+            ((rslvd_goal_to_ssteps_inexp tbl ccomp hwvar hgoal) @
+                  (rsteps_to_ssteps tbl ccomp rsteps inits))
+          )
+
+      | GUHWConnInBlock(hgoal) ->
+        let inputs =
+          SolverCompLib.get_extendable_inputs_for_inblock_goal tbl.env.hw ConcCompLib.newcfg
+            hwvar hgoal.wire hgoal.prop
+        in
+        let results = pass_through_unify tbl comp cfg inputs hwvar hgoal (fun inits ->
+            ASTUnifier.unify_comp_with_hwvar
+              tbl.env.hw tbl.env.math comp cfg inst
+              hwvar.port (hackit (mast2uast hgoal.expr)) inits
+          )
+        in
+        commit_results results (fun ccomp (input,rsteps) inits ->
+            error "hwconninblock" "unimplemented"
+          )
+
+      | GUHWConnOutBlock(hgoal) ->
+        let inputs =
+          SolverCompLib.get_extendable_inputs_for_outblock_goal tbl.env.hw ConcCompLib.newcfg
+            hwvar hgoal.wire hgoal.prop
+        in
+        let results = pass_through_unify tbl comp cfg inputs hwvar hgoal (fun inits ->
+            ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
+              comp cfg inst hwvar.port
+              (hackit (mast2uast hgoal.expr)) inits 
+          )
+        in
+        commit_results results (fun ccomp ((input,rsteps):string*rstep list) inits ->
+            error "hwconninblock" "unimplemented"
+        )
+
       | GUHWConnPorts(_) -> error "unify_goal_with_comp" "conn-ports unimplemented"
-    in
-    match results with
-    | h::t ->
-      begin
-        (*create a concrete comp*)
-        let comp : ucomp_conc = SolverCompLib.mk_conc_comp tbl ucomp.d.name in
-        let inits = [SModCompCtx(SCMakeConcComp(comp))] in
-        List.iter (fun rsteps ->
-            debug (" -> found unify solution with "^(LIST.length2str rsteps)^" steps");
-            begin
-              let steps : sstep list =
-                match g with
-                | GUMathGoal(mgoal) -> rsteps_to_ssteps tbl comp rsteps inits
-                | GUHWInExprGoal(hgoal) ->
-                  ((rslvd_hwingoal_to_ssteps tbl comp hwvar hgoal) @
-                  (rsteps_to_ssteps tbl comp rsteps inits))
-                | _ -> error "unify_goal_with_comp" "rstep->sstep conversion unimplemented"
-              in
-              debug ("    -> converted to "^(LIST.length2str steps)^" ssteps");
-              SearchLib.mknode_child_from_steps tbl.search tbl (steps);
-              ()
-            end
-          ) results;
-        debug ("[unify!] Found "^(LIST.length2str results)^" results");
-        List.length results
-      end
-    | [] -> 0
 
+  let unify_goal_with_new_comp (tbl:gltbl) (ucomp:ucomp) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
+    let initialize (type a) () : ucomp_conc*sstep list=
+      let comp : ucomp_conc = SolverCompLib.mk_conc_comp tbl ucomp.d.name in
+      let inits = [SModCompCtx(SCMakeConcComp(comp))] in
+      comp,inits
+    in
+    __unify_goal_with_comp tbl ucomp.d (ConcCompLib.mkhwcompcfg ()) None hwvar g initialize
+
+  
   let unify_goal_with_conc_comp (tbl:gltbl) (ucomp:ucomp_conc) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
-    let results : rstep list list = match g with
-      | GUMathGoal(mgoal) ->
-        ASTUnifier.unify_conc_comp_with_mvar tbl.env.hw tbl.env.math ucomp hwvar.port mgoal.d.name
-      | GUHWInExprGoal(hgoal) ->
-        ASTUnifier.unify_conc_comp_with_hwvar tbl.env.hw tbl.env.math ucomp hwvar.port
-          (SolverCompLib.wireid2hwid tbl hgoal.wire) (mast2uast hgoal.expr)
-      | GUHWConnInBlock(_) -> error "unify_goal_with_conc_comp" "conn-in unimplemented"
-      | GUHWConnOutBlock(_) -> error "unify_goal_with_conc_comp" "conn-out unimplemented"
-      | GUHWConnPorts(_) -> error "unify_goal_with_conc_comp" "conn-ports unimplemented"
-      | _ -> error "unify_goal_with_conc_comp" "unimplemented"
+    let initialize (type a) () : ucomp_conc*sstep list=
+      ucomp,[]
     in
-    match results with
-    | h::t ->
-      begin
-        List.iter (fun rsteps ->
-            debug (" -> found unify solution with "^(LIST.length2str rsteps)^" steps");
-            begin
-             let steps = match g with
-              | GUMathGoal(_) -> rsteps_to_ssteps tbl ucomp rsteps []
-              | GUHWInExprGoal(hgoal) ->
-                  ((rslvd_hwingoal_to_ssteps tbl ucomp hwvar hgoal) @
-                  (rsteps_to_ssteps tbl ucomp rsteps []))
-
-              | _ -> error "unify_goal_with_conc_comp" "rstep->sstep conversion unimplemented"
-             in
-             SearchLib.mknode_child_from_steps tbl.search tbl (steps);
-            ()
-            end
-        ) results;
-        debug ("[unify!] Found "^(LIST.length2str results)^" results");
-        List.length results
-      end
-    | [] -> 0
-
+    __unify_goal_with_comp tbl ucomp.d ucomp.cfg None hwvar g initialize
 
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
 
@@ -472,7 +542,7 @@ struct
               begin
                 debug ("new: ["^(string_of_int prio)^"] <"^(HwLib.hwcompname2str hwcomp.d.name)^
                        "> "^(HwLib.hwportvar2str hwvar hwid2str^"\n"));
-                let nslns = unify_goal_with_comp tbl hwcomp hwvar g in
+                let nslns = unify_goal_with_new_comp tbl hwcomp hwvar g in
                 REF.upd nsols (fun x -> x + nslns);
                 ()
               end

@@ -14,10 +14,10 @@ exception SearchException of (string)
 let error n msg = raise (SearchException(n^": "^msg))
 
 
-let _print_debug = print_debug 4 "search"
-let debug = print_debug 4 "search"
-let _menu = menu 4
-let _print_inter = print_inter 4
+let _print_debug = print_debug 5 "search"
+let debug = print_debug 5 "search"
+let _menu = menu 5
+let _print_inter = print_inter 5
 
 
 module SStatLib =

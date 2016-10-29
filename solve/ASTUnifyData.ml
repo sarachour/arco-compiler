@@ -41,7 +41,7 @@ type math_state = {
 
 type unify_targ =
   | TRGMathVar of string
-  | TRGHWVar of hwvid*(unid ast)
+  | TRGHWVar of (unid ast)
   | TRGNone
 
 (*the dynamics must match*)
