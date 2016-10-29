@@ -30,6 +30,8 @@ struct
       mapvars = MAP.make();
     }
 
+  let newcfg = mkhwcompcfg ()
+
   let mkvarcfg (expr:unid ast) : hwvarcfg =
     {expr=expr}
 
@@ -40,6 +42,8 @@ struct
     MAP.has cfg.inps p ||
     MAP.has cfg.outs p ||
     MAP.has cfg.pars p
+
+  let is_abs x y = (is_conc x y) = false
 
   let _conc_map mp (p:string) (v:'a) =
     MAP.put mp p v;
@@ -166,21 +170,21 @@ struct
 
   let grade_hwvar_with_goal (c:'a hwcomp) (hv:'a hwportvar) (m:unifiable_goal) = 0
 
-  let compatible_hwvar_with_mvar (hv:'a hwportvar) (v:mid mvar) : bool =
+  let compatible_hwvar_with_mvar cfg (hv:'a hwportvar) (v:mid mvar) : bool =
     match hv.bhvr, v.bhvr with
-    | HWBAnalogState(_),MBhvStateVar(_) -> true
-    | HWBAnalog(_),MBhvVar(_) -> true
+    | HWBAnalogState(_),MBhvStateVar(_) -> ConcCompLib.is_abs cfg hv.port
+    | HWBAnalog(_),MBhvVar(_) -> ConcCompLib.is_abs cfg hv.port
     | _,MBhvInput -> error "compatible_hwvar_with_mvar" "cannot unify input"
     | _,MBhvUndef-> error "compatible_hwvar_with_mvar" "cannot unify undefined"
     | _ -> false
 
-  let compatible_hwvar_with_hwexpr (env:'a hwenv) (hv:'a hwportvar) (dest_wire:wireid)
+  let compatible_hwvar_with_hwexpr (env:'a hwenv) cfg (hv:'a hwportvar) (dest_wire:wireid)
       (prop:string) (expr:'b ast) : bool =
     if hv.prop = prop then
       if HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port then
         begin
           match hv.bhvr with
-          | HWBAnalog(_) -> true
+          | HWBAnalog(_) -> ConcCompLib.is_abs cfg hv.port
           | _ -> false
         end
       else
@@ -189,45 +193,55 @@ struct
     else
       false
 
-  let compatible_hwvar_with_inblock_extend env hv src_wire prop =
-    compatible_hwvar_with_hwexpr env hv src_wire prop (Integer(0))
+  
+   (*given an output port, get the inputs that can be connected to the source wire
+    that are currently not configured*)
 
-  (*given an output port, get the inputs that can be connected to the source wire*)
-  let get_extendable_inputs  (env:'a hwenv) (hv:'a hwportvar) (src_wire:wireid)
-      (prop:string) : hwvid list=
+  let get_extendable_inputs  (env:'a hwenv) cfg (hv:'a hwportvar) (valid_input:string->string->bool) : hwvid list=
       match hv.bhvr with
       | HWBAnalog(bhvr) ->
-        begin
-            let vars = ASTLib.get_vars bhvr.rhs in
-            List.filter (fun (vr:hwvid) ->
-                match vr with
-                | HNPort(HWKInput,_,vport,vprop) ->
-                  begin
-                    let is_conn = 
-                      HwLib.is_connectable env src_wire.comp.name src_wire.port hv.comp vport
-                    in
-                    debug ("   -> port "^vport^"."^vprop^" -> connectable:"^(string_of_bool is_conn)^"\n");
-                    prop = vprop && is_conn
-                  end
-                | _ -> false
-              ) vars
-        end
+        if ConcCompLib.is_conc cfg hv.port then
+          []
+        else
+          begin
+              let vars = ASTLib.get_vars bhvr.rhs in
+              List.filter (fun (vr:hwvid) ->
+                  match vr with
+                  | HNPort(HWKInput,_,vport,vprop) ->
+                    valid_input vport vprop
+                  | _ -> false
+                ) vars
+          end
      | _ -> [] 
 
 
-  let compatible_hwvar_with_outblock_extend  (env:'a hwenv) (hv:'a hwportvar) (src_wire:wireid)
+  let compatible_hwvar_with_outblock_extend  (env:'a hwenv) cfg (hv:'a hwportvar) (src_wire:wireid)
       (prop:string) : bool =
-     (List.length (get_extendable_inputs env hv src_wire prop )) > 0 
-      
-  let compatible_hwvar_with_goal tbl (hv:'a hwportvar) (v:unifiable_goal) : bool =
+    let test_input (vport:string) (vprop:string) =
+      let is_conn =
+        HwLib.is_connectable env src_wire.comp.name src_wire.port hv.comp vport
+      in
+      prop = vprop && is_conn
+    in
+    (List.length (get_extendable_inputs env cfg hv test_input)) > 0
+
+  let compatible_hwvar_with_inblock_extend env cfg hv (dest_wire:wireid) (prop:string) =
+    let test_input (vport:string) (vprop:string) =
+      true
+    in
+    let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
+    (List.length (get_extendable_inputs env cfg hv test_input)) > 0 && is_conn
+
+     
+  let compatible_hwvar_with_goal tbl cfg (hv:'a hwportvar) (v:unifiable_goal) : bool =
     let compat : bool = match v with
-      | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar hv mgoal.d
+      | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar cfg hv mgoal.d
       | GUHWInExprGoal(hgoal) ->
-        compatible_hwvar_with_hwexpr tbl.env.hw hv hgoal.wire hgoal.prop hgoal.expr
+        compatible_hwvar_with_hwexpr tbl.env.hw cfg hv hgoal.wire hgoal.prop hgoal.expr
       | GUHWConnOutBlock(hgoal) ->
-        compatible_hwvar_with_outblock_extend tbl.env.hw hv hgoal.wire hgoal.prop 
+        compatible_hwvar_with_outblock_extend tbl.env.hw cfg hv hgoal.wire hgoal.prop 
       | GUHWConnInBlock(hgoal) ->
-        compatible_hwvar_with_inblock_extend tbl.env.hw hv hgoal.wire hgoal.prop 
+        compatible_hwvar_with_inblock_extend tbl.env.hw cfg hv hgoal.wire hgoal.prop 
       | _ -> error "compatible_hwvar_with_goal" "unimpl"
     in
     debug ((HwLib.hwcompname2str hv.comp)^"."^hv.port^" -> "^(string_of_bool compat)^"\n");
@@ -235,7 +249,7 @@ struct
 
   let compatible_comp_with_goal tbl (c:ucomp) (mv:unifiable_goal) : 'a hwportvar list =
     let comp_vars : 'a hwportvar list = HwLib.comp_fold_outs c.d (fun hv lst ->
-        if compatible_hwvar_with_goal tbl hv mv
+        if compatible_hwvar_with_goal tbl ConcCompLib.newcfg hv mv
         then hv::lst else lst
       ) []
     in
@@ -243,8 +257,7 @@ struct
 
   let compatible_used_comp_with_goal tbl (c:ucomp_conc) (mv:unifiable_goal) : 'a hwportvar list =
     let comp_vars : 'a hwportvar list = HwLib.comp_fold_outs c.d (fun hv lst ->
-        if compatible_hwvar_with_goal tbl hv mv &&
-           ConcCompLib.is_conc c.cfg hv.port = false
+        if compatible_hwvar_with_goal tbl c.cfg hv mv 
         then hv::lst else lst
       ) []
     in
