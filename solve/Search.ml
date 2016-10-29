@@ -14,9 +14,10 @@ exception SearchException of (string)
 let error n msg = raise (SearchException(n^": "^msg))
 
 
-let _print_debug = print_debug 2 "search"
-let _menu = menu 2
-let _print_inter = print_inter 2
+let _print_debug = print_debug 4 "search"
+let debug = print_debug 4 "search"
+let _menu = menu 4
+let _print_inter = print_inter 4
 
 
 module SStatLib =
@@ -112,7 +113,9 @@ struct
 
   let steps2str (type a) (type b) (indent: int) (sr:(a,b)ssearch) (lst:a list) : string =
     let spcs = STRING.repeat "  " indent  in
-    List.fold_right (fun x r -> r^spcs^" "^(sr.tostr x)^"\n") lst ""
+    let sort_steps = List.sort (sr.order) lst in
+    (*move from beginning to end of list*)
+    List.fold_left (fun r x -> r^spcs^" "^(sr.tostr x)^"\n") "" sort_steps
 
   let _stepnode2str (type a) (type b) (indent: int) (sr:(a,b) ssearch) (n:a snode) =
     let spcs = STRING.repeat "  " indent  in
@@ -196,11 +199,15 @@ struct
     ()
 
   let apply_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (st:a list) =
-    let _ = List.iter (fun x -> let _ = sr.apply env x in ()) st in
+    let steps = List.sort (sr.order) st in
+    (*move from beginning to end of list*)
+    let _ = List.fold_left (fun () x -> let _ = sr.apply env x in ()) () steps in
     ()
 
   let unapply_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (st:a list) =
-    let _ = List.iter (fun x -> let _ = sr.unapply env x in ()) (st) in
+    let steps = List.sort (sr.order) st in
+    (*move from end to beginning of list*)
+    let _ = List.fold_right (fun x ()  -> let _ = sr.unapply env x in ()) steps () in
     ()
 
   let has_child (type a) (type b) (sr:(a,b) ssearch) (s:a snode) =
@@ -215,9 +222,10 @@ struct
     let _ = TREE.rmnode sr.tree n in
     let _ = SStatLib.rm sr.st n in
     sr
+
   let apply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
-    let steps = List.sort (sr.order) node.s in
-    let nenv = List.fold_right (fun x b -> let nb = sr.apply b x in nb) steps env in
+    debug ("== apply node "^(string_of_int node.id)^" ===\n"^(steps2str 1 sr node.s)^"\n");
+    let nenv = List.fold_left (fun b x -> let nb = sr.apply b x in nb) env node.s in
     (*let _ = upd_score sr env node in*)
     (*recompute score*)
     nenv
@@ -227,10 +235,10 @@ struct
     {id=(-1); s=s; score=0.}
 
   let unapply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
-      (*let _ = upd_score sr env node in*)
-      let steps = List.sort (sr.order) node.s in
-      let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) (LIST.rev steps) env in
-      nenv
+    (*let _ = upd_score sr env node in*)
+    debug ("== unapply node "^(string_of_int node.id)^" ===\n"^(steps2str 1 sr (LIST.rev node.s))^"\n");
+    let nenv = List.fold_right (fun x b -> let nb = sr.unapply b x in nb) node.s env in
+    nenv
 
 
   let clear_cursor (type a) (type b) (sr:(a,b) ssearch) =
@@ -246,20 +254,31 @@ struct
       if TREE.hasnode sr.tree old = false then
         error "move_cursor" ("the cursor of id "^(string_of_int next.id)^" is not found.") 
       else
-      let anc = TREE.ancestor sr.tree next old in
-      let to_anc = LIST.sublist (LIST.rev (TREE.get_path sr.tree old)) old anc in
-      let from_anc = LIST.sublist (TREE.get_path sr.tree next) anc next in
-      let _ = List.iter (fun x -> let _ = unapply_node sr env x in ()) to_anc in
-      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) from_anc in
-      let _ = (sr.curs <- Some next) in
-      env
+          let anc = TREE.ancestor sr.tree next old in
+          debug ("move cursor: "^(string_of_int old.id)^"->"^(string_of_int anc.id)^"->"^(string_of_int next.id));
+          (*from leaf to root list*)
+          let to_anc = LIST.rm_after (TREE.get_path sr.tree old) (fun n -> anc.id = n.id) in
+          (*from leaf to root list*)
+          let from_anc = LIST.rm_after (TREE.get_path sr.tree next) (fun n -> anc.id = n.id) in
+          debug "== move information ==";
+          debug ("<- steps: "^(LIST.length2str to_anc)^"/"^(LIST.length2str (TREE.get_path sr.tree old)));
+          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " (TREE.get_path sr.tree old));
+          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " to_anc);
+          debug ("-> steps: "^(LIST.length2str from_anc) ^"/"^(LIST.length2str (TREE.get_path sr.tree next)));
+          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " (TREE.get_path sr.tree next));
+          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " from_anc);
+          List.iter (fun x -> noop (unapply_node sr env x))  to_anc;
+          List.iter (fun x -> noop (apply_node sr env x )) (LIST.rev from_anc);
+          (sr.curs <- Some next);
+          env
     | None ->
-      let to_node = TREE.get_path sr.tree next in
-      let _ = List.iter (fun x -> let _ = apply_node sr env x in ()) to_node in
-      let _ = (sr.curs <- Some next) in
-      env
+        let to_node = TREE.get_path sr.tree next in
+        List.iter (fun x -> noop (apply_node sr env x)) to_node;
+        (sr.curs <- Some next);
+        env
     in
     env
+
 
   let get_node_by_id (type a) (type b) (sr:(a,b) ssearch) (id:int) : a snode option=
     let nodes : a snode list = TREE.filter_nodes sr.tree (fun q -> q.id = id) in
@@ -321,15 +340,16 @@ struct
     in
     _kill_branch leaf;
     ()
+   
 
   let solution (type a) (type b) (sr:(a,b) ssearch) (n:a snode)  : unit =
     SStatLib.solution sr.st n;
-    ORDSET.rm sr.frontier (REF.mk n); 
+    ORDSET.rm sr.frontier (REF.mk n);
     murder_branch sr n;
     ()
 
 
-  let visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : unit =
+  let visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode):unit =
     SStatLib.visited sr.st n;
     ORDSET.rm sr.frontier (REF.mk n);
     murder_branch sr n;
@@ -340,8 +360,7 @@ struct
     ORDSET.rm sr.frontier (REF.mk node_to_kill);
     murder_branch sr node_to_kill;
     cleanup sr env
-    
-
+ 
 
   let get_solutions  (type a) (type b) (sr:(a,b) ssearch) (root:(a snode) option) : (a snode) list=
     let test_sln (x:int) =
@@ -403,36 +422,41 @@ struct
     match sr.scratch, sr.curs with
     (*add the scratch node, and then apply the thing*)
     | Some(node), Some(cursor) ->
-      let _ = TREE.mknode sr.tree node in
-      let _ = TREE.mkedge sr.tree cursor node (mkscore 0. 0.) in
-      let _ = sr.scratch <- None in
+      TREE.mknode sr.tree node;
+      TREE.mkedge sr.tree cursor node (mkscore 0. 0.);
+      sr.scratch <- None;
       (*move the cursor to the created node*)
-      let _ = move_cursor sr state node in
-      let _ = upd_score sr state node in
+      move_cursor sr state node;
+      upd_score sr state node;
       (*move back*)
-      let _ = move_cursor sr state cursor in
-      let _ = ORDSET.add sr.frontier (REF.mk node) in
+      move_cursor sr state cursor;
+      ORDSET.add sr.frontier (REF.mk node);
       node
     | Some(_), None ->
       error "commit" "cannot commit new step with no parent."
     | _,_ -> error "commit" "cannot commit empty node."
 
   let mknode_child_from_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) : a snode=
+    let steps = List.sort (sr.order) sts in
     let c : a snode = cursor sr in
     start sr;
-    add_steps sr sts;
+    add_steps sr steps;
+    debug ("==== commit ===");
     let node = commit sr env in
+    debug ("==== done ===");
     move_cursor sr env c;
     node
 
   let mknode_from_steps (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) : a snode=
+    let steps = List.sort (sr.order) sts in
     start sr;
-    add_steps sr sts;
+    add_steps sr steps;
     commit sr env
 
   let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
+    let steps = List.sort (sr.order) sts in
     start sr;
-    add_steps sr sts;
+    add_steps sr steps;
     match sr.scratch with
     |Some(sb) ->
       begin

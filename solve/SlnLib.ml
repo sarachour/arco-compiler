@@ -126,7 +126,8 @@ struct
           then  WCollEmpty
           else error "rm_wire_from_label"
               ("this wire is not assigned to the variable:"^(wireid2str wire)^"!=@"^(wireid2str cwire))
-      | WCollMany(h::t) -> if LIST.has (h::t) wire
+      | WCollMany(h::t) ->
+        if LIST.has (h::t) wire
         then
           match List.filter (fun x -> x != wire) (h::t) with
           | [] -> WCollEmpty
@@ -140,8 +141,7 @@ struct
       else
         noop (MAP.put m key ncoll)
     else
-      noop (MAP.put m key (WCollOne(wire)))
-
+      ()
 
   let add_route (type a) (type b) (sln:(a,b)sln) (lbl:(a,b)label) =
     begin
@@ -206,7 +206,9 @@ struct
         _rm_wire_from_label sln.route.exprs lbl.expr lbl.wire
     end;
     ()
-
+ 
+  let iter_insts (sln:usln) fn : unit =
+    SET.iter sln.comps (fun inst -> fn inst)
   
   let iter_conns (sln:usln) fn : unit =
     MAP.iter sln.conns.src2dest (fun src dests ->

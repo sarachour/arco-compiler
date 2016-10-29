@@ -39,11 +39,11 @@ struct
 
   let interval2str (v:interval) : string = match v with
     | Interval(i) -> intervaldata2str i
-    | MixedInterval(i) -> List.fold_right (fun x r ->
-        (intervaldata2str x)^" "^r) i ""
-    | Quantize(q) -> "{"^(List.fold_right (fun x r ->
-        (string_of_float x)^","^r) q "}")
-    | IntervalUnknown(_) -> "TODO"
+    | MixedInterval(i) -> "{"^(List.fold_left (fun r x ->
+        (intervaldata2str x)^" "^r) "}" i)
+    | Quantize(q) -> "{"^(List.fold_left (fun r x ->
+        (string_of_float x)^","^r) "}" q)
+    | IntervalUnknown(_) -> "??"
     | _ -> "UNIMPLEMENTED"
 
   let mapper2str (mpr:'a mapper) (f:'a->string) : string = match mpr with

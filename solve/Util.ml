@@ -490,6 +490,7 @@ struct
 
   let tostr (type a) (fn: a->string) (delim:string) (lst:a list) =
     match lst with
+    (*move from beginning to end*)
     | h::t -> List.fold_left (fun r x -> r^delim^(fn x)) (fn h) t
     | [] -> ""
 
@@ -531,35 +532,23 @@ struct
   let from_end x i =
     List.nth (rev x) i
 
-  let sublist (type a) (t:a list) (st:a) (en:a) =
-    let gen (lst,add) v  =
-      if add = true && v = st then
-        (v::lst,false)
-      else if add = true || v = en then
-        (v::lst,true)
-      else
-        (lst,false)
+  let rm_before (type a) (lst:a list) (heuristic:a->bool) =
+    let rec _split l = match l with
+      | h::t -> if heuristic h then h::t else _split t
+      | [] -> []
     in
-    if st = en then
-      [st]
-    else
-      let f,_ = List.fold_left gen ([],false) t in
-      f
+    _split lst
 
-  let sublist_i (type a) (t:a list) (st:int) (en:int) =
-    let gen (lst,idx,add) v  =
-      if add = true && idx = st then
-        (v::lst,idx+1,false)
-      else if add = true || idx <= en then
-        (v::lst,idx+1,true)
-      else
-        (lst,idx+1,false)
+  let rm_after (type a) (lst:a list) (heuristic:a->bool) =
+    let rec _split l = match l with
+      | h::t -> if heuristic h then [h] else h::(_split t)
+      | [] -> []
     in
-    if st = en then
-      [List.nth t st]
-    else
-      let f,_,_ = List.fold_left gen ([],0,false) t in
-      f
+    _split lst
+
+   
+
+
 
   let rand (type a) (s: a list) :a  =
     if List.length s == 0 then

@@ -21,6 +21,7 @@ open SolverData
 open SolverUtil
 open SolverRslv
 open SolverMapper
+open SolverSearch 
 open GoalLib 
 
 open SlnLib
@@ -318,7 +319,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       if HwConnRslvrLib.consistent v then
         begin
           debug "[mark-if-solution] found concrete hardware. marking as solution.";
-          noop (SearchLib.solution v.search curr)
+          noop (SearchLib.solution v.search curr);
+          debug "[mark-if-solution] -> marked as solution."
         end
       else
         begin
@@ -328,17 +330,6 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     else
       debug "[mark-if-solution] there are still goals left.";
       ()
-(*
-    let _ = _print_debug "[mark-if-solution] testing if solution." in
-    let _ = SearchLib.move_cursor v.search (s,v) curr in
-    let is_conn_cons = SlnLib.mkconn_cons s v.sln in
-    let is_usecomp_cons = SlnLib.usecomp_cons s v.sln in
-    if is_conn_cons && is_usecomp_cons then 
-      SearchLib.solution v.search curr
-    else
-      begin SearchLib.deadend v.search curr (s,v); () end
-*)     
-
   
 
   let backup_and_move_cursor (tbl:gltbl) (node:sstep snode) =
@@ -352,25 +343,26 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
   let test_node_validity (tbl:gltbl) (node:sstep snode) (depth:int) : bool=
     begin
       let old_cursor, old_depth = backup_and_move_cursor tbl node in 
-      _print_debug ("-> [valid?] testing node "^(string_of_int node.id));
+      debug ("-> [valid?] testing node "^(string_of_int node.id));
       let is_valid : bool =
         if old_depth >= depth then
           begin
-            (*determine if there are any goals left*)
-            _print_debug "[test-node-validity] hit max depth:";
+            (*determine if there are any goals left. You must move off of node you're deadending*)
+            debug "[test-node-validity] hit max depth:";
             SearchLib.deadend tbl.search node tbl;
             false
           end
         else if (GoalLib.num_active_goals tbl) = 0 then
         begin
           (*found all goals*)
-          _print_debug "[test-node-validity] found a valid solution";
+          debug "[test-node-validity] found a valid solution";
           mark_if_solution tbl node;
           true
         end
       else
         true
     in
+    debug "[test-node-validity] moved cursor";
     SearchLib.move_cursor tbl.search tbl old_cursor;
     is_valid
   end
@@ -638,7 +630,9 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       end
     | [] -> 0
 
+
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
+
   let solve_unifiable_goal (tbl:gltbl) (g:unifiable_goal) =
       (* make a priority queue that grades the component outputs for the goal*)
       let prio_comps = PRIOQUEUE.make (fun (k,p) -> match k with
@@ -717,66 +711,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
     match g.d with
     |GUnifiable(g) -> solve_unifiable_goal tbl g 
     | _ -> error "solve_goal" "unimplemented"
-  (*solve a goal*)
-   (*
-   let solve_goal (g:goal) =
-      let curr = SearchLib.cursor v.search in
-      let mint,musr = mkmenu s v (Some g) in
-      let _ = mint "g" in
-      let _ = musr () in
-      let mknode steps (cursor:(sstep snode)) =
-        let _ = SearchLib.move_cursor v.search (s,v) cursor in
-        let _ = SearchLib.start v.search in
-        let _ = SearchLib.add_steps v.search steps in
-        let no = SearchLib.commit v.search (s,v) in
-        no
-      in
-      match g with
-      (*if we're solvinga nontrivial goal. Apply components and then redo*)
-      | NonTrivialGoal(_) ->
-        (*found a nontrivial goal -> applying components*)
-        let _ = apply_components s v g in
-        let _ = _print_debug "[search_tree] successfully applied components." in
-        let _ = musr () in
-        ()
-      (* if we're looking at a trivial goal, try to solve everything under the goal*)
-      | TrivialGoal(grel) ->
-        let mktrv = TrivialLib.resolve_trivial_step s v g in
-        let triv = mknode ((SRemoveGoal g)::mktrv) curr in
-        (*test the validity of the trival node*)
-        let _ = SearchLib.move_cursor v.search (s,v) triv in
-        let _ = SearchLib.visited v.search curr in 
-        (**)
-        let is_usecomp_cons = SlnLib.usecomp_cons s v.sln in
-        let is_conn_cons = if get_glbl_bool "eqn-smt-defer" then
-          SlnLib.mkconn_cons_shallow s v.sln 
-        else
-          SlnLib.mkconn_cons s v.sln
-        in  
-        if is_usecomp_cons && is_conn_cons then
-          let _ = _print_debug "[search_tree] no goals left. Testing if trivial solution is successful: " in
-          let _ = if List.length ( GoalTableLib.get_actionable_goals v ) = 0 then
-            return (mark_if_solution s v triv) () else ()
-          in
-          let _ = _print_debug "[search_tree] trivial solution is successful: " in
-          let _ = musr () in
-          ()
-        else
-          (*this trivial resolution does not work*)
-          let _ = SearchLib.deadend v.search triv (s,v) in
-          let _ = _print_debug "[search_tree] FAILURE trivial solution not resolved." in
-          (*downgrade goal*)
-          let _ = if downgrade_enable then 
-                let _ = _print_debug "[search_tree] Relaxed resolution mode enabled. Downgrading solution." in
-                let gnt = NonTrivialGoal (UnivLib.unwrap_goal g) in
-                let downgrade_triv = mknode ([SRemoveGoal g; SAddGoal gnt]) curr in
-                ()
-          in
-          let _ = musr () in
-          ()
 
-    in
-*)
   let solve_subtree (tbl:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
     let downgrade_enable = get_glbl_bool "downgrade-trivial" in
     let mint,musr = mkmenu tbl (None) in
@@ -792,14 +727,16 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         end
       else
         begin
-        debug ("[search_tree] found "^(string_of_int currslns)^" / "^(string_of_int nslns));
+        debug ("found "^(string_of_int currslns)^" / "^(string_of_int nslns));
+        debug "no more nodes left to check.";
         if SearchLib.is_exhausted tbl.search (Some root) then
           begin
-            debug "[search_tree] is exhausted";
+            debug "no more nodes left to check.";
             musr ();
             ()
           end
         else
+          musr();
           (*get the next node*)
           let maybe_next_node = get_best_valid_node tbl (Some root) depth in
           match maybe_next_node with

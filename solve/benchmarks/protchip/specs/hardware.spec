@@ -77,8 +77,8 @@ comp emb
   input kr1 {I:nA}
   input kr2 {I:nA}
 
-  def I(KDfw) mag = [0.00001,0.1] nA
-  def I(KDrv) mag = [0.00001,0.1] nA
+  def I(KDfw) mag = [0.001,1] nA
+  def I(KDrv) mag = [0.001,1] nA
   def I(ratC) mag = [0,0.1] nA
   def I(kr1) mag = [0,0.1] nA
   def I(kr2) mag = [0,0.1] nA

@@ -6,6 +6,7 @@ open Z3Lib
 open Z3Data
 open Interactive
 open HWData
+open HWLib
 open SlnLib
 open SolverData
 open HWConnLib
@@ -26,10 +27,16 @@ struct
     wire2id: (wireid,int) map;
     id2wire: (int,wireid) map;
     comp2wire:(hwcompinst,wireid list) map;
+    comp2id: (hwcompinst,int) map;
+    id2comp: (int,hwcompinst) map;
   }
 
   let mk_symtbl () =
-    {wire2id = MAP.make(); id2wire=MAP.make(); comp2wire=MAP.make()}
+    {
+      wire2id = MAP.make();id2wire=MAP.make();
+      comp2id = MAP.make();id2comp=MAP.make();
+      comp2wire=MAP.make()
+    }
 
   let has_wire stbl (w:wireid) =
     MAP.has stbl.wire2id w
@@ -45,19 +52,38 @@ struct
         if (MAP.has stbl.comp2wire w.comp) then
           MAP.get stbl.comp2wire w.comp
         else
-          []
+          error "add_wire" "cannot add wire beloning to uninstantiated comp"
       in
       MAP.put stbl.comp2wire w.comp (w::wires);
       ()
 
+  let add_comp_inst stbl (h:hwcompinst) =
+    if MAP.has stbl.comp2id h then
+      ()
+    else
+      let id = MAP.size stbl.comp2id in
+      MAP.put stbl.comp2id h id;
+      MAP.put stbl.id2comp id h;
+      MAP.put stbl.comp2wire h [];
+      ()
+
   let wire2id stbl w =
     "w_"^(string_of_int (MAP.get stbl.wire2id w))
+
+  let comp2id stbl c =
+    "c_"^(string_of_int (MAP.get stbl.comp2id c))
+
 
   let decl_wire stbl (w:wireid) :z3st =
     add_wire stbl w;
     let name = wire2id stbl w in
     Z3ConstDecl(name,Z3Int)
   
+ 
+  let decl_compinst stbl (w:hwcompinst) :z3st =
+    add_comp_inst stbl w;
+    let name = comp2id stbl w in
+    Z3ConstDecl(name,Z3Int)
      
   (*assign an instance to each variable*)
   let inst2smt (e:hwinst_coll) (v:string) : z3expr = match e with
@@ -73,7 +99,14 @@ struct
     let tbl = mk_symtbl () in
     let stmtq = QUEUE.make() in
     let enq x = noop (QUEUE.enqueue stmtq x) in
-    let comp2wire = MAP.make() in 
+    let comp2wire = MAP.make() in
+    SlnLib.iter_insts sln (fun (inst:hwcompinst) ->
+        let comp : 'a hwcomp = HwLib.getcomp gltbl.env.hw inst.name in
+        let rng = HCCRange(0,comp.insts) in
+        enq (decl_compinst tbl inst);
+        enq (Z3Assert(inst2smt rng (comp2id tbl inst)));
+        ()
+    );
     (*all port connections from same component have same value*)
     SlnLib.iter_conns sln (fun (src:wireid) (dest:wireid) conn ->
         if has_wire tbl src = false then enq (decl_wire tbl src);
@@ -107,9 +140,9 @@ struct
 
     let consistent gltbl =
         let tbl,stmts = to_smt_prob gltbl in
-        let _ = _print_debug "== Generated Constraints\n" in
-        let _ = _print_debug "== Created Z3 Instance\n" in
-        let _  = flush_all() in
+        debug "== Generated Constraints\n";
+        debug "== Created Z3 Instance\n";
+        flush_all(); 
         let z = Z3Lib.exec "wiring" stmts false in
         z.sat
 

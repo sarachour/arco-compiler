@@ -249,13 +249,20 @@ struct
       noop (MAP.put cmp_ctx.insts c.inst c)
     else
       error "add_conc_comp" "cannot add comp that already exists"
+ 
+  let has_conc_comp (tbl:gltbl) (c:hwcompinst) =
+    let cmp_ctx : ucomp_ctx = MAP.get tbl.comp_ctx c.name in 
+    if MAP.has cmp_ctx.insts c.inst then
+      true
+    else
+      false
 
   let rm_conc_comp (tbl:gltbl) (c:ucomp_conc) =
     let cmp_ctx : ucomp_ctx = MAP.get tbl.comp_ctx c.d.name in 
     if MAP.has cmp_ctx.insts c.inst  then
       noop (MAP.rm cmp_ctx.insts c.inst)
     else
-      error "add_conc_comp" "cannot remove comp that does not exist"
+      error "rm_conc_comp" "cannot remove comp that does not exist"
 
 
   let get_conc_comp (tbl:gltbl) (f:hwcompinst) = 
@@ -274,8 +281,13 @@ struct
 
 
   let _invoke_conc_fxn (f) (tbl:gltbl) (id:hwcompinst) =
-    let cmp = get_conc_comp tbl id in
-    f cmp
+    if has_conc_comp tbl id then
+      let cmp = get_conc_comp tbl id in
+      f cmp
+    else
+      begin
+        error "_invoke_conc_fxn" "set a configuration parameter on a nonexistant comp"
+      end
 
   let conc_param tbl id port v =
     _invoke_conc_fxn (fun cmp -> ConcCompLib.conc_param cmp.cfg port v) tbl id
