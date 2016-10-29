@@ -139,7 +139,9 @@ struct
     (old_cursor,old_depth)
 
 
-  (*test whether the node is valid, if it is valid, return true. Otherwise, return false*)
+  (*test whether the node is valid, if it is valid, return true. Otherwise, return false
+    validity in this case means is the node explorable
+  *)
   let test_node_validity (tbl:gltbl) (node:sstep snode) (depth:int) : bool=
     begin
       let old_cursor, old_depth = backup_and_move_cursor tbl node in 
@@ -157,7 +159,7 @@ struct
           (*found all goals*)
           debug "[test-node-validity] found a valid solution";
           mark_if_solution tbl node;
-          true
+          false
         end
       else
         true

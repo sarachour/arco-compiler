@@ -26,16 +26,17 @@ struct
   type symtbl = {
     wire2id: (wireid,int) map;
     id2wire: (int,wireid) map;
-    comp2wire:(hwcompinst,wireid list) map;
-    comp2id: (hwcompinst,int) map;
-    id2comp: (int,hwcompinst) map;
+    inst2wire:(hwcompinst,wireid list) map;
+    inst2id: (hwcompinst,int) map;
+    id2inst: (int,hwcompinst) map;
+    comp2inst : (hwcompname,hwcompinst list) map;
   }
 
   let mk_symtbl () =
     {
       wire2id = MAP.make();id2wire=MAP.make();
-      comp2id = MAP.make();id2comp=MAP.make();
-      comp2wire=MAP.make()
+      inst2id = MAP.make();id2inst=MAP.make();
+      inst2wire=MAP.make();comp2inst=MAP.make();
     }
 
   let has_wire stbl (w:wireid) =
@@ -49,29 +50,34 @@ struct
       MAP.put stbl.wire2id w id;
       MAP.put stbl.id2wire id w;
       let wires =
-        if (MAP.has stbl.comp2wire w.comp) then
-          MAP.get stbl.comp2wire w.comp
+        if (MAP.has stbl.inst2wire w.comp) then
+          MAP.get stbl.inst2wire w.comp
         else
-          error "add_wire" "cannot add wire beloning to uninstantiated comp"
+          error "add_wire" "cannot add wire beloning to uninstantiated inst"
       in
-      MAP.put stbl.comp2wire w.comp (w::wires);
+      MAP.put stbl.inst2wire w.comp (w::wires);
       ()
 
   let add_comp_inst stbl (h:hwcompinst) =
-    if MAP.has stbl.comp2id h then
+    if MAP.has stbl.inst2id h then
       ()
     else
-      let id = MAP.size stbl.comp2id in
-      MAP.put stbl.comp2id h id;
-      MAP.put stbl.id2comp id h;
-      MAP.put stbl.comp2wire h [];
+      let id = MAP.size stbl.inst2id in
+      MAP.put stbl.inst2id h id;
+      MAP.put stbl.id2inst id h;
+      MAP.put stbl.inst2wire h [];
+      let insts =
+        if MAP.has stbl.comp2inst h.name then
+          MAP.get stbl.comp2inst h.name else []
+      in
+        MAP.put stbl.comp2inst h.name (h::insts);
       ()
 
   let wire2id stbl w =
     "w_"^(string_of_int (MAP.get stbl.wire2id w))
 
-  let comp2id stbl c =
-    "c_"^(string_of_int (MAP.get stbl.comp2id c))
+  let inst2id stbl c =
+    "c_"^(string_of_int (MAP.get stbl.inst2id c))
 
 
   let decl_wire stbl (w:wireid) :z3st =
@@ -82,7 +88,7 @@ struct
  
   let decl_compinst stbl (w:hwcompinst) :z3st =
     add_comp_inst stbl w;
-    let name = comp2id stbl w in
+    let name = inst2id stbl w in
     Z3ConstDecl(name,Z3Int)
      
   (*assign an instance to each variable*)
@@ -99,20 +105,39 @@ struct
     let tbl = mk_symtbl () in
     let stmtq = QUEUE.make() in
     let enq x = noop (QUEUE.enqueue stmtq x) in
-    let comp2wire = MAP.make() in
     SlnLib.iter_insts sln (fun (inst:hwcompinst) ->
         let comp : 'a hwcomp = HwLib.getcomp gltbl.env.hw inst.name in
         let rng = HCCRange(0,comp.insts) in
+        (*declare variable and assert that the instance is within the instance range*)
         enq (decl_compinst tbl inst);
-        enq (Z3Assert(inst2smt rng (comp2id tbl inst)));
+        enq (Z3Assert(inst2smt rng (inst2id tbl inst)));
+        
         ()
-    );
+      );
+    MAP.iter tbl.comp2inst (fun comp (insts:hwcompinst list) ->
+        let clauses = List.fold_left (fun terms1 (inst1:hwcompinst) ->
+            let inst1_id = inst2id tbl inst1 in 
+            List.fold_left (fun terms2 (inst2:hwcompinst) ->
+                if inst1 != inst2
+                then (Z3Eq(Z3Var(inst1_id),Z3Var(inst2id tbl inst2)))::terms2
+                else terms2
+              ) terms1 insts 
+          ) [] insts 
+        in
+        match clauses with
+        | h::h2::t ->
+          let expr_to_negate = Z3Lib.fn_all clauses (fun x y -> Z3Or(x,y)) in
+          enq (Z3Assert (Z3Not(expr_to_negate)))
+        | _ -> ()
+      );
     (*all port connections from same component have same value*)
-    SlnLib.iter_conns sln (fun (src:wireid) (dest:wireid) conn ->
+    SlnLib.iter_conns sln (fun (dest:wireid) (src:wireid) conn ->
         if has_wire tbl src = false then enq (decl_wire tbl src);
         if has_wire tbl dest = false then enq (decl_wire tbl dest);
         let src_id = wire2id tbl src in
         let dst_id = wire2id tbl dest in
+        debug (src_id^"->"^dst_id^"\n");
+        debug (HwConnLib.env2str hwenv.conns);
         let instconns =
           HwConnLib.get_inst_conns hwenv src.comp.name src.port dest.comp.name dest.port
         in
@@ -123,7 +148,7 @@ struct
         enq (Z3Assert(expr));
         ()
       );
-    MAP.iter tbl.comp2wire (fun cmp wires ->
+    MAP.iter tbl.inst2wire (fun cmp wires ->
         let vars = List.map (fun wire -> Z3Var(wire2id tbl wire)) wires in
         match vars with
         | h::h2::t ->
