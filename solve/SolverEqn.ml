@@ -111,207 +111,7 @@ struct
 
 
 
- (*TODO Fix*)
-  let feasible_component_goal_combo (tbl:gltbl) (g:goal) (compname:hwcompname) =
-    error "feasible_component_goal_combo" "unimplemented"
-    (*
-    let node_name = UnivLib.unodeid2name node_id in
-    let test_conn (src:hwvid) (snk:hwvar) =
-      let wsrc : wireid = UnivLib.hwid2wire src in
-      let wsnk : wireid = UnivLib.hwvar2wire node_name snk in
-      let result = HwConnRslvr.valid_conn s wsrc wsnk in
-      result
-    in
-    match g with
-    | NonTrivialGoal(UFunction(HwId(id),lhs)) ->
-      let outputs = HwLib.get_port_by_kind s.hw  HNOutput node_name in
-      let success = List.fold_right (fun snk r -> test_conn id snk || r) outputs false in
-      if success then
-        true
-      else
-        let _ = _print_debug ("[OPTIMIZE ] no connections: "^node_name^" to "^(UnivLib.hwid2var id)) in
-        false
-    | NonTr
-ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
-    | NonTrivialGoal(UState(MathId(id),_,_,_)) -> true
-    | _ -> error "feasible_component_goal_combo" "unexpected"
-*)
 
-
-  let apply_component (gtbl:gltbl) (g:goal) (comp:hwcompname) (iid:int option) : int option = 
-    error "apply_component" "unimplemented"
-  (*
-    if get_glbl_bool "test-component-reachability" && feasible_component_goal_combo s g node_id = false then
-      None
-    else
-    let rel2info (rel:urel) : unid rarg =
-      match rel with
-      | UState(lhs,rhs,ICVar(v),t) -> (lhs,rhs,RKDeriv(ICVar(v)))
-      | UState(lhs,rhs,ICVal(v),t) -> (lhs,rhs,RKDeriv(ICVal(v)))
-      | UFunction(lhs,rhs) -> (lhs,rhs,RKFunction)
-    in
-    let goal2info (g:goal) =
-      let rel = GoalTableLib.unwrap_goal g in
-      rel2info rel
-    in
-    let mkfxn inst lhs rhs mp =
-        let lhs = Shim.lclid2glblid inst lhs in
-        let rhs = Shim.lcl2glbl inst rhs in
-        mp lhs rhs
-    in
-    let add_fuse (f:unid fuse) inst : unit =
-      let steps : sstep list = match f with
-        | USAddRel(lhs,rhs) ->
-          let rel = mkfxn inst lhs rhs (fun l r -> UFunction(l,r)) in
-          let _ = _print_debug ("<@> Add Partially Concretized Relation: "^(UnivLib.urel2str rel)) in
-          [SAddNodeRel(node_id,inst,rel)]
-
-        | USRmGoal(vr,rhs) ->
-          let _ = _print_debug ("<@> Remove Goal: "^(UnivLib.unid2str vr)^(UnivLib.uast2str rhs)) in
-          let goal = GoalTableLib.get_goal_from_rel gtbl vr rhs in
-          begin
-          match goal with
-            | Some(goal) -> [SRemoveGoal(goal)]
-            | None -> 
-               let _ = _print_debug "<@> warning... goal listed in fuse not found" in 
-               []
-          end
-        | USAssign(HwId(lhs),Term(HwId(rhs))) ->
-            let rel : urel = match HwLib.var2kind lhs, HwLib.var2kind rhs with 
-            | (HNOutput, HNInput)  -> 
-               mkfxn inst (HwId rhs) (Term(HwId lhs)) (fun l r -> UFunction(l,r))             
-            | (HNInput, HNOutput) -> 
-               mkfxn inst (HwId lhs) (Term(HwId rhs)) (fun l r -> UFunction(l,r))
-            | (HNInput, HNInput) ->           
-                error "unify_rels" ("cannot connect INPUT ports: "^(HwLib.hwvid2str lhs)^" <-> "^(HwLib.hwvid2str rhs))
-            | _ -> 
-                error "unify_rels" ("cannot connect OUTPUT ports: "^(HwLib.hwvid2str lhs)^" <-> "^(HwLib.hwvid2str rhs))
-            in
-            let goal = GoalTableLib.wrap_goal gtbl rel in 
-            [SAddGoal(goal)] 
-                
-
-        | USAssign(lhs,rhs) ->
-          let rel = mkfxn inst lhs rhs (fun l r -> UFunction(l,r)) in
-          let _ = _print_debug ("<@> Add Assignment: "^(UnivLib.urel2str rel)) in
-          let goal = GoalTableLib.wrap_goal gtbl rel in
-          [SAddGoal(goal)]
-      in
-      let _ = SearchLib.add_steps gtbl.search steps in
-      ()
-    in
-    let add_unification (root:sstep snode) (u:unid fusion) inst =
-      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) root in
-      let _ = SearchLib.start gtbl.search in
-      let _ = List.iter (fun f -> add_fuse f inst) u in
-      let r = SearchLib.commit gtbl.search (s,gtbl) in
-      ()
-    in
-    (*only hardware ids belonging to the template count*)
-    let freshvar (n:int) (k:unifytype) = match k with
-      | UTypTempl -> HwId(HNPort(HNInput,HCMLocal("tvar"^(string_of_int n)),"null","none","nil"))
-      | UTypTarg -> MathId(MNVar(MInput,"tvar"^(string_of_int n),UNone))
-    in
-    (*determine if this is a filler nodes*)
-    let comp_info : (unode*int*(sstep snode)*(unit->unit)) option=
-      (*specific instance*)
-      if iid <> None then
-        (*get the concrete nodes*)
-        let inst_id = OPTION.force_conc iid in
-        let node = MAP.get gtbl.used_nodes (node_id,inst_id) in
-        let _ = SearchLib.start gtbl.search in
-        (*remove all the relations in the used node, any remaining relations will be added back in*)
-        let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
-        let curs = SearchLib.commit gtbl.search (s,gtbl) in
-        let cleanup () = () in
-        Some(node,inst_id,curs,cleanup)
-    (*non-specific instance*)  
-    else
-        (*see if it's possible to use the component. If it iscontinue on. If not, do not apply node*)
-        if (SlnLib.usecomp_valid s gtbl.sln node_id) = false then
-          None
-        else
-          let inst_id = SlnLib.usecomp gtbl.sln node_id in
-          let node = MAP.get gtbl.nodes node_id in
-          (*the cursor associated with the goal*)
-          let goal_cursor = SearchLib.cursor gtbl.search in
-          (*update search algorithm to include the usage*)
-          let _ = SearchLib.start gtbl.search in
-          let _ = SearchLib.add_step gtbl.search (SSolUseNode(node_id,inst_id)) in
-          (*the cursor associated with the component*)
-          let curs : sstep snode = SearchLib.commit gtbl.search (s,gtbl) in
-          let cleanup () =
-            let _ = SlnLib.usecomp_unmark gtbl.sln node_id inst_id in 
-            ()
-          in
-          Some(node,inst_id,curs,cleanup)
-    in
-    let testwc v = match v with 
-    | MathId(_) -> false
-    | _ -> true
-    in
-    match comp_info with
-    | Some(node,iid, comp_cursor,cleanup) ->
-      (*use node*)
-      let goal_cursor = SearchLib.cursor gtbl.search in
-      let _ = SearchLib.move_cursor gtbl.search (s,gtbl) comp_cursor in
-      let templ : (unid rarg) list = SET.map node.rels (fun x -> rel2info x)  in
-      let targ : (unid rarg) list = SET.map gtbl.goals (fun x -> goal2info x) in
-      if List.length templ = 0 || List.length targ = 0 then
-        None
-      else
-        let vgl,_,_ = goal2info g in
-        let nunify = Globals.get_glbl_int "eqn-unifications" in
-        let slns : (unid fusion) set =
-          (*Hint: Unification routine here*)
-          ASTXUnify.ASTUnifier.multipattern templ targ vgl nunify
-          (testwc)
-          (UnivLib.unid2var)
-          (UnivLib.var2unid (s))
-          freshvar
-          (UnivLib.unid2var)
-        in
-        let _ = SearchLib.move_cursor gtbl.search (s,gtbl) goal_cursor in
-        let nslns = SET.size slns in
-        if nslns = 0 then
-          let _ = _print_debug ("no solutions for comp...") in 
-          let _ = SearchLib.rm gtbl.search comp_cursor in
-          let _ = cleanup () in
-          None
-        else
-          let _ = SearchLib.visited gtbl.search comp_cursor in
-          let _ = SET.iter slns (fun x -> add_unification comp_cursor x iid)  in
-          Some(nslns)
-    | None -> None
-*)
-
-
-  let apply_components (tbl:gltbl) (g:goal) : unit =
-    error "apply_components" "unimplemented"
-                                                                 
-(*
-    let goal_cursor = SearchLib.cursor tbl.search in
-    let handle_component (id:unodeid) (inst: int option) (status:bool) : bool =
-      let _ = SearchLib.move_cursor tbl.search (slvenv,tbl) goal_cursor in
-      let results = apply_component slvenv tbl g id inst in
-      match results with
-      | Some(q) -> true
-      | None -> status
-    in
-    let has_results = false in
-    (*apply partially filled nodes*)
-    let has_results = MAP.fold tbl.used_nodes (fun (id,i) x status -> handle_component id (Some i) status) has_results  in
-    (**apply component if there is a possible connection *)
-    let has_results = MAP.fold tbl.nodes (fun id x status -> match id with
-      | UNoComp(_) ->
-        handle_component id None status
-      | _ -> status
-    ) has_results in
-    (* failed to find any solutions.. *)
-    if has_results = false then
-      begin SearchLib.deadend tbl.search goal_cursor (slvenv,tbl); () end
-    else ()
-*)
 
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
     debug "[mark-if-solution] testing if solution.";
@@ -586,6 +386,7 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
                   (rsteps_to_ssteps tbl comp rsteps inits))
                 | _ -> error "unify_goal_with_comp" "rstep->sstep conversion unimplemented"
               in
+              debug ("    -> converted to "^(LIST.length2str steps)^" ssteps");
               SearchLib.mknode_child_from_steps tbl.search tbl (steps);
               ()
             end
@@ -661,6 +462,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
         );
       (* iterate over prioritzed list of comps*)
       let nsols : int ref = REF.mk 0 in 
+      debug (">>> NUMBER OF COMPATIBLE COMPONENTS  "^
+             (string_of_int (PRIOQUEUE.size prio_comps))^" <<<");
       PRIOQUEUE.iter prio_comps (fun (prio:int) (cmpkind,hwvar) ->
           begin
             match cmpkind with
@@ -728,7 +531,6 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
       else
         begin
         debug ("found "^(string_of_int currslns)^" / "^(string_of_int nslns));
-        debug "no more nodes left to check.";
         if SearchLib.is_exhausted tbl.search (Some root) then
           begin
             debug "no more nodes left to check.";
@@ -736,7 +538,6 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
             ()
           end
         else
-          musr();
           (*get the next node*)
           let maybe_next_node = get_best_valid_node tbl (Some root) depth in
           match maybe_next_node with
@@ -745,8 +546,8 @@ ivialTales from the Crypt: Tight GripGoal(UFunction(MathId(id),lhs)) -> true
               (*move to node*)
               SearchLib.move_cursor tbl.search tbl next_node;
               let next_goal = get_best_valid_goal tbl in
-              musr();
               (*solves the goal*)
+              musr ();
               solve_goal tbl next_goal;
               rec_solve_subtree root
             end

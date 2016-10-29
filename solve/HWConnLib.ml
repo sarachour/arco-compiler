@@ -6,7 +6,7 @@ open Util
 exception HwConnLibError of string
 
 let error n m = raise (HwConnLibError (n^":"^m))
-
+let debug = print_string 
 
 module HwConnLib = struct
 
@@ -25,14 +25,16 @@ module HwConnLib = struct
                                 )
   let mkconn (e:'a hwenv) (srccomp:hwcompname) (srcport:string)
       (destcomp:hwcompname) (destport:string) (srcconn:hwinst_coll) (destconn:hwinst_coll) =
-    let add_to_map map key v =
+    let add_to_map map keyv v : unit=
+      let key =  keyv in
       if MAP.has map key then
         let st=  MAP.get map key in
         noop (MAP.put map key (v::st))
       else
         noop (MAP.put map key ([v]))
     in
-    let add_to_deep_map map (key1:wireclass) (key2:wireclass) (v:hwinst_conn) =
+    let add_to_deep_map map (key1v:wireclass) (key2:wireclass) (v:hwinst_conn) =
+      let key1 =  key1v in
       if MAP.has map key1 then
         let st = MAP.get map key1 in
         add_to_map st key2 v
@@ -44,23 +46,35 @@ module HwConnLib = struct
     let srccls = {comp=srccomp;port=srcport} and dstcls = {comp=destcomp;port=destport} in
     let inst_coll :hwinst_conn = {src=srcconn;dst=destconn} in
     add_to_map e.conns.src2dest srccls dstcls;
-    add_to_map e.conns.dest2src srccls dstcls;
+    add_to_map e.conns.dest2src dstcls srccls;
     add_to_deep_map e.conns.inst_conns srccls dstcls inst_coll;
     ()
     
 
 
-
-  let get_sources (e) (destcomp:hwcompname) (destport:string) =
-   let dstcls = {comp=destcomp;port=destport} in
-   if MAP.has e.conns.dest2src dstcls then
-     MAP.get e.conns.dest2src dstcls
+  let get_sinks (e: 'a hwenv) (srccomp:hwcompname) (srcport:string) : wireclass list=
+   let srccls =  {comp=srccomp;port=srcport} in
+    if MAP.has e.conns.src2dest srccls then
+      begin
+        MAP.get e.conns.src2dest srccls
+      end
    else
      []
 
+
+  let get_sources (e:'a hwenv) (destcomp:hwcompname) (destport:string) : wireclass list =
+    let dstcls =  {comp=destcomp;port=destport} in
+    if MAP.has e.conns.dest2src dstcls then
+      begin
+        MAP.get e.conns.dest2src dstcls
+      end
+    else
+      []
+
   let get_inst_conns e (srccomp:hwcompname) (srcport:string)
       (destcomp:hwcompname) (destport:string) =
-    let srccls = {comp=srccomp;port=srcport} and dstcls = {comp=destcomp;port=destport} in
+    let srccls =  {comp=srccomp;port=srcport}
+    and dstcls =  {comp=destcomp;port=destport} in
     let dests =
       if MAP.has e.conns.inst_conns srccls
       then MAP.get e.conns.inst_conns srccls
@@ -78,7 +92,8 @@ module HwConnLib = struct
   (*determine if the source dest combo is connectable*)
   let is_connectable e (srccomp:hwcompname) (srcport:string)
       (destcomp:hwcompname) (destport:string) =
-    let srccls = {comp=srccomp;port=srcport} and dstcls = {comp=destcomp;port=destport} in
+    let srccls =  {comp=srccomp;port=srcport}
+    and dstcls = {comp=destcomp;port=destport} in
     if MAP.has e.conns.src2dest srccls then
       let dests = MAP.get e.conns.src2dest srccls in
       if LIST.has dests dstcls then
@@ -105,67 +120,4 @@ module HwConnLib = struct
   let mk  e cname pname prop =
     ()
 
-
-(*
-  let mkconn (e:'a hwenv) srccomp srcport destcomp destport srcconn destconn =
-    let ksrc = (srccomp,srcport) and ksnk = (destcomp,destport) in
-    let _ = if MAP.has e.conns ksrc = false then
-      let _ = MAP.put e.conns ksrc (MAP.make()) in ()
-    in
-    let _ = if MAP.has e.conns ksnk = false  then
-      let _ = MAP.put e.conns ksnk (MAP.make()) in ()
-    in
-    let mapsrc = MAP.get e.conns ksrc in
-    let mapsnk = MAP.get e.conns ksnk in
-    let _ = if MAP.has mapsrc ksnk = false
-      then MAP.put mapsrc ksnk (SET.make_dflt ()) else mapsrc in
-    let _ = if MAP.has mapsnk ksrc = false
-      then MAP.put mapsnk ksrc (SET.make_dflt ()) else mapsnk in
-    let setsrc = MAP.get mapsrc ksnk in
-    let setsnk = MAP.get mapsnk ksrc in
-    let _ = SET.add setsrc (srcconn,destconn) in
-    let _ = SET.add setsnk (destconn,srcconn) in
-    e
-
-  let mk  e cname pname prop =
-    let _ = if MAP.has e.conns (cname,pname) = false then
-      MAP.put e.conns (cname,pname) (MAP.make ())
-      else e.conns
-    in
-    ()
-
-  let _valid_conn hcs src_comp src_port dest_comp dest_port =
-    if MAP.has hcs.conns (src_comp,src_port)= false then
-      false
-    else
-      let dests = MAP.get hcs.conns (src_comp,src_port) in
-      if MAP.has dests (dest_comp,dest_port) = false then
-        false
-      else
-        let ids = MAP.get dests (dest_comp,dest_port) in
-        SET.size ids > 0
-  
-  let valid_conn hcs src_comp src_port dest_comp dest_port =
-     (_valid_conn hcs src_comp src_port dest_comp dest_port) ||  
-     (_valid_conn hcs dest_comp dest_port src_comp src_port ) 
-  
-
-    let to_buf e fb =
-    let oc x = output_string fb x in
-    let pr_conns (c,p) v =
-      let pr_conn sc sp dc dp is id =
-        "conn "^sc^"["^(hcconn2str is)^"]."^sp^" <-> "^
-        "conn "^dc^"["^(hcconn2str id)^"]."^dp^"\n"
-      in
-      let pr_dests sc sp smap r =
-        MAP.fold smap (fun (dc,dp) (idx:(hcconn*hcconn) set) r ->
-          SET.fold idx (fun (is,id) r -> r^(pr_conn sc sp dc dp is id)) r) r
-      in
-      MAP.fold e.conns (fun (sc,sp) dests r -> pr_dests sc sp dests r) ""
-    in
-    let apply f k x r = r^"\n"^(f k x) in
-    let cnstr = MAP.fold e.conns (apply pr_conns) "" in
-    let _ = oc (cnstr^"\n") in
-    ()
-*)
 end

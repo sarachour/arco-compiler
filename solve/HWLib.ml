@@ -56,6 +56,10 @@ struct
 
   let str2hwcompname = HwCompName.str2hwcompname
 
+  let wireid2str (x:wireid) =
+    (hwcompinst2str x.comp)^"."^x.port
+
+
   let hwvid2str e =
     let c2str c = match c with
     | HCMLocal(n) -> (hwcompname2str n)^"."
@@ -707,12 +711,15 @@ struct
     let hwvar = getvar env wire.comp.name wire.port in
       match hwvar.knd with
       | HWKOutput ->
-        let srcs = HwConnLib.get_sources env hwvar.comp hwvar.port in
+        debug ("checking reachability of "^(wireid2str wire)^" to output block.\n");
+        let srcs = HwConnLib.get_sinks env hwvar.comp hwvar.port in
           let compat_inp_blocks = List.filter (fun (x:wireclass) ->
               match x.comp with
               | HWCmOutput(in_prop) -> in_prop = hwvar.prop
               | _ -> false
             ) srcs in
+          debug ("number reachable output blocks "^
+             (LIST.length2str compat_inp_blocks)^"/"^(LIST.length2str srcs)^"\n");
           (List.length compat_inp_blocks) > 0
 
       | HWKInput ->
@@ -723,12 +730,16 @@ struct
     let hwvar = getvar env wire.comp.name wire.port in
     match hwvar.knd with
     | HWKInput ->
+      debug ("checking reachability of "^(wireid2str wire)^" to an input block.\n");
       let srcs = HwConnLib.get_sources env hwvar.comp hwvar.port in
+      debug (LIST.length2str srcs);
       let compat_inp_blocks = List.filter (fun (x:wireclass) ->
           match x.comp with
           | HWCmInput(in_prop) -> in_prop = hwvar.prop
           | _ -> false
         ) srcs in
+      debug ("number reachable input blocks "^
+             (LIST.length2str compat_inp_blocks)^"/"^(LIST.length2str srcs)^"\n");
       (List.length compat_inp_blocks) > 0
     | HWKOutput ->
       error "is_inblock_reachable" "it makes no sense to try and connect an output to an input block"

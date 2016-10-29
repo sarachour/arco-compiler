@@ -1076,13 +1076,17 @@ end
 type 'a prioqueue = {
   mutable order : int set;
   mutable data: (int,'a list) map;
+  mutable size:int;
   score : 'a -> int;
 }
 module PRIOQUEUE =
 struct
 
+  let size x : int =
+    x.size
+
   let make (f:'a -> int) : 'a prioqueue =
-    {order=SET.make(); data=MAP.make(); score=f}
+    {size=0;order=SET.make(); data=MAP.make(); score=f}
 
 
   let add (p:'a prioqueue) (x:'a) =
@@ -1092,7 +1096,9 @@ struct
       noop (MAP.put p.data score [])
     ;
     let els = MAP.get p.data score in
-    MAP.put p.data score (x::els)
+    MAP.put p.data score (x::els);
+    p.size <- p.size + 1;
+    ()
 
   let fold (p:'a prioqueue) (f:int->'a -> 'b -> 'b) (x0:'b) =
     let lst : int list= SET.sort p.order (fun x y -> x - y) in

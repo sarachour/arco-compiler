@@ -37,8 +37,7 @@ struct
   let mkwireconn (src:wireid) (snk:wireid) : wireconn =
     {src=src;dst=snk}
 
-  let wireid2str (x:wireid) =
-    (HwLib.hwcompinst2str x.comp)^"."^x.port
+  let wireid2str = HwLib.wireid2str
 
   let wireconn2str (x:wireconn) : string =
     (wireid2str x.src)^"->"^(wireid2str x.dst)
