@@ -24,17 +24,11 @@ prop D : bits
 
 time t: us
 
-digital input D
-  input X {D:bits}
-  output O {D:bits}
-  sim iin X O
-  rel D(O) = D(X)
-end
-
-
 digital input I
   input X {D:bits}
   output O {I:nA}
+  def I(O) mag = [0,1] nA
+  
   sim iin X O
   rel I(O) = D(X)
 end
@@ -83,8 +77,8 @@ comp emb
   input kr1 {I:nA}
   input kr2 {I:nA}
 
-  def I(KDfw) mag = [0,0.1] nA
-  def I(KDrv) mag = [0,0.1] nA
+  def I(KDfw) mag = [0.00001,0.1] nA
+  def I(KDrv) mag = [0.00001,0.1] nA
   def I(ratC) mag = [0,0.1] nA
   def I(kr1) mag = [0,0.1] nA
   def I(kr2) mag = [0,0.1] nA
@@ -110,8 +104,8 @@ comp emb
   output rateRVTot {I:nA}
   output rateRVUp {I:nA}
 
-  output DfreeCopy {I:nA}
-  output CfreeCopy {I:nA}
+  %output DfreeCopy {I:nA}
+  %output CfreeCopy {I:nA}
 
   param A_SW : ? = {0,1}
   param B_SW : ? = {0,1}
@@ -163,6 +157,11 @@ comp addi
   input B {I:nA}
   input C {I:nA}
   output O {I:nA}
+  
+  def I(A) mag = [0,10] nA
+  def I(B) mag = [0,10] nA
+  def I(C) mag = [0,10] nA
+
 
   rel I(O) = I(A) + I(B) + I(C)
 
@@ -176,7 +175,6 @@ end
 
 schematic
   inst emb : 20
-  inst input D : 20
   inst gnd: 1
   inst addi: 50
 
@@ -198,7 +196,6 @@ schematic
   conn input(I)[1:160]  -> emb.ratC
   conn input(I)[1:160]  -> emb.kr1
   conn input(I)[1:160]  -> emb.kr2
-  conn input(D) -> emb.n
 
   conn emb.Ctot -> addi
   conn addi -> output(I)

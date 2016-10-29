@@ -241,6 +241,14 @@ struct
     in
     MixedInterval(intervals)
 
+  (*if you're crossing*)
+  let crosses_zero (x:interval_data) :bool =
+    match x.min,x.max with
+    |BNDNum(min),BNDNum(max) -> min < 0. && max > 0.
+    |BNDNum(min),BNDInf(QDPositive) -> min < 0.
+    |BNDInf(QDNegative),BNDNum(max) -> max > 0.
+    |BNDInf(QDNegative),BNDInf(QDPositive) -> true
+
   let _ival_ival_compute_interval (a:interval_data) (b:interval_data) 
       (compute:bound->bound->bound) flip : interval =
     let c,d = flip_if flip a b in
@@ -248,7 +256,25 @@ struct
       compute c.min d.max; compute c.max d.max;
       compute c.max d.min; compute c.min d.min;
     ] in
-    mk_ival (min_of_list corners) (max_of_list corners)
+    let zero:bound = BNDNum(0.) in
+    let zeroes:bound list= match crosses_zero c, crosses_zero d with
+      | true,true ->
+        [
+          compute c.min zero; compute c.max zero;
+          compute zero d.min; compute zero d.max;
+          compute zero zero
+        ]
+      | true, false ->
+        [
+          compute zero d.min; compute zero d.max;
+        ]
+      | false,true ->
+        [
+          compute c.min zero; compute c.max zero;
+        ]
+      | false,false -> []
+    in
+    mk_ival (min_of_list (corners@zeroes)) (max_of_list (corners@zeroes))
 
   let _ival_ivals_compute_interval (a:interval_data ) (b:interval_data list) 
       (compute:bound->bound->bound) flip : interval  =
@@ -289,11 +315,13 @@ struct
     | Interval(alst),MixedInterval(blst) ->
       _ival_ivals_compute_interval alst blst compute false
     (*interval collection computation*)
+    | MixedInterval(alst),Quantize(blst) ->
+      _quant_ivals_compute_interval blst alst compute true
     | MixedInterval(alst),Interval(blst) ->
       _ival_ivals_compute_interval blst alst compute true
     | MixedInterval(alst),MixedInterval(blst) ->
       _ivals_ivals_compute_interval alst blst compute false
-     (**)
+    (**)
     | a,b ->
       error "_compute_interval" ("unimplemented: "^(interval2str a)^", "^(interval2str b))
 
@@ -349,6 +377,21 @@ struct
     | BNDInf(adir),BNDInf(bv) -> error "bound_div" "inf/inf = NaN"
     | _ -> error "bound_div" "unimplemented"
 
+  let bound_pow (base:bound) (exp:bound): bound =
+    warn ("pow doesn't handle functions that cross the axis");
+    match base,exp with
+    | BNDNum(basev),BNDNum(expv) ->
+      begin
+        match bound_is_zero base, bound_is_zero exp with
+        | false,false -> BNDNum(basev**expv)
+        | false,true -> BNDNum(1.)
+        | true,false -> BNDNum(0.)
+        | true,true -> BNDNum(1.)
+      end
+    | BNDNum(_),BNDInf(QDNegative) -> BNDNum(0.)
+    | BNDNum(_),BNDInf(QDPositive) -> BNDNum(0.)
+    | BNDInf(_),BNDInf(_) -> error "bound_pow" "infinity to the infinity"
+    | _ -> error "bound_pow" "unimplemented"
   let rule_sum (a:interval) (b:interval) : interval = _compute_interval a b bound_sum
 
   let rule_prod (a:interval) (b:interval) = _compute_interval a b bound_prod
@@ -357,9 +400,7 @@ struct
 
   let rule_div (a:interval) (b:interval) : interval = _compute_interval a b bound_div
 
-  let rule_power (a:interval) (b:interval) : interval =
-    error "rule" "pow unimplemented"
-
+  let rule_power (a:interval) (b:interval) : interval = _compute_interval a b bound_pow
 
   let rule_exp (a:interval) : interval =
     error "rule" "exp unimplemented"
