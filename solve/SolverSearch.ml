@@ -132,7 +132,8 @@ struct
     | SSlnAddRoute(label) -> "[sln] route "^(SlnLib.label2str label ident mid2str)
     | SSlnAddGen(label) -> "[sln] generate "^(SlnLib.label2str label ident mid2str)
     | SSlnRmRoute(label) -> "[sln] rm-route "^(SlnLib.label2str label ident mid2str)
-
+    | SSlnAddComp(comp) -> "[sln] add-comp "^(HwLib.hwcompinst2str comp
+                                             )
   let mapstep2str (n:smapctx) = match n with
     | _ -> "<mapstep2str UNIMPLEMENTED>"
 

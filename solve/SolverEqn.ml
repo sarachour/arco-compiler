@@ -351,7 +351,7 @@ struct
       List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
     in
     [
-      SModSln(SSlnAddConn({src=outwire;dst=goal.wire}));
+      SModSln(SSlnAddConn({src=goal.wire;dst=goal.wire}));
       (*SModSln(SSlnRmRoute(MExprLabel({wire=hgoal.wire;expr=hgoal.expr})));*)
       SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=goal.expr})))
     ] @ rm_goal_steps
@@ -488,7 +488,11 @@ struct
   let unify_goal_with_new_comp (tbl:gltbl) (ucomp:ucomp) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
     let initialize (type a) () : ucomp_conc*sstep list=
       let comp : ucomp_conc = SolverCompLib.mk_conc_comp tbl ucomp.d.name in
-      let inits = [SModCompCtx(SCMakeConcComp(comp))] in
+      let inits = [
+        SModCompCtx(SCMakeConcComp(comp));
+        SModSln(SSlnAddComp({name=comp.d.name;inst=comp.inst}))
+      ]
+      in
       comp,inits
     in
     __unify_goal_with_comp tbl ucomp.d (ConcCompLib.mkhwcompcfg ()) None hwvar g initialize
