@@ -241,8 +241,8 @@ struct
     nenv
 
 
-  let clear_cursor (type a) (type b) (sr:(a,b) ssearch) =
-      let _ = (sr.curs <- None) in
+  let clear_cursor (type a) (type b) (sr:(a,b) ssearch) : unit =
+      (sr.curs <- None);
       ()
 
   let move_cursor (type a) (type b) (sr:(a,b) ssearch) (env:b) (next:a snode)  =

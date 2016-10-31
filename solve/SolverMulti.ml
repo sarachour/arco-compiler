@@ -444,28 +444,22 @@ struct
 
   (*find a global solution, given the set of partials that have been applied*)
   let find_global_solution (ms:musearch) (nsols:int) : sstep snode list option =
-    error "find_global_solution" "unimplemented"
-    (*
     let tbl = mk_global_tbl ms in
     (*find the global steps *)
     let depth = get_glbl_int "slvr-global-depth" in
-    let _ = set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-global") in
-    let results : sstep snode list option = SolverEqn.solve ms.state.slvr tbl nsols depth in
-    let root = OPTION.force_conc (SearchLib.root tbl.search) in
-    let _ = SearchLib.clear_cursor tbl.search in
+    let results : sstep snode list option =
+      SolverEqn.solve tbl nsols depth
+    in
+    SearchLib.clear_cursor tbl.search;
     results
-    *)
 
   let get_existing_global_solution (ms:musearch) (key:string) (id:int) : (string,mid) sln =
-    error "get_existing_global_solution" "unimplemented"
-(*
-    let gtree = MAP.get ms.state.globals key in
-    let ptbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in 
-    let _ = _print_debug ("=> Global Solution: "^key^" :: "^(string_of_int id)) in 
+    let gtree = MAP.get (MAP.get ms.state.globals key) id in
+    let ptbl = GoalTableFactory.mktbl ms.state.env in 
+    debug ("=> Global Solution: "^key^" :: "^(string_of_int id));
     let slnnode = SearchLib.id2node gtree id in 
-    let _ = SearchLib.move_cursor gtree (ms.state.slvr,ptbl) slnnode in  
-    ptbl.sln
-*)
+    SearchLib.move_cursor gtree ptbl slnnode;  
+    ptbl.sln_ctx
 
   let has_partial_search (ms:musearch) (name:string) : bool =
     MAP.has ms.state.partials name 
