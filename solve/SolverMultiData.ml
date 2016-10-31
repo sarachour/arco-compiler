@@ -6,13 +6,13 @@ open HWData
 (*the variable you're targetting*)
 type part_id = {
   mvr:string;
-  inst:int;
+  ident:int;
 }
 
 (*the global ordering*)
 type glbl_id = {
-  gid:string;
-  inst:int;
+  mvr_seq:string;
+  ident:int;
 }
 
 type psearch = (sstep,gltbl) ssearch
