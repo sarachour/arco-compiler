@@ -114,6 +114,31 @@ struct
   let portprop2str wire prop =
     (SlnLib.wireid2str wire)^"<"^prop^">" 
 
+  let inst2inst_goal (g:goal) fn =
+    let i2i_w x = HwLib.inst2inst_wire x fn in
+    match g.d with
+    | GUnifiable(GUMathGoal(mvar)) -> g
+    | GUnifiable(GUHWInExprGoal(hwexpr)) ->
+      let data : goal_hw_expr=
+        {prop=hwexpr.prop;wire=i2i_w hwexpr.wire;expr=hwexpr.expr}
+      in
+      {d=GUnifiable(GUHWInExprGoal(data)); active=g.active; id = g.id}
+    | GUnifiable(GUHWConnInBlock(ioblock)) ->
+      let data : goal_ioblock=
+        {prop=ioblock.prop;wire=i2i_w ioblock.wire;expr=ioblock.expr}
+      in
+      {d=GUnifiable(GUHWConnInBlock(data)); active=g.active; id = g.id}
+
+    | GUnifiable(GUHWConnOutBlock(ioblock)) ->
+      let data : goal_ioblock=
+        {prop=ioblock.prop;wire=i2i_w ioblock.wire;expr=ioblock.expr}
+      in
+      {d=GUnifiable(GUHWConnOutBlock(data)); active=g.active; id = g.id}
+
+    | GUnifiable(GUHWConnPorts(hwconn)) ->
+      let data : goal_conn = {src=i2i_w hwconn.src; dst=i2i_w hwconn.dst} in
+      {d=GUnifiable(GUHWConnPorts(data)); active=g.active; id = g.id}
+
   let goal2str (g:goal) =
     let data_str =
       match g.d with

@@ -15,6 +15,7 @@ open GoalLib
 open SolverCompLib
 
 open HWLib
+open HWData
 
 exception SolverSearchLibError of string
 
@@ -170,6 +171,30 @@ struct
   | SMakeGoalPassive(v) -> "inactive "^(UnivLib.goal2str v)
   *)
 
+  let inst2inst_goal_step (s:sgoalctx) (fn:hwcompinst->hwcompinst) : sgoalctx = match s with
+    | SGAddGoal(g) -> SGAddGoal(GoalLib.inst2inst_goal g fn)
+    | SGRemoveGoal(g) -> SGRemoveGoal(GoalLib.inst2inst_goal g fn)
+    | SGChangeGoalStatus(gid,st) -> SGChangeGoalStatus(gid,st)
+
+  let inst2inst_sln_step (s:sslnctx) (fn:hwcompinst->hwcompinst) : sslnctx = match s with
+    | SSlnAddConn(conn) -> SSlnAddConn(SlnLib.inst2inst_conn conn fn)
+    | SSlnAddGen(label) -> SSlnAddGen(SlnLib.inst2inst_label label fn)
+    | SSlnAddRoute(label) -> SSlnAddRoute(SlnLib.inst2inst_label label fn)
+    | SSlnRmRoute(label) -> SSlnRmRoute(SlnLib.inst2inst_label label fn)
+    | SSlnAddComp(compinst) -> SSlnAddComp(fn compinst)
+
+  let inst2inst_comp_step (s:scmpctx) (fn:hwcompinst->hwcompinst): scmpctx = match s with
+    | SCMakeConcComp(cmp) -> SCMakeConcComp(SolverCompLib.inst2inst_conc_comp cmp fn)
+    | SCAddInCfg(cmpid,inp,ctx) -> SCAddInCfg(fn cmpid,inp,ctx)
+    | SCAddOutCfg(cmpid,inp,ctx) -> SCAddInCfg(fn cmpid,inp,ctx)
+    | SCAddParCfg(cmpid,v,num) -> SCAddParCfg(fn cmpid,v,num)
+
+  let inst2inst_step (s:sstep) (fn:hwcompinst->hwcompinst)= match s with
+    | SModGoalCtx(g) -> SModGoalCtx(inst2inst_goal_step g fn)
+    | SModSln(g) -> SModSln(inst2inst_sln_step g fn)
+    | SModCompCtx(g) -> SModCompCtx(inst2inst_comp_step g fn)
+    | _ -> error "inst2inst step" "unimplemented"
+
   let apply_goal_step (tbl:gltbl) (s:sgoalctx) : unit = match s with
     | SGAddGoal(g) -> noop (MAP.put tbl.goals g.id g)
     | SGRemoveGoal(g) -> noop (MAP.rm tbl.goals g.id)
@@ -183,14 +208,12 @@ struct
     | SSlnAddRoute(label) -> SlnLib.add_route tbl.sln_ctx label
     | SSlnRmRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
     | SSlnAddComp(compinst) -> SlnLib.add_comp tbl.sln_ctx compinst
-    | _ -> error "apply_sln_step" "handler for step casedoes not exist"
   
   let apply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
     | SCMakeConcComp(cmp) -> SolverCompLib.add_conc_comp tbl cmp
     | SCAddInCfg(cmpid,inp,ctx) -> SolverCompLib.conc_in tbl cmpid inp ctx
     | SCAddOutCfg(cmpid,out,ctx) -> SolverCompLib.conc_out tbl cmpid out ctx
     | SCAddParCfg(cmpid,v,num) -> SolverCompLib.conc_param tbl cmpid v num
-    | _ -> error "apply_comp_step" "handler for step case does not exist"
 
   let apply_step (tbl:gltbl) (s:sstep) : gltbl =
       debug  ("> do step "^(step2str s)^"");

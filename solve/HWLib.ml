@@ -59,6 +59,8 @@ struct
   let wireid2str (x:wireid) =
     (hwcompinst2str x.comp)^"."^x.port
 
+  let inst2inst_wire (x:wireid) (fn:hwcompinst->hwcompinst) : wireid=
+    {comp=(fn x.comp);port=x.port}
 
   let hwvid2str e =
     let c2str c = match c with

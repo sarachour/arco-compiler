@@ -291,6 +291,22 @@ struct
     in
     {inst=cmpinst;d=glbl_cmp;cfg=ConcCompLib.mkhwcompcfg()}
 
+  let inst2inst_conc_comp (cmp:ucomp_conc) (fn:hwcompinst->hwcompinst) : ucomp_conc =
+    let glbl_cmp :hwvid hwcomp = HwLib.map_comp cmp.d
+        (fun (v:hwvid) -> match v with
+           | HNPort(knd,HCMGlobal(i),port,prop) ->
+             HNPort(knd,HCMGlobal(fn i),port,prop)
+           | HNParam(HCMGlobal(n),v) ->
+             HNParam(HCMGlobal(fn n),v)
+           | HNParam(HCMLocal(n),v) ->
+             error "inst2inst_conc_comp" "not expecting a local instance"
+           | HNPort(knd,HCMLocal(n),port,prop) ->
+             error "inst2inst_conc_comp" "not expecting any local variables"
+           | _ -> v )
+    in
+    let ccmp_inst = fn {name=cmp.d.name;inst=cmp.inst} in
+    {inst=ccmp_inst.inst;d=glbl_cmp;cfg=cmp.cfg}
+
   let mk_conc_comp (tbl:gltbl) (f:hwcompname) : ucomp_conc =
     let cmp_ctx : ucomp_ctx = MAP.get tbl.comp_ctx f in 
     let cmpinst = cmp_ctx.cnt in

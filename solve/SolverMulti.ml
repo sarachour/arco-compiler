@@ -404,15 +404,115 @@ struct
       let _ = _print_debug "================" in
       new_partial_steps 
 *)
-  let build_partial_steps ms (ids:part_id set) : sstep list =
-    error "build_partial_steps" "unimplemented"
+
+
+  let partial_id_to_tree ms (id:part_id ) =
+    let tree = MAP.get ms.state.partials id.mvr in
+    tree 
+
+  let partial_id_to_steps ms (id:part_id ) =
+    let tree = MAP.get ms.state.partials id.mvr in
+    let node = SearchLib.id2node tree id.ident in
+    let steps :sstep list = SearchLib.get_path tree node in
+    steps
+
+  type lcl2glbl_mapper = {
+    instmap: (part_id*hwcompinst,int) map;
+    compmap: (hwcompname,int) map;
+    mutable cnt: int;
+  }
+
+  let add_mapping mapper partid inst =
+    let key = (partid,inst) in
+    if MAP.has mapper.instmap key then
+      error "add_mapping" "this has already been declared"
+    else
+      let id = mapper.cnt in 
+      MAP.put mapper.instmap key id;
+      mapper.cnt <- mapper.cnt + 1;
+      begin
+        if MAP.has mapper.compmap inst.name then
+          let cnt = MAP.get mapper.compmap inst.name in 
+          noop (MAP.put mapper.compmap inst.name (cnt+1))
+        else
+          noop (MAP.put mapper.compmap inst.name 1)
+      end;
+      ()
+
+  let mk_mapping () =
+    {instmap=MAP.make();compmap=MAP.make();cnt=0}
+
+  let get_mapping mapper (partid:part_id) (inst:hwcompinst) =
+    let key = (partid,inst) in
+    if MAP.has mapper.instmap key then
+      {name=inst.name;inst=MAP.get mapper.instmap key}
+    else
+      error "get_mapping" "this mapping doesn't exist"
+
+  let build_partial_steps ms (ids:part_id set) =
+    let mapper = mk_mapping() in
+    let stepq = QUEUE.make () in
+    let enq x = noop (QUEUE.enqueue stepq x) in
+    let allocate (id:part_id) (step:sstep) = match step with
+      | SModSln(SSlnAddComp(inst)) -> add_mapping mapper id inst
+      | _ -> ()
+    in
+    SET.iter ids (fun (id:part_id) ->
+        let steps : sstep list = partial_id_to_steps ms id in
+        debug ("found # steps: "^(LIST.length2str steps));
+        List.iter (fun stp -> allocate id stp) steps;
+        List.iter (fun stp ->
+            enq (SlvrSearchLib.inst2inst_step stp (fun inst -> get_mapping mapper id inst))
+          ) steps;
+        ()
+    );
+    let steps = QUEUE.to_list stepq in
+    (*TODO: test if exceeded maximum number of components*)
+    QUEUE.destroy stepq;
+    debug ("# partial ids = "^(string_of_int (SET.size ids)));
+    debug (SearchLib.steps2str 1 (partial_id_to_tree ms (SET.nth ids 0)) steps);
+    steps
 (*
     let _ = _print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
     let steps = SET.fold ids (fun (id,i) steps -> steps @ (build_partial_steps ms steps id i)) [] in
     steps
 *)
 
-  let create_global_context (ms:musearch) tbl : sstep list =
+  let create_global_context (ms:musearch) (tbl:gltbl) : sstep list =
+    (*allocate ioblocks for each final route option (when possible)*)
+    (*iter over route options, where a route option is going into the input port*)
+    let choices : ((sstep list) list) queue = QUEUE.make () in
+    let enq x = noop (QUEUE.enqueue x) in
+    SlnLib.iter_routes tbl.sln_ctx (fun (route:('a,'b) label) (generates:wireid list) ->
+        match route with
+        | MInLabel(_)->
+          error "create_global_context" "create an input block OR use an existing input block"
+        | MOutLabel(_) ->
+          error "create_global_context" "for output - route one of the generates over or use an input"
+        | MLocalLabel(_)->
+          error "create_global_context" "for local - definitely route one of the generates over"
+        | ValueLabel(_)->
+          error "create_global_context" "create an value block OR use an existing value block"
+        | MExprLabel(_) ->
+          error "create_global_context" "route-config should not be possible in a complete configuration"
+      );
+    SlnLib.iter_generates tbl.sln_ctx (fun (generate:('a,'b) label) (route:wireid list) ->
+        match generate with
+        | MOutLabel(_) ->
+          error "create_global_context" "route to an output block"
+        | MInLabel(_) ->
+          error "create_global_context" "dont do anything special for input propagate"
+        | MLocalLabel(_) ->
+          error "create_global_context" "dont do anything special for local"
+        | MExprLabel(_) ->
+          error "create_global_context" "dont do anything special for expr"
+        | ValueLabel(_) ->
+          error "create_global_context" "dont do anything special for value"
+
+      );
+    let choice_list = QUEUE.to_list choices in
+    QUEUE.destroy choices;
+    let nodes_3d  = LIST.permutations choice_list in
     error "create_global_context" "unimplemented"
 
   let build_global_steps ms  : sstep list=
@@ -508,7 +608,6 @@ struct
       in
       let depth = get_glbl_int "slvr-partial-depth" in
       debug "find a partial solution";
-      set_glbl_bool "downgrade-trivial" (get_glbl_bool "downgrade-trivial-partial");
       debug "== Finding Local Solution ==";
       debug ("== Current # Solutions: "^(string_of_int currsols));
       debug ("== # New Solutions To Find: "^(string_of_int nslns));
@@ -526,7 +625,11 @@ struct
           | lst -> Some(lst)
         end
     end
-    (*Find and add a new partial solutions to different nodes *)
+
+
+
+
+  (*Find and add a new partial solutions to different nodes *)
     let augment_with_partial_solution (ms:musearch) (pvar:string) (slns: sstep snode list option) :  'a option =
       let mint,musr = mkmenu ms in
       let curs = SearchLib.cursor ms.search in
@@ -559,7 +662,8 @@ struct
       let add_solution (sln:sstep snode) =
         let _ = debug "== Finding Global Solution ==" in
         let partial_node = add_lcl_sln curs sln in 
-        let _ = musr () in
+        SearchLib.move_cursor ms.search ms.state partial_node;
+        musr ();
         (*find a global solution*)
         match find_global_solution ms 1 with
         | Some(slns) ->

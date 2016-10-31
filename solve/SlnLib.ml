@@ -42,6 +42,23 @@ struct
   let wireconn2str (x:wireconn) : string =
     (wireid2str x.src)^"->"^(wireid2str x.dst)
 
+  let inst2inst_wire = HwLib.inst2inst_wire
+
+  let inst2inst_conn (c:wireconn) (fn:hwcompinst->hwcompinst) : wireconn=
+    {
+      src=inst2inst_wire c.src fn;
+      dst=inst2inst_wire c.dst fn
+    }
+
+  let inst2inst_label (c:('a,'b) label) (fn:hwcompinst->hwcompinst) : ('a,'b) label=
+    let i2i_w x = inst2inst_wire x fn in
+    match c with
+    | MInLabel(lbl) -> MInLabel({wire=i2i_w lbl.wire;var=lbl.var})
+    | MOutLabel(lbl) -> MOutLabel({wire=i2i_w lbl.wire;var=lbl.var})
+    | MLocalLabel(lbl) -> MLocalLabel({wire=i2i_w lbl.wire;var=lbl.var})
+    | MExprLabel(lbl) -> MExprLabel({wire=i2i_w lbl.wire;expr=lbl.expr})
+    | ValueLabel(lbl) -> ValueLabel({wire=i2i_w lbl.wire;value=lbl.value})
+
   let label2str (type a) (type b) (x:(a,b) label)
       (f:a->string) (g:b->string) : string =
     match x with
@@ -214,7 +231,14 @@ struct
         MAP.iter dests (fun dest  ->
             fn src dest
           )
-    )
+      )
+
+  let iter_routes (sln:usln) fn : unit =
+    error "iter_routes" "unimpl"
+
+  let iter_generates (sln:usln) fn: unit =
+    error "iter_generates" "unimpl"
+
 (*
   let hwport2wire cm port =
     match cm with
