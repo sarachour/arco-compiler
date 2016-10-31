@@ -404,43 +404,44 @@ struct
       let _ = _print_debug "================" in
       new_partial_steps 
 *)
-  let build_partials_steps ms (ids:(unid*int) set) : sstep list =
-    error "build_partials_steps" "unimplemented"
+  let build_partial_steps ms (ids:part_id set) : sstep list =
+    error "build_partial_steps" "unimplemented"
 (*
     let _ = _print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
     let steps = SET.fold ids (fun (id,i) steps -> steps @ (build_partial_steps ms steps id i)) [] in
     steps
 *)
 
-  let build_global_steps ms =
-    error "build_global_steps" "unimplemented"
-(*
-    let dummy = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
-    let _ = GoalTableLib.mknullroot ms.state.slvr dummy in
-    let steps = build_partials_steps ms ms.state.local in
-    let _ = SearchLib.apply_steps dummy.search (ms.state.slvr,dummy) steps in
-    let glsteps = get_global_context ms dummy in
-    glsteps @ steps
-*)
+  let create_global_context (ms:musearch) tbl : sstep list =
+    error "create_global_context" "unimplemented"
+
+  let build_global_steps ms  : sstep list=
+    let dummy_tbl : gltbl = GoalTableFactory.mktbl ms.state.env in
+    let part_steps : sstep list = build_partial_steps ms ms.state.local in
+    SearchLib.setroot dummy_tbl.search dummy_tbl part_steps;
+    let glbl_steps : sstep list= create_global_context ms dummy_tbl in
+    glbl_steps @ part_steps
+
+
   let mk_global_tbl (ms:musearch) =
-    error "mk_global_tbl" "unimplemented"
-(*
-    let tbl = GoalTableLib.mktbl ms.state.slvr ms.is_trivial in
+    let tbl : gltbl= GoalTableFactory.mktbl ms.state.env in
     let key = (set2key ms.state.local) in
-    (*if this table already exists*)
+    (*if this table doesn't exist make a new one*)
     if MAP.has ms.state.globals key = false then
+      begin
       let steps = build_global_steps ms in
-      let _ = _print_debug "======= Global Steps =======" in
-      let _ = List.iter (fun x -> _print_debug ("   "^(SlvrSearchLib.step2str x))) steps in
-      let _ = _print_debug "============================" in
-      let _ = GoalTableLib.mkroot ms.state.slvr tbl steps in
-      let _ = MAP.put ms.state.globals key tbl.search in
+      debug "======= Global Steps =======";
+      List.iter (fun x -> debug ("   "^(SlvrSearchLib.step2str x))) steps;
+      debug "============================";
+      GoalTableFactory.mkroot tbl steps;
+      MAP.put ms.state.globals key tbl.search;
       tbl
+    end
+     (*if this table already exists*)
     else
       let search = MAP.get ms.state.globals key in
-      let _ = (tbl.search <- search) in
+      tbl.search <- search;
       tbl
-*)
 
   (*find a global solution, given the set of partials that have been applied*)
   let find_global_solution (ms:musearch) (nsols:int) : sstep snode list option =
@@ -453,8 +454,9 @@ struct
     SearchLib.clear_cursor tbl.search;
     results
 
+  (*get the existing global solution*)
   let get_existing_global_solution (ms:musearch) (key:string) (id:int) : (string,mid) sln =
-    let gtree = MAP.get (MAP.get ms.state.globals key) id in
+    let gtree = MAP.get ms.state.globals key in
     let ptbl = GoalTableFactory.mktbl ms.state.env in 
     debug ("=> Global Solution: "^key^" :: "^(string_of_int id));
     let slnnode = SearchLib.id2node gtree id in 

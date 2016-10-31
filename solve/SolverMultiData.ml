@@ -15,14 +15,16 @@ type glbl_id = {
   ident:int;
 }
 
+(*a partial search*)
 type psearch = (sstep,gltbl) ssearch
+(*a map of partial searches*)
 type psearches = (int,psearch) map
 
 type mutbl = {
   (*subtrees*)
   env: uenv;
   partials: (string,psearch) map;
-  globals: (string,psearches) map;
+  globals: (string,psearch) map;
 
   (*partial solutions that are applied*)
   local: (part_id) set;
