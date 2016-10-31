@@ -353,7 +353,7 @@ struct
       List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
     in
     [
-      SModSln(SSlnAddConn({src=goal.wire;dst=goal.wire}));
+      SModSln(SSlnAddConn({src=outwire;dst=goal.wire}));
       (*SModSln(SSlnRmRoute(MExprLabel({wire=hgoal.wire;expr=hgoal.expr})));*)
       SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=goal.expr})))
     ] @ rm_goal_steps
@@ -374,7 +374,7 @@ struct
       List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
     in
     [
-      SModSln(SSlnAddConn({dst=goal.wire;src=inwire}));
+      SModSln(SSlnAddConn({src=goal.wire;dst=inwire}));
       SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=goal.expr})))
     ] @ rm_goal_steps
   (*

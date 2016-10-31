@@ -131,13 +131,13 @@ struct
         | _ -> ()
       );
     (*all port connections from same component have same value*)
-    SlnLib.iter_conns sln (fun (dest:wireid) (src:wireid) conn ->
+    SlnLib.iter_conns sln (fun (src:wireid) (dest:wireid) conn ->
         if has_wire tbl src = false then enq (decl_wire tbl src);
         if has_wire tbl dest = false then enq (decl_wire tbl dest);
         let src_id = wire2id tbl src in
         let dst_id = wire2id tbl dest in
-        debug (src_id^"->"^dst_id^"\n");
         debug (HwConnLib.env2str hwenv.conns);
+        debug ((HwLib.wireid2str src)^"->"^(HwLib.wireid2str dest)^"\n");
         let instconns =
           HwConnLib.get_inst_conns hwenv src.comp.name src.port dest.comp.name dest.port
         in
