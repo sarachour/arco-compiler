@@ -482,23 +482,50 @@ struct
     (*allocate ioblocks for each final route option (when possible)*)
     (*iter over route options, where a route option is going into the input port*)
     let choices : ((sstep list) list) queue = QUEUE.make () in
-    let enq x = noop (QUEUE.enqueue x) in
+    let buffer : (sstep list) queue = QUEUE.make () in
+    let mk_choice () = QUEUE.clear buffer; () in
+    let add_choice (x:sstep list) = QUEUE.enqueue buffer x; () in
+    let commit_choice () =
+      QUEUE.enqueue choices (QUEUE.to_list buffer) ;
+      QUEUE.clear buffer; ()
+    in
+    let _conn_generate_to_route routelbl routewire generates =
+            if LIST.empty generates = false then
+              List.iter (fun gen_wire ->
+                  let goal = GoalLib.mk_conn_goal tbl gen_wire routewire in
+                  mk_choice();
+                  add_choice ([
+                      SModSln(SSlnRmRoute(routelbl));
+                      SModGoalCtx(SGAddGoal(goal))
+                    ]);
+                  commit_choice()
+                ) generates
+            else
+              ()
+    in
+
+    (*these are routes that require you plug in a generate*)
+    debug ("==== ROUTES =====");
     SlnLib.iter_routes tbl.sln_ctx (fun (route:('a,'b) label) (generates:wireid list) ->
+        debug ("> "^(SlnLib.ulabel2str route));
         match route with
         | MInLabel(_)->
           error "create_global_context" "create an input block OR use an existing input block"
-        | MOutLabel(_) ->
-          error "create_global_context" "for output - route one of the generates over or use an input"
-        | MLocalLabel(_)->
-          error "create_global_context" "for local - definitely route one of the generates over"
+        | MOutLabel(lbl) ->
+           _conn_generate_to_route route lbl.wire generates 
+        | MLocalLabel(lbl)->
+           _conn_generate_to_route route lbl.wire generates 
         | ValueLabel(_)->
           error "create_global_context" "create an value block OR use an existing value block"
         | MExprLabel(_) ->
           error "create_global_context" "route-config should not be possible in a complete configuration"
       );
+    debug ("==== GENERATES =====");
     SlnLib.iter_generates tbl.sln_ctx (fun (generate:('a,'b) label) (route:wireid list) ->
         match generate with
-        | MOutLabel(_) ->
+        | MOutLabel(lbl) ->
+          (*create a new label*)
+
           error "create_global_context" "route to an output block"
         | MInLabel(_) ->
           error "create_global_context" "dont do anything special for input propagate"

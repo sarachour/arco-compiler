@@ -45,7 +45,8 @@ struct
 
 
   let mk_conn_goal (tbl:gltbl) (src:wireid) (dest:wireid) =
-    error "mk_conn_goal" "unimpl"
+    let mgoal = GUnifiable(GUHWConnPorts({src=src;dst=dest})) in
+    mk_goal tbl mgoal
 
   let mk_inblock_goal (tbl:gltbl) (src:wireid) (expr:mid ast) =
     let hvar = HwLib.getvar tbl.env.hw src.comp.name src.port in

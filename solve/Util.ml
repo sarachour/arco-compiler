@@ -275,9 +275,6 @@ struct
     | h::t -> h
     | _ -> error "queue.front" "can't peek empty list"
 
-  let empty (type a) (s:a queue) : a queue =
-    let _ = REF.upd s (fun x -> []) in
-    s
 
   let filter (type a) (s:a queue) (f:a->bool) : a list =
     List.filter f (REF.dr s)
@@ -304,6 +301,9 @@ struct
     let q = make () in
     let _ = REF.upd q (fun q -> x) in
     q
+
+  let clear (type a) (x:a queue) =
+    REF.upd x (fun a -> [])
 
   let map (type a) (type b) (x:a queue) (r:a -> b): (b list) =
     List.map r (REF.dr x)

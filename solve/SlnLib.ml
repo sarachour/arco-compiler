@@ -62,11 +62,15 @@ struct
   let label2str (type a) (type b) (x:(a,b) label)
       (f:a->string) (g:b->string) : string =
     match x with
-    | MInLabel(lbl) -> (wireid2str lbl.wire)^" > "^(f lbl.var)
-    | MOutLabel(lbl) -> (wireid2str lbl.wire)^" > "^(f lbl.var)
-    | MLocalLabel(lbl) -> (wireid2str lbl.wire)^" > "^(f lbl.var)
-    | MExprLabel(lbl) -> (wireid2str lbl.wire)^" > "^(ASTLib.ast2str lbl.expr g)
-    | ValueLabel(lbl) -> (wireid2str lbl.wire)^" > "^(string_of_number lbl.value)
+    | MInLabel(lbl) -> (wireid2str lbl.wire)^" = "^(f lbl.var)
+    | MOutLabel(lbl) -> (wireid2str lbl.wire)^" = "^(f lbl.var)
+    | MLocalLabel(lbl) -> (wireid2str lbl.wire)^" = "^(f lbl.var)
+    | MExprLabel(lbl) -> (wireid2str lbl.wire)^" = "^(ASTLib.ast2str lbl.expr g)
+    | ValueLabel(lbl) -> (wireid2str lbl.wire)^" = "^(string_of_number lbl.value)
+
+    
+  let ulabel2str (x:(string,mid) label) =
+    label2str x (ident) MathLib.mid2str
 
   let add_conn (sln:usln) (conn:wireconn) =
     let get_set (map:(wireid,wireid set) map) (key:wireid) : wireid set =
@@ -242,11 +246,13 @@ struct
       (fn:(a,b) label -> wireid list -> unit) : unit =
     let traverse tmap omap flbl =
       MAP.iter tmap (fun vr (this_coll:wire_coll) ->
-        let other_coll : wireid list = wirecoll2list (MAP.get_dflt omap vr WCollEmpty) in
-        List.iter (fun (wire:wireid) ->
+          let other_coll : wireid list =
+            wirecoll2list (MAP.get_dflt omap vr WCollEmpty)
+          in
+          List.iter (fun (wire:wireid) ->
             let lbl = flbl wire vr in
             fn lbl other_coll
-        ) other_coll
+            ) (wirecoll2list this_coll)
         )
     in
     traverse trg.ins othr.ins (fun wire v -> MInLabel({wire=wire;var=v}));
