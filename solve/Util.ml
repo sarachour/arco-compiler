@@ -849,6 +849,13 @@ struct
   let get (type a) (type b) (x:(a,b) map) (k:a) : b =
     Hashtbl.find x k
 
+  let get_dflt (type a) (type b) (x:(a,b) map) (k:a) (dflt:b) : b =
+    if has x k then
+      get x k
+    else
+      dflt
+
+
   let ifget (type a) (type b) (x:(a,b) map) (k:a) : b option =
     if has x k then
       Some (get x k)

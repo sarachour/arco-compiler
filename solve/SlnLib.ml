@@ -122,6 +122,11 @@ struct
   let getdests (type a) (type b) (sln:(a,b) sln) (dest:wireid) =
     WCollEmpty
 
+  let wirecoll2list (x:wire_coll) = match x with
+    | WCollEmpty -> []
+    | WCollOne(wire) -> [wire]
+    | WCollMany(wires) -> wires
+
   let _add_wire_to_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
     if MAP.has m key then
       let ncoll = match MAP.get m key with
@@ -233,11 +238,29 @@ struct
           )
       )
 
+  let _iter_labels (type a) (type b) (trg:(a,b) labels) (othr:(a,b) labels)
+      (fn:(a,b) label -> wireid list -> unit) : unit =
+    let traverse tmap omap flbl =
+      MAP.iter tmap (fun vr (this_coll:wire_coll) ->
+        let other_coll : wireid list = wirecoll2list (MAP.get_dflt omap vr WCollEmpty) in
+        List.iter (fun (wire:wireid) ->
+            let lbl = flbl wire vr in
+            fn lbl other_coll
+        ) other_coll
+        )
+    in
+    traverse trg.ins othr.ins (fun wire v -> MInLabel({wire=wire;var=v}));
+    traverse trg.outs othr.outs (fun wire v -> MOutLabel({wire=wire;var=v}));
+    traverse trg.locals othr.locals (fun wire v -> MLocalLabel({wire=wire;var=v}));
+    traverse trg.vals othr.vals (fun wire v -> ValueLabel({wire=wire;value=v}));
+    traverse trg.exprs othr.exprs (fun wire v -> MExprLabel({wire=wire;expr=v}));
+    ()
+
   let iter_routes (sln:usln) fn : unit =
-    error "iter_routes" "unimpl"
+    _iter_labels sln.route sln.generate fn
 
   let iter_generates (sln:usln) fn: unit =
-    error "iter_generates" "unimpl"
+    _iter_labels sln.generate sln.route fn
 
 (*
   let hwport2wire cm port =
