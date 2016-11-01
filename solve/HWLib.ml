@@ -304,9 +304,12 @@ struct
     else
       MAP.get c.ins port
 
-  let getprop e cname port =
+  let getprop e (cname:hwcompname) port =
     let v = getvar e cname port in
     v.prop
+
+  let wire2prop e (wire:wireid) =
+    getprop e wire.comp.name wire.port
 
   let getcomps e  =
     MAP.to_values e.comps

@@ -478,47 +478,84 @@ struct
     steps
 *)
 
+  type glbl_ctx = {
+    (*choices to resolve a step*)
+    choice_buffer : (sstep list) queue;
+    (*must select one of these choices*)
+    choice_block_buffer : ((sstep list) list) queue;
+    buffer: (((sstep list) list) list) queue;
+
+  }
+  let glblctx_mk () =
+    {
+      choice_buffer = QUEUE.make ();
+      choice_block_buffer = QUEUE.make ();
+      buffer = QUEUE.make ();
+    }
+
+  let glblctx_mk_chblock ctx =
+    QUEUE.clear ctx.choice_buffer;
+    QUEUE.clear ctx.choice_block_buffer;
+    ()
+
+  let glblctx_mk_ch ctx = QUEUE.clear ctx.choice_buffer; ()
+
+  let glblctx_add_ch ctx (x:sstep list) =
+    QUEUE.enqueue ctx.choice_buffer x; ()
+
+  let glblctx_commit_ch ctx =
+    QUEUE.enqueue ctx.choice_block_buffer (QUEUE.to_list ctx.choice_buffer) ;
+    QUEUE.clear ctx.choice_buffer; ()
+
+  let glblctx_commit_chblock ctx =
+    QUEUE.enqueue ctx.buffer (QUEUE.to_list ctx.choice_block_buffer);
+    QUEUE.clear ctx.choice_block_buffer;
+    QUEUE.clear ctx.choice_buffer; ()
+
   let create_global_context (ms:musearch) (tbl:gltbl) : sstep list =
-    (*allocate ioblocks for each final route option (when possible)*)
-    (*iter over route options, where a route option is going into the input port*)
-    let choices : ((sstep list) list) queue = QUEUE.make () in
-    let buffer : (sstep list) queue = QUEUE.make () in
-    let mk_choice () = QUEUE.clear buffer; () in
-    let add_choice (x:sstep list) = QUEUE.enqueue buffer x; () in
-    let commit_choice () =
-      QUEUE.enqueue choices (QUEUE.to_list buffer) ;
-      QUEUE.clear buffer; ()
-    in
+    let ctx = glblctx_mk () in
+    (*pull partial solution route to a goal*)
     let _conn_generate_to_route routelbl routewire generates =
             if LIST.empty generates = false then
-              List.iter (fun gen_wire ->
-                  let goal = GoalLib.mk_conn_goal tbl gen_wire routewire in
-                  mk_choice();
-                  add_choice ([
-                      SModSln(SSlnRmRoute(routelbl));
-                      SModGoalCtx(SGAddGoal(goal))
-                    ]);
-                  commit_choice()
-                ) generates
+              begin
+                glblctx_mk_chblock ctx;
+                List.iter (fun gen_wire ->
+                    let goal = GoalLib.mk_conn_goal tbl gen_wire routewire in
+                    glblctx_mk_ch ctx;
+                    glblctx_add_ch ctx ([
+                        SModSln(SSlnRmRoute(routelbl));
+                        SModGoalCtx(SGAddGoal(goal))
+                      ]);
+                    glblctx_commit_ch ctx;
+                ) generates;
+                glblctx_commit_chblock ctx;
+              end
             else
               ()
     in
-
+    let mk_input_block (wire:wireid) =
+      let prop = HwLib.wire2prop tbl.env.hw wire in
+      error "mk_input_block" "unimplemented"
+    in
     (*these are routes that require you plug in a generate*)
     debug ("==== ROUTES =====");
     SlnLib.iter_routes tbl.sln_ctx (fun (route:('a,'b) label) (generates:wireid list) ->
         debug ("> "^(SlnLib.ulabel2str route));
-        match route with
-        | MInLabel(_)->
-          error "create_global_context" "create an input block OR use an existing input block"
-        | MOutLabel(lbl) ->
-           _conn_generate_to_route route lbl.wire generates 
-        | MLocalLabel(lbl)->
-           _conn_generate_to_route route lbl.wire generates 
-        | ValueLabel(_)->
-          error "create_global_context" "create an value block OR use an existing value block"
-        | MExprLabel(_) ->
-          error "create_global_context" "route-config should not be possible in a complete configuration"
+        begin
+          match route with
+          | MInLabel(lbl)->
+            let inpblock = mk_input_block lbl.wire in
+            error "create_global_context" "create an input block OR use an existing input block"
+          | MOutLabel(lbl) ->
+            _conn_generate_to_route route lbl.wire generates 
+          | MLocalLabel(lbl)->
+            _conn_generate_to_route route lbl.wire generates 
+          | ValueLabel(lbl)->
+            let inpblock = mk_input_block lbl.wire in
+            error "create_global_context" "create an value block OR use an existing value block"
+          | MExprLabel(_) ->
+            error "create_global_context" "route-config should not be possible in a complete configuration
+        end
       );
     debug ("==== GENERATES =====");
     SlnLib.iter_generates tbl.sln_ctx (fun (generate:('a,'b) label) (route:wireid list) ->
