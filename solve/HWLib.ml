@@ -204,6 +204,8 @@ struct
     else
         MAP.get e.comps (hwcompname2str cname) 
 
+
+  
   let mksim (e:hwvid hwenv) (cname:hwcompname) (name:string) (args:string list) =
       let c : hwvid hwcomp = getcomp e (cname) in
       c.sim <- Some(name,args);
@@ -545,6 +547,15 @@ struct
   let comp_get_param_values (type a) (x:a hwcomp) (f:string) : number list=
     let par = comp_getparam x f in
     par.value
+
+  let ioblock_get_in (type a) (x:a hwcomp) : a hwportvar=
+    let _,port = MAP.singleton x.ins in
+    port
+
+  let ioblock_get_out (type a) (x:a hwcomp) :a hwportvar =
+    let _,port = MAP.singleton x.outs in
+    port
+
 
   let map_var (type a) (type b) (x:a hwportvar) (f:a->b) : b hwportvar =
     {

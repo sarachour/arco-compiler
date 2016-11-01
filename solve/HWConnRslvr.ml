@@ -141,7 +141,7 @@ struct
         let instconns =
           HwConnLib.get_inst_conns hwenv src.comp.name src.port dest.comp.name dest.port
         in
-        let clauses : z3expr list = List.map (fun conn ->
+        let clauses : z3expr list = List.map (fun (conn:hwinst_conn) ->
             Z3And(inst2smt conn.src src_id,inst2smt conn.dst dst_id)
         ) instconns in
         let expr = Z3Lib.fn_all clauses (fun x y -> Z3Or(x,y)) in

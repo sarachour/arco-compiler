@@ -229,7 +229,7 @@ struct
 
 
   (*=========== RSTEP to SSTEP Conversion ==================*)
-  (*specifically for inputs*)
+  (* handle an assignment to an input port*)
   let rassign_inp_to_goal (stepq:sstep queue) (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) : unit =
     let enq s = noop (QUEUE.enqueue stepq s) in
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
@@ -366,7 +366,7 @@ struct
     (*the input port from the new block that generates the expression*)
     let inwire : wireid = SlnLib.mkwire invar.comp incomp.inst invar.port in 
     (*the output port from the new block that generates the expression*)
-    let outwire : wireid = SlnLib.mkwire invar.comp incomp.inst invar.port in 
+    let outwire : wireid = SlnLib.mkwire invar.comp incomp.inst outvar.port in 
     (*the goals from the new block that generate the expression*)
     let matched_goals : (int*goal) list=
       GoalLib.find_goals tbl (GUnifiable(GUHWConnOutBlock(goal))) in
@@ -377,14 +377,33 @@ struct
       SModSln(SSlnAddConn({src=goal.wire;dst=inwire}));
       SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=goal.expr})))
     ] @ rm_goal_steps
+
+  let rslvd_goal_to_ssteps_conn (tbl:gltbl) (incomp:ucomp_conc)
+      (invar:hwvid hwportvar) (outvar:hwvid hwportvar) (goal:goal_conn) =
+    (*the output port from the goal that needs to be connected to the output block*)
+    (*wires belonging to the newly created component *)
+    (*the input port from the new block that generates the expression*)
+    let inwire : wireid = SlnLib.mkwire invar.comp incomp.inst invar.port in 
+    (*the output port from the new block that generates the expression*)
+    let outwire : wireid = SlnLib.mkwire invar.comp incomp.inst outvar.port in 
+    (*the goals from the new block that generate the expression*)
+    let matched_goals : (int*goal) list=
+      GoalLib.find_goals tbl (GUnifiable(GUHWConnPorts(goal))) in
+    let rm_goal_steps :sstep list=
+      List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
+    in
+    [
+      SModSln(SSlnAddConn({src=outwire;dst=goal.dst}));
+      SModSln(SSlnAddGen(MExprLabel({wire=outwire;expr=goal.expr})))
+    ] @ rm_goal_steps
   (*
      this unification algorithm tries to pass through a value to a component without creating
      more instances of that value.
   *)
   let pass_through_unify tbl (comp:hwvid hwcomp) (cfg:hwcompcfg)
-      (inputs:hwvid list) (hwvar:hwvid hwportvar) (extend:goal_ioblock)
+      (inputs:hwvid list) (hwvar:hwvid hwportvar) (extend:mid ast)
       (unify:rstep list->rstep list list) : (string*rstep list) list =
-    let expr = {expr=mast2uast extend.expr} in
+    let expr = {expr=mast2uast extend} in
     let resultq = QUEUE.make () in
     let enq i lst = List.iter (fun x -> noop (QUEUE.enqueue resultq (i,x))) lst in
     let mkrstep (sel:string) rest (x:hwvid) = match x with
@@ -457,7 +476,7 @@ struct
           SolverCompLib.get_extendable_inputs_for_inblock_goal tbl.env.hw ConcCompLib.newcfg
             hwvar hgoal.wire hgoal.prop
         in
-        let results = pass_through_unify tbl comp cfg inputs hwvar hgoal (fun inits ->
+        let results = pass_through_unify tbl comp cfg inputs hwvar hgoal.expr (fun inits ->
             ASTUnifier.unify_comp_with_hwvar
               tbl.env.hw tbl.env.math comp cfg inst
               hwvar.port (hackit (mast2uast hgoal.expr)) inits
@@ -472,7 +491,7 @@ struct
           SolverCompLib.get_extendable_inputs_for_outblock_goal tbl.env.hw ConcCompLib.newcfg
             hwvar hgoal.wire hgoal.prop
         in
-        let results = pass_through_unify tbl comp cfg inputs hwvar hgoal (fun inits ->
+        let results = pass_through_unify tbl comp cfg inputs hwvar hgoal.expr (fun inits ->
             ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
               comp cfg inst hwvar.port
               (hackit (mast2uast hgoal.expr)) inits 
@@ -485,7 +504,24 @@ struct
                   (rsteps_to_ssteps tbl ccomp rsteps inits))
         )
 
-      | GUHWConnPorts(_) -> error "unify_goal_with_comp" "conn-ports unimplemented"
+      | GUHWConnPorts(conns) ->
+        let prop = HwLib.getprop tbl.env.hw conns.src.comp.name conns.src.port in
+        let inputs : hwvid list =
+          SolverCompLib.get_extendable_inputs_for_conn_goal tbl.env.hw ConcCompLib.newcfg
+            hwvar conns.src prop
+        in
+        let results = pass_through_unify tbl comp cfg inputs hwvar conns.expr (fun inits ->
+            ASTUnifier.unify_comp_with_hwvar
+              tbl.env.hw tbl.env.math comp cfg inst
+              hwvar.port (hackit (mast2uast conns.expr)) inits
+          )
+        in
+        commit_results results (fun ccomp ((input,rsteps):string*rstep list) inits ->
+            let invar = HwLib.comp_getvar ccomp.d input in 
+            let outvar = hwvar in 
+            ((rslvd_goal_to_ssteps_conn tbl ccomp invar outvar conns) @
+                  (rsteps_to_ssteps tbl ccomp rsteps inits))
+        )
 
   let unify_goal_with_new_comp (tbl:gltbl) (ucomp:ucomp) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
     let initialize (type a) () : ucomp_conc*sstep list=
@@ -579,6 +615,19 @@ struct
         end
 
 
+  let solve_trivial_connection (tbl:gltbl) (conn:goal_conn) =
+    debug "connection is trivial.";
+    let matched_goals : (int*goal) list=
+      GoalLib.find_goals tbl (GUnifiable(GUHWConnPorts(conn))) in
+    let rm_goal_steps :sstep list=
+      List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
+    in
+    let steps = [
+      SModSln(SSlnAddConn({src=conn.src;dst=conn.dst}))
+    ] @ rm_goal_steps in
+    SearchLib.mknode_child_from_steps tbl.search tbl steps;
+    ()
+
   let solve_goal (tbl:gltbl) (g:goal) =
     let root = SearchLib.cursor tbl.search in
     let mint,musr = mkmenu tbl (Some g) in
@@ -586,16 +635,23 @@ struct
     musr ();
     if g.active = false then error "solve_goal" "cannot solve inactive goal"; 
     match g.d with
-    |GUnifiable(g) -> solve_unifiable_goal tbl g 
+    |GUnifiable(GUHWConnPorts(conn)) ->
+      begin
+        if HwLib.is_connectable tbl.env.hw conn.src.comp.name conn.src.port
+            conn.dst.comp.name conn.dst.port then
+          solve_trivial_connection tbl conn
+        else
+          solve_unifiable_goal tbl (GUHWConnPorts(conn)) 
+      end
+    |GUnifiable(g) -> solve_unifiable_goal tbl g
     | _ -> error "solve_goal" "unimplemented"
 
   let solve_subtree (tbl:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
     let downgrade_enable = get_glbl_bool "downgrade-trivial" in
     let mint,musr = mkmenu tbl (None) in
-    let rec rec_solve_subtree (root:(sstep snode)) =
+    let rec rec_solve_subtree (targ_node:(sstep snode)) =
       (*we've exhausted the subtree - there are no more paths to explore*)
       let currslns = SearchLib.num_solutions tbl.search (Some root) in 
-      begin
       if currslns >= nslns then
         begin
          debug "[search_tree] Found enough solutions";
@@ -612,53 +668,40 @@ struct
             ()
           end
         else
-          (*get the next node*)
-          let maybe_next_node = get_best_valid_node tbl (Some root) depth in
-          match maybe_next_node with
-          | Some(next_node) ->
-            begin
-              (*move to node*)
-              SearchLib.move_cursor tbl.search tbl next_node;
-              let next_goal = get_best_valid_goal tbl in
-              (*solves the goal*)
-              musr ();
-              solve_goal tbl next_goal;
-              rec_solve_subtree root
-            end
-            (*No more subgoals*)
-          | None ->
-            debug "[search_tree] could not find another node";
-            ()
+          begin
+            SearchLib.move_cursor tbl.search tbl targ_node;
+            if List.length ( GoalLib.get_active_goals tbl ) = 0 then
+              mark_if_solution tbl targ_node
+            else
+              let targ_goal = get_best_valid_goal tbl in 
+              musr();
+              solve_goal tbl targ_goal;
+              begin
+                match get_best_valid_node tbl None depth with
+                | Some(next_node) ->
+                    rec_solve_subtree next_node
+                | None ->
+                  debug "[search_tree] could not find another node";
+                  ()
+              end
+          end
+
         end
-      end
     in
     debug "[search-tree] starting";
     mint "g";
-    musr ();
+    (*move to a frontier*)
+    
     let maybe_root = SearchLib.root tbl.search in
     begin
       match maybe_root with
       | Some(root) -> 
         begin
-        SearchLib.move_cursor tbl.search tbl root;
-        debug "[search-tree] positioned cursor";
-        if List.length ( GoalLib.get_active_goals tbl ) = 0 then
-          begin
-            mark_if_solution tbl root;
-            debug "[search-tree] there are no active goals. beginning search anyway";
-            rec_solve_subtree root;
-            ()
-          end
-        else
-          begin
-            debug "[search-tree] get best valid goal";
-            let next_goal = get_best_valid_goal tbl in
-            debug "[search-tree] solve the best valid goal";
-            solve_goal tbl next_goal;
-            debug "[search-tree] begin search";
-            rec_solve_subtree root;
-            ()
-          end
+          let paths : sstep snode list= SearchLib.get_paths tbl.search None in 
+          musr ();
+          match paths with
+          | starting_node::t -> rec_solve_subtree starting_node
+          | [] -> ()
         end
       | None -> error "solve_tree" "root is empty/unset"
     end

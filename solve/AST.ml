@@ -74,6 +74,9 @@ module ASTLib
   end*)
 
 = struct
+    let number2ast (x:number) : 'a ast = match x with
+        | Integer(i) -> Integer(i)
+        | Decimal(d) -> Decimal(d)
 
     let rec ast2str a fn : string =
       let list2str lst delim =

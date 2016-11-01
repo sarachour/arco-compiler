@@ -44,8 +44,8 @@ struct
     MAP.filter tbl.goals (fun id (g:goal) -> g.d = gd)
 
 
-  let mk_conn_goal (tbl:gltbl) (src:wireid) (dest:wireid) =
-    let mgoal = GUnifiable(GUHWConnPorts({src=src;dst=dest})) in
+  let mk_conn_goal (tbl:gltbl) (src:wireid) (dest:wireid) (expr:mid ast)=
+    let mgoal = GUnifiable(GUHWConnPorts({src=src;dst=dest;expr=expr})) in
     mk_goal tbl mgoal
 
   let mk_inblock_goal (tbl:gltbl) (src:wireid) (expr:mid ast) =
@@ -137,7 +137,7 @@ struct
       {d=GUnifiable(GUHWConnOutBlock(data)); active=g.active; id = g.id}
 
     | GUnifiable(GUHWConnPorts(hwconn)) ->
-      let data : goal_conn = {src=i2i_w hwconn.src; dst=i2i_w hwconn.dst} in
+      let data : goal_conn = {src=i2i_w hwconn.src; dst=i2i_w hwconn.dst;expr=hwconn.expr} in
       {d=GUnifiable(GUHWConnPorts(data)); active=g.active; id = g.id}
 
   let goal2str (g:goal) =
@@ -152,7 +152,8 @@ struct
       | GUnifiable(GUHWConnOutBlock(dat)) ->
         "[OUT] "^(portprop2str dat.wire dat.prop)^"="^(MathLib.mast2str dat.expr)
       | GUnifiable(GUHWConnPorts(dat)) ->
-        "[CONN] "^(SlnLib.wireconn2str dat)
+        "[CONN] "^(SlnLib.wireid2str dat.src)^" => "^(SlnLib.wireid2str dat.dst)^
+        " ("^(MathLib.mast2str dat.expr)^")"
       | _ -> "goal2str: unimplemented"
     in
     "["^(string_of_int g.id)^"] "^data_str 

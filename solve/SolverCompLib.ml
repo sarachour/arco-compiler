@@ -231,6 +231,13 @@ struct
     in
     get_extendable_inputs env cfg hv test_input
 
+  let get_extendable_inputs_for_conn_goal env cfg hv (dest_wire:wireid) (prop:string) =
+    let test_input (vport:string) (vprop:string) =
+      true
+    in
+    get_extendable_inputs env cfg hv test_input
+
+
 
   let compatible_hwvar_with_outblock_extend  (env:'a hwenv) cfg (hv:'a hwportvar) (src_wire:wireid)
       (prop:string) : bool =
@@ -241,7 +248,11 @@ struct
     (List.length (get_extendable_inputs_for_inblock_goal env cfg hv dest_wire prop)) > 0
     && is_conn && hv.prop = prop
 
-     
+  let compatible_hwvar_with_conn env cfg hv (src_wire:wireid) (dest_wire:wireid) =
+    let prop = HwLib.getprop env src_wire.comp.name src_wire.port in
+    let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
+     (List.length (get_extendable_inputs_for_conn_goal env cfg hv dest_wire prop)) > 0
+
   let compatible_hwvar_with_goal tbl cfg (hv:'a hwportvar) (v:unifiable_goal) : bool =
     let compat : bool = match v with
       | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar cfg hv mgoal.d
@@ -251,6 +262,9 @@ struct
         compatible_hwvar_with_outblock_extend tbl.env.hw cfg hv hgoal.wire hgoal.prop 
       | GUHWConnInBlock(hgoal) ->
         compatible_hwvar_with_inblock_extend tbl.env.hw cfg hv hgoal.wire hgoal.prop 
+      | GUHWConnPorts(conn) ->
+        compatible_hwvar_with_conn tbl.env.hw cfg hv conn.src conn.dst 
+
       | _ -> error "compatible_hwvar_with_goal" "unimpl"
     in
     debug ((HwLib.hwcompname2str hv.comp)^"."^hv.port^" -> "^(string_of_bool compat)^"\n");
@@ -337,6 +351,12 @@ struct
       error "rm_conc_comp" "cannot remove comp that does not exist"
 
 
+  let conccomp2inst (c:ucomp_conc) : hwcompinst =
+    {name=c.d.name;inst=c.inst}
+
+  let conccomp_port2wire (c:ucomp_conc) port : wireid =
+    {comp=(conccomp2inst c);port=port}
+
   let get_conc_comp (tbl:gltbl) (f:hwcompinst) = 
     if MAP.has tbl.comp_ctx f.name then
       let ctx = MAP.get tbl.comp_ctx f.name in
@@ -358,7 +378,8 @@ struct
       f cmp
     else
       begin
-        error "_invoke_conc_fxn" "set a configuration parameter on a nonexistant comp"
+        error "_invoke_conc_fxn" ("set a configuration parameter on a nonexistant comp: "^
+                                  (HwLib.hwcompinst2str id))
       end
 
   let conc_param tbl id port v =

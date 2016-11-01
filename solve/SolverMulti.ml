@@ -17,6 +17,7 @@ open SearchData
 
 open SolverGoalTableFactory 
 open SolverData
+open SolverCompLib
 open SolverUtil
 open SlnLib 
 open SolverSearch
@@ -482,60 +483,110 @@ struct
     (*choices to resolve a step*)
     choice_buffer : (sstep list) queue;
     (*must select one of these choices*)
-    choice_block_buffer : ((sstep list) list) queue;
-    buffer: (((sstep list) list) list) queue;
+    buffer: ((sstep list) list)  queue;
 
   }
   let glblctx_mk () =
     {
       choice_buffer = QUEUE.make ();
-      choice_block_buffer = QUEUE.make ();
       buffer = QUEUE.make ();
     }
 
   let glblctx_mk_chblock ctx =
     QUEUE.clear ctx.choice_buffer;
-    QUEUE.clear ctx.choice_block_buffer;
     ()
 
-  let glblctx_mk_ch ctx = QUEUE.clear ctx.choice_buffer; ()
 
   let glblctx_add_ch ctx (x:sstep list) =
     QUEUE.enqueue ctx.choice_buffer x; ()
 
-  let glblctx_commit_ch ctx =
-    QUEUE.enqueue ctx.choice_block_buffer (QUEUE.to_list ctx.choice_buffer) ;
-    QUEUE.clear ctx.choice_buffer; ()
-
   let glblctx_commit_chblock ctx =
-    QUEUE.enqueue ctx.buffer (QUEUE.to_list ctx.choice_block_buffer);
-    QUEUE.clear ctx.choice_block_buffer;
+    QUEUE.enqueue ctx.buffer (QUEUE.to_list ctx.choice_buffer);
     QUEUE.clear ctx.choice_buffer; ()
 
-  let create_global_context (ms:musearch) (tbl:gltbl) : sstep list =
+  let glblctx_mk_nodes ctx : (sstep list) list =
+    let step_lists : ((sstep list) list) list =
+      QUEUE.to_list ctx.buffer
+    in
+    let node_lists_3d : ((sstep list) list) list =
+      LIST.permutations step_lists
+    in
+    QUEUE.destroy ctx.buffer;
+    QUEUE.destroy ctx.choice_buffer;
+    List.map (fun (lst:(sstep list) list) ->
+        List.fold_left (fun rst q -> q @ rst) [] lst
+      ) node_lists_3d
+
+  let create_global_context (ms:musearch) (tbl:gltbl) : sstep list list =
     let ctx = glblctx_mk () in
     (*pull partial solution route to a goal*)
-    let _conn_generate_to_route routelbl routewire generates =
+    let _conn_generate_to_route routelbl routewire generates expr =
             if LIST.empty generates = false then
               begin
                 glblctx_mk_chblock ctx;
                 List.iter (fun gen_wire ->
-                    let goal = GoalLib.mk_conn_goal tbl gen_wire routewire in
-                    glblctx_mk_ch ctx;
+                    let goal = GoalLib.mk_conn_goal tbl gen_wire routewire expr in
                     glblctx_add_ch ctx ([
                         SModSln(SSlnRmRoute(routelbl));
                         SModGoalCtx(SGAddGoal(goal))
                       ]);
-                    glblctx_commit_ch ctx;
                 ) generates;
                 glblctx_commit_chblock ctx;
               end
             else
               ()
     in
-    let mk_input_block (wire:wireid) =
+    (*make an input block that connects to a wire*)
+    let mk_input_block lbl (wire:wireid) expr =
       let prop = HwLib.wire2prop tbl.env.hw wire in
-      error "mk_input_block" "unimplemented"
+      let blk : hwvid hwcomp = HwLib.getcomp tbl.env.hw (HWCmInput prop) in
+      let ccblk : ucomp_conc= SolverCompLib.mk_conc_comp tbl (HWCmInput prop) in
+      let ccblk_in : wireid =
+        SolverCompLib.conccomp_port2wire ccblk (HwLib.ioblock_get_in blk).port
+      in
+      let ccblk_out : wireid =
+        SolverCompLib.conccomp_port2wire ccblk (HwLib.ioblock_get_out blk).port
+      in
+      let ccblk_inst = SolverCompLib.conccomp2inst ccblk in
+      (*connect inside*)
+      let goal : goal = GoalLib.mk_conn_goal tbl ccblk_out wire expr in
+      let wrap_varcfg lbl = {expr=mast2uast (SlnLib.ulabel2mexpr lbl)} in
+      let steps = [
+        SModSln(SSlnRmRoute(lbl));
+        SModSln(SSlnAddComp(ccblk_inst));
+        SModSln(SSlnAddRoute(SlnLib.xchg_wire lbl ccblk_in));
+        SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_out));
+        SModCompCtx(SCMakeConcComp(ccblk));
+        SModCompCtx(SCAddInCfg(ccblk_inst,ccblk_in.port,wrap_varcfg lbl));
+        SModCompCtx(SCAddOutCfg(ccblk_inst,ccblk_out.port,wrap_varcfg lbl));
+        SModGoalCtx(SGAddGoal(goal));
+      ] in
+      steps 
+    in
+    (*make an output block that connects to a wire*)
+    let mk_output_block lbl (wire:wireid) expr =
+      let prop = HwLib.wire2prop tbl.env.hw wire in
+      let blk : hwvid hwcomp = HwLib.getcomp tbl.env.hw (HWCmOutput prop) in
+      let ccblk : ucomp_conc= SolverCompLib.mk_conc_comp tbl (HWCmOutput prop) in
+      let ccblk_in : wireid =
+        SolverCompLib.conccomp_port2wire ccblk (HwLib.ioblock_get_in blk).port
+      in
+      let ccblk_out : wireid =
+        SolverCompLib.conccomp_port2wire ccblk (HwLib.ioblock_get_out blk).port
+      in
+      let ccblk_inst = SolverCompLib.conccomp2inst ccblk in
+      (*connect inside*)
+      let goal : goal = GoalLib.mk_conn_goal tbl wire ccblk_in expr in
+      let wrap_varcfg lbl = {expr=mast2uast (SlnLib.ulabel2mexpr lbl)} in
+      let steps = [
+        SModSln(SSlnAddComp(ccblk_inst));
+        SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_out));
+        SModCompCtx(SCMakeConcComp(ccblk));
+        SModCompCtx(SCAddInCfg(ccblk_inst,ccblk_in.port,wrap_varcfg lbl));
+        SModCompCtx(SCAddOutCfg(ccblk_inst,ccblk_out.port,wrap_varcfg lbl));
+        SModGoalCtx(SGAddGoal(goal));
+      ] in
+      steps 
     in
     (*these are routes that require you plug in a generate*)
     debug ("==== ROUTES =====");
@@ -544,47 +595,55 @@ struct
         begin
           match route with
           | MInLabel(lbl)->
-            let inpblock = mk_input_block lbl.wire in
-            error "create_global_context" "create an input block OR use an existing input block"
+            let inpblock_steps = mk_input_block route lbl.wire (SlnLib.ulabel2mexpr route) in
+            glblctx_mk_chblock ctx;
+            glblctx_add_ch ctx inpblock_steps;
+            glblctx_commit_chblock ctx
           | MOutLabel(lbl) ->
-            _conn_generate_to_route route lbl.wire generates 
+            _conn_generate_to_route route lbl.wire generates (SlnLib.ulabel2mexpr route) 
           | MLocalLabel(lbl)->
-            _conn_generate_to_route route lbl.wire generates 
+            _conn_generate_to_route route lbl.wire generates (SlnLib.ulabel2mexpr route) 
           | ValueLabel(lbl)->
-            let inpblock = mk_input_block lbl.wire in
-            error "create_global_context" "create an value block OR use an existing value block"
+            let inpblock_steps = mk_input_block route lbl.wire (SlnLib.ulabel2mexpr route) in
+            glblctx_mk_chblock ctx;
+            glblctx_add_ch ctx inpblock_steps;
+            glblctx_commit_chblock ctx
           | MExprLabel(_) ->
-            error "create_global_context" "route-config should not be possible in a complete configuration
+            error "create_global_context" "route-config should not be possible icomplete configuration"
         end
       );
     debug ("==== GENERATES =====");
     SlnLib.iter_generates tbl.sln_ctx (fun (generate:('a,'b) label) (route:wireid list) ->
-        match generate with
-        | MOutLabel(lbl) ->
-          (*create a new label*)
+        debug ("> "^(SlnLib.ulabel2str generate));
+        begin
+          match generate with
+          | MOutLabel(lbl) ->
+            (*create a new label*)
+            let outblock_steps = mk_output_block generate lbl.wire (SlnLib.ulabel2mexpr generate) in
+            glblctx_mk_chblock ctx;
+            glblctx_add_ch ctx outblock_steps;
+            glblctx_commit_chblock ctx
 
-          error "create_global_context" "route to an output block"
-        | MInLabel(_) ->
-          error "create_global_context" "dont do anything special for input propagate"
-        | MLocalLabel(_) ->
-          error "create_global_context" "dont do anything special for local"
-        | MExprLabel(_) ->
-          error "create_global_context" "dont do anything special for expr"
-        | ValueLabel(_) ->
-          error "create_global_context" "dont do anything special for value"
-
+          | MInLabel(_) ->
+            error "create_global_context" "dont do anything special for input propagate"
+          | MLocalLabel(_) ->
+            error "create_global_context" "dont do anything special for local"
+          | MExprLabel(_) -> ()
+          | ValueLabel(_) ->
+            error "create_global_context" "dont do anything special for value"
+        end
       );
-    let choice_list = QUEUE.to_list choices in
-    QUEUE.destroy choices;
-    let nodes_3d  = LIST.permutations choice_list in
-    error "create_global_context" "unimplemented"
+    let node_steps = glblctx_mk_nodes ctx in
+    node_steps
 
-  let build_global_steps ms  : sstep list=
+  let build_global_steps ms  : sstep list*sstep list list=
     let dummy_tbl : gltbl = GoalTableFactory.mktbl ms.state.env in
     let part_steps : sstep list = build_partial_steps ms ms.state.local in
     SearchLib.setroot dummy_tbl.search dummy_tbl part_steps;
-    let glbl_steps : sstep list= create_global_context ms dummy_tbl in
-    glbl_steps @ part_steps
+    let glbl_steps : sstep list list =
+      create_global_context ms dummy_tbl
+    in
+     part_steps,glbl_steps
 
 
   let mk_global_tbl (ms:musearch) =
@@ -593,11 +652,24 @@ struct
     (*if this table doesn't exist make a new one*)
     if MAP.has ms.state.globals key = false then
       begin
-      let steps = build_global_steps ms in
-      debug "======= Global Steps =======";
-      List.iter (fun x -> debug ("   "^(SlvrSearchLib.step2str x))) steps;
+      let part_steps,gbl_steps_coll = build_global_steps ms in
+      debug "======= Partial (Root) Steps =======";
+      debug (SearchLib.steps2str 1 tbl.search part_steps);
+      GoalTableFactory.mkroot tbl part_steps;
+      begin
+        match SearchLib.root tbl.search with
+        | Some(root) -> SearchLib.visited tbl.search root
+        | None -> error "mk_goal_tbl" "there is no root, but we just created it"
+      end;
       debug "============================";
-      GoalTableFactory.mkroot tbl steps;
+      (*add all the gobal steps*)
+      List.iter (fun glbl_steps ->
+          debug "======= Glbl (Node) Steps =======";
+          debug (SearchLib.steps2str 2 tbl.search glbl_steps);
+          debug "============================";
+          noop (SearchLib.mknode_child_from_steps tbl.search tbl glbl_steps)
+        )
+        gbl_steps_coll;
       MAP.put ms.state.globals key tbl.search;
       tbl
     end

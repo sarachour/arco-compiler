@@ -95,14 +95,6 @@ this hardware ids require values and variables be routed
 to them.
 *)
 
-type ('a,'b) labels = {
-  outs: ('a,wire_coll) map;
-  ins: ('a,wire_coll) map;
-  locals: ('a,wire_coll) map;
-  exprs: ('b ast,wire_coll) map;
-  vals: (number,wire_coll) map;
-}
-
 type 'a label_var = {
   var: 'a;
   wire:wireid;
@@ -122,6 +114,14 @@ type ('a,'b) label =
   | ValueLabel of label_val
   | MExprLabel of 'b label_expr
 
+
+type ('a,'b) labels = {
+  outs: ('a,wire_coll) map;
+  ins: ('a,wire_coll) map;
+  locals: ('a,wire_coll) map;
+  exprs: ('b ast,wire_coll) map;
+  vals: (number,wire_coll) map;
+}
 (*
 A solution is comprised of a set of generators and route points.
 A finalized solution is comprised of connections and generators,

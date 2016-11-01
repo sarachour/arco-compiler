@@ -163,10 +163,9 @@ struct
     ()
 
   let mknullroot tbl =
-    SearchLib.setroot tbl.search tbl [];
-    ()
+    SearchLib.setroot tbl.search tbl []
 
   let mkroot tbl steps =
-    SearchLib.setroot tbl.search tbl steps;
-    ()
+    SearchLib.setroot tbl.search tbl steps
+
 end

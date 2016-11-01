@@ -74,7 +74,11 @@ type goal_hw_expr = {
   prop: string;
   expr: mid ast;
 }
-type goal_conn = wireconn
+type goal_conn = {
+  src: wireid;
+  dst: wireid;
+  expr: mid ast;
+} 
 type goal_ioblock = {
   wire: wireid;
   prop: string;

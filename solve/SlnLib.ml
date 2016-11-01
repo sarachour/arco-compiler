@@ -59,6 +59,16 @@ struct
     | MExprLabel(lbl) -> MExprLabel({wire=i2i_w lbl.wire;expr=lbl.expr})
     | ValueLabel(lbl) -> ValueLabel({wire=i2i_w lbl.wire;value=lbl.value})
 
+  let xchg_wire (c:('a,'b) label) (new_wire:wireid) : ('a,'b) label =
+    let i2i_w x = new_wire in
+    match c with
+    | MInLabel(lbl) -> MInLabel({wire=i2i_w lbl.wire;var=lbl.var})
+    | MOutLabel(lbl) -> MOutLabel({wire=i2i_w lbl.wire;var=lbl.var})
+    | MLocalLabel(lbl) -> MLocalLabel({wire=i2i_w lbl.wire;var=lbl.var})
+    | MExprLabel(lbl) -> MExprLabel({wire=i2i_w lbl.wire;expr=lbl.expr})
+    | ValueLabel(lbl) -> ValueLabel({wire=i2i_w lbl.wire;value=lbl.value})
+
+
   let label2str (type a) (type b) (x:(a,b) label)
       (f:a->string) (g:b->string) : string =
     match x with
@@ -68,7 +78,14 @@ struct
     | MExprLabel(lbl) -> (wireid2str lbl.wire)^" = "^(ASTLib.ast2str lbl.expr g)
     | ValueLabel(lbl) -> (wireid2str lbl.wire)^" = "^(string_of_number lbl.value)
 
-    
+
+  let ulabel2mexpr (x:(string,mid) label) = match x with
+    | MInLabel(lbl) -> Term(MNVar(MInput,lbl.var))
+    | MOutLabel(lbl) -> Term(MNVar(MOutput,lbl.var))
+    | MLocalLabel(lbl) -> Term(MNVar(MOutput,lbl.var))
+    | MExprLabel(lbl) -> lbl.expr
+    | ValueLabel(lbl) -> ASTLib.number2ast lbl.value
+      
   let ulabel2str (x:(string,mid) label) =
     label2str x (ident) MathLib.mid2str
 
@@ -126,6 +143,10 @@ struct
   let getdests (type a) (type b) (sln:(a,b) sln) (dest:wireid) =
     WCollEmpty
 
+
+
+
+
   let wirecoll2list (x:wire_coll) = match x with
     | WCollEmpty -> []
     | WCollOne(wire) -> [wire]
@@ -138,9 +159,10 @@ struct
       | WCollOne(wire2) -> WCollMany([wire2;wire])
       | WCollMany(wires) -> WCollMany(wire::wires)
       in
-      noop (MAP.put m key ncoll)
+      return (MAP.put m key ncoll) wire
     else
-      noop (MAP.put m key (WCollOne(wire)))
+      return (MAP.put m key (WCollOne(wire))) wire
+
 
   let _rm_wire_from_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
     if MAP.has m key then
@@ -158,21 +180,23 @@ struct
           | [] -> WCollEmpty
           | [h] -> WCollOne(h)
           | h::t -> WCollMany(h::t)
-        else error "rm_wire_From_label" "this wire is not assigned"
+        else error
+            "rm_wire_From_label" "this wire does not belong to this set"
       | WCollMany([]) -> error "rm_wire_from_label" "cannot have no elements in many cllection"
       in
       if WCollEmpty = ncoll then
-        noop (MAP.rm m key)
+        return (MAP.rm m key) wire
       else
-        noop (MAP.put m key ncoll)
+        return (MAP.put m key ncoll) wire
     else
-      ()
+      wire
 
-  let add_route (type a) (type b) (sln:(a,b)sln) (lbl:(a,b)label) =
-    begin
-      match lbl with
+
+  let add_route (type a) (type b) (sln:(a,b)sln) (albl:(a,b)label) =
+    let wire =
+      match albl with
       | MInLabel(lbl) ->
-        _add_wire_to_label sln.route.ins lbl.var lbl.wire
+        _add_wire_to_label sln.route.ins lbl.var lbl.wire; 
       | MOutLabel(lbl) ->
         _add_wire_to_label sln.route.outs lbl.var lbl.wire
       | MLocalLabel(lbl) ->
@@ -181,12 +205,12 @@ struct
         _add_wire_to_label sln.route.vals lbl.value lbl.wire
       | MExprLabel(lbl) ->
         _add_wire_to_label sln.route.exprs lbl.expr lbl.wire
-    end;
+    in
     ()
 
-  let add_generate (type a) (type b) (sln:(a,b) sln) (lbl: (a,b) label) =
-    begin
-      match lbl with
+  let add_generate (type a) (type b) (sln:(a,b) sln) (albl: (a,b) label) =
+    let wire =
+      match albl with
       | MInLabel(lbl) ->
         _add_wire_to_label sln.generate.ins lbl.var lbl.wire
       | MOutLabel(lbl) ->
@@ -197,12 +221,12 @@ struct
         _add_wire_to_label sln.generate.vals lbl.value lbl.wire
       | MExprLabel(lbl) ->
         _add_wire_to_label sln.generate.exprs lbl.expr lbl.wire
-    end;
+    in
     ()
 
-  let rm_generate (type a) (type b) (sln:(a,b) sln) (lbl: (a,b) label)  = 
-    begin
-      match lbl with
+  let rm_generate (type a) (type b) (sln:(a,b) sln) (albl: (a,b) label)  = 
+    let wire =
+      match albl with
       | MInLabel(lbl) ->
         _rm_wire_from_label sln.generate.ins lbl.var lbl.wire
       | MOutLabel(lbl) ->
@@ -213,12 +237,11 @@ struct
         _rm_wire_from_label sln.generate.vals lbl.value lbl.wire
       | MExprLabel(lbl) ->
         _rm_wire_from_label sln.generate.exprs lbl.expr lbl.wire
-    end;
+    in
     ()
 
-  let rm_route (type a) (type b) (sln:(a,b) sln) (lbl: (a,b) label)  = 
-    begin
-      match lbl with
+  let rm_route (type a) (type b) (sln:(a,b) sln) (albl: (a,b) label)  = 
+    let wire = match albl with
       | MInLabel(lbl) ->
         _rm_wire_from_label sln.route.ins lbl.var lbl.wire
       | MOutLabel(lbl) ->
@@ -229,9 +252,10 @@ struct
         _rm_wire_from_label sln.route.vals lbl.value lbl.wire
       | MExprLabel(lbl) ->
         _rm_wire_from_label sln.route.exprs lbl.expr lbl.wire
-    end;
+    in
     ()
  
+
   let iter_insts (sln:usln) fn : unit =
     SET.iter sln.comps (fun inst -> fn inst)
   

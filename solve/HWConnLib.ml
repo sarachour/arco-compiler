@@ -72,7 +72,7 @@ module HwConnLib = struct
       []
 
   let get_inst_conns e (srccomp:hwcompname) (srcport:string)
-      (destcomp:hwcompname) (destport:string) =
+      (destcomp:hwcompname) (destport:string) : hwinst_conn list =
     let srccls =  {comp=srccomp;port=srcport}
     and dstcls =  {comp=destcomp;port=destport} in
     let dests =
