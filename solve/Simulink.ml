@@ -299,9 +299,9 @@ struct
   let create_subsystem q namespace name =
     let loc = (namespace^"/"^name) in
     q (add_block (get_basic_fxn "comp") loc);
-    q (remove_line loc "In0/1" "Out0/1");
-    q (remove_block loc "In0");
-    q (remove_block loc "Out0");
+    q (remove_line loc "In1/1" "Out1/1");
+    q (remove_block loc "In1");
+    q (remove_block loc "Out1");
     loc
 
   let create_block circuit (comp:hwvid hwcomp) : matst list =
