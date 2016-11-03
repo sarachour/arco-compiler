@@ -126,7 +126,7 @@ end
 schematic
    inst imul : 4
    inst iadd  : 2
-   inst deriv_iadd: 1
+   inst deriv_iadd: 2
    inst output I : 10
    inst input I : 50
 

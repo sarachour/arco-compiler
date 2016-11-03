@@ -186,6 +186,10 @@ module ASTLib
         in
         SET.to_list vset
 
+      let has_var (type a) (e:a ast) (x:a) : bool =
+        let vrs = get_vars e in
+        LIST.has vrs x
+
     let compute (type x) (a:x ast) : float option =
       let conv (lst: x ast list) fn =
         let fnlst = List.fold_right (fun x r ->

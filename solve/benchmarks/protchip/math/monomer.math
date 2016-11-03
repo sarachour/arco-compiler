@@ -8,7 +8,7 @@ param KDfw : none = 10
 param ratC4 : none = 1
 param ratC7 : none = 1
 
-
+; this is the basic block test
 time t: none
 
 rel ddt A = ((10*(10/KDfw)*kr1 - kr1*A) + (kr1/KDrv)*B*B) - kr2*ratC7*A init 0

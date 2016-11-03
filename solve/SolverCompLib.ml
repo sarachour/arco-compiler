@@ -184,7 +184,7 @@ struct
       if HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port then
         begin
           match hv.bhvr with
-          | HWBAnalog(_) -> ConcCompLib.is_abs cfg hv.port
+          | HWBAnalog(_) -> ConcCompLib.is_abs cfg hv.port 
           | _ -> false
         end
       else
@@ -239,19 +239,30 @@ struct
 
 
 
+  let bhvr_is_expr hv = match hv.bhvr with
+    | HWBAnalog(_) -> true
+    | HWBDigital(_) -> true
+    | HWBAnalogState(_) -> false
+    | _ -> error "bhvr_is_expr" "not expecting input or undefined"
+
   let compatible_hwvar_with_outblock_extend  (env:'a hwenv) cfg (hv:'a hwportvar) (src_wire:wireid)
       (prop:string) : bool =
-    (List.length (get_extendable_inputs_for_outblock_goal env cfg hv src_wire prop)) > 0
+    bhvr_is_expr hv
+    && (List.length (get_extendable_inputs_for_outblock_goal env cfg hv src_wire prop)) > 0
+    && hv.prop = prop
 
   let compatible_hwvar_with_inblock_extend env cfg hv (dest_wire:wireid) (prop:string) =
     let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
-    (List.length (get_extendable_inputs_for_inblock_goal env cfg hv dest_wire prop)) > 0
-    && is_conn && hv.prop = prop
+      bhvr_is_expr hv
+      && (List.length (get_extendable_inputs_for_inblock_goal env cfg hv dest_wire prop)) > 0
+      && is_conn && hv.prop = prop
 
   let compatible_hwvar_with_conn env cfg hv (src_wire:wireid) (dest_wire:wireid) =
     let prop = HwLib.getprop env src_wire.comp.name src_wire.port in
     let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
-     (List.length (get_extendable_inputs_for_conn_goal env cfg hv dest_wire prop)) > 0
+      bhvr_is_expr hv
+      && (List.length (get_extendable_inputs_for_conn_goal env cfg hv dest_wire prop)) > 0
+      && is_conn && hv.prop = prop
 
   let compatible_hwvar_with_goal tbl cfg (hv:'a hwportvar) (v:unifiable_goal) : bool =
     let compat : bool = match v with
@@ -331,6 +342,8 @@ struct
     
   let add_conc_comp (tbl:gltbl) (c:ucomp_conc) =
     let cmp_ctx : ucomp_ctx = MAP.get tbl.comp_ctx c.d.name in 
+    if cmp_ctx.cnt <= c.inst then
+      cmp_ctx.cnt <- cmp_ctx.cnt + 1;
     if MAP.has cmp_ctx.insts c.inst = false then
       noop (MAP.put cmp_ctx.insts c.inst c)
     else
@@ -345,6 +358,8 @@ struct
 
   let rm_conc_comp (tbl:gltbl) (c:ucomp_conc) =
     let cmp_ctx : ucomp_ctx = MAP.get tbl.comp_ctx c.d.name in 
+    if cmp_ctx.cnt <= c.inst then
+      cmp_ctx.cnt <- cmp_ctx.cnt + 1;
     if MAP.has cmp_ctx.insts c.inst  then
       noop (MAP.rm cmp_ctx.insts c.inst)
     else

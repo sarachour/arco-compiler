@@ -204,7 +204,7 @@ struct
   let flip_if flip x y =
     if flip then (y,x) else (x,y)
 
-  let _quant_quant_compute_interval (a:float list) (b:float list)
+  let _quant_quant_compute_interval2 (a:float list) (b:float list)
       (compute:bound->bound->bound) flip: interval =
     let a,b = flip_if flip a b in
     List.fold_right (fun (a_el:float) (res:interval) ->
@@ -214,7 +214,7 @@ struct
             expand_interval res res_el
           ) a res) b (Quantize [])
 
-  let _quant_ival_compute_interval (a:float list) (b:interval_data)
+  let _quant_ival_compute_interval2 (a:float list) (b:interval_data)
       (compute:bound->bound->bound) flip: interval =
     let intervals : interval_data list =
       List.map (fun (a_el:float) ->
@@ -230,13 +230,13 @@ struct
     in
     MixedInterval(intervals)
 
-  let _quant_ivals_compute_interval (a:float list) (b:interval_data list)
+  let _quant_ivals_compute_interval2 (a:float list) (b:interval_data list)
     (compute:bound->bound->bound) flip : interval =
     let intervals: interval_data list =
       List.fold_right (fun ival res ->
-          match _quant_ival_compute_interval a ival compute flip with
+          match _quant_ival_compute_interval2 a ival compute flip with
           | MixedInterval(data) -> data @ res
-          | _ -> error "_quant_ivals_compute_interval" "unexpected")
+          | _ -> error "_quant_ivals_compute_interval2" "unexpected")
         b []
     in
     MixedInterval(intervals)
@@ -249,7 +249,7 @@ struct
     |BNDInf(QDNegative),BNDNum(max) -> max > 0.
     |BNDInf(QDNegative),BNDInf(QDPositive) -> true
 
-  let _ival_ival_compute_interval (a:interval_data) (b:interval_data) 
+  let _ival_ival_compute_interval2 (a:interval_data) (b:interval_data) 
       (compute:bound->bound->bound) flip : interval =
     let c,d = flip_if flip a b in
     let corners : bound list = [
@@ -276,54 +276,82 @@ struct
     in
     mk_ival (min_of_list (corners@zeroes)) (max_of_list (corners@zeroes))
 
-  let _ival_ivals_compute_interval (a:interval_data ) (b:interval_data list) 
+  let _ival_ivals_compute_interval2 (a:interval_data ) (b:interval_data list) 
       (compute:bound->bound->bound) flip : interval  =
     let data : interval_data list= List.map (fun (ival:interval_data) ->
-        match _ival_ival_compute_interval a ival compute flip with
+        match _ival_ival_compute_interval2 a ival compute flip with
         | Interval(data) -> data
-        | _ -> error "ival_ivals_compute_interval" "unknown"
+        | _ -> error "ival_ivals_compute_interval2" "unknown"
       ) b
     in
     MixedInterval(data)
 
-  let _ivals_ivals_compute_interval (a:interval_data list) (b:interval_data list) 
+  let _ivals_ivals_compute_interval2 (a:interval_data list) (b:interval_data list) 
       (compute:bound->bound->bound) (flip:bool) : interval =
     let data : interval_data list = List.fold_right (
         fun (ival:interval_data) (lst:interval_data list) ->
-          match _ival_ivals_compute_interval ival b compute flip with
+          match _ival_ivals_compute_interval2 ival b compute flip with
           | MixedInterval(data) -> data @ lst
-          | _ -> error "ivals_ivals_compute_interval" "unknown"
+          | _ -> error "ivals_ivals_compute_interval2" "unknown"
       ) a []
     in
     MixedInterval(data)
 
-  let _compute_interval (a:interval) (b:interval)
+  let _compute_interval2 (a:interval) (b:interval)
       (compute:bound->bound->bound): interval =
     match a,b with
     (*quantize is always first*)
     | Quantize(alst),Quantize(blst) ->
-      _quant_quant_compute_interval alst blst compute false
+      _quant_quant_compute_interval2 alst blst compute false
     | Quantize(alst),Interval(blst) ->
-      _quant_ival_compute_interval alst blst compute false
+      _quant_ival_compute_interval2 alst blst compute false
     | Quantize(alst),MixedInterval(blst) ->
-      _quant_ivals_compute_interval alst blst compute false
+      _quant_ivals_compute_interval2 alst blst compute false
     (* interval computation *)
     | Interval(alst),Quantize(blst) ->
-      _quant_ival_compute_interval blst alst compute true
+      _quant_ival_compute_interval2 blst alst compute true
     | Interval(alst),Interval(blst) ->
-      _ival_ival_compute_interval alst blst compute false
+      _ival_ival_compute_interval2 alst blst compute false
     | Interval(alst),MixedInterval(blst) ->
-      _ival_ivals_compute_interval alst blst compute false
+      _ival_ivals_compute_interval2 alst blst compute false
     (*interval collection computation*)
     | MixedInterval(alst),Quantize(blst) ->
-      _quant_ivals_compute_interval blst alst compute true
+      _quant_ivals_compute_interval2 blst alst compute true
     | MixedInterval(alst),Interval(blst) ->
-      _ival_ivals_compute_interval blst alst compute true
+      _ival_ivals_compute_interval2 blst alst compute true
     | MixedInterval(alst),MixedInterval(blst) ->
-      _ivals_ivals_compute_interval alst blst compute false
+      _ivals_ivals_compute_interval2 alst blst compute false
     (**)
     | a,b ->
-      error "_compute_interval" ("unimplemented: "^(interval2str a)^", "^(interval2str b))
+      error "_compute_interval2" ("unimplemented: "^(interval2str a)^", "^(interval2str b))
+
+  let _quant_compute_interval1 (lst:float list) (compute:bound->bound) : interval =
+    let compute_float (f:float) : float = match compute (BNDNum f) with
+      | BNDNum(f2) -> f2
+      | _ -> error "_quant_compute_interval" "compute_float cannot be infinity"
+    in
+    Quantize(List.map compute_float lst)
+
+  let _ival_compute_interval1 (ival:interval_data ) (compute:bound->bound) : interval =
+    let nmin = compute ival.min and nmax = compute ival.max in
+    let corners = [nmin;nmax] in
+    Interval({min=min_of_list corners; max=max_of_list corners})
+
+  let _ivals_compute_interval1 (lst:interval_data list) compute =
+    let data : interval_data list= List.map (fun (ival:interval_data) ->
+        match _ival_compute_interval1 ival compute with
+        | Interval(data) -> data
+        | _ -> error "ival_ivals_compute_interval2" "unknown"
+      ) lst
+    in
+    MixedInterval(data)
+
+
+  let _compute_interval1 (a:interval) (compute:bound->bound) : interval = match a with
+    | Quantize(alst) -> _quant_compute_interval1 alst compute
+    | Interval(alst) -> _ival_compute_interval1 alst compute
+    | MixedInterval(alst) -> _ivals_compute_interval1 alst compute
+
 
   let bound_sum (a:bound) (b:bound) : bound = match a,b with
     | BNDNum(av),BNDNum(bv) -> float_to_bound (av +. bv)
@@ -342,6 +370,11 @@ struct
     | _ -> error "bound_sub" "unimplemented"
 
 
+  let bound_neg (a:bound) : bound = match a with
+    | BNDNum(av) -> BNDNum(0.-.av)
+    | BNDInf(QDPositive)-> BNDInf(QDNegative)
+    | BNDInf(QDNegative)-> BNDInf(QDPositive)
+   
   let bound_prod (a:bound) (b:bound) : bound =
     let derive_dir adir bdir = match adir,bdir with
         | QDPositive,QDPositive -> (QDPositive)
@@ -392,23 +425,22 @@ struct
     | BNDNum(_),BNDInf(QDPositive) -> BNDNum(0.)
     | BNDInf(_),BNDInf(_) -> error "bound_pow" "infinity to the infinity"
     | _ -> error "bound_pow" "unimplemented"
-  let rule_sum (a:interval) (b:interval) : interval = _compute_interval a b bound_sum
 
-  let rule_prod (a:interval) (b:interval) = _compute_interval a b bound_prod
+  let rule_sum (a:interval) (b:interval) : interval = _compute_interval2 a b bound_sum
 
-  let rule_sub (a:interval) (b:interval) : interval = _compute_interval a b bound_sub
+  let rule_prod (a:interval) (b:interval) = _compute_interval2 a b bound_prod
 
-  let rule_div (a:interval) (b:interval) : interval = _compute_interval a b bound_div
+  let rule_sub (a:interval) (b:interval) : interval = _compute_interval2 a b bound_sub
 
-  let rule_power (a:interval) (b:interval) : interval = _compute_interval a b bound_pow
+  let rule_div (a:interval) (b:interval) : interval = _compute_interval2 a b bound_div
+
+  let rule_power (a:interval) (b:interval) : interval = _compute_interval2 a b bound_pow
 
   let rule_exp (a:interval) : interval =
     error "rule" "exp unimplemented"
 
 
-  let rule_neg (a:interval)  : interval =
-    error "rule" "neg unimplemented"
-
+  let rule_neg (a:interval)  : interval = _compute_interval1 a bound_neg
 
   let derive_interval (expr:'a ast) (lookup:'a -> interval) =
     let rec to_ival (e:'a ast) : interval = match e with

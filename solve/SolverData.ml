@@ -52,22 +52,6 @@ type goal =
 type goal_math = {
   d: mid mvar;
 }
-(*
-   map a math relation to the input port
-*)
-
-
-(*connect *)
-
-(*connect two ports
-
-(*map to the digital interface*)
-type goal_hw_varmap = {
-  expr: mid ast;
-  port:hwvid;
-}
-*)
-
 
 type goal_hw_expr = {
   wire: wireid;

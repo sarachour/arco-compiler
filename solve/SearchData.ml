@@ -26,6 +26,11 @@ type sstats= {
   mutable tbl: (int,sstat) map;
   (*store variable bindings *)
 }
+type 'a search_weights = {
+  weights: ('a,float) map;
+  mutable normalize: float;
+  compute: 'a -> float;
+}
 
 type sscore = {
   (*the score of the steps*)
@@ -45,6 +50,6 @@ type ('a,'b) ssearch = {
   apply: 'b -> 'a ->  'b;
   unapply: 'b -> 'a -> 'b;
   order: 'a -> 'a -> int;
-  score: 'b -> 'a list -> sscore;
+  score: 'a list -> sscore;
   tostr: 'a -> string;
 }

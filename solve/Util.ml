@@ -24,7 +24,6 @@ type ('a,'b) either = Left of 'a | Right of 'b
 
 type number = Integer of int | Decimal of float
 
-
 type 'a queue = ('a list) ref
 
 type 'a stack = ('a list) ref
@@ -78,6 +77,9 @@ struct
   | Some(q) -> Some(q)
   | None -> Some dflt
 
+  let conc_list (type a) (f: a option list) : a list =
+    List.fold_left (fun lst el -> match el with
+        | Some(e) -> e::lst | None -> lst ) [] f
 end
 
 
@@ -485,6 +487,11 @@ struct
     mk 0
 
   let filter x y = List.filter x y
+
+  let partition (x:'a list) fn : ('a list*'a list) =
+    List.fold_left (fun (y,n) el ->
+        if fn el then (el::y,n) else (y,el::n)
+      ) ([],[]) x
 
   let fold x f c0 = List.fold_right f x c0
 
@@ -1517,10 +1524,14 @@ struct
     proc_path (LIST.rev path) ic
 
   let ancestor (type a) (type b) (t:(a,b) tree) (a:a) (b:a) : a =
-    let pa = get_path t a in
-    let pb = get_path t b in
-    (*let _ = Printf.printf "LENGTHS: a=%d b=%d\n" (List.length pa) (List.length pb) in*)
-    let anc = List.fold_right (fun (q:a)  (r:a option)-> if LIST.has pb q then Some q else r) pa None in
+    let pa : a list = get_path t a in
+    let pb : a list = get_path t b in
+    let anc = List.fold_right (fun (q:a)  (r:a option)->
+        if LIST.has pb q then
+          Some q
+        else
+          r
+      ) pa None in
     match anc with
     | Some(a) -> a
     | None -> error "ancestor" "two nodes must have an ancestor."

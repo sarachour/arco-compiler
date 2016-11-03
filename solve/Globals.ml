@@ -9,32 +9,19 @@ type glblprop = GlblPropInt of int
 
 let glbls : (string,glblprop) map = MAP.make ();;
 
-let _ = MAP.put glbls "test-component-reachability" (GlblPropBool false)
-let _ = MAP.put glbls "downgrade-trivial" (GlblPropBool false)
-let _ = MAP.put glbls "downgrade-trivial-global" (GlblPropBool true)
-let _ = MAP.put glbls "downgrade-trivial-partial" (GlblPropBool false)
+let _ = MAP.put glbls "_force" (GlblPropBool false)
 let _ = MAP.put glbls "interactive" (GlblPropInt 0)
 let _ = MAP.put glbls "debug" (GlblPropInt 0)
 
-let _ = MAP.put glbls "uast-prune-unrelated" (GlblPropBool true)
-let _ = MAP.put glbls "uast-prune-unrelated-hops" (GlblPropInt 2)
 let _ = MAP.put glbls "uast-selector-branch" (GlblPropString "uniform")
 let _ = MAP.put glbls "uast-depth" (GlblPropInt 3)
-let _ = MAP.put glbls "uast-branch" (GlblPropFloat 0.5)
-let _ = MAP.put glbls "uast-duplicates" (GlblPropInt 1)
 
-let _ = MAP.put glbls "uast-selector-restrict" (GlblPropString "single")
-let _ = MAP.put glbls "uast-restrict-fraction-set-prop" (GlblPropFloat 2.0)
-let _ = MAP.put glbls "uast-restrict-fraction-ban-prop" (GlblPropFloat 0.50)
 
-let _ = MAP.put glbls "multi-force-value-to-port" (GlblPropBool true)
 let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 5)
 
-let _ = MAP.put glbls "eqn-smt-defer" (GlblPropBool true)
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
-let _ = MAP.put glbls "eqn-selector-branch" (GlblPropString "uniform")
 let _ = MAP.put glbls "eqn-selector-goal" (GlblPropString "uniform")
-let _ = MAP.put glbls "eqn-concretize-only-when-finished" (GlblPropBool false)
+let _ = MAP.put glbls "eqn-selector-branch" (GlblPropString "uniform")
 
 let _ = MAP.put glbls "slvr-solutions" (GlblPropInt 1)
 let _ = MAP.put glbls "slvr-partial-depth" (GlblPropInt 32)

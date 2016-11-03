@@ -46,7 +46,6 @@ struct
     | MSGlobalApp(id) -> "#global "^(glblid2str id)
 
   let apply_step (env:mutbl) (x:mustep) : mutbl =
-    let _ = _print_debug ("apply "^step2str x) in
     match x with
     | MSPartialApp(id) ->
       let _ = SET.add env.local(id) in
@@ -59,7 +58,6 @@ struct
       env
     
   let unapply_step (env:mutbl) (x:mustep) : mutbl =
-    let _ = _print_debug ("unapply "^step2str x) in
     match x with
     | MSPartialApp(id) ->
       let _ = SET.rm env.local (id) in
@@ -73,7 +71,7 @@ struct
 
   let order_step x y = 0
 
-  let score_step env x =
+  let score_step x =
     SearchLib.mkscore 0. 0.
 
   let mksearch () =
@@ -679,25 +677,74 @@ struct
       tbl.search <- search;
       tbl
 
+  (*a solution is complete if all the routing connections are on inputs*)
+  let is_complete_sln (tbl:gltbl) =
+    let valid = REF.mk true in
+    SlnLib.iter_routes tbl.sln_ctx (fun (route:ulabel) generates ->
+        let wire : wireid= SlnLib.label2wire route in
+        match wire.comp.name with
+        | HWCmComp(cmp) ->
+          debug ":: is an incomplete solution. Requires a route";
+          REF.upd valid (fun x -> false)
+        | HWCmInput(cmp) ->
+          debug ":: found input route."
+        | _ ->
+          warn "is_complete_sln" "not expected an output or a conn route"
+
+    );
+    REF.dr valid
+
+  (*determine if the solution is complete or not*)
+  let complete_sln (tbl:gltbl) (sln: sstep snode) =
+    SearchLib.move_cursor tbl.search tbl sln;
+    if is_complete_sln tbl then
+      Some(sln)
+    else
+      error "complete solution" "is incomplete. Must complete it."
+
   (*find a global solution, given the set of partials that have been applied*)
   let find_global_solution (ms:musearch) (nsols:int) : sstep snode list option =
     let tbl = mk_global_tbl ms in
     (*find the global steps *)
     let depth = get_glbl_int "slvr-global-depth" in
-    let results : sstep snode list option =
-      SolverEqn.solve tbl nsols depth
-    in
-    SearchLib.clear_cursor tbl.search;
-    results
+    (*the initial set of results*)
+    let results : sstep snode list option =  SolverEqn.solve tbl nsols depth in
+    match results with
+    | Some(sln_list) ->
+      begin
+        (*iterate over each result and see if the configuration is still partial*)
+        let complete_sln_steps = OPTION.conc_list (List.map (fun sln ->
+            complete_sln tbl sln 
+          ) sln_list)
+        in
+        SearchLib.clear_cursor tbl.search;
+        begin
+          match complete_sln_steps with
+          | h::t ->
+            Some(h::t)
+          | [] ->
+            None
+        end
+      end
+    | None ->
+      SearchLib.clear_cursor tbl.search;
+      None
 
   (*get the existing global solution*)
-  let get_existing_global_solution (ms:musearch) (key:string) (id:int) : (string,mid) sln =
-    let gtree = MAP.get ms.state.globals key in
-    let ptbl = GoalTableFactory.mktbl ms.state.env in 
+  let get_existing_global_solution (ms:musearch) (key:string) (id:int) : gltbl=
+    (*initialize table*)
+    let gtree : (sstep,gltbl) ssearch= MAP.get ms.state.globals key in
+    let ptbl = GoalTableFactory.mktbl ms.state.env in
+    ptbl.search <- gtree;
+    (*apply root*)
+    SearchLib.initenv ptbl.search ptbl;
+    (*apply root.*)
+    let mint,musr = SolverEqn.mkmenu ptbl None in
     debug ("=> Global Solution: "^key^" :: "^(string_of_int id));
-    let slnnode = SearchLib.id2node gtree id in 
+    (*Interactive.force (fun () -> noop (musr()));*)
+    let slnnode = SearchLib.id2node gtree id in
     SearchLib.move_cursor gtree ptbl slnnode;  
-    ptbl.sln_ctx
+    ptbl
 
   let has_partial_search (ms:musearch) (name:string) : bool =
     MAP.has ms.state.partials name 
@@ -750,10 +797,14 @@ struct
       musr ();
       let maybe_results : ((sstep snode) list) option = SolverEqn.solve ptbl (nslns+currsols) depth in
       SearchLib.clear_cursor ptbl.search;
-      debug "found partial solutions";
+      debug "=== returned from partial search ===";
+      musr();
       match maybe_results with
-      | None -> None
+      | None ->
+        debug ">>> No Partial Results Found <<<";
+        None
       | Some(results) ->
+        debug ">>> Partial Results Found <<<";
         let new_results :(sstep snode) list = List.filter (fun result -> is_new result) results in
         begin
           match new_results with
@@ -786,36 +837,53 @@ struct
             |SModGoalCtx(SGRemoveGoal(goal_data)) ->
               begin
                 match goal_data.d with
-                | GUnifiable(GUMathGoal(g)) ->
-                  (MSSolveVar(g.d.name))::lst
+                | GUnifiable(GUMathGoal(g)) ->(MSSolveVar(g.d.name))::lst
                 | _ -> lst
               end
             | _ -> lst
-          ) [MSPartialApp({mvr=pvar;ident=node.id})] (SearchLib.get_path partial node)
+          ) [MSPartialApp({mvr=pvar;ident=node.id})]
+            (SearchLib.get_path partial node)
         in
-        SearchLib.mknode_child_from_steps (ms.search) (ms.state) steps 
+        SearchLib.move_cursor ms.search ms.state curs;
+        SearchLib.mknode_from_steps (ms.search) (ms.state) steps 
       in
-      let add_solution (sln:sstep snode) =
-        let _ = debug "== Finding Global Solution ==" in
-        let partial_node = add_lcl_sln curs sln in 
+      let add_solution (partial_node:mustep snode) =
         SearchLib.move_cursor ms.search ms.state partial_node;
-        musr ();
+        debug " > Added Local Solution";
         (*find a global solution*)
+        debug " > Finding Global Solution";
+        musr ();
         match find_global_solution ms 1 with
         | Some(slns) ->
-          debug (">> Found # Global Solutions: "^(string_of_int (List.length slns)));
-          List.iter (fun sln -> add_glbl_sln partial_node sln) slns  
+          debug ("  >> Found # Global Solutions: "^(string_of_int (List.length slns)));
+          List.iter (fun sln -> add_glbl_sln partial_node sln) slns;
+          SearchLib.visited ms.search partial_node;
+          ()
         | None ->
-          debug (">> Found NO Solutions");
-          noop (SearchLib.deadend ms.search partial_node)
+          debug ("  >> Found NO Solutions.");
+          if SearchLib.hasnode ms.search partial_node then
+            begin
+              debug "   xx let's kill this branch";
+              noop (SearchLib.deadend ms.search partial_node ms.state);
+            end;
+          ()
       in
       match slns with
       | Some(cslns) ->
         debug "found some partial solutions. Will add partial solution node and global";
-        List.iter (fun x -> add_solution x) cslns;
+        let csln_nodes = List.map (fun (sln:sstep snode) ->
+            debug ("== Adding Local Solution : "^(string_of_int sln.id)^" ==");
+            add_lcl_sln curs sln
+          ) cslns
+        in
+        List.iter (fun x -> add_solution x) csln_nodes;
+        (*only mark the node visited if it still exists. This node might not exist.*)
+        if SearchLib.hasnode ms.search curs then
+          SearchLib.visited ms.search curs;
         slns
       | None ->
         debug "could not find any more partial solutions.";
+        SearchLib.visited ms.search curs;
         slns
       
     let augment_with_new_partial_sln (ms:musearch) (pvar) (nslns) =
@@ -847,7 +915,7 @@ struct
 
 
 
-    let msolve sl (ms:musearch) (nslns:int): (((string,mid) sln) list) option =
+    let msolve sl (ms:musearch) (nslns:int): gltbl list option =
       let mint,musr = mkmenu ms in
       let _msolve_new id =
           let nnewslns = get_glbl_int "multi-num-partial-solutions" in
@@ -865,10 +933,17 @@ struct
             ()
           | None ->
             debug "[search_tree] is exhausted";
-            let root = OPTION.force_conc (SearchLib.root ms.search) in
-            SearchLib.move_cursor ms.search ms.state root;
-            _msolve();
-            ()
+            begin
+              match SearchLib.root ms.search with
+              | Some(root) ->
+                begin
+                  SearchLib.move_cursor ms.search ms.state root;
+                  _msolve();
+                  ()
+                end
+              | None ->
+                ()
+            end
         in
         let cnode = SearchLib.cursor ms.search in
         let cnumslns = SearchLib.num_solutions ms.search None in
@@ -877,47 +952,48 @@ struct
            let _ = debug "[DONE] found enough solutions" in
            ()
         else
-           match get_unsolved_var ms with
-           (*no variables left, mark a sa solution*)
-           | None ->
-                debug ("need more solutions. find another solution");
-                _msolve ();
+          match get_unsolved_var ms with
+          (*no variables left, mark a sa solution*)
+          | None ->
+            debug ("no variables, but not a global solution. find another solution");
+            (Interactive.force (fun () -> noop (musr())));
+            _msolve ();
+            ()
+          | Some(id) ->
+            debug ("solving target: "^(id));
+            if SearchLib.is_exhausted ms.search None then
+              begin
+                debug ("search tree is exhausted. adding new.");
+                _msolve_new id;
+                _msolve_next ();
                 ()
-           | Some(id) ->
-                debug ("solving target: "^(id));
-                if SearchLib.is_exhausted ms.search None then
-                  begin
-                    debug ("search tree is exhausted. adding new.");
-                    _msolve_new id;
-                    _msolve_next ();
-                    ()
-                  end
-                else
-                   debug ("search tree is not exhausted. adding existing:"^(id));
-                    (*try and augment with existing partials*)
-                    begin
-                      if augment_with_existing_partial_sln ms id = None then
-                            _msolve_new id
-                    end;
-                    noop (_msolve_next ())
-        
+              end
+            else
+              debug ("search tree is not exhausted. adding existing:"^(id));
+            (*try and augment with existing partials*)
+            begin
+              if augment_with_existing_partial_sln ms id = None then
+                _msolve_new id
+            end;
+            noop (_msolve_next ())
+
       in
       _msolve ();
       debug "===== Getting Solutions =====";
       musr ();
       let snodes = SearchLib.get_solutions ms.search None in
-      debug ("Number of Solutions:"^(string_of_int (List.length  snodes)));
-      let slns = List.fold_right (
-          fun (x:mustep snode) (rest:(string,mid) sln list) ->
+      debug ("Number of Solutions: "^(string_of_int (List.length  snodes)));
+      let slns = List.fold_left (
+          fun (rest:gltbl list) (x:mustep snode) ->
             SearchLib.move_cursor ms.search ms.state x;
             match ms.state.global with 
             | Some(gid) ->
-              let s : (string,mid) sln  =
+              let s : gltbl  =
                 get_existing_global_solution ms gid.mvr_seq gid.ident
               in
                 s::rest
             | None -> rest
-      ) snodes []
+      ) [] snodes
       in
       match slns with
       | h::t -> Some(h::t)

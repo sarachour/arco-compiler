@@ -57,31 +57,31 @@ comp emb
   input Dfree {I:nA}
 
 
-  def I(Atot) mag = [0,1] nA
-  def I(Btot) mag = [0,1] nA
-  def I(Cfree) mag = [0,1] nA
-  def I(Cprod) mag = [0,1] nA
-  def I(Cdeg) mag = [0,1] nA
-  def I(Ctotin) mag = [0,1] nA
-  def I(Dfree) mag = [0,1] nA
+  def I(Atot) mag = [0.001,10000] nA
+  def I(Btot) mag = [0.001,10000] nA
+  def I(Cfree) mag = [0.001,10000] nA
+  def I(Cprod) mag = [0.001,10000] nA
+  def I(Cdeg) mag = [0.001,10000] nA
+  def I(Ctotin) mag = [0.001,10000] nA
+  def I(Dfree) mag = [0.001,10000] nA
   
 % rates and parameters
   input Ctot_0 {I:nA}
-  def I(Ctot_0) mag = [0,1] nA
+  def I(Ctot_0) mag = [0,10000] nA
   
 
-  param n : ? = {1,1.5,2,0}
+  param n : ? = {1,2}
   input KDfw {I:nA}
   input KDrv {I:nA}
   input ratC {I:nA}
   input kr1 {I:nA}
   input kr2 {I:nA}
 
-  def I(KDfw) mag = [0.001,1] nA
-  def I(KDrv) mag = [0.001,1] nA
-  def I(ratC) mag = [0,0.1] nA
-  def I(kr1) mag = [0,0.1] nA
-  def I(kr2) mag = [0,0.1] nA
+  def I(KDfw) mag = [0.001,10000] nA
+  def I(KDrv) mag = [0.001,10000] nA
+  def I(ratC) mag = [0.001,10000] nA
+  def I(kr1) mag = [0.001,10000] nA
+  def I(kr2) mag = [0.001,10000] nA
 
   % 2 copiers each
   output Afree {I:nA}
@@ -107,16 +107,20 @@ comp emb
   %output DfreeCopy {I:nA}
   %output CfreeCopy {I:nA}
 
-  param A_SW : ? = {0,1}
-  param B_SW : ? = {0,1}
-  param FF_SW1 : ? = {0,1}
-  param FF_SW2 : ? = {0,1}
-  param FF_SW3 : ? = {0,1}
-  param FF_SW4 : ? = {0,1}
+ param A_SW : ? = {0,1}
+ param B_SW : ? = {0,1}
+ param FF_SW1 : ? = {0,1}
+ param FF_SW2 : ? = {0,1}
+ param FF_SW3 : ? = {0,1}
+ param FF_SW4 : ? = {0,1}
+
 
 
   rel I(Afree) = I(Atot) - A_SW*I(Ctot)
   rel I(Bfree) = I(Btot) - B_SW*I(Ctot)
+  def I(Afree) mag = [0,10000] nA 
+  def I(Bfree) mag = [0,10000] nA 
+  
   rel I(rateFW) = I(Afree)*((I(Bfree)/I(KDfw))^n)
 
   rel I(rateFWUp) = I(Cprod) - FF_SW1*I(rateFW)
@@ -124,21 +128,32 @@ comp emb
   rel I(rateRV) = I(Cfree)*(I(Dfree)/I(KDrv))
   rel I(rateRVTot) = I(Cdeg) + I(ratC)*I(Cfree) + FF_SW3*I(rateRV)
   rel I(rateRVUp) = I(Cdeg) + (I(ratC)*I(Cfree) - FF_SW4*I(rateRV))
-
+  
   %rel I(DfreeCopy) = I(Dfree)
   %rel I(CfreeCopy) = I(Cfree)
 
-  rel ddt I(Ctot) = I(kr1)*(I(Cprod) + \
-	FF_SW3*( \ 
-		(  I(Atot) - A_SW*I(Ctot) )*(( \
-		( I(Btot) - B_SW*I(Ctot) ) \ 
-		/I(KDfw))^n) \
-	)) - \
-	I(kr2)*(I(Cdeg) + \
-	I(Cfree)*I(ratC)) \
-	init I(Ctot_0)
+ % rel ddt I(Ctot) = I(kr1)*(I(Cprod) + \
+%	FF_SW3*( \ 
+%		I(Afree)*(( \
+%		I(Bfree) \ 
+%		/I(KDfw))^n) \
+%	)) - \
+%	I(kr2)*(I(Cdeg) + \
+%	I(Cfree)*I(ratC)) \
+%	init I(Ctot_0)
 
-  def I(Ctot) mag = [0,1] nA
+  
+    rel ddt I(Ctot) = I(kr1)*(I(Cprod) + \
+  	FF_SW3*( \ 
+  		(  I(Atot) - A_SW*I(Ctot) )*(( \
+  		( I(Btot) - B_SW*I(Ctot) ) \ 
+  		/I(KDfw))^n) \
+  	)) - \
+  	I(kr2)*(I(Cdeg) + \
+  	I(Cfree)*I(ratC)) \
+  	init I(Ctot_0)
+  
+  def I(Ctot) mag = [0.001,10000] nA
   
 
   % copiers

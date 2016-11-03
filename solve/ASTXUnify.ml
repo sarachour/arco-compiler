@@ -38,9 +38,20 @@ type  rnode = (rstep) snode
 
 module ASTUnifySymcaml =
 struct
+
+  let tempvar () =
+    "__tmp__"
+
+
+  let is_tempvar x =
+    x = tempvar()
+
+  let tempmid () =
+    MNVar(MInput,tempvar())
+
   let _symvar2mid (s:mid menv) (rst:string list) : mid =  match rst with
-  | [v] -> MathLib.str2mid s v 
-  | _ -> error "apply_comp" "iconvmid encountered unexpected string"
+    | [v] ->  MathLib.str2mid s v
+    | _ -> error "apply_comp" "iconvmid encountered unexpected string"
 
   let _symvar2hwid (s:hwvid hwenv) (rst:string list) = match rst with
     | ["l";cn;v;p] -> let cnn = HwLib.str2hwcompname cn in 
@@ -64,7 +75,10 @@ struct
 
   let symvar2unid (mstate:math_state) (hwstate:hwcomp_state) uid =
    match STRING.split uid ":" with
-    | "m"::r -> MathId(_symvar2mid (mstate.env) r)
+     | "m"::m2::r -> if is_tempvar m2 = false then
+         MathId(_symvar2mid (mstate.env) (m2::r))
+       else
+         MathId(tempmid())
     | "h"::r -> HwId(_symvar2hwid (hwstate.env) r)
     | h::r -> error "iconvunid" ("unexpected prefix "^h)
     | _ -> error "" ""
@@ -141,69 +155,75 @@ struct
     let symenv = s.tbl.symenv and hwstate = s.tbl.hwstate and mstate = s.tbl.mstate in
     let vtable : sym_vtable = mk_vtable  () in
     (*variable table*)
-    SymCaml.define_function symenv.s "VAR";
-    SymCaml.define_function symenv.s "MEAN";
-    let decl_symvar (vname:symvar) =
-        spydebug ("[env][decl] mvar "^vname);
+    try
+      SymCaml.define_function symenv.s "VAR";
+      SymCaml.define_function symenv.s "MEAN";
+      SymCaml.define_symbol symenv.s ("m:"^tempvar());
+      let decl_symvar (vname:symvar) =
+          spydebug ("[env][decl] mvar "^vname);
+          vtable_declare vtable vname;
+          SymCaml.define_symbol symenv.s vname;
+          ()
+      in
+      let use_vars_in_expr (e:symexpr) =
+        List.iter (fun vname -> decl_symvar vname) (SymExpr.get_vars e)
+      in
+      (*get list of disabled expressions*)
+      let get_disabled (v: hwvid hwportvar) = 
+        if MAP.has hwstate.disabled v.port then
+            let ban_cfgs = MAP.get hwstate.disabled v.port in
+            List.map (fun (x:hwvarcfg) ->
+                let symexpr = to_symexpr s x.expr in
+                use_vars_in_expr (symexpr);
+                symexpr
+              ) ban_cfgs
+        else []
+      in
+      (*declare and then print the wildcard*)
+      let decl_wildcard (v: hwvid hwportvar) =
+        let vname : symvar = to_symvar s (HwId (HwLib.var2id v None)) in
+        let bans : symexpr list = get_disabled v in
+        print_wildcard vname bans;
         vtable_declare vtable vname;
-        SymCaml.define_symbol symenv.s vname;
+        SymCaml.define_wildcard symenv.s vname bans;
         ()
-    in
-    let use_vars_in_expr (e:symexpr) =
-      List.iter (fun vname -> decl_symvar vname) (SymExpr.get_vars e)
-    in
-    (*get list of disabled expressions*)
-    let get_disabled (v: hwvid hwportvar) = 
-      if MAP.has hwstate.disabled v.port then
-          let ban_cfgs = MAP.get hwstate.disabled v.port in
-          List.map (fun (x:hwvarcfg) ->
-              let symexpr = to_symexpr s x.expr in
-              use_vars_in_expr (symexpr);
-              symexpr
-            ) ban_cfgs
-      else []
-    in
-    (*declare and then print the wildcard*)
-    let decl_wildcard (v: hwvid hwportvar) =
-      let vname : symvar = to_symvar s (HwId (HwLib.var2id v None)) in
-      let bans : symexpr list = get_disabled v in
-      print_wildcard vname bans;
-      vtable_declare vtable vname;
-      SymCaml.define_wildcard symenv.s vname bans;
-      ()
-    in
-    let decl_var (v:hwvid hwportvar) =
-      let vname = to_symvar s (HwId (HwLib.var2id v None)) in
-      begin
-        match ConcCompLib.get_var_config hwstate.cfg v.port with
-        | Some(conc_expr) -> use_vars_in_expr (to_symexpr s conc_expr)
-        | None -> ()
-      end;
-      decl_symvar vname;
-      ()
-    in
-    SymCaml.clear symenv.s;
-    (*iterate over all variables and define them*)
-    HwLib.comp_iter_vars hwstate.comp (fun (v:hwvid hwportvar) ->
-        if ConcCompLib.is_conc hwstate.cfg v.port = false then
-          decl_wildcard v
-        else
-          decl_var v
-      );
-    MathLib.iter_vars mstate.env (fun (v:mid mvar) ->
-        let vname = to_symvar s (MathId (MathLib.var2mid v)) in 
+      in
+      let decl_var (v:hwvid hwportvar) =
+        let vname = to_symvar s (HwId (HwLib.var2id v None)) in
+        begin
+          match ConcCompLib.get_var_config hwstate.cfg v.port with
+          | Some(conc_expr) -> use_vars_in_expr (to_symexpr s conc_expr)
+          | None -> ()
+        end;
         decl_symvar vname;
         ()
-    );
-    (*declare variable external to component*)
-    noop (vtable_iter vtable (fun v st-> match st with
-        | SYMEnvUsed ->
-          spydebug ("[env][decl] var-used "^v);
-          SymCaml.define_symbol symenv.s v;
+      in
+      SymCaml.clear symenv.s;
+      (*iterate over all variables and define them*)
+      HwLib.comp_iter_vars hwstate.comp (fun (v:hwvid hwportvar) ->
+          if ConcCompLib.is_conc hwstate.cfg v.port = false then
+            decl_wildcard v
+          else
+            decl_var v
+        );
+      MathLib.iter_vars mstate.env (fun (v:mid mvar) ->
+          let vname = to_symvar s (MathId (MathLib.var2mid v)) in 
+          decl_symvar vname;
           ()
-        | SYMEnvDeclared -> ()
-    ));
-    ()
+      );
+      (*declare variable external to component*)
+      noop (vtable_iter vtable (fun v st-> match st with
+          | SYMEnvUsed ->
+            spydebug ("[env][decl] var-used "^v);
+            SymCaml.define_symbol symenv.s v;
+            ()
+          | SYMEnvDeclared -> ()
+        ));
+      true 
+    with
+    | _ ->
+      warn "mk_symcaml_env" "failed to build environment";
+      false
 
   let print_unify (hwexpr:symexpr) (texpr:symexpr) =
     let hwstr = SymCaml.expr2str hwexpr in
@@ -217,32 +237,67 @@ struct
     debug (" "^(unid2str lhs)^"="^(uast2str rhs))
 
 
+  let if_numeric_unify (s:runify) (hwexpr:unid ast) (texpr:unid ast) =
+    let valid = REF.mk true in
+    let symenv = s.tbl.symenv in
+    let result = match hwexpr,  texpr  with
+    | Integer(x),Integer(y) -> if x = y then Some([]) else None
+    | Integer(x),Decimal(y) -> if float_of_int x = y then Some([]) else None
+    | Decimal(x),Integer(y) -> if x = float_of_int y then Some([]) else None
+    | Decimal(x),Decimal(y) -> if x = y then Some([]) else None
+    | Decimal(x),_ -> None
+    | Integer(x),_ -> None
+    | _,Decimal(x) -> None
+    | _,Integer(x) -> None
+    | _ -> REF.upd valid (fun x -> false); None 
+    in
+    REF.dr valid,result
+
   let unify (s:runify) (hwexpr:unid ast) (texpr:unid ast) =
     (*attempt unification*)
     let symenv = s.tbl.symenv in
     let symhwexpr = to_symexpr s hwexpr in
     let symtexpr = to_symexpr s texpr in
     print_unify symhwexpr symtexpr;
-    let maybe_assigns =
-      try
-        SymCaml.pattern symenv.s symtexpr symhwexpr
-      with PyCamlWrapperException(_) ->
-        warn "[unify_term][exception] python exception";
-        None 
+    (*SymCaml.set_debug symenv.s true;*)
+    let unified_numeric,result =
+      if_numeric_unify s hwexpr texpr
     in
-    match maybe_assigns with
-    | Some(assigns) ->
-      debug "[unify][pattern]: ==ASSIGNMENTS==";
-      Some (List.map (fun ((symlhs,symrhs):symvar*symexpr) ->
-          let lhs = to_uvar s symlhs in
-          let rhs = to_uast s symrhs in
-          debug "[unify][pattern]: <no solution>";
-          print_assign lhs rhs;
-          (lhs,rhs)
-      ) assigns) 
-    | None ->
-      debug "[unify][pattern]: <no solution>";
-      None
+    if unified_numeric then result else
+      let maybe_assigns =
+        try
+          SymCaml.pattern symenv.s symtexpr symhwexpr
+        with
+        | PyCamlWrapperException(_) ->
+          begin
+            warn "[unify_term][exception] python exception";
+            None
+          end
+        | SymCamlFunctionException(_) ->
+          begin
+            warn "[unify_term][exception] symcaml fxn exception";
+            None
+          end
+        | _ ->
+          begin
+            warn "[unify_term][exception] some other exception";
+            None
+          end
+
+      in
+      match maybe_assigns with
+      | Some(assigns) ->
+        debug "[unify][pattern]: ==ASSIGNMENTS==";
+        Some (List.map (fun ((symlhs,symrhs):symvar*symexpr) ->
+            let lhs = to_uvar s symlhs in
+            let rhs = to_uast s symrhs in
+            debug "[unify][pattern]: <no solution>";
+            print_assign lhs rhs;
+            (lhs,rhs)
+        ) assigns) 
+      | None ->
+        debug "[unify][pattern]: <no solution>";
+        None
 
 
 
@@ -250,6 +305,30 @@ end
 
 module ASTUnifyTree =
 struct
+  let weights : (string*unid ast) search_weights =
+    let compute ((x,y):(string*unid ast)) =
+      float_of_int (ASTLib.size y)
+    in
+    SearchWeights.mk_weights compute
+
+  let update_weights (env:runify) node =
+    let steps = SearchLib.get_path env.search node in
+    let path = List.map (fun step -> match step with
+        | RAddInAssign(lhs,rhs) -> Some (lhs,rhs.expr)
+        | RAddOutAssign(lhs,rhs) -> Some (lhs,rhs.expr)
+        | RAddParAssign(lhs,rhs) -> Some (lhs,ASTLib.number2ast rhs)
+        | RDisableAssign(lhs,rhs) -> None
+      ) steps
+    in
+    SearchWeights.update_weights weights (OPTION.conc_list path) (fun x -> false)
+
+  let get_weight (step) = match step with
+    | RAddInAssign(lhs,rhs) -> SearchWeights.get_weight weights (lhs,rhs.expr)
+    | RAddOutAssign(lhs,rhs) -> SearchWeights.get_weight weights (lhs,rhs.expr)
+    | RAddParAssign(lhs,rhs) -> SearchWeights.get_weight weights (lhs,ASTLib.number2ast rhs)
+    | RDisableAssign(lhs,rhs) ->
+      0. -. (SearchWeights.get_weight weights (lhs,rhs))
+
   let remove_disabled (tbl:rtbl) v expr =
     let s = tbl.hwstate in 
     let ecfg = ConcCompLib.mkvarcfg expr in
@@ -328,30 +407,43 @@ struct
 
   let order_steps a b = 0
 
-  let score_uniform env steps : sscore =
+  let score_uniform steps : sscore =
       let delta = 0. in
       let state = 0. in
       SearchLib.mkscore delta state
 
-  let score_random env steps : sscore =
+  let score_random steps : sscore =
       let delta = RAND.rand_norm () in
       let state = RAND.rand_norm () in
       SearchLib.mkscore delta state
 
-  let score_bans env steps : sscore = 
-      let delta = LIST.fold steps (fun x r -> match x with
-              | RDisableAssign(lhs,rhs) -> 1+(ASTLib.size rhs)+r
-              | _ -> r
-          ) 0
+  let score_steps_uniform steps : sscore = 
+    let delta = LIST.fold steps (fun x (r:float) ->
+        let restrict_weight = get_weight x in
+        restrict_weight +. r
+      ) (RAND.rand_norm())
       in
       let state = 0. in
-      SearchLib.mkscore (float_of_int delta) state
+      SearchLib.mkscore (delta /.(float_of_int (List.length steps))) state
+ 
+  let score_restrictions steps : sscore = 
+      let delta = LIST.fold steps (fun x (r:float) -> match x with
+        | RDisableAssign(lhs,rhs) ->
+          let ast_size = (ASTLib.size rhs) in
+          let restrict_weight = get_weight x in
+          (1. +. (float_of_int ast_size))*.restrict_weight +. r
+        | _ -> r
+      ) (RAND.rand_norm())
+      in
+      let state = 0. in
+      SearchLib.mkscore delta state
 
-    let get_score ()  =
+  let get_score ()  =
       match get_glbl_string "uast-selector-branch" with
       | "uniform" -> score_uniform
       | "random" -> score_random
-      | "bans" -> score_bans
+      | "restrict" -> score_restrictions
+      | "steps-uniform" -> score_steps_uniform
       | _ -> error "get_score" "unknown strategy"
 
     let is_wildcard (comp:hwcomp_state) (vr:unid) = match vr with
@@ -394,6 +486,7 @@ struct
       }
 
   let init_root st init_steps =
+    SearchWeights.clear_weights weights;
     match st.tbl.target with
     | TRGMathVar(name) ->
       let mvar = MathLib.getvar st.tbl.mstate.env name in
@@ -426,6 +519,10 @@ end
 module ASTUnifier =
 struct
 
+  let tempvar = ASTUnifySymcaml.tempvar
+
+  let tempmid = ASTUnifySymcaml.tempmid
+                 
 
   let mkmenu (sr : runify) =
     let menu_desc = "t=search-tree,i=info" in
@@ -627,8 +724,9 @@ struct
   let uast_to_unify_expr (st:runify) (port:string) (a:unid ast) : unify_expr =
     let mstate = st.tbl.mstate and hwstate = st.tbl.hwstate in
     match a with
-    (*unifying with an input variable. This is un-unifiable*)
-    | Term(MathId(MNVar(MInput,name))) -> UNIUnunifiable(a)
+    (*unifying with an input variable. This is unifiable provided we can pass-through the var*)
+    | Term(MathId(MNVar(MInput,name))) ->
+      UNIMathExpr(uast2mast a)
     (*unifying with an output variable*)
     | Term(MathId(MNVar(MOutput,name))) ->
       begin
@@ -656,14 +754,14 @@ struct
           then true else found
         ) false
     in
-    let is_output_port ovar =
+    let is_output_port (ovar:string) =
       (HwLib.comp_getvar st.tbl.hwstate.comp ovar).knd = HWKOutput
     in
     let entang = List.fold_right (fun (ovar,oexpr) (entangs) ->
         let unify_expr = uast_to_unify_expr st ovar oexpr in
         if is_resolved ovar unify_expr = false && is_output_port ovar then
           ({port=ovar;expr=unify_expr}::entangs)
-        else
+        else 
           entangs   
       ) asgns ([]) in
     entang
@@ -735,7 +833,8 @@ struct
         ops.steps @ lst ) []
     in
     (*enumerate all of the assignments that we should ban*)
-    let assigns = List.fold_right (fun (s:rstep) (asgns:unify_assign list) -> match s with
+    let assigns = List.fold_right (fun (s:rstep) (asgns:unify_assign list) ->
+        match s with
         | RAddOutAssign(lhs,rhs) ->
           let unify_expr = uast_to_unify_expr st lhs (rhs.expr) in
           {port=lhs;expr=unify_expr}::asgns
@@ -882,61 +981,69 @@ struct
     (* get concretized version of component with config substituted in*)
     (* get bhvr of hardware *)
     let hwstate = env.tbl.hwstate in 
-    ASTUnifySymcaml.make_symcaml_env env;
-    let ctx = mkunifyctx () in
-    let req_assign : (string*unid ast) ref = REF.mk ("?",Integer(0)) in
-    let result = match env.tbl.target with
-      | TRGMathVar(mname) ->
-        begin
-          let mvar = MathLib.getvar env.tbl.mstate.env mname in
-          let rhs = Term(MathId(MathLib.var2mid mvar)) in
-          addctx env ctx [(hwstate.target,rhs)] [];
-          REF.set req_assign (hwstate.target,rhs);
-          unify_recurse env ctx
-        end
-      | TRGHWVar(expr) ->
-        addctx env ctx[(hwstate.target,expr)] [];
-        REF.set req_assign (hwstate.target,expr);
-        unify_recurse env ctx
-
-      | _ -> error "unify" "unhandled"
-    in
-    match result with
-    | UNIRESSuccess(steps) ->
-      let currnode :rnode = SearchLib.cursor env.search in
-      let slnnode : rnode =
-        SearchLib.mknode_child_from_steps env.search env.tbl steps
-      in
-      SearchLib.solution env.search slnnode;
-      List.iter (fun step ->
-          match ASTUnifyTree.step2restrict step with
-          | Some(RDisableAssign(lhs,rhs)) ->
-            let init_lhs,init_rhs = REF.dr req_assign in
-            if lhs = init_lhs && rhs = init_rhs then
-              ()
-            else
-              let restrict = RDisableAssign(lhs,rhs) in
-              noop (SearchLib.mknode_child_from_steps env.search env.tbl [restrict])
-          | Some(_) -> error "unify" "expected restriction steps only"
-          | None -> ()
-      ) steps 
-
-
-    (*add child*)
-    | UNIRESFailure(assigns) ->
-      let restricts = List.map (fun x ->
-          RDisableAssign(x.port,unifyexpr2uast env x.expr)
-        ) assigns
-      in
-      let currnode :rnode = SearchLib.cursor env.search in
-      List.iter (fun restrict ->
-          SearchLib.mknode_child_from_steps env.search env.tbl [restrict];
-          ()
-      ) restricts
-
-    | UNIRESCompleteFailure ->
+    if ASTUnifySymcaml.make_symcaml_env env = false then
       let currnode :rnode = SearchLib.cursor env.search in
       noop (SearchLib.deadend env.search currnode env.tbl)
+    else
+      let ctx = mkunifyctx () in
+      let req_assign : (string*unid ast) ref = REF.mk ("?",Integer(0)) in
+      let result = match env.tbl.target with
+        | TRGMathVar(mname) ->
+          begin
+            let mvar = MathLib.getvar env.tbl.mstate.env mname in
+            let rhs = Term(MathId(MathLib.var2mid mvar)) in
+            addctx env ctx [(hwstate.target,rhs)] [];
+            REF.set req_assign (hwstate.target,rhs);
+            unify_recurse env ctx
+          end
+        | TRGHWVar(expr) ->
+          addctx env ctx[(hwstate.target,expr)] [];
+          REF.set req_assign (hwstate.target,expr);
+          unify_recurse env ctx
+
+        | _ -> error "unify" "unhandled"
+      in
+      match result with
+      | UNIRESSuccess(steps) ->
+        let currnode :rnode = SearchLib.cursor env.search in
+        let slnnode : rnode =
+          SearchLib.mknode_child_from_steps env.search env.tbl steps
+        in
+        ASTUnifyTree.update_weights env slnnode; 
+        SearchLib.solution env.search slnnode;
+        List.iter (fun step ->
+            match ASTUnifyTree.step2restrict step with
+            | Some(RDisableAssign(lhs,rhs)) ->
+              let init_lhs,init_rhs = REF.dr req_assign in
+              if lhs = init_lhs && rhs = init_rhs then
+                ()
+              else
+                let restrict = RDisableAssign(lhs,rhs) in
+                let restrict_node =
+                  SearchLib.mknode_child_from_steps env.search env.tbl [restrict]
+                in
+                ASTUnifyTree.update_weights env restrict_node
+            | Some(_) -> error "unify" "expected restriction steps only"
+            | None -> ()
+        ) steps 
+
+
+      (*add child*)
+      | UNIRESFailure(assigns) ->
+        let restricts = List.map (fun x ->
+            RDisableAssign(x.port,unifyexpr2uast env x.expr)
+          ) assigns
+        in
+        let currnode :rnode = SearchLib.cursor env.search in
+        List.iter (fun restrict ->
+            SearchLib.mknode_child_from_steps env.search env.tbl [restrict];
+            ()
+          ) restricts;
+        SearchLib.visited env.search currnode
+
+      | UNIRESCompleteFailure ->
+        let currnode :rnode = SearchLib.cursor env.search in
+        noop (SearchLib.deadend env.search currnode env.tbl)
 
 
   (*============ UNIFY END ===================*)
@@ -1022,17 +1129,19 @@ struct
       ) results
 
   let unify_with_hwvar (env:runify) (hexpr: unid ast) steps =
+    let nslns = Globals.get_glbl_int "eqn-unifications" in
     env.tbl.target <- TRGHWVar(hexpr);
     ASTUnifyTree.init_root env steps;
     expand_params_tree env;
-    solve env 5;
+    solve env nslns;
     get_solutions env 
 
   let unify_with_mvar (env:runify) (mvar:string) steps =
+    let nslns = Globals.get_glbl_int "eqn-unifications" in
     env.tbl.target <- TRGMathVar(mvar);
     ASTUnifyTree.init_root env steps;
     expand_params_tree env;
-    solve env 5;
+    solve env nslns;
     get_solutions env 
 
 

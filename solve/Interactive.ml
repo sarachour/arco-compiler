@@ -2,14 +2,19 @@ open SolverData
 open Util
 open Globals
 
+let force (fxn:unit->unit) =
+  set_glbl_bool "_force" true;
+  fxn();
+  set_glbl_bool "_force" false
+
 let _if_interactive (ilevel:int) (f:unit->'a) =
-  if ilevel <= get_glbl_int "interactive" then
+  if get_glbl_bool "_force" || ilevel <= get_glbl_int "interactive" then
     let _ = f () in
     ()
   else ()
 
 let _if_debug (ilevel:int) (f:unit->'a) =
-  if ilevel <= get_glbl_int "debug" then
+  if get_glbl_bool "_force" || ilevel <= get_glbl_int "debug" then
     let _ = f () in
     ()
   else ()

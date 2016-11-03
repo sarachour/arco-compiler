@@ -80,6 +80,14 @@ struct
     "c_"^(string_of_int (MAP.get stbl.inst2id c))
 
 
+  let id2entity tbl id  : (wireid,hwcompinst) either= match STRING.split id "_" with
+    | ["c";ident] ->
+      Right(MAP.get tbl.id2inst (int_of_string ident))
+    | ["w";ident] ->
+      Left(MAP.get tbl.id2wire (int_of_string ident))
+    | _ ->
+      error "id2entity" "no idea"
+
   let decl_wire stbl (w:wireid) :z3st =
     add_wire stbl w;
     let name = wire2id stbl w in
@@ -176,8 +184,14 @@ struct
       let sln = MAP.make() in
       let proc_const v = match v with
         | Z3Set(vid,Z3QInt(inst)) ->
-          error "z32cstr" "unimplemented" 
-      | _ -> ()
+          begin
+            match id2entity tbl vid with
+            | Right(hwcomp) ->
+              noop (MAP.put sln hwcomp ({name=hwcomp.name;inst=inst}))
+            | Left(hwwire) ->
+              debug ("z32cstr.wire: "^(HwLib.wireid2str hwwire))
+          end
+        | _ -> ()
       in
       let _ = List.iter (fun x -> let _ = proc_const x in ()) z3 in
       sln

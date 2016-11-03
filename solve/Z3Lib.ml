@@ -11,8 +11,8 @@ let error n m = raise (Z3Error (n^":"^m))
 
 type z3doc = z3st list
 
-let z3_print_debug = print_debug 1
-let debug = print_debug 1
+let z3_print_debug = print_debug 4
+let debug = print_debug 4
 
 module Z3Lib =
 struct

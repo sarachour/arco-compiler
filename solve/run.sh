@@ -22,7 +22,7 @@ fi
 
 if [ "$CMD" = "run" ]; then
   make && \
-    ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "$NAME".ckt
+    ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "ckt_$NAME"
 fi
 
 
@@ -32,11 +32,11 @@ fi
 
 
 OUTDIR=output/$HWSPEC
-TMPDIR=.tmp
+TMPDIR=tmp
 
 mkdir -p $OUTDIR
 mkdir -p $TMPDIR
 
-mv *.ckt.* $OUTDIR/
-mv *.z3 $TMPDIR/
+mv ckt_* $OUTDIR/
+mv *.smt2 $TMPDIR/
 mv *.debug.txt $TMPDIR

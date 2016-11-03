@@ -23,10 +23,11 @@ open SolverData
 open SolverUtil
 open SlnLib
 open SolverSearch
-open SolverRslv
 open SolverMulti
 
 
+open HWConnRslvr 
+open SolverMapper 
 (*
 A solution is a set of connections  and components. A solution
 may additionally contain any pertinent error and magnitude mappings
@@ -61,16 +62,33 @@ let canonicalize_sln (hw:hwvid hwenv) (s:sln) =
   ()
 
 *)
+let proc_sln (out:string) (slntbl:gltbl) (i:int) =
+  slvr_print_inter "---- Calculating Concrete slntbl ---";
+  let conc_sln = HwConnRslvrLib.get_sln slntbl in
+  slvr_print_inter "---- Calculating Mappings ---";
+  let mappings = SolverMapper.infer slntbl in
+  slvr_print_inter "---- Generating Simulink File ---";
+  IO.save (out^"_"^(string_of_int i)^".sim") "TODO";
+  slvr_print_inter "---- Generating Summary File ---";
+  IO.save (out^"_"^(string_of_int i)^".sum") "TODO";
+  Printf.printf "===== Solution Found ======\n";
+  ()
+
 let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   init_utils();
   let sl = {hw=hw;math=prob;goal_cnt=0;} in
   let msearch = MultiSearch.mkmulti sl in
   slvr_print_inter "===== Beginning Interactive Solver ======\n";
-  let nslns = Globals.get_glbl_int "slvr-solutions" in
-  let maybe_slns : ((string,mid) sln list) option = MultiSearch.msolve (REF.mk sl) msearch nslns in
+  let nslns : int = Globals.get_glbl_int "slvr-solutions" in
+  slvr_print_inter ("### Looking for :"^(string_of_int nslns)^" Solutions ======\n");
+  let maybe_slns : (gltbl list) option =
+    MultiSearch.msolve (REF.mk sl) msearch nslns in
   match maybe_slns with
-  | Some(slns) -> error "solve/maybe_slns" "unimplemented"
-  | None -> flush_all(); error "solver" "no solutions found"
+  | Some(slns) ->
+    List.iteri (fun id (x:gltbl) -> proc_sln out x id) slns;
+    ()
+  | None ->
+    flush_all(); error "solver" "no solutions found"
 (*
   let _ = slvr_print_inter "===== Beginning Interactive Solver ======\n" in
   let nslns = Globals.get_glbl_int "slvr-solutions" in

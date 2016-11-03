@@ -43,6 +43,11 @@ struct
   let find_goals (tbl:gltbl) (gd:goal_data) =
     MAP.filter tbl.goals (fun id (g:goal) -> g.d = gd)
 
+  let filter_goals (tbl:gltbl) fn =
+    MAP.fold tbl.goals (fun id (g:goal) rest ->
+        if fn g.d then
+          g.d::rest else rest
+      ) []
 
   let mk_conn_goal (tbl:gltbl) (src:wireid) (dest:wireid) (expr:mid ast)=
     let mgoal = GUnifiable(GUHWConnPorts({src=src;dst=dest;expr=expr})) in
@@ -182,7 +187,7 @@ struct
     | _ -> 0.
 
   let ast_size_goal_difficulty (g) = match g with
-    | GUnifiable(GUMathGoal(e)) -> 999.
+    | GUnifiable(GUMathGoal(e)) -> 50.
     | GUnifiable(GUHWInExprGoal(e)) -> 2.*.(float_of_int (ASTLib.size e.expr))
     | GUnifiable(GUHWConnInBlock(_)) -> 1.
     | GUnifiable(GUHWConnOutBlock(_)) -> 1.

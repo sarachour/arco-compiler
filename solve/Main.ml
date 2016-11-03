@@ -68,7 +68,7 @@ let command =
         | (Some h, Some f, Some o) ->
           gen h f o config
         | (Some h, Some f, None) ->
-          gen h f "out.ckt" config
+          gen h f "ckt_out" config
         | (_,_,_) ->
           raise (MainException("command","Must provide hwspec output, and formula"))
     )

@@ -19,6 +19,44 @@ let debug = print_debug 5 "search"
 let _menu = menu 5
 let _print_inter = print_inter 5
 
+module SearchWeights =
+struct
+
+  (*the weights for the different assignments*)
+  let mk_weights c = {
+    weights=MAP.make();
+    normalize=0.;
+    compute=c
+  } 
+
+  (**)
+  let increase_weight w step =
+    let curr_weight =
+      MAP.get_dflt w.weights step 1.
+    in
+    noop (MAP.put w.weights step (curr_weight+.(w.compute step)))
+
+  let decrease_weight w step =
+    let curr_weight =
+      MAP.get_dflt w.weights step 1.
+    in
+    noop (MAP.put w.weights step (curr_weight-.(w.compute step)))
+
+
+  let update_weights w steps direct_fxn =
+    List.iter (fun x ->
+        if direct_fxn x then
+          increase_weight w x
+      else decrease_weight w x) steps
+
+  let get_weight w step =
+    let cnt = MAP.get_dflt w.weights step 1. in
+    cnt 
+
+  let clear_weights w =
+    MAP.clear w.weights
+end
+
 
 module SStatLib =
 struct
@@ -189,6 +227,7 @@ struct
     | [] -> error "id2node" ("no node id "^(string_of_int x)^" exists")
     | _ -> error "id2node" ("more than one node with id "^(string_of_int x)^" exists.")
 
+  
   let add_step (type a) (type b) (sr:(a,b) ssearch) (s:a) =
     match sr.scratch with
     | Some(b) -> b.s <- s::b.s
@@ -223,10 +262,37 @@ struct
     let _ = SStatLib.rm sr.st n in
     sr
 
+  let score_path (type a) (type b) (sr:(a,b) ssearch) (endnode:a snode) : float=
+      (*pass through node*)
+      let score_node (e:a snode) (r:sscore) : sscore = r in
+      (*pass through edge*)
+      let combine x y = mkscore (y.state) (x.delta +. y.delta) in
+      let score_edge src snk (n:sscore) (old:sscore) : sscore = combine old n in
+      let init_score : sscore = mkscore 0. 0. in
+      let score = TREE.fold_to_node score_node score_edge sr.tree endnode init_score in
+      let total = score.state +. score.delta in
+      total
+
+  let upd_score (type a) (type b) (sr:(a,b) ssearch) (node:a snode) =
+    if TREE.hasnode sr.tree node = false then 
+      error "upd_score" "node doesn't exist in tree"   
+    else
+    let score : sscore = sr.score node.s in
+    let par : (a snode) option = TREE.parent sr.tree node in
+    let _ = 
+      if par <> None then
+        let par = OPTION.force_conc par in
+        let _ = TREE.updedge sr.tree par node score in
+        let cum_score = score_path sr node in
+        let _ = (node.score <- cum_score) in 
+        () 
+      else ()
+    in
+    ()
+
   let apply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
     debug ("== apply node "^(string_of_int node.id)^" ===\n"^(steps2str 1 sr node.s)^"\n");
     let nenv = List.fold_left (fun b x -> let nb = sr.apply b x in nb) env node.s in
-    (*let _ = upd_score sr env node in*)
     (*recompute score*)
     nenv
 
@@ -280,6 +346,7 @@ struct
     env
 
 
+
   let get_node_by_id (type a) (type b) (sr:(a,b) ssearch) (id:int) : a snode option=
     let nodes : a snode list = TREE.filter_nodes sr.tree (fun q -> q.id = id) in
           if List.length nodes = 1 then
@@ -289,6 +356,9 @@ struct
           else
             error "cleanup" "more than one nodes with the same id."
  
+  let hasnode (type a) (type b) (sr:(a,b) ssearch) (node:a snode) =
+    get_node_by_id sr node.id != None
+
   (*cleaning*)
   let cleanup (type a) (type b) (sr:(a,b) ssearch) (env:b)=
     let new_env = match sr.curs,sr.tree.root with
@@ -324,14 +394,19 @@ struct
       | Some(par) ->
         let siblings : a snode list = (TREE.children sr.tree par) in
         let live_siblings = LIST.filter (fun node ->
-            is_visited sr node = false && is_deadend sr node = false && is_solution sr node = false) siblings in
+            is_visited sr node = false && is_deadend sr node = false && is_solution sr node = false
+          ) siblings in
         (*the children are fully explored*)
         if List.length live_siblings = 0 then
-          let sln_siblings = LIST.filter (fun node -> is_visited sr node || is_solution sr node) siblings in
+          let sln_siblings = LIST.filter (fun node ->
+              is_visited sr node || is_solution sr node
+            ) siblings in
           ORDSET.rm sr.frontier (REF.mk par);
           begin
-          if List.length sln_siblings > 0 then SStatLib.visited sr.st par 
-          else SStatLib.deadend sr.st par;
+            if List.length sln_siblings > 0 then
+              SStatLib.visited sr.st par
+            else
+              SStatLib.deadend sr.st par;
           end;
            _kill_branch par
         else
@@ -389,33 +464,10 @@ struct
     | Some(c) -> c
     | None -> error "cursor" "expected cursor."
 
-  let score_path (type a) (type b) (sr:(a,b) ssearch) (endnode:a snode) : float=
-      (*pass through node*)
-      let score_node (e:a snode) (r:sscore) : sscore = r in
-      (*pass through edge*)
-      let combine x y = mkscore (y.state) (x.delta +. y.delta) in
-      let score_edge src snk (n:sscore) (old:sscore) : sscore = combine old n in
-      let init_score : sscore = mkscore 0. 0. in
-      let score = TREE.fold_to_node score_node score_edge sr.tree endnode init_score in
-      let total = score.state +. score.delta in
-      total
+  
 
-  let upd_score (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
-    if TREE.hasnode sr.tree node = false then 
-      error "upd_score" "node doesn't exist in tree"   
-    else
-    let score : sscore = sr.score env node.s in
-    let par : (a snode) option = TREE.parent sr.tree node in
-    let _ = 
-      if par <> None then
-        let par = OPTION.force_conc par in
-        let _ = TREE.updedge sr.tree par node score in
-        let cum_score = score_path sr node in
-        let _ = (node.score <- cum_score) in 
-        () 
-      else ()
-    in
-    ()
+
+  
 
 
   let commit (type a) (type b) (sr:(a,b) ssearch) (state:b) : a snode=
@@ -427,7 +479,7 @@ struct
       sr.scratch <- None;
       (*move the cursor to the created node*)
       move_cursor sr state node;
-      upd_score sr state node;
+      upd_score sr node;
       (*move back*)
       move_cursor sr state cursor;
       ORDSET.add sr.frontier (REF.mk node);
@@ -453,6 +505,20 @@ struct
     add_steps sr steps;
     commit sr env
 
+  let root (type a) (type b) (sr:(a,b) ssearch ) =
+    let n = TREE.root sr.tree in
+    n
+
+  let initenv (type a) (type b) (sr:(a,b) ssearch) (env:b) =
+    match root sr with
+    | Some(root) ->
+      clear_cursor sr;
+      apply_node sr env root;
+      sr.curs <- Some(root)
+
+    | None ->
+      error "initenv" "can't initialize environment when tehre is no root"
+
   let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
     let steps = List.sort (sr.order) sts in
     start sr;
@@ -467,11 +533,10 @@ struct
       end
     |None -> error "mkbuf" "impossible to not have initial step"
 
-  let root (type a) (type b) (sr:(a,b) ssearch ) =
-    let n = TREE.root sr.tree in
-    n
+  
  
-  let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b) (order:a->a->int) (score:b->a list->sscore) (tostr:a->string) =
+  let mksearch (type a) (type b) (apply:b->a->b) (unapply:b->a->b)
+      (order:a->a->int) (score:a list->sscore) (tostr:a->string) =
     let g : (a snode, sscore) tree = TREE.make (fun (x:a snode) -> x.id) (fun x y -> x = y) in
     let frontier_order (_curr:a snode ref) (_next:a snode ref): ord_dir =
       let curr = REF.dr _curr in 
@@ -506,7 +571,9 @@ struct
         | Some(r) -> TREE.has_ancestor sr.tree x r
         | None -> true
       in
-        in_subtree && (is_deadend sr x = false) && (is_solution sr x = false)
+      let is_valid = in_subtree && (is_deadend sr x = false) && (is_solution sr x = false) in
+      upd_score sr x;
+      is_valid
     in
     let p = List.filter (fun x -> test_path x) p in
     p
