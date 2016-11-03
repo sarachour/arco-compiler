@@ -168,7 +168,7 @@ struct
          (MATLit(MATStr(inpstr))));
     let inp_locs = List.map
         (fun (x:int) -> loc^"/"^(string_of_int x))
-        (LIST.mkrange 0 n_inps)
+        (LIST.mkrange 1 (n_inps))
     in
     let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
     loc,inp_locs,out_loc
