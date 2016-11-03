@@ -174,8 +174,8 @@ struct
         declare_var (loc);
         q (add_block (get_basic_fxn "const") (loc));
         q (set_param
-             (MATLit(MATStr(loc))) "Constant value"
-             (MATLit(MATFloat(value)))
+             (MATLit(MATStr(loc))) "Value"
+             (MATLit(MATStr(string_of_float value)))
           )
       end;
     loc^"/1"
