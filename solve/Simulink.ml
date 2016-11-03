@@ -143,7 +143,7 @@ struct
   let create_sub q namespace n_inps =
     let id = symtbl_size () in
     let loc = namespace^"/add_"^(string_of_int id) in
-    let inpstr=  "+"^(STRING.repeat "-" n_inps) in
+    let inpstr=  "+"^(STRING.repeat "-" (n_inps-1)) in
     declare_var (loc);
     q (add_block (get_basic_fxn "+") loc);
     q (set_param
@@ -151,7 +151,7 @@ struct
          (MATLit(MATStr(inpstr))));
     let inp_locs = List.map
         (fun (x:int) -> loc^"/"^(string_of_int x))
-        (LIST.mkrange 0 n_inps)
+        (LIST.mkrange 1 n_inps)
     in
     let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
     loc,inp_locs,out_loc
@@ -195,7 +195,7 @@ struct
           port^"/1"
         | Term(HNPort(HWKOutput,_,port,_)) ->
           let port = port_addr namespace comp.name port in
-          port^"/0"
+          port^"/2"
         | Decimal(d) ->
           create_const q comp_namespace (d) 
         | Integer(i) ->
