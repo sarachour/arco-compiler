@@ -146,12 +146,23 @@ struct
       end;
     loc
 
+  let get_input_loc namespace v =
+    namespace^"/"^v^"/1"
+
+  let get_output_loc namespace v =
+    namespace^"/_"^v^"/2"
+
   let create_out q namespace (vr:string) =
     let loc = namespace^"/"^vr in
+    let internal_loc = namespace^"/_"^vr in
+    (*the iytoyt has an internal and external lock*)
     if defined loc = false then      
       begin
         declare_var loc;
-        q (add_block (get_basic_fxn "out") loc)
+        declare_var internal_loc;
+        q (add_block (get_basic_fxn "out") loc);
+        q (add_block (get_basic_fxn "gain") internal_loc);
+        q (add_line namespace (internal_loc^"/2") (loc^"/1"))
       end;
     loc
 
@@ -253,9 +264,9 @@ struct
       let rec _expr2blockdiag el =
         match el with
         | Term(HNPort(HWKInput,_,port,_)) ->
-          namespace^"/"^port
+          get_input_loc namespace port
         | Term(HNPort(HWKOutput,_,port,_)) ->
-          namespace^"/"^port
+          get_output_loc namespace port
         | Decimal(d) ->
           create_const q namespace (d) 
         | Integer(i) ->
