@@ -245,8 +245,8 @@ struct
 
   let create_div q namespace  =
     let id = symtbl_size () in
-    let loc = namespace^"/mul_"^(string_of_int id) in
-    let inpstr=  "/" in
+    let loc = namespace^"/div_"^(string_of_int id) in
+    let inpstr=  "*/" in
     declare_var (loc);
     q (add_block (get_basic_fxn "*") loc);
     q (set_param
