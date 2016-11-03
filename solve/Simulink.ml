@@ -73,7 +73,20 @@ struct
   let port_addr circ iname port =
     (comp_addr circ iname)^"/"^port
 
-    
+ 
+  let add_block route newdest =
+    MATStmt(MATFxn("add_block",[
+        MATLit(MATStr(route));
+        MATLit(MATStr(newdest))
+      ]))
+
+  let set_param mvar param vl =
+     MATStmt(MATFxn("set_param",[
+        MATVar(mvar);
+        MATLit(MATStr(param));
+        vl
+      ]))
+   
   let _model_preamble (stmtq:matst queue) name =
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
@@ -85,23 +98,32 @@ struct
         MATFxn("new_system",[MATVar(model_name)])
       ])));
     q (MATComment "set solver method");
-    q (MATStmt(MATFxn("set_param",[
-        MATVar(model_name);
-        MATLit(MATStr("Solver"));
-        MATLit(MATStr("ode3"))
-      ])));
+    q (set_param model_name "Solver" (MATLit (MATStr("ode3"))));
     ()
 
-  let create_block circuit (s:hwvid hwcomp) : matst list =
+  let create_in q circuit (s:hwvid hwcomp) (pvar:hwvid hwportvar) =
+    let loc = port_addr circuit s.name pvar.port in
+    q (add_block (get_basic_fxn "in") loc);
+    ()
+
+  let create_out q circuit (s:hwvid hwcomp) (pvar:hwvid hwportvar) =
+    let loc = port_addr circuit s.name pvar.port in
+    q (add_block (get_basic_fxn "in") loc);
+    ()
+
+  let create_block circuit (comp:hwvid hwcomp) : matst list =
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
     let cmp = get_basic_fxn "comp" in
     let fxn = get_basic_fxn "+" in
-    q (MATStmt(MATFxn("add_block",[
-        MATLit(MATStr(cmp));
-        MATLit(MATStr(comp_addr circuit s.name))
-      ])));
+    q (add_block cmp (comp_addr circuit comp.name));
+    HwLib.comp_iter_ins comp (fun vr ->
+        create_in q circuit comp vr
+      );
+    HwLib.comp_iter_outs comp (fun vr ->
+        create_out q circuit comp vr
+    );
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
     stmts
