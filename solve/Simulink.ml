@@ -165,7 +165,7 @@ struct
              (MATLit(MATStr(vr))) );
         q (add_block (get_basic_fxn "gain") internal_loc)
       end;
-    loc,internal_loc
+    loc^"/1",internal_loc^"/1"
 
   let create_out q ns (vr:string) =
     let loc = ns^"/"^vr in
@@ -407,7 +407,7 @@ struct
         q (add_line namespace expr_loc inp);
         out
       | _ ->
-        "???"
+        error "conv" "unhandled"
     in
   _expr2blockdiag expr
 
