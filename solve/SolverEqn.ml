@@ -807,8 +807,8 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     in
     debug "[search-tree] starting";
     mint "g";
+    mint "t";
     (*move to a frontier*)
-    
     let maybe_root = SearchLib.root tbl.search in
     begin
       match maybe_root with

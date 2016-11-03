@@ -189,8 +189,12 @@ struct
       | WCollOne(cwire) ->
         if cwire = wire
           then  WCollEmpty
-          else error "rm_wire_from_label"
-              ("this wire is not assigned to the variable:"^(wireid2str wire)^"!=@"^(wireid2str cwire))
+          else
+            begin
+              warn "rm_wire_from_label"
+              ("[LAX-ERROR] this wire is not assigned to the variable:"^(wireid2str wire)^"!=@"^(wireid2str cwire));
+              error "t" "T"
+            end
       | WCollMany(h::t) ->
         if LIST.has (h::t) wire
         then
@@ -198,8 +202,11 @@ struct
           | [] -> WCollEmpty
           | [h] -> WCollOne(h)
           | h::t -> WCollMany(h::t)
-        else error
-            "rm_wire_From_label" "this wire does not belong to this set"
+        else
+          begin
+            warn "rm_wire_from_label" "[LAX-ERROR] this wire does not belong to this set";
+            error "t" "T"
+          end
       | WCollMany([]) -> error "rm_wire_from_label" "cannot have no elements in many cllection"
       in
       if WCollEmpty = ncoll then

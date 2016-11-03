@@ -223,10 +223,12 @@ struct
     | SModGoalCtx(SGAddGoal(_)) -> 1
     | SModGoalCtx(SGChangeGoalStatus(_)) ->2
     | SModCompCtx(SCMakeConcComp(_)) -> 3
-    | SModSln(_) -> 4
-    | SModMapCtx(_) -> 5
-    | SModCompCtx(_) -> 6
-    | SModGoalCtx(SGRemoveGoal(_)) -> 7
+    | SModSln(SSlnAddRoute(_)) -> 4
+    | SModSln(SSlnRmRoute(_)) -> 5
+    | SModSln(_) -> 5
+    | SModMapCtx(_) -> 6
+    | SModCompCtx(_) -> 7
+    | SModGoalCtx(SGRemoveGoal(_)) -> 8
     
   let order_steps x y =
     let score_x = priority x in

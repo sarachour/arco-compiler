@@ -1,0 +1,73 @@
+
+=== Route ===
+
+val 0.00126823081801 -> [input.V[0].X,input.V[1].X]
+val 31.54 -> input.V[2].X
+val 0 -> [input.V[3].X,input.V[13].X,input.V[12].X,input.V[11].X,input.V[10].X,input.V[9].X,input.V[8].X,input.V[7].X,input.V[6].X,input.V[5].X,input.V[4].X]
+val 0.00172786177106 -> input.V[14].X
+val 2.1 -> input.V[15].X
+val 0.256 -> input.V[16].X
+val 0.124 -> input.V[17].X
+val 25.25 -> input.V[18].X
+val 25.25 -> input.V[19].X
+val 1 -> [input.V[20].X,input.V[21].X]
+
+
+=== Generate ===
+lc S -> vadd[4].OUT2
+lc E -> vadd[7].OUT2
+lc ES -> vadd[1].OUT2
+out P -> [vadd[9].OUT2,output.V[0].O]
+
+val 0.00126823081801 -> [input.V[1].O,input.V[0].O]
+val 31.54 -> input.V[2].O
+val 0 -> [input.V[3].O,input.V[12].O,input.V[13].O,input.V[11].O,input.V[10].O,input.V[9].O,input.V[8].O,input.V[7].O,input.V[6].O,input.V[5].O,input.V[4].O]
+val 0.00172786177106 -> input.V[14].O
+val 2.1 -> input.V[15].O
+val 0.256 -> input.V[16].O
+val 0.124 -> input.V[17].O
+val 25.25 -> input.V[18].O
+val 25.25 -> input.V[19].O
+val 1 -> [input.V[21].O,input.V[20].O]
+
+ast (31.54*E) -> [itov[3].Y,itov[3].Y]
+ast (2.1*ES) -> [itov[8].Y,itov[8].Y]
+ast (23.15*ES) -> [vgain[2].P,vgain[2].P]
+ast (31.54*E*S) -> [vgain[0].P,vgain[0].P]
+ast (25.25*ES) -> [itov[6].Y,itov[6].Y]
+ast (31.54*S) -> [vgain[5].P,vgain[5].P]
+
+=== Connect ===
+vadd[7].OUT2 ->  itov[3].X vgain[0].X
+input.V[17].O ->  vadd[7].OUT2_0
+vadd[4].OUT2 ->  vgain[5].Z vgain[0].Z
+vadd[1].OUT2 ->  vgain[2].Z itov[8].X itov[6].X
+input.V[9].O ->  vadd[7].C
+input.V[15].O ->  itov[8].K
+input.V[13].O ->  vadd[9].C
+input.V[14].O ->  vgain[2].Y
+input.V[11].O ->  vadd[9].B
+itov[8].Y ->  vadd[9].A
+input.V[8].O ->  vadd[7].B
+input.V[12].O ->  vadd[9].D
+input.V[2].O ->  itov[3].K
+input.V[3].O ->  vadd[1].OUT2_0
+input.V[19].O ->  vadd[1].D
+input.V[21].O ->  vgain[2].X
+input.V[1].O ->  vgain[0].Y
+input.V[20].O ->  vgain[5].X
+vgain[0].P ->  vadd[1].B
+input.V[7].O ->  vadd[4].C
+vadd[9].OUT2 ->  output.V[0].X
+itov[3].Y ->  vadd[4].D
+itov[6].Y ->  vadd[7].A
+input.V[0].O ->  vgain[5].Y
+input.V[10].O ->  vadd[9].OUT2_0
+input.V[18].O ->  itov[6].K
+input.V[16].O ->  vadd[4].OUT2_0
+input.V[5].O ->  vadd[1].C
+input.V[4].O ->  vadd[1].A
+input.V[6].O ->  vadd[4].A
+vgain[2].P ->  vadd[4].B
+vgain[5].P ->  vadd[7].D
+

@@ -432,7 +432,7 @@ struct
     if MAP.has ms.state.globals key = false then
       begin
       let part_steps,gbl_steps_coll = build_global_steps ms in
-      debug "======= Partial (Root) Steps =======";
+      debug ("======= Partial (Root) Steps "^(LIST.length2str part_steps)^" =======");
       debug (SearchLib.steps2str 1 tbl.search part_steps);
       GoalTableFactory.mkroot tbl part_steps;
       begin
@@ -596,6 +596,7 @@ struct
       tbl
     | None -> error "mk_partial_table" "there is no root"
 
+  (*TODO*)
   let find_partial_solution (ms:musearch) (pvar:string) (nslns:int) : ((sstep snode) list) option =
     let mint,musr = mkmenu ms in
     (*TODO: why isn't there a root*)

@@ -77,23 +77,29 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
       slvr_print_inter "---- Generating Simulink File ---";
       let matfile = (out^"_"^(string_of_int 0)^".m") in
       let matcode : matst list =
-        SimulinkGen.to_simulink slntbl mappings 
+        SimulinkGen.to_simulink slntbl mappings out 
       in
       SimulinkGen.to_file matcode matfile
       end
-    | None -> ()
+    | None ->
+      slvr_print_inter "---- NO SIMULINK FILE. NO MAPPING ---";
+      ()
   end;
   slvr_print_inter "---- Generating Summary File ---";
   let sln_sum : string= SlnLib.sln2str slntbl.sln_ctx ident MathLib.mid2str in
   let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
-  let map_sum :string =
+  begin
     match mappings_maybe with
-    | Some(mappings) -> SolverMapper.mappings2str mappings
-    | None -> "<no mappings found>"
-  in
+    | Some(mappings) ->
+      begin
+        let map_sum = SolverMapper.mappings2str mappings in
+        IO.save (out^"_"^(string_of_int i)^"_map.sum") map_sum
+      end
+
+    | None -> ()
+  end;
   IO.save (out^"_"^(string_of_int i)^"_sln.sum") sln_sum;
   IO.save (out^"_"^(string_of_int i)^"_comp.sum") cmp_sum;
-  IO.save (out^"_"^(string_of_int i)^"_map.sum") map_sum;
   Printf.printf "===== Solution Found ======\n";
   ()
 

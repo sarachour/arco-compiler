@@ -6,6 +6,8 @@ open HWLib
 open HWData
 
 open IntervalLib
+open SolverCompLib
+open SlnLib
 
 type matvar =
   | MATScalar of string
@@ -69,6 +71,9 @@ struct
   noop (MAP.put basic_fxns "comp" "simulink/Ports & Subsystems/Subsystem");;
 
   let symtbl = MAP.make ()
+
+  let clear_tbl () =
+    MAP.clear symtbl
 
   let declare_var k = MAP.put symtbl k (); ()
 
@@ -533,20 +538,49 @@ struct
     QUEUE.destroy stmtq;
     stmts
 
-  let to_simulink (tbl:gltbl) (mappings:hw_mapping list)  =
+  let get_comp_from_lib namespace (name:hwcompname) =
+    namespace^"/library/"^(HwLib.hwcompname2str name)
+
+  let create_circuit (tbl) namespace =
+    let stmtq = QUEUE.make () in
+    let q x = noop (QUEUE.enqueue stmtq x) in
+    let qs x = noop (QUEUE.enqueue_all stmtq x) in
+
+    let sln : usln = tbl.sln_ctx in
+    let circ_ns :string  =
+      create_subsystem q namespace ("circuit")
+    in
+    SolverCompLib.iter_used_comps tbl (fun (inst:hwcompinst) ccomp ->
+        let loc = circ_ns^"/"^(HwLib.hwcompinst2str inst) in 
+        q (add_block (get_comp_from_lib namespace inst.name) loc)
+      );
+    SlnLib.iter_conns sln (fun (src:wireid) (dst:wireid) ->
+        let src_loc = circ_ns^"/"^(HwLib.hwcompinst2str src.comp)^"/"^src.port in
+        let dst_loc = circ_ns^"/"^(HwLib.hwcompinst2str dst.comp)^"/"^dst.port in
+        q (add_line circ_ns src_loc dst_loc)
+      );
+    let stmts = QUEUE.to_list stmtq in
+    QUEUE.destroy stmtq;
+    stmts
+
+ let to_simulink (tbl:gltbl) (mappings:hw_mapping list) (name:string) =
+    clear_tbl();
     let hw = tbl.env.hw in
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
-    let model_name = "circuit" in
+    let model_name = name in
     _model_preamble stmtq model_name;
-    qs (create_library model_name hw);
+    debug ("=== Emitting Library ===");
+    let libstmts = (create_library model_name hw) in
+    let circ_stmts = create_circuit tbl model_name in
     let stmts = QUEUE.to_list stmtq in
     [
       MATComment("circuit build script");
-      MATFxnDecl("build_circuit",[],stmts);
+      MATFxnDecl("preamble",[],stmts);
+      MATFxnDecl("build_comp_library",[],libstmts);
+      MATFxnDecl("build_circuit",[],circ_stmts);
       MATComment("");
-      MATStmt(MATFxn("build_circuit",[]));
     ]
 
   let matvar2str (xvar:matvar) = match xvar with
