@@ -161,8 +161,6 @@ struct
         declare_var loc;
         declare_var internal_loc;
         q (add_block (get_basic_fxn "in") loc);
-        q (set_param (MATLit(MATStr(loc))) "Name"
-             (MATLit(MATStr(vr))) );
         q (add_block (get_basic_fxn "gain") internal_loc)
       end;
     loc^"/1",internal_loc^"/1"
@@ -298,7 +296,7 @@ struct
          (MATLit(MATStr(string_of_float max))));
     q (set_param
          (MATLit(MATStr(loc))) "LowerLimit"         
-         (MATLit(MATStr(string_of_float max))));
+         (MATLit(MATStr(string_of_float min))));
     let clamp_in = loc^"/1" in
     let clamp_out = loc^"/1" in
     loc,clamp_in,clamp_out
@@ -361,6 +359,10 @@ struct
         get_input_loc namespace port
       | Term(HNPort(HWKOutput,_,port,_)) ->
         get_output_loc namespace port
+      | Term(HNParam(_,name)) ->
+        get_input_loc namespace name
+      | Term(_) ->
+        error "conv" "unhandled term time"
       | Decimal(d) ->
         create_const q namespace (d) 
       | Integer(i) ->
@@ -406,6 +408,8 @@ struct
         let adder,inp,out = create_neg q namespace in
         q (add_line namespace expr_loc inp);
         out
+      | Op1(Exp,expr) ->
+        error "conv" "unhandled exp"
       | _ ->
         error "conv" "unhandled"
     in
