@@ -253,9 +253,9 @@ struct
       let rec _expr2blockdiag el =
         match el with
         | Term(HNPort(HWKInput,_,port,_)) ->
-          namespace^"/"^port^"/1"
+          namespace^"/"^port
         | Term(HNPort(HWKOutput,_,port,_)) ->
-          namespace^"/"^port^"/1"
+          namespace^"/"^port
         | Decimal(d) ->
           create_const q namespace (d) 
         | Integer(i) ->
