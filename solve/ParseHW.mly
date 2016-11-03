@@ -440,7 +440,9 @@ digital:
          HwLib.upd_defs dat (fun b -> match b with
             | HWDAnalog(d) ->
               d.ival <- IntervalLib.mk_ival_from_floats min max; b
-           ) cname port
+            | HWDDigital(d) ->             
+              d.ival <- IntervalLib.mk_ival_from_floats min max; b
+         ) cname port
       else error "def digital mag" "not exactly two numbers to define bounds."
   }
 

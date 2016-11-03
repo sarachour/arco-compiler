@@ -190,6 +190,7 @@ type hwastatedefs = {
 type hwddefs = {
   mutable freq: number*untid;
   mutable repr: int*int*int;
+  mutable ival : interval;
 }
 
 type 'a hwdout = {

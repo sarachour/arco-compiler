@@ -16,7 +16,8 @@ digital input I
   def I(O) mag = [0,1] mA
   def D(X) repr = SEEEEMMM 
   def D(X) sample = 0.00001 us
-  
+  def D(X) mag = [0,1] mA
+
   rel I(O) = D(X)
   var I(O) = I(O)*0.00001 shape UNIFORM
 end
@@ -28,6 +29,7 @@ digital output I
   output O {D:bits}
   def D(O) repr = SEEEEMMM
   def D(O) sample = 0.001 us
+  def D(O) mag = [0,1] mA
 
   rel D(O) = I(X)
 end
@@ -47,8 +49,10 @@ digital input V
   output O {V:mV}
 
   def V(O) mag = [0,5] mV
+
   def D(X) sample = 0.00001 us
   def D(X) repr = SEEEMMMM
+  def D(X) mag = [0,5] mV
 
   rel V(O) = D(X)
 end
@@ -57,8 +61,11 @@ digital output V
   input X {V:mV}
   output O {D:bits}
   def V(X) mag = [0,5] mV
+
   def D(O) sample = 0.001 us
   def D(O) repr = SEEEMMMM 
+  def D(O) mag = [0,5] mV
+
   rel D(O) = V(X)
   sim vout X O
 end

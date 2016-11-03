@@ -402,7 +402,7 @@ struct
     {stvar=mkastvardefs();deriv=mkadefs()}
 
   let mkddefs () : hwddefs =
-    {repr=(1,4,7); freq=(Integer 0,"?")}
+    {ival=IntervalLib.mkdflt_ival();repr=(1,4,7); freq=(Integer 0,"?")}
 
 
   let mkstoch () : 'a stoch = StochLib.mkstoch()

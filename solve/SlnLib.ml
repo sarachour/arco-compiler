@@ -277,11 +277,11 @@ struct
   let iter_insts (sln:usln) fn : unit =
     SET.iter sln.comps (fun inst -> fn inst)
   
-  let iter_conns (sln:usln) fn : unit =
+  let iter_conns (sln:usln) (fn:wireid->wireid->unit) : unit =
     MAP.iter sln.conns.src2dest (fun src dests ->
-        MAP.iter dests (fun dest  ->
-            fn src dest
-          )
+        MAP.iter dests (fun dest () ->
+            fn src dest 
+          ) 
       )
 
   let _iter_labels (type a) (type b) (trg:(a,b) labels) (othr:(a,b) labels)

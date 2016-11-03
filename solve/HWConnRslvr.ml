@@ -139,7 +139,7 @@ struct
         | _ -> ()
       );
     (*all port connections from same component have same value*)
-    SlnLib.iter_conns sln (fun (src:wireid) (dest:wireid) conn ->
+    SlnLib.iter_conns sln (fun (src:wireid) (dest:wireid)  ->
         if has_wire tbl src = false then enq (decl_wire tbl src);
         if has_wire tbl dest = false then enq (decl_wire tbl dest);
         let src_id = wire2id tbl src in

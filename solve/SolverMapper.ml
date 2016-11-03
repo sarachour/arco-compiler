@@ -116,17 +116,20 @@ struct
     let hwid2ival (x:hwvid) : interval=
       match x with
       |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
-      | HNPort(knd,cmp,port,param) ->
+      |HNPort(knd,cmp,port,param) ->
         begin
           match (HwLib.comp_getvar comp port).defs with
           | HWDAnalog(d) -> d.ival
           | HWDAnalogState(x) -> x.stvar.ival
+          | HWDDigital(d) -> d.ival
         end
-      | _ -> error "compute hw interval" "unexpected"
+      |HNTime -> error "compute_hw_interval" "unexpected time"
     in
     let vr = HwLib.comp_getvar comp port in
     match vr.bhvr,vr.defs with
     | HWBInput,HWDAnalog(defs) ->
+      defs.ival
+    | HWBInput,HWDDigital(defs) ->
       defs.ival
     | HWBAnalog(bhvr),_ ->
       let conc_rhs =
@@ -139,7 +142,15 @@ struct
 
     | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
       defs.stvar.ival
-    | _ -> error "compute_hw_interval" "unexpected"
+    | HWBDigital(bhvr),_ ->
+      let conc_rhs =
+        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
+      in
+      debug ("computing interval "^(HwLib.hast2str conc_rhs));
+      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
+      debug ("  -> "^IntervalLib.interval2str ival);
+      ival
+    | _ -> error "compute_hw_interval" "unexpected bhvr/defs match"
       
       (*declare equivalence classes for a mapping*)
 
@@ -623,6 +634,7 @@ struct
       QUEUE.destroy stmtq;
       lst
 
+  (*derive scaling factors from the component*)
   let hwcomp_derive_scaling_factors tbl (comp:hwvid hwcomp) inst (cfg:hwcompcfg) = 
     let stmts = QUEUE.make () in
     let enq xs = List.iter (fun x -> noop(QUEUE.enqueue stmts x)) xs in
@@ -712,6 +724,18 @@ struct
     QUEUE.destroy stmts;
     cstrs
 
+  let hwconn_derive_scaling_cstrs (tbl:gltbl) =
+    let cstrq = QUEUE.make () in
+    let q x = noop (QUEUE.enqueue cstrq x) in
+    SlnLib.iter_conns tbl.sln_ctx (fun src dst ->
+        q (SVEquals([(Term(SVScaleVar(src)));(Term(SVScaleVar(dst)))]));
+        q (SVEquals([Term(SVOffsetVar(src));Term(SVOffsetVar(dst))]));
+        ()
+      );
+    let cstrs = QUEUE.to_list cstrq in
+    QUEUE.destroy(cstrq);
+    cstrs
+
   let mappings2str (lst:hw_mapping list ) =
     List.fold_left (fun str mapping ->
         str^(MappingResolver.hwmapping2str mapping)
@@ -719,28 +743,23 @@ struct
 
   let infer (tbl:gltbl)  : hw_mapping list option =
     let stmtq = QUEUE.make () in
+    let valid = REF.mk true in 
     let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
-    let maybe_mapping = MAP.map tbl.sln_ctx.generate.outs (fun (mvar:string) (wires:wire_coll) ->
-        match wires with
-        | WCollEmpty -> error "infer" "does not exist"
-        | WCollOne(wire) ->
-          let conc_comp = ConcCompLib.get_conc_comp tbl wire.comp in
-          let stmts = hwcomp_derive_scaling_factors tbl conc_comp.d conc_comp.inst conc_comp.cfg in
-          enq stmts
-        | WCollMany(wires) ->
-          begin
-            List.iter (fun wire ->
-              debug ("========= "^mvar^" on "^HwLib.wireid2str wire^" ===========");
-              let conc_comp = ConcCompLib.get_conc_comp tbl wire.comp in
-              let stmts = hwcomp_derive_scaling_factors tbl conc_comp.d conc_comp.inst conc_comp.cfg in
-              enq stmts
-            ) wires;
-          end
-      )
-    in
-    let stmts = QUEUE.to_list stmtq in 
-    let sln : hw_mapping list option = MappingResolver.solve tbl stmts in
-    QUEUE.destroy stmtq;
-    sln
-
+    SolverCompLib.iter_used_comps tbl (fun inst ccomp ->
+        let steps =
+          try
+            hwcomp_derive_scaling_factors tbl ccomp.d ccomp.inst ccomp.cfg
+          with
+          | IntervalLibError(e) -> REF.upd valid (fun x -> false); []
+        in
+        enq (steps)
+      );
+    enq (hwconn_derive_scaling_cstrs tbl);
+    if REF.dr valid then
+      let stmts = QUEUE.to_list stmtq in 
+      let sln : hw_mapping list option = MappingResolver.solve tbl stmts in
+      QUEUE.destroy stmtq;
+      sln
+    else
+      None
 end
