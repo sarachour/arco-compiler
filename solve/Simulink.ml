@@ -142,7 +142,7 @@ struct
 
   let create_sub q namespace n_inps =
     let id = symtbl_size () in
-    let loc = namespace^"/add_#"^(string_of_int id) in
+    let loc = namespace^"/add_"^(string_of_int id) in
     let inpstr=  "+"^(STRING.repeat "-" n_inps) in
     declare_var (loc);
     q (add_block (get_basic_fxn "+") loc);
@@ -159,7 +159,7 @@ struct
 
   let create_add q namespace n_inps =
     let id = symtbl_size () in
-    let loc = namespace^"/add_#"^(string_of_int id) in
+    let loc = namespace^"/sub_"^(string_of_int id) in
     let inpstr=  STRING.repeat "+" n_inps in
     declare_var (loc);
     q (add_block (get_basic_fxn "+") loc);
