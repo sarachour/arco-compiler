@@ -728,7 +728,7 @@ struct
     | Term(MathId(MNVar(MInput,name))) ->
       UNIMathExpr(uast2mast a)
     (*unifying with an output variable*)
-    | Term(MathId(MNVar(MOutput,name))) ->
+    | Term(MathId(MNVar(_,name))) ->
       begin
       match MathLib.isstvar mstate.env name, HwLib.comp_isstvar hwstate.comp port with
       | true,true -> UNIMathVar(name)
@@ -952,9 +952,7 @@ struct
                 | UNIMathExpr(expr) ->
                   unify_math_expr st ent.port expr 
                 | UNIMathVar(v) ->
-                  begin
                     unify_math_var st ent.port v
-                  end
                 | UNIUnunifiable(_) ->
                   error "maybe_assigns" "cannot see ununifiable here"
           in
@@ -1066,9 +1064,10 @@ struct
         | None ->false 
     in
     let exceeded_depth (curs) solve_fxn =
+      debug "exceeded depth on branch.";
       SearchLib.deadend sr.search curs sr.tbl;
       if _mnext ()
-      then begin solve_fxn(); () end
+      then begin solve_fxn() end
       else ()
     in
     let found_enough_solutions (curs) =
@@ -1099,7 +1098,13 @@ struct
       let curs = SearchLib.cursor sr.search in
       let depth : int =  SearchLib.depth sr.search curs in
       if depth >= get_glbl_int "uast-depth" then
-        exceeded_depth(curs) _solve
+        exceeded_depth curs (fun () ->
+            begin
+              _mnext ();
+              usrmenu ();
+              _solve ()
+            end
+          )
       else
         begin
         (*get the next node*)

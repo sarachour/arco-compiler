@@ -358,7 +358,7 @@ struct
           | MInLabel(_) ->
             error "create_global_context" "dont do anything special for input propagate"
           | MLocalLabel(_) ->
-            error "create_global_context" "dont do anything special for local"
+            ()
           | MExprLabel(_) -> ()
           | ValueLabel(_) ->
             error "create_global_context" "dont do anything special for value"
