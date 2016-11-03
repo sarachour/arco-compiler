@@ -179,7 +179,7 @@ struct
         q (add_block (get_basic_fxn "gain") internal_loc);
         q (add_line ns (get_output_loc ns vr) (get_ext_output_loc ns vr))
       end;
-    loc,internal_loc
+    loc^"/1",internal_loc^"/1"
 
   let create_const (q:matst->unit) (namespace:string) (value:float) =
     let id = symtbl_size () in
