@@ -57,7 +57,7 @@ struct
   noop (MAP.put basic_fxns "\int" "simulink/Continuous/Integrator");;
   noop (MAP.put basic_fxns "in" "simulink/Ports & Subsystems/In1");;
   noop (MAP.put basic_fxns "out" "simulink/Ports & Subsystems/Out1");;
-  noop (MAP.put basic_fxns "const" "simulink/Math Operations/Const");;
+  noop (MAP.put basic_fxns "const" "simulink/Sources/Constant");;
   noop (MAP.put basic_fxns "gain" "simulink/Math Operations/Gain");;
   noop (MAP.put basic_fxns "-" "simulink/Math Operations/Subtract");;
   noop (MAP.put basic_fxns "mfxn" "simulink/Math Operations/Math Function");;
@@ -167,7 +167,8 @@ struct
     loc
 
   let create_const (q:matst->unit) (namespace:string) (value:float) =
-    let loc = namespace^"/const_"^(string_of_float value) in
+    let id = symtbl_size () in
+    let loc = namespace^"/const_"^(string_of_int id) in
     if defined loc = false then      
       begin
         declare_var (loc);
