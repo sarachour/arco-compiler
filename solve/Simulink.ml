@@ -133,7 +133,9 @@ struct
     if defined loc = false then      
       begin
         declare_var loc;
-        q (add_block (get_basic_fxn "in") loc)
+        q (add_block (get_basic_fxn "in") loc);
+        q (set_param (MATLit(MATStr(loc))) "Name"
+             (MATVar(MATScalar(vr))) )
       end;
     loc
 
