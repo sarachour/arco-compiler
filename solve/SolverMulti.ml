@@ -733,14 +733,15 @@ struct
       |[] ->None
 
   let order_vars (vars:string queue) (env:mid menv) : unit =
-    let tmpq = PRIOQUEUE.make (fun x -> match x.bhvr with
-        | MBhvStateVar(_) -> 1
-        | MBhvVar(_) ->2
-        | _ -> 3
+    let tmpq : mid mvar prioqueue = PRIOQUEUE.make (fun x ->
+        match x.bhvr with
+        | MBhvStateVar(eq) -> 1*(ASTLib.size eq.rhs)
+        | MBhvVar(eq) ->100*(ASTLib.size eq.rhs)
+        | _ -> 100000
       )
     in
     MathLib.iter_vars env (fun x ->
-        if x.knd = MOutput or x.knd = MLocal then
+        if x.knd = MOutput || x.knd = MLocal then
           noop (PRIOQUEUE.add tmpq x) 
       );
     let lst = List.map (fun x -> x.name) (PRIOQUEUE.to_list tmpq) in

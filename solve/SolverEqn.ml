@@ -61,6 +61,13 @@ struct
         let _ = Printf.printf "\n%s\n\n" (SolverCompLib.ccomps2str v ) in
         let _ = on_finished() in
         ()
+
+      else if STRING.startswith inp "p" then
+        let path = SearchLib.path2str 1 v.search (SearchLib.cursor v.search) in
+        let _ = Printf.printf "\n%s\n\n" ( path ) in
+        let _ = on_finished() in
+        ()
+
       else if STRING.startswith inp "goto" then
         let _ = match STRING.split inp " " with
         | [_;id] ->

@@ -92,14 +92,14 @@ struct
   let score_by_weighed_goal_count  (s:sstep list) =
     let score_single st = match st with
       | SModGoalCtx(SGAddGoal(g)) ->
-        (GoalLib.goal_difficulty g.d)*.(get_goal_weight g)
+        0. -. (GoalLib.goal_difficulty g.d)*.(1. +. get_goal_weight g)
       | SModGoalCtx(SGRemoveGoal(g)) ->
-        0. -. (GoalLib.goal_difficulty g.d)*.(get_goal_weight g)
+        (GoalLib.goal_difficulty g.d)*.(1. +. get_goal_weight g)
       | SModGoalCtx(_) ->  0.
       | _ -> 0.
     in
-    let state = 0. in
-    let delta = LIST.sum score_single s in
+    let delta = 0. in
+    let state = LIST.sum score_single s in
     SearchLib.mkscore state delta
  
 

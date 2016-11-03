@@ -215,6 +215,13 @@ struct
   let get_path (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : a list =
      fold_path sr n (fun x r -> x::r) []
 
+  let path2str (type a) (type b) indent (sr:(a,b) ssearch) (n:a snode) : string =
+    TREE.fold_path (fun (x:a snode) (r:string) ->
+        let str = "------------\n"^(steps2str indent sr x.s) in
+        r^str
+      ) (fun x y z r -> r) sr.tree n ""
+
+
   let depth (type a) (type b) (sr:(a,b) ssearch) (c) =
     List.length (TREE.get_path sr.tree c)
 
