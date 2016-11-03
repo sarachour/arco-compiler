@@ -259,7 +259,7 @@ struct
     REF.upd s (fun s -> s @ [x]);
     s
 
-  let enqueue_all (type a)(s:a queue) (lst:a list): a queue =
+  let enqueue_all s lst =
     REF.upd s (fun x -> x @ lst);
     s
 

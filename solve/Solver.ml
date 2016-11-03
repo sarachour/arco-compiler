@@ -28,6 +28,8 @@ open SolverMulti
 
 open HWConnRslvr 
 open SolverMapper 
+open Simulink
+
 (*
 A solution is a set of connections  and components. A solution
 may additionally contain any pertinent error and magnitude mappings
@@ -77,6 +79,12 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
 let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   init_utils();
   let sl = {hw=hw;math=prob;goal_cnt=0;} in
+
+  let matfile = (out^"_"^(string_of_int 0)^".m") in
+  let matcode : matst list = SimulinkGen.to_simulink hw in
+  SimulinkGen.to_file matcode matfile; 
+  error "solve" "temporary block";
+
   let msearch = MultiSearch.mkmulti sl in
   slvr_print_inter "===== Beginning Interactive Solver ======\n";
   let nslns : int = Globals.get_glbl_int "slvr-solutions" in

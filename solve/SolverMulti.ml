@@ -598,6 +598,7 @@ struct
 
   let find_partial_solution (ms:musearch) (pvar:string) (nslns:int) : ((sstep snode) list) option =
     let mint,musr = mkmenu ms in
+    (*TODO: why isn't there a root*)
     let ptbl = mk_partial_tbl ms pvar in
     let currsols : int = SearchLib.num_solutions ptbl.search None in
     (*original solution set*)

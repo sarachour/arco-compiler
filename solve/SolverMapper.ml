@@ -360,7 +360,14 @@ struct
       | _ ->
         error "compute_math_interval" "hwid id undefined"
     in
-    let math_interval = IntervalLib.derive_interval uast unid2ival in
+    let math_interval =
+      try
+        IntervalLib.derive_interval uast unid2ival
+      with
+      | IntervalLibError(e) ->
+        warn "derive_math_interval" ("in the following expr:"^(uast2str uast));
+        raise (IntervalLibError e)
+    in
     math_interval
 
   let compute_hw_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =

@@ -296,65 +296,90 @@ struct
           number_to_ast vl
         | _ -> Term(x)
       )
-  let inference_var e (x:'a mvar) (cnv:'a -> mid) =
-    let lookup (x:'a) : interval = match cnv x with
-      | MNVar(MInput,p) -> let vr = getvar e p in
-        begin
-          match vr.defs with
-          | MDefVar(x) -> x.ival
-          | _ -> error "lookup" "cannot have an input that's a state variable"
-        end
-      | MNParam(p,n) -> let param = getparam e p in
-        IntervalLib.float_to_interval (float_of_number param.value)
-      | MNTime -> error "inference_var" "time is unbounded"
 
-      | MNVar(MLocal,p) -> let vr = getvar e p in
-        begin
-          match vr.defs with
-          | MDefStVar(x) -> x.stvar.ival
-          | MDefVar(x) -> x.ival
-        end
 
-      | MNVar(MOutput,p) -> let vr = getvar e p in
-        begin
-          match vr.defs with
-          | MDefStVar(x) -> x.stvar.ival
-          | MDefVar(x) -> x.ival
-        end
+  let inference_var e (xstart:'a mvar) (cnv:'a -> mid) =
+    let lookup_stack = STACK.make () in
+    let rec _infer_var (x:'a mvar) =
+      let lookup (x:'a) : interval = match cnv x with
+        | MNVar(MInput,p) -> let vr = getvar e p in
+          _infer_var vr
 
-    in
-    let requires_infer = match x.defs with
-    | MDefVar(def) -> IntervalLib.is_undefined def.ival
-    | MDefStVar(def) -> if IntervalLib.is_undefined def.stvar.ival then
-        error "inference_var" "cannot leave the bounds of a state variable undefined."
-          else IntervalLib.is_undefined def.deriv.ival 
-    in
-    if(requires_infer) then
-      match x.bhvr with
-      | MBhvVar(bhvr) ->
-        let ival = IntervalLib.derive_interval bhvr.rhs lookup in
-        begin match x.defs with
-          | MDefVar(x) -> x.ival <- ival
-          | _ -> error "inference_var" "expected var def for var behavior"
+        | MNParam(p,n) -> let param = getparam e p in
+          IntervalLib.float_to_interval (float_of_number param.value)
+
+        | MNTime -> error "inference_var" "time is unbounded"
+
+        | MNVar(MLocal,p) -> let vr = getvar e p in
+          _infer_var vr
+
+        | MNVar(MOutput,p) -> let vr = getvar e p in
+          _infer_var vr 
+
+      in
+      let requires_infer = match x.defs with
+      | MDefVar(def) -> IntervalLib.is_undefined def.ival
+      | MDefStVar(def) ->
+        if IntervalLib.is_undefined def.stvar.ival then
+          error "inference_var" "cannot leave the bounds of a state variable undefined."
+        else IntervalLib.is_undefined def.deriv.ival && x.name = xstart.name 
+      in
+      if requires_infer && STACK.has lookup_stack x.name = false then
+        begin
+          noop (STACK.push lookup_stack x.name);
+          let ival = match x.bhvr with
+            | MBhvVar(bhvr) ->
+              let ival =
+                try
+                  IntervalLib.derive_interval bhvr.rhs lookup
+                with
+                | IntervalLibError(e) ->
+                  print_string (">> while trying to compute interval of:"^x.name^"\n");
+                  raise (IntervalLibError e)
+              in
+              print_string ("derive: "^x.name^" -> "^(IntervalLib.interval2str ival)^"\n");
+              begin match x.defs with
+                | MDefVar(x) -> x.ival <- ival; ival
+                | _ -> error "inference_var" "expected var def for var behavior"
+              end
+            | MBhvStateVar(bhvr) ->
+              let ival =
+                try
+                  IntervalLib.derive_interval bhvr.rhs lookup
+                with
+                | IntervalLibError(e) ->
+                  print_string (">> while trying to compute interval of:"^x.name^"\n");
+                  raise (IntervalLibError e)
+              in
+              print_string ("derive: "^x.name^" -> "^(IntervalLib.interval2str ival)^"\n");
+              begin
+                match x.defs with
+                | MDefStVar(def) -> def.deriv.ival <- ival; def.stvar.ival 
+                | _ -> error "inference_var" "expected st-var def for var behavior"
+                end
+            | MBhvInput ->
+              error "inference_var" ("cannot infer interval for input ["^x.name^"]")
+            | MBhvUndef ->
+              error "inference_var" "cannot infer interval of undefined output"
+        in
+        STACK.push lookup_stack x.name;
+        ival
         end
-      | MBhvStateVar(bhvr) ->
-        let ival = IntervalLib.derive_interval bhvr.rhs lookup in
+      else
         begin
           match x.defs with
-          | MDefStVar(def) -> def.deriv.ival <- ival
-          | _ -> error "inference_var" "expected st-var def for var behavior"
-          end
-      | MBhvInput ->
-        error "inference_var" ("cannot infer interval for input ["^x.name^"]")
-      | MBhvUndef ->
-        error "inference_var" "cannot infer interval of undefined output"
-    else
-      ()
+          | MDefVar(dev) -> dev.ival
+          | MDefStVar(dev) -> dev.stvar.ival
+        end
+
+    in
+    _infer_var xstart
 
   let is_input_expr (a:mid ast) = false
 
   let inference (e:'a menv) (cnv:'a -> mid) =
-    iter_vars e (fun x -> inference_var e x cnv);
+    print_string "======== Infer Math Vars =============\n";
+    iter_vars e (fun x -> noop (inference_var e x cnv));
     ()
     
 end
