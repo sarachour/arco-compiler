@@ -335,14 +335,14 @@ struct
          (MATLit(MATStr("**"))));
    let noise_out = loc^"/1" in
    let mul_in1 = vloc^"/1" in
-   let mul_out = vloc^"/1" in
    let mul_in2 = vloc^"/2" in
+   let mul_out = vloc^"/1" in
    let add_in1 = aloc^"/1" in
    let add_in2 = aloc^"/2" in
    let add_out = aloc^"/1" in
    q (add_line namespace noise_out mul_in2);
    q (add_line namespace mul_out add_in2);
-   vloc,mul_in1,add_in2,add_out
+   vloc,mul_in1,add_in1,add_out
 
   let create_integrator q namespace =
     let id = symtbl_size () in
