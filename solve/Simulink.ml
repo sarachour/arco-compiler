@@ -304,17 +304,26 @@ struct
   let create_sample q namespace sample =
     let id = symtbl_size () in
     let loc = namespace^"/smp_"^(string_of_int id) in
+    let vloc = namespace^"/smpv_"^(string_of_int id) in
     declare_var (loc);
+    declare_var (vloc);
     q (add_block (get_basic_fxn "pulse") loc);
+    q (add_block (get_basic_fxn "+") loc);
     q (set_param
          (MATLit(MATStr(loc))) "Period"         
          (MATLit(MATStr(string_of_float sample))));
     q (set_param
          (MATLit(MATStr(loc))) "PulseWidth"         
          (MATLit(MATStr("50"))));
-    let sample_in = loc^"/1" in
+    q (set_param
+         (MATLit(MATStr(vloc))) "Inputs"
+         (MATLit(MATStr("**"))));
     let sample_out = loc^"/1" in
-    loc,sample_in,sample_out
+    let mul_in1 = vloc^"/1" in
+    let mul_in2 = vloc^"/2" in
+    let mul_out = vloc^"/1" in
+    q (add_line namespace sample_out mul_in2);
+    loc,mul_in1,mul_out
 
   let create_noise q namespace =
    let id = symtbl_size () in
