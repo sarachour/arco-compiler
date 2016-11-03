@@ -12,6 +12,7 @@ digital input I
     input X {D:bits}
     def D(X) repr=SEEEMMMM
     def D(X) sample=0.0001 us
+    def D(X) mag=[0,1] mA
 
 
     output O {I:mA}
@@ -30,6 +31,7 @@ digital output I
     output O {D:bits}
     def D(O) repr=SEEEMMMM
     def D(O) sample=0.001 us
+    def D(O) mag=[0,1] mA
 
     rel D(O) = I(X)
 end

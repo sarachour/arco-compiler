@@ -129,7 +129,7 @@ struct
           debug "[mark-if-solution] found concrete hardware. marking as solution.";
           noop (SearchLib.solution v.search curr);
           debug "[mark-if-solution] -> marked as solution.";
-          mint "m"
+          ()
         end
       else
         begin
@@ -789,7 +789,6 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
               end
             else
               let targ_goal = get_best_valid_goal tbl in 
-              mint "m";
               musr();
               solve_goal tbl targ_goal;
               begin

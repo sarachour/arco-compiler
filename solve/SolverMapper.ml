@@ -717,6 +717,11 @@ struct
           error "compute_cover" "interval-mixed-interval"
         | (Quantize(_),Quantize(_)) ->
           error "compute_cover" "quantize-quantize"
+        | (IntervalUnknown(_),_) ->
+          error "compute_cover" "unknown interval"
+        | (_,IntervalUnknown(_)) ->
+          error "compute_cover" "unknown interval"
+
         | _ -> error "compute cover" "unsupported"
       )
       (fun (param:string) (x:number) -> ());
