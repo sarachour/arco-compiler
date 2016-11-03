@@ -95,14 +95,21 @@ struct
         vl
       ]))
 
-  let add_line ns src snk =
+  let relative ns loc =
+    STRING.removeprefix loc (ns^"/") 
+
+  let add_line ns gsrc gsnk =
+    let src = relative ns gsrc in
+    let snk = relative ns gsnk in
     (MATStmt(MATFxn("add_line",[
         MATLit(MATStr(ns));
         MATLit(MATStr(src));
         MATLit(MATStr(snk));
       ])))
 
-  let remove_line ns src snk =
+  let remove_line ns gsrc gsnk =
+    let src = relative ns gsrc in
+    let snk = relative ns gsnk in
     (MATStmt(MATFxn("delete_line",[
         MATLit(MATStr(ns));
         MATLit(MATStr(src));
@@ -239,14 +246,7 @@ struct
     let out_loc = loc^"/"^(string_of_int 3) in
     loc,numer_loc,denom_loc,out_loc
 
-  let relative ns loc =
-    STRING.removeprefix loc (ns^"/") 
 
-  let connect_src_to_snk q namespace src snk =
-    let rel_src = relative namespace src in
-    let rel_snk = relative namespace snk in
-    q (add_line namespace src snk);
-    ()
     
 
     let expr2blockdiag (q:matst->unit) (namespace:string) (expr:hwvid ast) =
@@ -264,34 +264,34 @@ struct
           let handles = List.map (fun arg -> _expr2blockdiag arg) args in
           let adder,ins,out = create_add q namespace (List.length handles) in
           List.iter (fun (add_in,h_out) ->
-              connect_src_to_snk q namespace h_out add_in
+              q (add_line namespace h_out add_in)
             ) (LIST.zip ins handles);
           out
         | OpN(Sub,args) ->
           let handles = List.map (fun arg -> _expr2blockdiag arg) args in
           let adder,ins,out = create_sub q namespace (List.length handles) in
           List.iter (fun (add_in,h_out) ->
-              connect_src_to_snk q namespace h_out add_in
+              q (add_line namespace h_out add_in)
             ) (LIST.zip ins handles);
           out
         | OpN(Mult,args) ->
           let handles = List.map (fun arg -> _expr2blockdiag arg) args in
           let mult,ins,out = create_mult q namespace (List.length handles) in
           List.iter (fun (add_in,h_out) ->
-              connect_src_to_snk q namespace h_out add_in
+              q (add_line namespace h_out add_in)
             ) (LIST.zip ins handles);
           out
         | Op2(Div,numer,denom) ->
           let numer = _expr2blockdiag numer in
           let denom = _expr2blockdiag denom in
           let mult,mult_numer,mult_denom,mult_out = create_div q namespace  in
-          connect_src_to_snk q namespace numer mult_numer;
-          connect_src_to_snk q namespace denom mult_denom;
+          q (add_line namespace numer mult_numer);
+          q (add_line namespace denom mult_denom);
           mult_out
         | Op1(Neg,expr) ->
           let expr_loc = _expr2blockdiag expr in
           let adder,inp,out = create_neg q namespace in
-          connect_src_to_snk q namespace expr_loc inp;
+          q (add_line namespace expr_loc inp);
           out
         | _ ->
           "???"
