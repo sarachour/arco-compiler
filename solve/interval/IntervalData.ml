@@ -12,7 +12,10 @@ type interval_data = {
   min: bound;
   max: bound;
 }
-
+type num_interval = {
+  min: float;
+  max:float;
+}
 type interval_cstr =
   | ICstrContains of float
   | ICstrExcludes of float

@@ -533,7 +533,8 @@ struct
     QUEUE.destroy stmtq;
     stmts
 
-  let to_simulink (hw:hwvid hwenv)  =
+  let to_simulink (tbl:gltbl) (mappings:hw_mapping list)  =
+    let hw = tbl.env.hw in
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in

@@ -66,6 +66,96 @@ let dumb_cstrs_DBG = false
 (*disable this if you aren't getting anything*)
 let no_number_cstrs_DBG =false
 
+module IntervalCompute =
+struct
+  (*if you have a dangling math expression on a port, find the [expr], and then*)
+  let compute_math_interval (tbl:gltbl) (uast:unid ast) : interval =
+    let unid2ival (id:unid) = match id with
+      |MathId(MNVar(MInput,v)) ->
+        begin
+          let mvar = MathLib.getvar tbl.env.math v in
+          match mvar.defs with
+          | MDefVar(def) -> def.ival
+          | _ -> error "ccompute_math_interval" "state variable cannom be input" 
+        end
+      |MathId(MNVar(MOutput,v)) ->
+        begin
+          let mvar = MathLib.getvar tbl.env.math v in
+          match mvar.defs with
+          | MDefVar(def) -> def.ival
+          | MDefStVar(def) -> def.stvar.ival
+        end
+
+      |MathId(MNVar(MLocal,v)) ->
+        begin
+          let mvar = MathLib.getvar tbl.env.math v in
+          match mvar.defs with
+          | MDefVar(def) -> def.ival
+          | MDefStVar(def) -> def.stvar.ival
+        end
+
+
+      | MathId(MNParam(par,num)) ->
+        Quantize([float_of_number num])
+      | HwId(_) ->
+        error "compute_math_interval" "unexpected hardware id"
+      | _ ->
+        error "compute_math_interval" "hwid id undefined"
+    in
+    let math_interval =
+      try
+        IntervalLib.derive_interval uast unid2ival
+      with
+      | IntervalLibError(e) ->
+        warn "derive_math_interval" ("in the following expr:"^(uast2str uast));
+        raise (IntervalLibError e)
+    in
+    math_interval
+
+  let compute_hw_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
+    let hwid2ival (x:hwvid) : interval=
+      match x with
+      |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
+      | HNPort(knd,cmp,port,param) ->
+        begin
+          match (HwLib.comp_getvar comp port).defs with
+          | HWDAnalog(d) -> d.ival
+          | HWDAnalogState(x) -> x.stvar.ival
+        end
+      | _ -> error "compute hw interval" "unexpected"
+    in
+    let vr = HwLib.comp_getvar comp port in
+    match vr.bhvr,vr.defs with
+    | HWBInput,HWDAnalog(defs) ->
+      defs.ival
+    | HWBAnalog(bhvr),_ ->
+      let conc_rhs =
+        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
+      in
+      debug ("computing interval "^(HwLib.hast2str conc_rhs));
+      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
+      debug ("  -> "^IntervalLib.interval2str ival);
+      ival
+
+    | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
+      defs.stvar.ival
+    | _ -> error "compute_hw_interval" "unexpected"
+      
+      (*declare equivalence classes for a mapping*)
+
+
+  let compute_wire_interval tbl (wire:wireid) =
+    let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
+    let ival = compute_hw_interval tbl ccomp.d wire.comp.inst ccomp.cfg wire.port in
+    let min,max = IntervalLib.interval2numbounds ival in
+    {min=min;max=max}
+
+  let compute_label_interval tbl wire =
+    let labels : ulabel list = SlnLib.wire2labels tbl.sln_ctx wire in
+    error "unimpl" "lool"
+
+end
+
 module MappingResolver =
 struct
 
@@ -161,60 +251,71 @@ struct
       "decl "^(linearsmtid2str id)
 
 
-  type hw_mapping = {
-    mutable scale:float;
-    mutable offset:float;
-    mutable slack_min:float;
-    mutable slack_max:float;
-  }
+
   let mkhwmapping () =
     {
       offset=999.;
       scale=999.;
-      slack_min=999.;
-      slack_max=999.
+      mrng = IntervalLib.mk_num_ival ();
+      hrng = IntervalLib.mk_num_ival ();
+      wire = SlnLib.mkdflt_wire ();
     }
 
-  let hwmapping2str (wire:wireid) (x:hw_mapping) =
+  let hwmapping2str (x:hw_mapping) =
     let f2s x = if x = 999. then "?" else string_of_float x in
-    (SlnLib.wireid2str wire)^": "^(f2s x.scale)^"* [ ] + "^(f2s x.offset)^"\n"^
-    "-> ["^(f2s x.slack_min)^","^(f2s x.slack_max)^"]"
+    let eff_hrng = IntervalLib.clamp x.hrng (IntervalLib.transform x.mrng x.scale x.offset) in 
+    let eff_mrng = IntervalLib.inv_transform eff_hrng x.scale x.offset in 
+    (SlnLib.wireid2str x.wire)^": "^(f2s x.scale)^"* @ + "^(f2s x.offset)^"\n"^
+    "   [H]:"^(IntervalLib.numinterval2str x.hrng)^"\n"^
+    "   [M]:"^(IntervalLib.numinterval2str x.mrng)^"\n"^
+    "   [h]:"^(IntervalLib.numinterval2str eff_hrng)^"\n"^
+    "   [m]:"^(IntervalLib.numinterval2str eff_mrng)^"\n"
 
-  let z3result2mapping symtbl (asgns:z3assign list) =
+  let z3result2mapping gltbl symtbl (asgns:z3assign list): hw_mapping list =
     let data = MAP.make () in
     let upd_map_result id fxn =
       if MAP.has data id = false then
         noop (MAP.put data id (mkhwmapping()));
         fxn (MAP.get data id)
     in
-    let upd_result_of_id s f = match s with
+    let upd_map_result_of_id s f =
+      let wire = match s with
       | Some(SVLinVar(SVOffsetVar(w))) ->
-        upd_map_result w (fun x -> x.offset <- f)
+        upd_map_result w (fun x -> x.offset <- f); Some w
+
       | Some(SVLinVar(SVScaleVar(w))) ->
-        upd_map_result w (fun x -> x.scale <- f)
-      | Some(SVSlackVar(SVMax,_,w)) ->
-        upd_map_result w (fun x -> x.slack_max <- f)
-      | Some(SVSlackVar(SVMin,_,w)) ->
-        upd_map_result w (fun x -> x.slack_min <- f)
-      | _ -> ()
+        upd_map_result w (fun x -> x.scale <- f); Some w
+
+      | _ -> None
+      in
+      match wire with
+      | Some(wire) ->
+        let math_ival = IntervalCompute.compute_label_interval gltbl wire in
+        let hw_ival = IntervalCompute.compute_wire_interval gltbl wire in
+        upd_map_result wire (fun x -> x.mrng <- math_ival);
+        upd_map_result wire (fun x -> x.hrng <- hw_ival);
+        ()
+      | None -> ()
     in
     (*create result map*)
     List.iter (fun asgn -> match asgn with
         | Z3Set(s,Z3QFloat(f)) ->
           let id = name2linearsmtid symtbl s in
-          upd_result_of_id id f
+          upd_map_result_of_id id f 
+          
         | Z3Set(s,Z3QInt(f)) ->
           let id = name2linearsmtid symtbl s in
-          upd_result_of_id id (float_of_int f)
+          upd_map_result_of_id id (float_of_int f)
+
         | Z3Set(s,Z3QInterval(Z3QRange(min,max))) ->
           let id = name2linearsmtid symtbl s in
           if min = max then
-            upd_result_of_id id (max)
+            upd_map_result_of_id id (max)
           else
             begin
             warn "z3result2mapsln" ("interval is not equal: "^
                   (string_of_float min)^" "^(string_of_float max));
-            upd_result_of_id id (max)
+            upd_map_result_of_id id (max)
             end
         | Z3Set(s,Z3QInterval(Z3QInfinite(dir))) -> 
                 warn "z3result2mapsln" "interval is infinite"
@@ -224,10 +325,12 @@ struct
         | _ ->
           error "z3result2mapresult" "unhandled"
     ) asgns;
-    MAP.iter data (fun wire data ->
-        debug (hwmapping2str wire data) 
-    ); 
-    ()
+    let result = MAP.map data (fun wire data ->
+        debug (hwmapping2str data);
+        data 
+      )
+    in
+    result
 
   let to_z3prob stmts : (symtbl*z3st list*z3expr) =
     let tbl = {id2w=MAP.make();w2id=MAP.make()} in
@@ -302,7 +405,7 @@ struct
      (*tbl,z3stmts,Z3Int(0)*)
 
 
-  let solve (stmts:linear_stmt list) =
+  let solve gltbl (stmts:linear_stmt list) : hw_mapping list option =
     (*helper function*)
     let tbl,stmts,minexpr = to_z3prob stmts in 
     let result : z3sln =
@@ -312,13 +415,19 @@ struct
       match result.model with
       | Some(model) ->
         begin
-        z3result2mapping tbl model;
-        debug "<<< MODEL EXISTS >>>"
+        let mappings = z3result2mapping gltbl tbl model in
+        Some(mappings)
         end
-      | None -> debug "no model"
+      | None ->
+        warn "solve" "no model";
+        None
       end
     else
-      debug "===[[[NO MODEL]]]==="
+      begin
+        warn "solve" "!!>> NO MODEL <!!";
+        None
+      end
+
 end
 
 module SolverMapper =
@@ -326,83 +435,8 @@ struct
 
 
 
-  (*if you have a dangling math expression on a port, find the [expr], and then*)
-  let compute_math_interval (tbl:gltbl) (uast:unid ast) : interval =
-    let unid2ival (id:unid) = match id with
-      |MathId(MNVar(MInput,v)) ->
-        begin
-          let mvar = MathLib.getvar tbl.env.math v in
-          match mvar.defs with
-          | MDefVar(def) -> def.ival
-          | _ -> error "ccompute_math_interval" "state variable cannom be input" 
-        end
-      |MathId(MNVar(MOutput,v)) ->
-        begin
-          let mvar = MathLib.getvar tbl.env.math v in
-          match mvar.defs with
-          | MDefVar(def) -> def.ival
-          | MDefStVar(def) -> def.stvar.ival
-        end
 
-      |MathId(MNVar(MLocal,v)) ->
-        begin
-          let mvar = MathLib.getvar tbl.env.math v in
-          match mvar.defs with
-          | MDefVar(def) -> def.ival
-          | MDefStVar(def) -> def.stvar.ival
-        end
-
-
-      | MathId(MNParam(par,num)) ->
-        Quantize([float_of_number num])
-      | HwId(_) ->
-        error "compute_math_interval" "unexpected hardware id"
-      | _ ->
-        error "compute_math_interval" "hwid id undefined"
-    in
-    let math_interval =
-      try
-        IntervalLib.derive_interval uast unid2ival
-      with
-      | IntervalLibError(e) ->
-        warn "derive_math_interval" ("in the following expr:"^(uast2str uast));
-        raise (IntervalLibError e)
-    in
-    math_interval
-
-  let compute_hw_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
-    let hwid2ival (x:hwvid) : interval=
-      match x with
-      |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
-      | HNPort(knd,cmp,port,param) ->
-        begin
-          match (HwLib.comp_getvar comp port).defs with
-          | HWDAnalog(d) -> d.ival
-          | HWDAnalogState(x) -> x.stvar.ival
-        end
-      | _ -> error "compute hw interval" "unexpected"
-    in
-    let vr = HwLib.comp_getvar comp port in
-    match vr.bhvr,vr.defs with
-    | HWBInput,HWDAnalog(defs) ->
-      defs.ival
-    | HWBAnalog(bhvr),_ ->
-      let conc_rhs =
-        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
-      in
-      debug ("computing interval "^(HwLib.hast2str conc_rhs));
-      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
-      debug ("  -> "^IntervalLib.interval2str ival);
-      ival
-
-    | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
-      defs.stvar.ival
-    | _ -> error "compute_hw_interval" "unexpected"
-      
-      (*declare equivalence classes for a mapping*)
-
-
-  (*propagate wire rules for *)
+  (*propagate wire rules for scaling factors *)
   let derive_scaling_factor (node:hwvid ast) (feedback:wireid list) (cfg:hwcompcfg)
     : (linear_stmt list)*linear_mapping =
     let decompose_list (args:hwvid ast list) (fn:hwvid ast -> linear_mapping)  =
@@ -618,9 +652,9 @@ struct
     ConcCompLib.iter_var_cfg cfg
       (fun (port:string) (x:hwvarcfg) ->
         let wire = SlnLib.mkwire comp.name inst port in
-        let mival : interval = compute_math_interval tbl x.expr in
-        let hival : interval = compute_hw_interval tbl comp inst cfg port in
-        let queue_quant v h =
+        let mival : interval = IntervalCompute.compute_math_interval tbl x.expr in
+        let hival : interval = IntervalCompute.compute_hw_interval tbl comp inst cfg port in
+        let queue_quant v (h:interval_data) =
           if no_number_cstrs_DBG then
             ()
           else
@@ -661,35 +695,35 @@ struct
     QUEUE.destroy stmts;
     cstrs
 
+  let mappings2str (lst:hw_mapping list ) =
+    List.fold_left (fun str mapping ->
+        str^(MappingResolver.hwmapping2str mapping)
+      ) "" lst
 
-  let infer (tbl:gltbl) =
-    MAP.iter tbl.sln_ctx.generate.outs (fun (mvar:string) (wires:wire_coll) ->
+  let infer (tbl:gltbl)  : hw_mapping list option =
+    let stmtq = QUEUE.make () in
+    let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
+    let maybe_mapping = MAP.map tbl.sln_ctx.generate.outs (fun (mvar:string) (wires:wire_coll) ->
         match wires with
         | WCollEmpty -> error "infer" "does not exist"
         | WCollOne(wire) ->
           let conc_comp = ConcCompLib.get_conc_comp tbl wire.comp in
           let stmts = hwcomp_derive_scaling_factors tbl conc_comp.d conc_comp.inst conc_comp.cfg in
-          let sln = MappingResolver.solve stmts in
-          sln
+          enq stmts
         | WCollMany(wires) ->
           begin
-            let stmtq = QUEUE.make () in
-            let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
             List.iter (fun wire ->
               debug ("========= "^mvar^" on "^HwLib.wireid2str wire^" ===========");
               let conc_comp = ConcCompLib.get_conc_comp tbl wire.comp in
               let stmts = hwcomp_derive_scaling_factors tbl conc_comp.d conc_comp.inst conc_comp.cfg in
               enq stmts
-              ) wires;
-            let stmts = QUEUE.to_list stmtq in 
-            let sln = MappingResolver.solve stmts in
-            QUEUE.destroy stmtq;
-            sln
+            ) wires;
           end
-
-          
-      );
-
-
+      )
+    in
+    let stmts = QUEUE.to_list stmtq in 
+    let sln : hw_mapping list option = MappingResolver.solve tbl stmts in
+    QUEUE.destroy stmtq;
+    sln
 
 end

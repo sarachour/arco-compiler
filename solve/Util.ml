@@ -990,6 +990,10 @@ end
 
 module SET =
 struct
+
+  let destroy (type a) m =
+    ()
+
   let make (type a) () : a set = MAP.make()
 
   let make_dflt (type a) () : a set = make ()

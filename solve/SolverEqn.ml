@@ -81,7 +81,7 @@ struct
       else if STRING.startswith inp "m" then
         begin
           Printf.printf ("---- Inferring ------\n");
-          SolverMapper.infer v
+          noop (SolverMapper.infer v)
         end
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===\n" in

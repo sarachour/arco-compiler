@@ -25,6 +25,27 @@ struct
   let mkdflt_ival () : interval =
     IntervalUnknown([])
 
+  let mk_num_ival () : num_interval =
+    {min=0.;max=0.}
+
+  let numinterval2str (x:num_interval) =
+    "["^(string_of_float x.min)^","^(string_of_float x.max)^"]"
+
+  let clamp (clamp:num_interval) (x:num_interval): num_interval =
+    {min=MATH.max [clamp.min;x.min];max=MATH.min [clamp.max;x.min]}
+
+  let transform (x:num_interval) scale offset =
+    let mmin = x.min*.scale+.offset in
+    let mmax = x.max*. scale +. offset in
+    {min=MATH.min [mmin;mmax];max=MATH.max [mmin;mmax]}
+
+  let inv_transform (x:num_interval) scale offset =
+    let mmin = (x.min-.offset)/.scale in
+    let mmax = (x.max-.offset)/. scale in
+    {min=MATH.min [mmin;mmax];max=MATH.max [mmin;mmax]}
+
+
+
   let interval2numbounds (x:interval) =
     match x with
     | Interval(i) ->
@@ -229,7 +250,7 @@ struct
       (compute:bound->bound->bound) flip: interval =
     let intervals : interval_data list =
       List.map (fun (a_el:float) ->
-          let a = {min=BNDNum a_el; max = BNDNum a_el} in
+          let a : interval_data= {min=BNDNum a_el; max = BNDNum a_el} in
           let a,b = flip_if flip a b in
           let corners : bound list= [
             compute (a.min) (b.min);

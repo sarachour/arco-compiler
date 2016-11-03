@@ -151,6 +151,14 @@ type sstep =
   (*add a relation for a node*)
 
 
+(*how much to scale and offset from math to hw*)
+type hw_mapping = {
+  mutable scale:float;
+  mutable offset:float;
+  mutable mrng:num_interval;
+  mutable hrng:num_interval;
+  mutable wire: wireid;
+}
 type uenv =  {
   hw: hwvid hwenv;
   math: mid menv;

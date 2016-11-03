@@ -30,6 +30,9 @@ struct
   let mksln () : ('a,'b) sln =
     {comps=SET.make_dflt();conns=mkconns(); route=mklabels(); generate=mklabels()}
 
+  let mkdflt_wire () : wireid =
+    {comp={name=HWCmComp("?");inst=0};port="?"}
+
 
   let mkwire (c:hwcompname) (i:int) (p:string) : wireid =
     {comp={name=c;inst=i};port=p}
@@ -307,6 +310,20 @@ struct
   let iter_generates (sln:usln) fn: unit =
     _iter_labels sln.generate sln.route fn
 
+
+  let wire2labels (sln:usln) (wire:wireid) =
+    let matches : ulabel set = SET.make () in
+    iter_routes sln (fun (x:ulabel) wires ->
+        if LIST.has wires wire
+        then noop (SET.add matches x) else ()
+      );
+    iter_generates sln (fun (x:ulabel) wires ->
+        if LIST.has wires wire
+        then noop (SET.add matches x) else ()
+      );
+    let result =  SET.to_list matches in
+    SET.destroy(matches);
+    result
 
   let connected_to_outblock (sln:usln) (w:wireid) =
     if MAP.has sln.conns.src2dest w = false then false else

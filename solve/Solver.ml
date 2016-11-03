@@ -28,6 +28,7 @@ open SolverMulti
 
 open HWConnRslvr 
 open SolverMapper 
+open SolverCompLib
 open Simulink
 
 (*
@@ -68,22 +69,37 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Concrete slntbl ---";
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
-  let mappings = SolverMapper.infer slntbl in
-  slvr_print_inter "---- Generating Simulink File ---";
-  IO.save (out^"_"^(string_of_int i)^".sim") "TODO";
+  let mappings_maybe = SolverMapper.infer slntbl in
+  begin
+    match mappings_maybe with
+    | Some(mappings) ->
+      begin
+      slvr_print_inter "---- Generating Simulink File ---";
+      let matfile = (out^"_"^(string_of_int 0)^".m") in
+      let matcode : matst list =
+        SimulinkGen.to_simulink slntbl mappings 
+      in
+      SimulinkGen.to_file matcode matfile
+      end
+    | None -> ()
+  end;
   slvr_print_inter "---- Generating Summary File ---";
-  IO.save (out^"_"^(string_of_int i)^".sum") "TODO";
+  let sln_sum : string= SlnLib.sln2str slntbl.sln_ctx ident MathLib.mid2str in
+  let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
+  let map_sum :string =
+    match mappings_maybe with
+    | Some(mappings) -> SolverMapper.mappings2str mappings
+    | None -> "<no mappings found>"
+  in
+  IO.save (out^"_"^(string_of_int i)^"_sln.sum") sln_sum;
+  IO.save (out^"_"^(string_of_int i)^"_comp.sum") cmp_sum;
+  IO.save (out^"_"^(string_of_int i)^"_map.sum") map_sum;
   Printf.printf "===== Solution Found ======\n";
   ()
 
 let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   init_utils();
   let sl = {hw=hw;math=prob;goal_cnt=0;} in
-
-  let matfile = (out^"_"^(string_of_int 0)^".m") in
-  let matcode : matst list = SimulinkGen.to_simulink hw in
-  SimulinkGen.to_file matcode matfile; 
-  error "solve" "temporary block";
 
   let msearch = MultiSearch.mkmulti sl in
   slvr_print_inter "===== Beginning Interactive Solver ======\n";
