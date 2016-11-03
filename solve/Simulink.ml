@@ -308,7 +308,7 @@ struct
     declare_var (loc);
     declare_var (vloc);
     q (add_block (get_basic_fxn "pulse") loc);
-    q (add_block (get_basic_fxn "+") loc);
+    q (add_block (get_basic_fxn "*") vloc);
     q (set_param
          (MATLit(MATStr(loc))) "Period"         
          (MATLit(MATStr(string_of_float sample))));
