@@ -150,7 +150,7 @@ struct
     namespace^"/"^v^"/1"
 
   let get_output_loc namespace v =
-    namespace^"/_"^v^"/2"
+    namespace^"/_"^v^"/1"
 
   let create_out q namespace (vr:string) =
     let loc = namespace^"/"^vr in
@@ -177,7 +177,7 @@ struct
              (MATLit(MATFloat(value)))
           )
       end;
-    loc
+    loc^"/1"
 
   let create_sub q namespace n_inps =
     let id = symtbl_size () in
@@ -192,7 +192,7 @@ struct
         (fun (x:int) -> loc^"/"^(string_of_int x))
         (LIST.mkrange 1 n_inps)
     in
-    let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
+    let out_loc = loc^"/"^(string_of_int (1)) in
     loc,inp_locs,out_loc
 
 
@@ -206,7 +206,7 @@ struct
          (MATLit(MATStr(loc))) "Inputs"
          (MATLit(MATStr(inpstr))));
     let inp_loc = loc^"/"^(string_of_int (1)) in
-    let out_loc = loc^"/"^(string_of_int (2)) in
+    let out_loc = loc^"/"^(string_of_int (1)) in
     loc,inp_loc,out_loc
 
 
@@ -223,7 +223,7 @@ struct
         (fun (x:int) -> loc^"/"^(string_of_int x))
         (LIST.mkrange 1 (n_inps))
     in
-    let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
+    let out_loc = loc^"/"^(string_of_int (1)) in
     loc,inp_locs,out_loc
 
 
@@ -240,7 +240,7 @@ struct
         (fun (x:int) -> loc^"/"^(string_of_int x))
         (LIST.mkrange 1 (n_inps))
     in
-    let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
+    let out_loc = loc^"/"^(string_of_int (1)) in
     loc,inp_locs,out_loc
 
   let create_div q namespace  =
@@ -254,7 +254,7 @@ struct
          (MATLit(MATStr(inpstr))));
     let numer_loc = loc^"/"^(string_of_int 1) in
     let denom_loc = loc^"/"^(string_of_int 2) in
-    let out_loc = loc^"/"^(string_of_int 3) in
+    let out_loc = loc^"/"^(string_of_int 1) in
     loc,numer_loc,denom_loc,out_loc
 
 
