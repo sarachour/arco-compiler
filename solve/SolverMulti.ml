@@ -71,12 +71,29 @@ struct
 
   let order_step x y = 0
 
-  let score_step x =
-    SearchLib.mkscore 0. 0.
+
+  let score_uniform  (s:mustep list) =
+    let state = 0. in
+    let delta = 0. in
+    SearchLib.mkscore state delta
+
+  let score_depth  (s:mustep list) =
+    let state = 0. in
+    let delta = 1. in
+    SearchLib.mkscore state delta
+ 
+
+  let score_step () =
+    let typ = get_glbl_string "multi-selector-branch" in
+    match typ with
+    | "depth" -> score_depth
+    | "uniform" -> score_uniform 
+    | "_" ->   error "score_step" "unknown strategy for eqn-selector-branch"
+
 
   let mksearch () =
     let search : (mustep,mutbl) ssearch =
-      SearchLib.mksearch apply_step unapply_step order_step score_step step2str
+      SearchLib.mksearch apply_step unapply_step order_step (score_step()) step2str
     in
       search
 
@@ -135,7 +152,8 @@ struct
         Some (List.nth left 0)
 
 
-
+  let is_var_solved (ms:musearch) (v:string) : bool =
+    SET.has ms.state.solved v
 
 
   let partial_id_to_tree ms (id:part_id ) =
@@ -239,9 +257,11 @@ struct
     let step_lists : ((sstep list) list) list =
       QUEUE.to_list ctx.buffer
     in
+    debug ("--> Number of options "^(LIST.length2str step_lists));
     let node_lists_3d : ((sstep list) list) list =
       LIST.permutations step_lists
     in
+    debug ("--> Number of nodes "^(LIST.length2str node_lists_3d));
     QUEUE.destroy ctx.buffer;
     QUEUE.destroy ctx.choice_buffer;
     List.map (fun (lst:(sstep list) list) ->
@@ -252,23 +272,25 @@ struct
     let ctx = glblctx_mk () in
     (*pull partial solution route to a goal*)
     let _conn_generate_to_route routelbl routewire generates expr =
-            if LIST.empty generates = false then
-              begin
-                glblctx_mk_chblock ctx;
-                List.iter (fun gen_wire ->
-                    let goal = GoalLib.mk_conn_goal tbl gen_wire routewire expr in
-                    glblctx_add_ch ctx ([
-                        SModSln(SSlnRmRoute(routelbl));
-                        SModGoalCtx(SGAddGoal(goal))
-                      ]);
-                ) generates;
-                glblctx_commit_chblock ctx;
-              end
-            else
-              ()
+      debug "   - connecting generates to routes.";
+      if LIST.empty generates = false then
+        begin
+          glblctx_mk_chblock ctx;
+          List.iter (fun gen_wire ->
+              let goal = GoalLib.mk_conn_goal tbl gen_wire routewire expr in
+              glblctx_add_ch ctx ([
+                  SModSln(SSlnRmRoute(routelbl));
+                  SModGoalCtx(SGAddGoal(goal))
+                ]);
+          ) generates;
+          glblctx_commit_chblock ctx;
+        end
+      else
+        ()
     in
     (*make an input block that connects to a wire*)
     let mk_input_block lbl (wire:wireid) expr =
+      debug "   - making an input block.";
       let prop = HwLib.wire2prop tbl.env.hw wire in
       let blk : hwvid hwcomp = HwLib.getcomp tbl.env.hw (HWCmInput prop) in
       let ccblk : ucomp_conc= SolverCompLib.mk_conc_comp tbl (HWCmInput prop) in
@@ -296,6 +318,7 @@ struct
     in
     (*make an output block that connects to a wire*)
     let mk_output_block lbl (wire:wireid) expr =
+      debug "   - making an output block.";
       let prop = HwLib.wire2prop tbl.env.hw wire in
       let blk : hwvid hwcomp = HwLib.getcomp tbl.env.hw (HWCmOutput prop) in
       let ccblk : ucomp_conc= SolverCompLib.mk_conc_comp tbl (HWCmOutput prop) in
@@ -323,7 +346,16 @@ struct
     debug ("==== ROUTES =====");
     SlnLib.iter_routes tbl.sln_ctx (fun (route:('a,'b) label) (generates:wireid list) ->
         debug ("> "^(SlnLib.ulabel2str route));
-        begin
+        let wire = SlnLib.label2wire route in
+        match wire.comp.name with
+        | HWCmOutput(_) ->
+          error "mk_glbl_ctx" "unexpected route to HWCMOutput"
+        | HWCmInput(_) ->
+          debug "    - ignoring route to input block."
+        | HWCmCopy(_) ->
+          error "mk_glbl_ctx" "unexpected route to HWCopy"
+        | HWCmComp(_) ->
+          begin
           match route with
           | MInLabel(lbl)->
             let inpblock_steps = mk_input_block route lbl.wire (SlnLib.ulabel2mexpr route) in
@@ -346,23 +378,39 @@ struct
     debug ("==== GENERATES =====");
     SlnLib.iter_generates tbl.sln_ctx (fun (generate:('a,'b) label) (route:wireid list) ->
         debug ("> "^(SlnLib.ulabel2str generate));
-        begin
-          match generate with
-          | MOutLabel(lbl) ->
-            (*create a new label*)
-            let outblock_steps = mk_output_block generate lbl.wire (SlnLib.ulabel2mexpr generate) in
-            glblctx_mk_chblock ctx;
-            glblctx_add_ch ctx outblock_steps;
-            glblctx_commit_chblock ctx
+        let wire = SlnLib.label2wire generate in
+        match wire.comp.name with
+        | HWCmOutput(_) ->
+          debug "    - ignoring generate to output block."
+        | HWCmInput(_) ->
+          debug "    - ignoring generate to input block."
+        | HWCmCopy(_) ->
+          error "mk_glbl_ctx" "copy unexpected for generatre"
+        | HWCmComp(_) ->
+          if SlnLib.connected_to_outblock tbl.sln_ctx wire
+          then
+            begin
+              debug "    - ignoring connected output block";
+              ()
+            end
+          else
+            begin
+              match generate with
+              | MOutLabel(lbl) ->
+                (*create a new label*)
+                let outblock_steps = mk_output_block generate lbl.wire (SlnLib.ulabel2mexpr generate) in
+                glblctx_mk_chblock ctx;
+                glblctx_add_ch ctx outblock_steps;
+                glblctx_commit_chblock ctx
 
-          | MInLabel(_) ->
-            error "create_global_context" "dont do anything special for input propagate"
-          | MLocalLabel(_) ->
-            ()
-          | MExprLabel(_) -> ()
-          | ValueLabel(_) ->
-            error "create_global_context" "dont do anything special for value"
-        end
+              | MInLabel(_) ->
+                error "create_global_context" "dont do anything special for input propagate"
+              | MLocalLabel(_) ->
+                ()
+              | MExprLabel(_) -> ()
+              | ValueLabel(_) ->
+                error "create_global_context" "dont do anything special for value"
+            end
       );
     let node_steps = glblctx_mk_nodes ctx in
     node_steps
@@ -411,14 +459,26 @@ struct
       tbl
 
   (*a solution is complete if all the routing connections are on inputs*)
-  let is_complete_sln (tbl:gltbl) =
+  let is_complete_sln ms (tbl:gltbl) =
     let valid = REF.mk true in
     SlnLib.iter_routes tbl.sln_ctx (fun (route:ulabel) generates ->
         let wire : wireid= SlnLib.label2wire route in
         match wire.comp.name with
         | HWCmComp(cmp) ->
-          debug ":: is an incomplete solution. Requires a route";
-          REF.upd valid (fun x -> false)
+          begin
+            match route with
+              | MInLabel(_) -> REF.upd valid (fun x -> false)
+              | ValueLabel(_) -> REF.upd valid (fun x -> false)
+              | MOutLabel(lbl) ->
+                if is_var_solved ms lbl.var
+                then REF.upd valid (fun x -> false)
+              | MLocalLabel(lbl) ->
+                if is_var_solved ms lbl.var
+                then REF.upd valid (fun x -> false)
+              | MExprLabel(x) ->
+                error "is_complete_solution" "not expecting an expression."
+          end
+
         | HWCmInput(cmp) ->
           debug ":: found input route."
         | _ ->
@@ -427,41 +487,65 @@ struct
     );
     REF.dr valid
 
-  (*determine if the solution is complete or not*)
-  let complete_sln (tbl:gltbl) (sln: sstep snode) =
+  (*determine if the solution is complete or not and augment tree*)
+  let complete_sln ms (tbl:gltbl) (sln: sstep snode) =
+    let depth = get_glbl_int "slvr-global-depth" in
     SearchLib.move_cursor tbl.search tbl sln;
-    if is_complete_sln tbl then
+    if is_complete_sln ms tbl then
       Some(sln)
     else
-      error "complete solution" "is incomplete. Must complete it."
+      begin
+        (*declare not a solution*)
+        SearchLib.not_solution tbl.search sln;
+        let branches : sstep list list = create_global_context ms tbl in 
+        debug "======= New Path =======";
+        List.iter (fun glbl_steps ->
+          debug "======= Glbl (Node) Steps =======";
+          debug (SearchLib.steps2str 2 tbl.search glbl_steps);
+          debug "============================";
+          noop (SearchLib.mknode_child_from_steps tbl.search tbl glbl_steps)
+        ) branches;
+        None
+      end
 
   (*find a global solution, given the set of partials that have been applied*)
   let find_global_solution (ms:musearch) (nsols:int) : sstep snode list option =
+    let mint,musr = mkmenu ms in
     let tbl = mk_global_tbl ms in
-    (*find the global steps *)
     let depth = get_glbl_int "slvr-global-depth" in
-    (*the initial set of results*)
-    let results : sstep snode list option =  SolverEqn.solve tbl nsols depth in
-    match results with
-    | Some(sln_list) ->
-      begin
-        (*iterate over each result and see if the configuration is still partial*)
-        let complete_sln_steps = OPTION.conc_list (List.map (fun sln ->
-            complete_sln tbl sln 
-          ) sln_list)
-        in
-        SearchLib.clear_cursor tbl.search;
+    (*find the global steps *)
+    let rec _find_global_solution () : sstep snode list option = 
+      (*the initial set of results*)
+      let results : sstep snode list option =  SolverEqn.solve tbl nsols depth in
+      musr();
+      match results with
+      | Some(sln_list) ->
         begin
-          match complete_sln_steps with
-          | h::t ->
-            Some(h::t)
-          | [] ->
-            None
+          (*iterate over each result and see if the configuration is still partial*)
+          let complete_sln_steps = OPTION.conc_list (List.map (fun sln ->
+              complete_sln ms tbl sln 
+            ) sln_list)
+          in
+          (*if there are some incomplete solutions*)
+          if List.length sln_list > List.length complete_sln_steps then
+            _find_global_solution ()
+          else
+            begin
+            SearchLib.clear_cursor tbl.search;
+            begin
+              match complete_sln_steps with
+              | h::t ->
+                Some(h::t)
+              | [] ->
+                None
+            end
+            end
         end
-      end
-    | None ->
-      SearchLib.clear_cursor tbl.search;
-      None
+      | None ->
+        SearchLib.clear_cursor tbl.search;
+        None
+    in
+    _find_global_solution ()
 
   (*get the existing global solution*)
   let get_existing_global_solution (ms:musearch) (key:string) (id:int) : gltbl=

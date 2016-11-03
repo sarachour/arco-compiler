@@ -61,8 +61,10 @@ type linear_mapping = {
   term: hwvid ast;
 }
 
-let dumb_cstrs_DBG = false 
-let no_number_cstrs_DBG = true 
+let dumb_cstrs_DBG = false
+
+(*disable this if you aren't getting anything*)
+let no_number_cstrs_DBG =false
 
 module MappingResolver =
 struct

@@ -16,8 +16,9 @@ let _ = MAP.put glbls "debug" (GlblPropInt 0)
 let _ = MAP.put glbls "uast-selector-branch" (GlblPropString "uniform")
 let _ = MAP.put glbls "uast-depth" (GlblPropInt 3)
 
-
 let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 5)
+let _ = MAP.put glbls "multi-selector-branch" (GlblPropString "depth")
+    
 
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
 let _ = MAP.put glbls "eqn-selector-goal" (GlblPropString "uniform")

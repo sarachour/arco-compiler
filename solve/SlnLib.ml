@@ -308,6 +308,15 @@ struct
     _iter_labels sln.generate sln.route fn
 
 
+  let connected_to_outblock (sln:usln) (w:wireid) =
+    if MAP.has sln.conns.src2dest w = false then false else
+      let dests = MAP.get sln.conns.src2dest w in
+      let outs = SET.filter dests (fun (x:wireid) -> match x.comp.name with
+          | HWCmOutput(_) -> true
+          | _ -> false
+        ) in
+      List.length outs > 0
+
   let wirecoll2str (a:wire_coll) = match a with
     | WCollEmpty -> "{}"
     | WCollOne(wire) -> wireid2str wire

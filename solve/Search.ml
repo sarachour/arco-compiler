@@ -111,6 +111,15 @@ struct
     let _ = MAP.put b.tbl n.id SStatSolution in
     ()
 
+  let not_solution (type a) (b:sstats) (n:a snode) =
+    if is_solution b n then
+      begin
+        MAP.rm b.tbl n.id;
+        ()
+      end
+    else
+      ()
+
 
   let visited (type a) (b:sstats) (n:a snode) =
     let _ = MAP.put b.tbl n.id SStatVisited in
@@ -423,6 +432,10 @@ struct
     _kill_branch leaf;
     ()
    
+  let not_solution (type a) (type b) (sr:(a,b) ssearch) (n:a snode)  : unit =
+    SStatLib.not_solution sr.st n;
+    ORDSET.add sr.frontier (REF.mk n);
+    ()
 
   let solution (type a) (type b) (sr:(a,b) ssearch) (n:a snode)  : unit =
     SStatLib.solution sr.st n;
