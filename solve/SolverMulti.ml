@@ -135,274 +135,7 @@ struct
         Some (List.nth left 0)
 
 
-(*
-  let get_labels tbl valfilt varfilt : (wireid*string*label) list =
-    let results = MAP.fold tbl.sln.labels (fun wire pmap rest ->
-        let rr = MAP.fold pmap (fun p xset rest ->
-            let flt : label list = SET.filter xset (fun x ->
-              match x with
-              | LBindVar(knd,name) -> varfilt knd name
-              | LBindValue(knd,v) -> valfilt knd v
-            ) in
-            let res : (wireid*string*label) list = List.map (fun x -> (wire,p,x)) flt in
-            res @ rest
-          ) []
-        in
-        rr @ rest
-      ) []
-      in
-      results
 
-  (*
-     create global circuit from the partial solution buffer
-  *)
-  let get_global_context (ms:musearch) tbl : sstep list = 
-    let menv : mid menv = ms.state.slvr.prob in
-    let hwenv : hwvid hwenv=  ms.state.slvr.hw  in
-    (*process a local variable*)
-    let proc_local_var name =
-      (*all output port labels with the mathid name*)
-      let olabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
-      (*all input labels with the mathid name*)
-      let ilabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
-      match olabels with
-      | [(owire,oprop,olabel)] ->
-        let _ = _print_debug ("local variable "^name^" is tagged on an output wire. Let's connect it to all inputs.") in
-        let output_wire_hwid = UnivLib.wire2uid hwenv owire oprop in
-        let output_math_id = UnivLib.label2uid olabel in
-        (*lets create goals for the tableau to map*)
-        let connect_ports : sstep list =
-          List.map (fun (iwire,iprop,ilbl) ->
-              let input_wire_hwid = UnivLib.wire2uid hwenv iwire iprop in
-              let vr = UnivLib.mkuvar_of_stub input_wire_hwid (UBHPortConn output_wire_hwid) in
-              let goal = UnivLib.wrap_goal tbl vr in
-              (*this is the connection goal*)
-              SAddGoal(goal)
-        ) ilabels in
-        let remove_existing_goal = match GoalTableLib.get_goal_from_var tbl output_math_id with
-         | Some(v) -> [SRemoveGoal(v)]
-         | _ -> []
-        in
-        remove_existing_goal @ connect_ports
-      | [] ->
-        let _ = _print_debug ("local variable "^(name)^" is not bound yet, so we're not going to loop back.") in
-        []
-      | h::t -> error "proc_local" ("cannot have more than one output variable: "^name)
-
-    in
-    (*process a strict output*)
-    let proc_out_var (name:string) =
-      let olabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNOutput) in
-      match olabels with
-      | [(wwire,wprop,wlabel)] ->
-        let _ = _print_debug "found the output label" in
-        let cmpname,ihwid,ohwid = HwLib.getout hwenv wprop in
-        let cmpid = UnivLib.name2unodeid cmpname in
-        let inst_id : int = SlnLib.usecomp tbl.sln cmpid  in
-        let _ = SlnLib.usecomp_unmark tbl.sln cmpid in
-        let ihwid = UnivLib.lclid2glblid inst_id (HwId ihwid) in
-        let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
-        let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
-        let lbl_var = UnivLib.mkuvar_of_stub whwid (UBHPortConn ihwid) in 
-        let steps= [
-          (*node utilization*)
-          SSolUseNode(cmpid,inst_id);
-          (*wire connection*)
-          SAddGoal(UnivLib.wrap_goal tbl (lbl_var));
-          (*label of var*)
-          SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);
-          SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
-        ]
-        in
-        steps
-    | [] ->
-      let _ = _print_debug ("local/output variable "^name^" has no bindings.") in
-      []
-    | h::t ->
-      error "proc_out_var" ("multiple bindings: "^name)
-    in
-    (*process a strict input*)
-    let proc_in_var (name:string) =
-      let ilabels : (wireid*string*label) list = get_labels tbl (fun k v -> false) (fun k v -> MathLib.mid2name v = name && k = HNInput) in
-      let res : sstep list = LIST.fold ilabels (fun (wwire,wprop,wlabel) rest ->
-        let _ = _print_debug ("input variable "^name^" has an input label") in
-        let cmpname,ihwid,ohwid = HwLib.getin hwenv wprop in
-        let cmpid = UnivLib.name2unodeid cmpname in
-        let inst_id : int = SlnLib.usecomp tbl.sln cmpid  in
-        let _ = SlnLib.usecomp_unmark tbl.sln cmpid in
-        let ihwid = UnivLib.lclid2glblid inst_id (HwId ihwid) in
-        let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
-        let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
-        let lbl_var = UnivLib.mkuvar_of_stub whwid (UBHPortConn ohwid) in 
-        let steps= [
-          SSolUseNode(cmpid,inst_id);
-          (*connection*)
-          SAddGoal(UnivLib.wrap_goal tbl lbl_var);
-          (*label of var*)
-          SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);
-          SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
-        ]
-        in
-        steps @ rest
-      ) []
-      in
-        res
-    in
-    (*iterate over values*)
-    let proc_in_val () =
-      let valassign2ast wlabel : number = match wlabel with
-      | LBindValue(_,Integer(i)) -> Integer(i)
-      | LBindValue(_,Decimal(i)) -> Decimal(i)
-      | _ -> error "valaasign2ast" "expected value assign"
-      in
-      let ilabels : (wireid*string*label) list = get_labels tbl (fun k v -> k = HNInput) (fun k v -> false) in
-      let res : sstep list = LIST.fold ilabels (fun (wwire,wprop,wlabel) rest ->
-        let _ = _print_debug "found the input label" in
-        let cmpname,ihwid,ohwid = HwLib.getin hwenv wprop in
-        let cmpid = UnivLib.name2unodeid cmpname in
-        let inst_id : int = SlnLib.usecomp tbl.sln cmpid  in
-        let _ = SlnLib.usecomp_unmark tbl.sln cmpid in
-        let ihwid = UnivLib.lclid2glblid inst_id (HwId ihwid) in
-        let ohwid = UnivLib.lclid2glblid inst_id (HwId ohwid) in
-        let whwid = HwId (UnivLib.wire2hwid hwenv wwire wprop) in
-        let vv = valassign2ast wlabel in
-        let ovar_bind = UnivLib.mkuvar_of_stub ohwid (UBHPortVal vv) in 
-        let valbind =
-          if get_glbl_bool "multi-force-value-to-port" = true then
-            let wvar = UnivLib.mkuvar_of_stub whwid (UBHPortConn ohwid) in 
-            [SAddGoal(TrivialGoal (wvar))]
-          else
-            let wvar_bind = UnivLib.mkuvar_of_stub whwid (UBHPortVal vv) in 
-            [SAddGoal(NonTrivialGoal (wvar_bind))]
-        in
-        let steps= valbind @ [
-          SSolUseNode(cmpid,inst_id);
-          SAddNodeRel(cmpid,inst_id,ovar_bind);
-          (*label of var*)
-          (*SSolAddLabel(UnivLib.unid2wire ohwid,UnivLib.unid2prop ohwid,wlabel);*)
-          SSolAddLabel(UnivLib.unid2wire ihwid,UnivLib.unid2prop ihwid,wlabel);
-        ] in
-        steps @ rest
-      ) []
-      in
-        res
-    in
-    (*iterate over variables*)
-    let var_steps : sstep list = MAP.fold menv.vars (fun name mid (rest:sstep list) ->
-      if MathLib.isvar menv name then
-        match MathLib.getkind menv name with
-        (*input variable*)
-        | MInput ->
-          let insteps : sstep list = proc_in_var name in
-          insteps @ rest
-        (*output variable*)
-        | MOutput ->
-          let lclsteps = proc_local_var name in
-          let outsteps = proc_out_var name in
-          lclsteps @ outsteps @ rest
-        (*local variable*)
-        | MLocal ->
-          let lclsteps = proc_local_var name in
-          lclsteps @ rest
-      else
-        rest
-    ) []
-    in
-    let val_steps = proc_in_val () in
-    val_steps @ var_steps
-
-
-    (*TODO Fix
-      normalize partial steps so there are no id conflicts *)
-  let build_partial_steps ms (ctx:sstep list) (tree_id:unid) (node_id:int) : sstep list =
-      let idalloc : (unodeid,int set) map = MAP.make () in
-      let idmapper : (unodeid*int,int) map = MAP.make () in
-      let populate_id_allocator s = match s with
-        | SSolUseNode(id,i) ->
-            (*if we have allocated the following id, map it*)
-            if MAP.has idalloc id = false then
-              let _ = MAP.put idalloc id (SET.make_dflt ()) in
-              let _ = SET.add (MAP.get idalloc id) i in 
-              ()
-            else
-              let _ = SET.add (MAP.get idalloc id) i in
-              ()
-        | _ -> ()
-      in
-      let populate_id_mapper s = 
-        let rec find_fresh allocs id =
-                if SET.has allocs id then find_fresh allocs (id+1) else id
-        in
-        let add_mapping id inst = 
-                if MAP.has idalloc id && SET.has (MAP.get idalloc id) inst then
-                        let ninst = find_fresh (MAP.get idalloc id) 0 in
-                        if MAP.has idmapper (id,inst) then
-                                error "normalize_partial.populate_allocator" "cannot use the same node multiple times"
-                        else
-                                let _ = MAP.put idmapper (id,inst) ninst in
-                                ()
-                else      
-                        let _ = MAP.put idmapper (id,inst) inst in 
-                        ()
-        
-        in        
-        match s with
-        | SSolUseNode(id,i) -> add_mapping id i
-        | _ -> ()
-      in
-      let trans_wire (w:wireid) =
-        let cid,i,lc = w in
-        let ni = MAP.get idmapper (cid,i) in
-        (cid,ni,lc)
-      in
-      let trans_unid (u:unid) : unid = match u with
-        | HwId(HNPort(knd,HCMGlobal(c,i),p,pr)) ->
-          let id = UnivLib.name2unodeid c in
-          let ni = MAP.get idmapper (id,i) in
-          HwId(HNPort(knd,HCMGlobal(c,ni),p,pr))
-        | _ -> u
-      in
-      let trans_uvar (u:uvar) : uvar =
-        UnivLib.upd_uvar u trans_unid
-      in
-      let trans_goal (g:goal) =
-        (UnivLib.wrap_goal_fun ms.is_trivial (trans_uvar (UnivLib.unwrap_goal g)))
-      in
-      let trans_lcl s = match s with
-        | SSolUseNode(id,i) ->
-          let ni = MAP.get idmapper (id,i) in SSolUseNode (id,ni)
-        | SSolAddConn(w1,w2) -> SSolAddConn(trans_wire w1, trans_wire w2)
-        | SSolAddLabel(w,lbl,k) -> SSolAddLabel(trans_wire w,lbl,k)
-        | SSolRemoveLabel(w,lbl,k) -> SSolRemoveLabel(trans_wire w,lbl,k)
-        | SRemoveGoal(g) -> SRemoveGoal (trans_goal g)
-        | SAddGoal(g) -> SAddGoal (trans_goal g)
-        | SMakeGoalActive(g) -> SMakeGoalActive(g)
-        | SMakeGoalPassive(g) -> SMakeGoalPassive(g)
-        | SAddNodeRel(n,i,rs) ->
-          let ni = MAP.get idmapper (n,i) in
-          SAddNodeRel(n,ni,trans_uvar rs)
-      in
-      (*get the partial set*)
-      let psearch = MAP.get ms.state.partials tree_id in
-      let partial_node = SearchLib.id2node psearch node_id in
-      let partial_steps = LIST.rev (SearchLib.get_path psearch partial_node) in
-      (*populate the data structures for mapping*)
-      let _ = List.iter (fun x -> populate_id_allocator x) ctx in
-      let _ = List.iter (fun x -> populate_id_mapper x) partial_steps in
-      let new_partial_steps = List.map (fun x -> trans_lcl x) partial_steps in
-      let _ = _print_debug "=== Mappings ===" in
-      let _ = MAP.iter idmapper (fun (uid,i) (fi) ->
-        let  _ = _print_debug (" "^(UnivLib.unodeid2name uid)^" "^(string_of_int i)^" -> "^(string_of_int fi)^"\n") in
-        ()
-      ) in
-      let _ = _print_debug "=== Normalized Partial Solution ===" in
-      let _ = List.iter (fun x ->
-        let _ = _print_debug ("  "^(SlvrSearchLib.step2str x)) in
-        ()
-      ) new_partial_steps in
-      let _ = _print_debug "================" in
-      new_partial_steps 
-*)
 
 
   let partial_id_to_tree ms (id:part_id ) =
@@ -999,10 +732,20 @@ struct
       | h::t -> Some(h::t)
       |[] ->None
 
-  let order_var (vars:string queue) (x:'a mvar) : unit =
-    if x.knd = MOutput or x.knd = MLocal then
-      noop (QUEUE.enqueue vars x.name) 
-    
+  let order_vars (vars:string queue) (env:mid menv) : unit =
+    let tmpq = PRIOQUEUE.make (fun x -> match x.bhvr with
+        | MBhvStateVar(_) -> 1
+        | MBhvVar(_) ->2
+        | _ -> 3
+      )
+    in
+    MathLib.iter_vars env (fun x ->
+        if x.knd = MOutput or x.knd = MLocal then
+          noop (PRIOQUEUE.add tmpq x) 
+      );
+    let lst = List.map (fun x -> x.name) (PRIOQUEUE.to_list tmpq) in
+    QUEUE.enqueue_all vars lst;
+    ()
 
   let mkmulti (env:uenv) : musearch =
     (*make a top level table with default goals*)
@@ -1010,7 +753,7 @@ struct
     let _ = GoalTableFactory.mkgoalroot scratch  in
     (*create ordering*)
     let order = QUEUE.make () in
-    MathLib.iter_vars  env.math (fun v -> order_var order v);
+    order_vars order env.math;
     let mtree = MultiSearchTree.mksearch () in
     let mtbl : mutbl = {
       partials = MAP.make ();

@@ -256,7 +256,12 @@ struct
   let make () : 'a queue = REF.mk []
 
   let enqueue (type a) (s:a queue) (x:a) : a queue =
-    let _ : unit = REF.upd s (fun s -> s @ [x]) in s
+    REF.upd s (fun s -> s @ [x]);
+    s
+
+  let enqueue_all (type a)(s:a queue) (lst:a list): a queue =
+    REF.upd s (fun x -> x @ lst);
+    s
 
   let to_list (type a) (s:a queue) : a list =
     REF.dr s
@@ -1096,6 +1101,7 @@ type 'a prioqueue = {
 module PRIOQUEUE =
 struct
 
+
   let size x : int =
     x.size
 
@@ -1123,6 +1129,9 @@ struct
 
   let iter (p:'a prioqueue) (f:int -> 'a -> unit) =
     fold p (fun i x () -> f i x) ()
+
+  let to_list x : 'a list =
+    fold x (fun i el rst -> el::rst) []
 
   let delete (p:'a prioqueue) =
     MAP.clear p.data;

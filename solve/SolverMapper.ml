@@ -342,6 +342,15 @@ struct
           | MDefStVar(def) -> def.stvar.ival
         end
 
+      |MathId(MNVar(MLocal,v)) ->
+        begin
+          let mvar = MathLib.getvar tbl.env.math v in
+          match mvar.defs with
+          | MDefVar(def) -> def.ival
+          | MDefStVar(def) -> def.stvar.ival
+        end
+
+
       | MathId(MNParam(par,num)) ->
         Quantize([float_of_number num])
       | HwId(_) ->
