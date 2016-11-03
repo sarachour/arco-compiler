@@ -158,6 +158,7 @@ type hw_mapping = {
   mutable mrng:num_interval;
   mutable hrng:num_interval;
   mutable wire: wireid;
+  mutable expr: unid ast;
 }
 type uenv =  {
   hw: hwvid hwenv;

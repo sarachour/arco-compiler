@@ -34,7 +34,7 @@ exception SolverMapperError of string
 
 let error n m = raise (SolverMapperError (n^":"^m))
 
-let debug = print_debug 3 "eqn"
+let debug = print_debug 2 "eqn"
 (*determines the kind of variable*)
 type linear_slack_dir =
   | SVMin | SVMax
@@ -150,10 +150,19 @@ struct
     let min,max = IntervalLib.interval2numbounds ival in
     {min=min;max=max}
 
-  let compute_label_interval tbl wire =
-    let labels : ulabel list = SlnLib.wire2labels tbl.sln_ctx wire in
-    error "unimpl" "lool"
+  let get_wire_math_expr (tbl) (wire:wireid) : unid ast option =
+    let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
+    let cfg_maybe :unid ast option = ConcCompLib.get_var_config ccomp.cfg wire.port in
+    cfg_maybe
 
+  let compute_wire_math_interval tbl (wire:wireid) : num_interval =
+    let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
+    let cfg_maybe :unid ast option = ConcCompLib.get_var_config ccomp.cfg wire.port in
+    match cfg_maybe with
+    |Some(cfg) -> IntervalLib.interval2numinterval
+      (compute_math_interval tbl cfg)
+    | _ ->
+      {min=999.;max=999.}
 end
 
 module MappingResolver =
@@ -259,13 +268,15 @@ struct
       mrng = IntervalLib.mk_num_ival ();
       hrng = IntervalLib.mk_num_ival ();
       wire = SlnLib.mkdflt_wire ();
+      expr = Term(MathId(MNVar(MInput,"UNSET")));
     }
 
   let hwmapping2str (x:hw_mapping) =
     let f2s x = if x = 999. then "?" else string_of_float x in
     let eff_hrng = IntervalLib.clamp x.hrng (IntervalLib.transform x.mrng x.scale x.offset) in 
     let eff_mrng = IntervalLib.inv_transform eff_hrng x.scale x.offset in 
-    (SlnLib.wireid2str x.wire)^": "^(f2s x.scale)^"* @ + "^(f2s x.offset)^"\n"^
+    (SlnLib.wireid2str x.wire)^"  = "^(uast2str x.expr)^"\n"^
+    "LIN: "^(f2s x.scale)^"* @ + "^(f2s x.offset)^"\n"^
     "   [H]:"^(IntervalLib.numinterval2str x.hrng)^"\n"^
     "   [M]:"^(IntervalLib.numinterval2str x.mrng)^"\n"^
     "   [h]:"^(IntervalLib.numinterval2str eff_hrng)^"\n"^
@@ -290,8 +301,15 @@ struct
       in
       match wire with
       | Some(wire) ->
-        let math_ival = IntervalCompute.compute_label_interval gltbl wire in
+        let math_ival = IntervalCompute.compute_wire_math_interval gltbl wire in
+        let math_expr = IntervalCompute.get_wire_math_expr gltbl wire in
         let hw_ival = IntervalCompute.compute_wire_interval gltbl wire in
+        upd_map_result wire (fun x -> x.wire<- wire);
+        begin
+          match math_expr with
+          | Some(expr) -> upd_map_result wire (fun x -> x.expr <- expr)
+          | _ -> ()
+        end;
         upd_map_result wire (fun x -> x.mrng <- math_ival);
         upd_map_result wire (fun x -> x.hrng <- hw_ival);
         ()
@@ -309,7 +327,7 @@ struct
 
         | Z3Set(s,Z3QInterval(Z3QRange(min,max))) ->
           let id = name2linearsmtid symtbl s in
-          if min = max then
+          if MATH.cmp min max 1e-6  then
             upd_map_result_of_id id (max)
           else
             begin
@@ -326,7 +344,7 @@ struct
           error "z3result2mapresult" "unhandled"
     ) asgns;
     let result = MAP.map data (fun wire data ->
-        debug (hwmapping2str data);
+        debug ("[MAP]>> "^hwmapping2str data);
         data 
       )
     in
@@ -401,8 +419,7 @@ struct
     | [stmt] ->
       tbl,z3stmts,stmt
     | [] ->
-      error "error" "how are there no slack variables"
-     (*tbl,z3stmts,Z3Int(0)*)
+     tbl,z3stmts,Z3Int(0)
 
 
   let solve gltbl (stmts:linear_stmt list) : hw_mapping list option =

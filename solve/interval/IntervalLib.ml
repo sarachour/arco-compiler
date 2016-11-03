@@ -32,7 +32,7 @@ struct
     "["^(string_of_float x.min)^","^(string_of_float x.max)^"]"
 
   let clamp (clamp:num_interval) (x:num_interval): num_interval =
-    {min=MATH.max [clamp.min;x.min];max=MATH.min [clamp.max;x.min]}
+    {min=MATH.max [clamp.min;x.min];max=MATH.min [clamp.max;x.max]}
 
   let transform (x:num_interval) scale offset =
     let mmin = x.min*.scale+.offset in
@@ -56,6 +56,9 @@ struct
       end
     | _ -> error "interval2numbounds" "not expecting quantized interval"
 
+  let interval2numinterval (x:interval) =
+    let min,max = interval2numbounds x in
+    {min=min;max=max}
 
   let is_undefined i = match i with
     | IntervalUnknown(_) -> true

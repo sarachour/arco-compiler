@@ -128,7 +128,7 @@ struct
 
   let int_of_float x =  int_of_float (round x)
 
-  let cmp (f1:float) (f2:float) (eps:float) =
+  let cmp (f1:float) (f2:float) (eps:float) : bool =
     let diff = abs_float(f1 -. f2) in
     diff < eps
 

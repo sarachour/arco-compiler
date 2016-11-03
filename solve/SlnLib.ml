@@ -314,11 +314,11 @@ struct
   let wire2labels (sln:usln) (wire:wireid) =
     let matches : ulabel set = SET.make () in
     iter_routes sln (fun (x:ulabel) wires ->
-        if LIST.has wires wire
+        if (label2wire x) = wire
         then noop (SET.add matches x) else ()
       );
-    iter_generates sln (fun (x:ulabel) wires ->
-        if LIST.has wires wire
+    iter_generates sln (fun (x:ulabel) (wires:wireid list) ->
+        if (label2wire x) =  wire
         then noop (SET.add matches x) else ()
       );
     let result =  SET.to_list matches in
