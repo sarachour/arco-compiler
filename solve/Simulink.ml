@@ -94,7 +94,26 @@ struct
         MATLit(MATStr(param));
         vl
       ]))
-   
+
+  let add_line ns src snk =
+    (MATStmt(MATFxn("add_line",[
+        MATLit(MATStr(ns));
+        MATLit(MATStr(src));
+        MATLit(MATStr(snk));
+      ])))
+
+  let remove_line ns src snk =
+    (MATStmt(MATFxn("delete_line",[
+        MATLit(MATStr(ns));
+        MATLit(MATStr(src));
+        MATLit(MATStr(snk));
+      ])))
+
+  let remove_block ns name =
+    (MATStmt(MATFxn("delete_block",[
+        MATLit(MATStr(ns^"/"^name));
+       ])))
+
   let _model_preamble (stmtq:matst queue) name =
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
@@ -157,6 +176,20 @@ struct
     loc,inp_locs,out_loc
 
 
+  let create_neg q namespace =
+    let id = symtbl_size () in
+    let loc = namespace^"/neg_"^(string_of_int id) in
+    let inpstr=  "-" in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "+") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "Inputs"
+         (MATLit(MATStr(inpstr))));
+    let inp_loc = loc^"/"^(string_of_int (1)) in
+    let out_loc = loc^"/"^(string_of_int (2)) in
+    loc,inp_loc,out_loc
+
+
   let create_add q namespace n_inps =
     let id = symtbl_size () in
     let loc = namespace^"/sub_"^(string_of_int id) in
@@ -173,76 +206,126 @@ struct
     let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
     loc,inp_locs,out_loc
 
+
+  let create_mult q namespace n_inps =
+    let id = symtbl_size () in
+    let loc = namespace^"/mul_"^(string_of_int id) in
+    let inpstr=  STRING.repeat "*" n_inps in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "*") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "Inputs"
+         (MATLit(MATStr(inpstr))));
+    let inp_locs = List.map
+        (fun (x:int) -> loc^"/"^(string_of_int x))
+        (LIST.mkrange 1 (n_inps))
+    in
+    let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
+    loc,inp_locs,out_loc
+
+  let create_div q namespace  =
+    let id = symtbl_size () in
+    let loc = namespace^"/mul_"^(string_of_int id) in
+    let inpstr=  "/" in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "*") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "Inputs"
+         (MATLit(MATStr(inpstr))));
+    let numer_loc = loc^"/"^(string_of_int 1) in
+    let denom_loc = loc^"/"^(string_of_int 2) in
+    let out_loc = loc^"/"^(string_of_int 3) in
+    loc,numer_loc,denom_loc,out_loc
+
   let relative ns loc =
     STRING.removeprefix loc (ns^"/") 
 
   let connect_src_to_snk q namespace src snk =
     let rel_src = relative namespace src in
     let rel_snk = relative namespace snk in
-    q (MATStmt(MATFxn("add_line",[
-        MATLit(MATStr(namespace));
-        MATLit(MATStr(rel_src));
-        MATLit(MATStr(rel_snk));
-      ])));
+    q (add_line namespace src snk);
     ()
+    
 
-    let expr2blockdiag (q:matst->unit) (namespace:string) (comp:hwvid hwcomp) (expr:hwvid ast) =
-      let comp_namespace = comp_addr namespace comp.name in
+    let expr2blockdiag (q:matst->unit) (namespace:string) (expr:hwvid ast) =
       let rec _expr2blockdiag el =
         match el with
         | Term(HNPort(HWKInput,_,port,_)) ->
-          let port = port_addr namespace comp.name port in
-          port^"/1"
+          namespace^"/"^port^"/1"
         | Term(HNPort(HWKOutput,_,port,_)) ->
-          let port = port_addr namespace comp.name port in
-          port^"/2"
+          namespace^"/"^port^"/1"
         | Decimal(d) ->
-          create_const q comp_namespace (d) 
+          create_const q namespace (d) 
         | Integer(i) ->
-          create_const q comp_namespace (float_of_int i)
+          create_const q namespace (float_of_int i)
         | OpN(Add,args) ->
           let handles = List.map (fun arg -> _expr2blockdiag arg) args in
-          let adder,ins,out = create_add q comp_namespace (List.length handles) in
+          let adder,ins,out = create_add q namespace (List.length handles) in
           List.iter (fun (add_in,h_out) ->
-              connect_src_to_snk q comp_namespace h_out add_in
+              connect_src_to_snk q namespace h_out add_in
             ) (LIST.zip ins handles);
           out
         | OpN(Sub,args) ->
           let handles = List.map (fun arg -> _expr2blockdiag arg) args in
-          let adder,ins,out = create_sub q comp_namespace (List.length handles) in
+          let adder,ins,out = create_sub q namespace (List.length handles) in
           List.iter (fun (add_in,h_out) ->
-              connect_src_to_snk q comp_namespace h_out add_in
+              connect_src_to_snk q namespace h_out add_in
             ) (LIST.zip ins handles);
+          out
+        | OpN(Mult,args) ->
+          let handles = List.map (fun arg -> _expr2blockdiag arg) args in
+          let mult,ins,out = create_mult q namespace (List.length handles) in
+          List.iter (fun (add_in,h_out) ->
+              connect_src_to_snk q namespace h_out add_in
+            ) (LIST.zip ins handles);
+          out
+        | Op2(Div,numer,denom) ->
+          let numer = _expr2blockdiag numer in
+          let denom = _expr2blockdiag denom in
+          let mult,mult_numer,mult_denom,mult_out = create_div q namespace  in
+          connect_src_to_snk q namespace numer mult_numer;
+          connect_src_to_snk q namespace denom mult_denom;
+          mult_out
+        | Op1(Neg,expr) ->
+          let expr_loc = _expr2blockdiag expr in
+          let adder,inp,out = create_neg q namespace in
+          connect_src_to_snk q namespace expr_loc inp;
           out
         | _ ->
           "???"
       in
     _expr2blockdiag expr
 
+  let create_subsystem q namespace name =
+    let loc = (namespace^"/"^name) in
+    q (add_block (get_basic_fxn "comp") loc);
+    q (remove_line loc "In0/1" "Out0/1");
+    q (remove_block loc "In0");
+    q (remove_block loc "Out0");
+    loc
+
   let create_block circuit (comp:hwvid hwcomp) : matst list =
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
-    let cmp = get_basic_fxn "comp" in
-    let fxn = get_basic_fxn "+" in
-    q (add_block cmp (comp_addr circuit comp.name));
+    let cmp_namespace =
+      create_subsystem q circuit (HwLib.hwcompname2str comp.name)
+    in
     HwLib.comp_iter_ins comp (fun vr ->
-        let loc = comp_addr circuit comp.name in
-        create_in q loc vr.port ;
+        create_in q cmp_namespace vr.port ;
         ()
       );
     HwLib.comp_iter_outs comp (fun vr ->
-        let loc = comp_addr circuit comp.name in
-        create_out q loc vr.port;
+        create_out q cmp_namespace vr.port;
         ()
     );
     HwLib.comp_iter_outs comp (fun vr ->
         match vr.bhvr with
         | HWBAnalog(bhvr) ->
-          let handle = expr2blockdiag q circuit comp bhvr.rhs in
+          let handle = expr2blockdiag q cmp_namespace bhvr.rhs in
           ()
         | HWBAnalogState(bhvr) ->
-          let handle = expr2blockdiag q circuit comp bhvr.rhs in
+          let handle = expr2blockdiag q cmp_namespace bhvr.rhs in
           ()
     );
     let stmts = QUEUE.to_list stmtq in
@@ -250,17 +333,17 @@ struct
     stmts
 
   let create_library circuit (g:hwvid hwenv) : matst list=
-    let library = circuit^"/"^"library" in
     let stmtq = QUEUE.make () in
-    QUEUE.enqueue stmtq (add_block
-                     (get_basic_fxn "comp")
-                     library
-                  );
-    QUEUE.enqueue_all stmtq [MATComment("");MATComment("")];
+    let q x = noop (QUEUE.enqueue stmtq x) in
+    let qs x = noop (QUEUE.enqueue_all stmtq x) in
+    let lib_ns :string  =
+      create_subsystem q circuit ("library")
+    in
+    qs [MATComment("");MATComment("")];
     HwLib.iter_comps g (fun cmp ->
-        let stmts = create_block library cmp in
-        QUEUE.enqueue stmtq (MATComment(""));
-        QUEUE.enqueue_all stmtq stmts;
+        let stmts : matst list= create_block lib_ns cmp in
+        q (MATComment(""));
+        qs stmts;
         ()
       );
     let stmts = QUEUE.to_list stmtq in
