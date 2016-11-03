@@ -162,7 +162,7 @@ struct
         declare_var internal_loc;
         q (add_block (get_basic_fxn "out") loc);
         q (add_block (get_basic_fxn "gain") internal_loc);
-        q (add_line namespace (internal_loc^"/2") (loc^"/1"))
+        q (add_line namespace (internal_loc^"/1") (loc^"/1"))
       end;
     loc
 
