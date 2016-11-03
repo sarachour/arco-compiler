@@ -64,6 +64,14 @@ struct
   noop (MAP.put basic_fxns "minmax" "simulink/Math Operations/MinMax");;
   noop (MAP.put basic_fxns "comp" "simulink/Ports & Subsystems/Subsystem");;
 
+  let symtbl = MAP.make ()
+
+  let declare_var k = MAP.put symtbl k (); ()
+
+  let symtbl_size () = MAP.size symtbl
+
+  let defined k = MAP.has symtbl k
+
   let get_basic_fxn name =
     MAP.get basic_fxns name
 
@@ -82,7 +90,7 @@ struct
 
   let set_param mvar param vl =
      MATStmt(MATFxn("set_param",[
-        MATVar(mvar);
+        mvar;
         MATLit(MATStr(param));
         vl
       ]))
@@ -98,18 +106,118 @@ struct
         MATFxn("new_system",[MATVar(model_name)])
       ])));
     q (MATComment "set solver method");
-    q (set_param model_name "Solver" (MATLit (MATStr("ode3"))));
+    q (set_param (MATVar model_name) "Solver" (MATLit (MATStr("ode3"))));
     ()
 
-  let create_in q circuit (s:hwvid hwcomp) (pvar:hwvid hwportvar) =
-    let loc = port_addr circuit s.name pvar.port in
-    q (add_block (get_basic_fxn "in") loc);
+  let create_in q namespace (vr:string)=
+    let loc = namespace^"/"^vr in
+    if defined loc = false then      
+      begin
+        declare_var loc;
+        q (add_block (get_basic_fxn "in") loc)
+      end;
+    loc
+
+  let create_out q namespace (vr:string) =
+    let loc = namespace^"/"^vr in
+    if defined loc = false then      
+      begin
+        declare_var loc;
+        q (add_block (get_basic_fxn "out") loc)
+      end;
+    loc
+
+  let create_const (q:matst->unit) (namespace:string) (value:float) =
+    let loc = namespace^"/const_"^(string_of_float value) in
+    if defined loc = false then      
+      begin
+        declare_var (loc);
+        q (add_block (get_basic_fxn "const") (loc));
+        q (set_param
+             (MATLit(MATStr(loc))) "Constant value"
+             (MATLit(MATFloat(value)))
+          )
+      end;
+    loc
+
+  let create_sub q namespace n_inps =
+    let id = symtbl_size () in
+    let loc = namespace^"/add_#"^(string_of_int id) in
+    let inpstr=  "+"^(STRING.repeat "-" n_inps) in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "+") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "Inputs"
+         (MATLit(MATStr(inpstr))));
+    let inp_locs = List.map
+        (fun (x:int) -> loc^"/"^(string_of_int x))
+        (LIST.mkrange 0 n_inps)
+    in
+    let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
+    loc,inp_locs,out_loc
+
+
+  let create_add q namespace n_inps =
+    let id = symtbl_size () in
+    let loc = namespace^"/add_#"^(string_of_int id) in
+    let inpstr=  STRING.repeat "+" n_inps in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "+") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "Inputs"
+         (MATLit(MATStr(inpstr))));
+    let inp_locs = List.map
+        (fun (x:int) -> loc^"/"^(string_of_int x))
+        (LIST.mkrange 0 n_inps)
+    in
+    let out_loc = loc^"/"^(string_of_int (n_inps + 1)) in
+    loc,inp_locs,out_loc
+
+  let relative ns loc =
+    STRING.removeprefix loc (ns^"/") 
+
+  let connect_src_to_snk q namespace src snk =
+    let rel_src = relative namespace src in
+    let rel_snk = relative namespace snk in
+    q (MATStmt(MATFxn("add_line",[
+        MATLit(MATStr(namespace));
+        MATLit(MATStr(rel_src));
+        MATLit(MATStr(rel_snk));
+      ])));
     ()
 
-  let create_out q circuit (s:hwvid hwcomp) (pvar:hwvid hwportvar) =
-    let loc = port_addr circuit s.name pvar.port in
-    q (add_block (get_basic_fxn "in") loc);
-    ()
+    let expr2blockdiag (q:matst->unit) (namespace:string) (comp:hwvid hwcomp) (expr:hwvid ast) =
+      let comp_namespace = comp_addr namespace comp.name in
+      let rec _expr2blockdiag el =
+        match el with
+        | Term(HNPort(HWKInput,_,port,_)) ->
+          let port = port_addr namespace comp.name port in
+          port^"/1"
+        | Term(HNPort(HWKOutput,_,port,_)) ->
+          let port = port_addr namespace comp.name port in
+          port^"/0"
+        | Decimal(d) ->
+          create_const q comp_namespace (d) 
+        | Integer(i) ->
+          create_const q comp_namespace (float_of_int i)
+        | OpN(Add,args) ->
+          let handles = List.map (fun arg -> _expr2blockdiag arg) args in
+          let adder,ins,out = create_add q comp_namespace (List.length handles) in
+          List.iter (fun (add_in,h_out) ->
+              connect_src_to_snk q comp_namespace h_out add_in
+            ) (LIST.zip ins handles);
+          out
+        | OpN(Sub,args) ->
+          let handles = List.map (fun arg -> _expr2blockdiag arg) args in
+          let adder,ins,out = create_sub q comp_namespace (List.length handles) in
+          List.iter (fun (add_in,h_out) ->
+              connect_src_to_snk q comp_namespace h_out add_in
+            ) (LIST.zip ins handles);
+          out
+        | _ ->
+          "???"
+      in
+    _expr2blockdiag expr
 
   let create_block circuit (comp:hwvid hwcomp) : matst list =
     let stmtq = QUEUE.make () in
@@ -119,20 +227,39 @@ struct
     let fxn = get_basic_fxn "+" in
     q (add_block cmp (comp_addr circuit comp.name));
     HwLib.comp_iter_ins comp (fun vr ->
-        create_in q circuit comp vr
+        let loc = comp_addr circuit comp.name in
+        create_in q loc vr.port ;
+        ()
       );
     HwLib.comp_iter_outs comp (fun vr ->
-        create_out q circuit comp vr
+        let loc = comp_addr circuit comp.name in
+        create_out q loc vr.port;
+        ()
+    );
+    HwLib.comp_iter_outs comp (fun vr ->
+        match vr.bhvr with
+        | HWBAnalog(bhvr) ->
+          let handle = expr2blockdiag q circuit comp bhvr.rhs in
+          ()
+        | HWBAnalogState(bhvr) ->
+          let handle = expr2blockdiag q circuit comp bhvr.rhs in
+          ()
     );
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
     stmts
 
   let create_library circuit (g:hwvid hwenv) : matst list=
-    let library = MAP.make () in
+    let library = circuit^"/"^"library" in
     let stmtq = QUEUE.make () in
+    QUEUE.enqueue stmtq (add_block
+                     (get_basic_fxn "comp")
+                     library
+                  );
+    QUEUE.enqueue_all stmtq [MATComment("");MATComment("")];
     HwLib.iter_comps g (fun cmp ->
-        let stmts = create_block circuit cmp in
+        let stmts = create_block library cmp in
+        QUEUE.enqueue stmtq (MATComment(""));
         QUEUE.enqueue_all stmtq stmts;
         ()
       );
