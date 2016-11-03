@@ -25,6 +25,17 @@ struct
   let mkdflt_ival () : interval =
     IntervalUnknown([])
 
+  let interval2numbounds (x:interval) =
+    match x with
+    | Interval(i) ->
+      begin
+        match i.min,i.max with
+        | BNDNum(min),BNDNum(max) -> min,max
+        | _ -> error "interval2numbounds" "not expecting inf bound"
+      end
+    | _ -> error "interval2numbounds" "not expecting quantized interval"
+
+
   let is_undefined i = match i with
     | IntervalUnknown(_) -> true
     | _ -> false

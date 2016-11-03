@@ -5,6 +5,8 @@ open Util
 open HWLib
 open HWData
 
+open IntervalLib
+
 type matvar =
   | MATScalar of string
 
@@ -54,14 +56,16 @@ struct
   let basic_fxns = MAP.make ();;
   noop (MAP.put basic_fxns "*" "simulink/Math Operations/Product");;
   noop (MAP.put basic_fxns "+" "simulink/Math Operations/Sum");;
-  noop (MAP.put basic_fxns "\int" "simulink/Continuous/Integrator");;
+  noop (MAP.put basic_fxns "int" "simulink/Continuous/Integrator");;
+  noop (MAP.put basic_fxns "sat" "simulink/Discontinuities/Saturation");;
   noop (MAP.put basic_fxns "in" "simulink/Ports & Subsystems/In1");;
   noop (MAP.put basic_fxns "out" "simulink/Ports & Subsystems/Out1");;
   noop (MAP.put basic_fxns "const" "simulink/Sources/Constant");;
+  noop (MAP.put basic_fxns "noise" "simulink/Sources/Uniform Random Number");;
+  noop (MAP.put basic_fxns "pulse" "simulink/Sources/Pulse Generator");;
   noop (MAP.put basic_fxns "gain" "simulink/Math Operations/Gain");;
   noop (MAP.put basic_fxns "-" "simulink/Math Operations/Subtract");;
   noop (MAP.put basic_fxns "mfxn" "simulink/Math Operations/Math Function");;
-  noop (MAP.put basic_fxns "minmax" "simulink/Math Operations/MinMax");;
   noop (MAP.put basic_fxns "comp" "simulink/Ports & Subsystems/Subsystem");;
 
   let symtbl = MAP.make ()
@@ -135,26 +139,37 @@ struct
     q (set_param (MATVar model_name) "Solver" (MATLit (MATStr("ode3"))));
     ()
 
-  let create_in q namespace (vr:string)=
-    let loc = namespace^"/"^vr in
-    if defined loc = false then      
-      begin
-        declare_var loc;
-        q (add_block (get_basic_fxn "in") loc);
-        q (set_param (MATLit(MATStr(loc))) "Name"
-             (MATLit(MATStr(vr))) )
-      end;
-    loc
-
   let get_input_loc namespace v =
-    namespace^"/"^v^"/1"
+    namespace^"/_"^v^"/1"
 
   let get_output_loc namespace v =
     namespace^"/_"^v^"/1"
 
-  let create_out q namespace (vr:string) =
-    let loc = namespace^"/"^vr in
-    let internal_loc = namespace^"/_"^vr in
+
+  let get_ext_input_loc namespace v=
+    namespace^"/"^v^"/1"
+
+  let get_ext_output_loc namespace v=
+    namespace^"/"^v^"/1"
+
+
+  let create_in q ns (vr:string)=
+    let loc = ns^"/"^vr in
+    let internal_loc = ns^"/_"^vr in
+    if defined loc = false then      
+      begin
+        declare_var loc;
+        declare_var internal_loc;
+        q (add_block (get_basic_fxn "in") loc);
+        q (set_param (MATLit(MATStr(loc))) "Name"
+             (MATLit(MATStr(vr))) );
+        q (add_block (get_basic_fxn "gain") internal_loc)
+      end;
+    loc,internal_loc
+
+  let create_out q ns (vr:string) =
+    let loc = ns^"/"^vr in
+    let internal_loc = ns^"/_"^vr in
     (*the iytoyt has an internal and external lock*)
     if defined loc = false then      
       begin
@@ -162,9 +177,9 @@ struct
         declare_var internal_loc;
         q (add_block (get_basic_fxn "out") loc);
         q (add_block (get_basic_fxn "gain") internal_loc);
-        q (add_line namespace (internal_loc^"/1") (loc^"/1"))
+        q (add_line ns (get_output_loc ns vr) (get_ext_output_loc ns vr))
       end;
-    loc
+    loc,internal_loc
 
   let create_const (q:matst->unit) (namespace:string) (value:float) =
     let id = symtbl_size () in
@@ -259,56 +274,142 @@ struct
     loc,numer_loc,denom_loc,out_loc
 
 
-    
+  let create_power q namespace  =
+    let id = symtbl_size () in
+    let loc = namespace^"/pow_"^(string_of_int id) in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "mfxn") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "Function"
+         (MATLit(MATStr("pow"))));
+    let base_loc = loc^"/1" in
+    let exp_loc = loc^"/2" in
+    let out_loc = loc^"/1" in
+    loc,base_loc,exp_loc,out_loc
 
-    let expr2blockdiag (q:matst->unit) (namespace:string) (expr:hwvid ast) =
-      let rec _expr2blockdiag el =
-        match el with
-        | Term(HNPort(HWKInput,_,port,_)) ->
-          get_input_loc namespace port
-        | Term(HNPort(HWKOutput,_,port,_)) ->
-          get_output_loc namespace port
-        | Decimal(d) ->
-          create_const q namespace (d) 
-        | Integer(i) ->
-          create_const q namespace (float_of_int i)
-        | OpN(Add,args) ->
-          let handles = List.map (fun arg -> _expr2blockdiag arg) args in
-          let adder,ins,out = create_add q namespace (List.length handles) in
-          List.iter (fun (add_in,h_out) ->
-              q (add_line namespace h_out add_in)
-            ) (LIST.zip ins handles);
-          out
-        | OpN(Sub,args) ->
-          let handles = List.map (fun arg -> _expr2blockdiag arg) args in
-          let adder,ins,out = create_sub q namespace (List.length handles) in
-          List.iter (fun (add_in,h_out) ->
-              q (add_line namespace h_out add_in)
-            ) (LIST.zip ins handles);
-          out
-        | OpN(Mult,args) ->
-          let handles = List.map (fun arg -> _expr2blockdiag arg) args in
-          let mult,ins,out = create_mult q namespace (List.length handles) in
-          List.iter (fun (add_in,h_out) ->
-              q (add_line namespace h_out add_in)
-            ) (LIST.zip ins handles);
-          out
-        | Op2(Div,numer,denom) ->
-          let numer = _expr2blockdiag numer in
-          let denom = _expr2blockdiag denom in
-          let mult,mult_numer,mult_denom,mult_out = create_div q namespace  in
-          q (add_line namespace numer mult_numer);
-          q (add_line namespace denom mult_denom);
-          mult_out
-        | Op1(Neg,expr) ->
-          let expr_loc = _expr2blockdiag expr in
-          let adder,inp,out = create_neg q namespace in
-          q (add_line namespace expr_loc inp);
-          out
-        | _ ->
-          "???"
-      in
-    _expr2blockdiag expr
+    
+  let create_clamp q namespace min max =
+    let id = symtbl_size () in
+    let loc = namespace^"/sat_"^(string_of_int id) in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "sat") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "UpperLimit"         
+         (MATLit(MATStr(string_of_float max))));
+    q (set_param
+         (MATLit(MATStr(loc))) "LowerLimit"         
+         (MATLit(MATStr(string_of_float max))));
+    let clamp_in = loc^"/1" in
+    let clamp_out = loc^"/1" in
+    loc,clamp_in,clamp_out
+
+  let create_sample q namespace sample =
+    let id = symtbl_size () in
+    let loc = namespace^"/smp_"^(string_of_int id) in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "pulse") loc);
+    q (set_param
+         (MATLit(MATStr(loc))) "Period"         
+         (MATLit(MATStr(string_of_float sample))));
+    q (set_param
+         (MATLit(MATStr(loc))) "Pulse Width"         
+         (MATLit(MATStr("50"))));
+    let sample_in = loc^"/1" in
+    let sample_out = loc^"/1" in
+    loc,sample_in,sample_out
+
+  let create_noise q namespace =
+   let id = symtbl_size () in
+   let loc = namespace^"/unz_"^(string_of_int id) in
+   let vloc = namespace^"/unzv_"^(string_of_int id) in
+   let aloc = namespace^"/unza_"^(string_of_int id) in
+   declare_var (loc);
+   declare_var (vloc);
+   declare_var (aloc);
+   q (add_block (get_basic_fxn "noise") loc);
+   q (add_block (get_basic_fxn "*") vloc);
+   q (add_block (get_basic_fxn "+") aloc);
+   q (set_param
+         (MATLit(MATStr(aloc))) "Inputs"
+         (MATLit(MATStr("++"))));
+   q (set_param
+         (MATLit(MATStr(vloc))) "Inputs"
+         (MATLit(MATStr("**"))));
+   let noise_out = loc^"/1" in
+   let mul_in1 = vloc^"/1" in
+   let mul_out = vloc^"/1" in
+   let mul_in2 = vloc^"/2" in
+   let add_in1 = aloc^"/1" in
+   let add_in2 = aloc^"/2" in
+   let add_out = aloc^"/1" in
+   q (add_line namespace noise_out mul_in2);
+   q (add_line namespace mul_out add_in2);
+   vloc,mul_in1,add_in2,add_out
+
+  let create_integrator q namespace =
+    let id = symtbl_size () in
+    let loc = namespace^"/int_"^(string_of_int id) in
+    declare_var (loc);
+    q (add_block (get_basic_fxn "int") loc);
+    let integ_in_out = loc^"/1" in
+    loc,integ_in_out,integ_in_out
+
+  let expr2blockdiag (q:matst->unit) (namespace:string)  (expr:hwvid ast)  =
+    let rec _expr2blockdiag el =
+      match el with
+      | Term(HNPort(HWKInput,_,port,_)) ->
+        get_input_loc namespace port
+      | Term(HNPort(HWKOutput,_,port,_)) ->
+        get_output_loc namespace port
+      | Decimal(d) ->
+        create_const q namespace (d) 
+      | Integer(i) ->
+        create_const q namespace (float_of_int i)
+      | OpN(Add,args) ->
+        let handles = List.map (fun arg -> _expr2blockdiag arg) args in
+        let adder,ins,out = create_add q namespace (List.length handles) in
+        List.iter (fun (add_in,h_out) ->
+            q (add_line namespace h_out add_in)
+          ) (LIST.zip ins handles);
+        out
+      | OpN(Sub,args) ->
+        let handles = List.map (fun arg -> _expr2blockdiag arg) args in
+        let adder,ins,out = create_sub q namespace (List.length handles) in
+        List.iter (fun (add_in,h_out) ->
+            q (add_line namespace h_out add_in)
+          ) (LIST.zip ins handles);
+        out
+      | OpN(Mult,args) ->
+        let handles = List.map (fun arg -> _expr2blockdiag arg) args in
+        let mult,ins,out = create_mult q namespace (List.length handles) in
+        List.iter (fun (add_in,h_out) ->
+            q (add_line namespace h_out add_in)
+          ) (LIST.zip ins handles);
+        out
+      | Op2(Power,base,exp) ->
+        let base = _expr2blockdiag base in
+        let exp = _expr2blockdiag exp in
+        let power,pow_base,pow_exp,pow_out = create_power q namespace in
+        q (add_line namespace exp pow_exp);
+        q (add_line namespace base pow_base);
+        pow_out
+
+      | Op2(Div,numer,denom) ->
+        let numer = _expr2blockdiag numer in
+        let denom = _expr2blockdiag denom in
+        let mult,mult_numer,mult_denom,mult_out = create_div q namespace  in
+        q (add_line namespace numer mult_numer);
+        q (add_line namespace denom mult_denom);
+        mult_out
+      | Op1(Neg,expr) ->
+        let expr_loc = _expr2blockdiag expr in
+        let adder,inp,out = create_neg q namespace in
+        q (add_line namespace expr_loc inp);
+        out
+      | _ ->
+        "???"
+    in
+  _expr2blockdiag expr
 
   let create_subsystem q namespace name =
     let loc = (namespace^"/"^name) in
@@ -322,25 +423,80 @@ struct
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
-    let cmp_namespace =
+    let cmpns =
       create_subsystem q circuit (HwLib.hwcompname2str comp.name)
     in
     HwLib.comp_iter_ins comp (fun vr ->
-        create_in q cmp_namespace vr.port ;
-        ()
+        let ext_in,int_in = create_in q cmpns vr.port in
+        match vr.defs with
+        | HWDAnalog(defs) ->
+          let min,max = IntervalLib.interval2numbounds defs.ival in
+          let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
+          q (add_line cmpns ext_in clamp_in);
+          q (add_line cmpns clamp_out int_in);
+        | HWDDigital(defs) ->
+          let sample,_ = defs.freq in
+          let sample_cmp,sample_in,sample_out =
+            create_sample q cmpns (float_of_number sample)
+          in
+          q (add_line cmpns ext_in sample_in);
+          q (add_line cmpns sample_out int_in);
+          ()
+        | _ -> error "comp_iter_ins" "unexpected"
       );
     HwLib.comp_iter_outs comp (fun vr ->
-        create_out q cmp_namespace vr.port;
+        create_out q cmpns vr.port;
+        ()
+    );
+    HwLib.comp_iter_params comp (fun (par:hwparam) ->
+        let ext_in,int_in = create_in q cmpns par.name in
+        q (add_line cmpns ext_in int_in);
         ()
     );
     HwLib.comp_iter_outs comp (fun vr ->
-        match vr.bhvr with
-        | HWBAnalog(bhvr) ->
-          let handle = expr2blockdiag q cmp_namespace bhvr.rhs in
+        let int_out = get_output_loc cmpns vr.port in
+        match vr.bhvr,vr.defs with
+        | HWBAnalog(bhvr),HWDAnalog(defs) ->
+          (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
+          (*compute handles*)
+          let handle = expr2blockdiag q cmpns bhvr.rhs in
+          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
+          (*this is where you'd pipe the output through a few things*)
+          let _,variance,noise_in,noise_out = create_noise q cmpns in 
+          (*then you connect*)
+          q (add_line cmpns handle noise_in);
+          q (add_line cmpns var_handle variance);
+          q (add_line cmpns noise_out int_out);
           ()
-        | HWBAnalogState(bhvr) ->
-          let handle = expr2blockdiag q cmp_namespace bhvr.rhs in
+        | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
+          (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
+          let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
+          let handle = expr2blockdiag q cmpns bhvr.rhs in
+          (*this is where you'd pipe the output through a few things*)
+          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
+          let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+          (*this is where you'd pipe the output through a few things*)
+          let _,variance,noise_in,noise_out = create_noise q cmpns in 
+          let _,integ_in,integ_out = create_integrator q cmpns in
+          (*then you connect*)
+          q (add_line cmpns handle noise_in);
+          q (add_line cmpns var_handle variance);
+          q (add_line cmpns noise_out integ_in);
+          q (add_line cmpns integ_out sclamp_in);
+          q (add_line cmpns sclamp_out int_out);
+          (*then you connect*)
           ()
+        | HWBAnalog(bhvr),HWDDigital(defs) ->
+          let handle = expr2blockdiag q cmpns bhvr.rhs in
+          let sample,_ = defs.freq in
+          let _,sample_in,sample_out =
+            create_sample q cmpns (float_of_number sample)
+          in
+          q (add_line cmpns handle sample_in);
+          q (add_line cmpns sample_out int_out);
+        | _ -> error "iter outs" "unexpected"
     );
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;

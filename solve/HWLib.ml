@@ -518,6 +518,9 @@ struct
   let comp_fold_ins (type a) (type b) (x:a hwcomp) (f:a hwportvar -> b -> b) (x0:b) : b =
     MAP.fold x.ins (fun k v r -> f v r) x0 
 
+  let comp_fold_params (type a) (type b) (x:a hwcomp) (f:hwparam -> b -> b) (x0:b) : b =
+    MAP.fold x.params (fun k v r -> f v r) x0 
+
   let comp_fold_vars (type a) (type b) (x:a hwcomp) (f:a hwportvar -> b -> b) (x0:b) : b =
     let x1 = comp_fold_ins x f x0 in
     comp_fold_outs x f x1
@@ -530,6 +533,10 @@ struct
 
   let comp_iter_vars (type a) (x:a hwcomp) (f:a hwportvar -> unit) : unit =
     comp_fold_vars x (fun x () -> f x) ()
+
+  let comp_iter_params (type a) (x:a hwcomp) (f:hwparam -> unit) : unit =
+    comp_fold_params x (fun x () -> f x) ()
+
 
   let comp_getparam (type a) (x:a hwcomp) (f:string) =
     if MAP.has x.params f then
