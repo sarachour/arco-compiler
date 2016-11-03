@@ -310,7 +310,7 @@ struct
          (MATLit(MATStr(loc))) "Period"         
          (MATLit(MATStr(string_of_float sample))));
     q (set_param
-         (MATLit(MATStr(loc))) "Pulse Width"         
+         (MATLit(MATStr(loc))) "PulseWidth"         
          (MATLit(MATStr("50"))));
     let sample_in = loc^"/1" in
     let sample_out = loc^"/1" in
