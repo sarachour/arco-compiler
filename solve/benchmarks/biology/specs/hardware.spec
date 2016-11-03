@@ -15,6 +15,7 @@ digital input I
   output O {I:mA}
   def I(O) mag = [0,1] mA
   def D(X) repr = SEEEEMMM 
+  def D(X) sample = 0.00001 us
   
   rel I(O) = D(X)
   var I(O) = I(O)*0.00001 shape UNIFORM
