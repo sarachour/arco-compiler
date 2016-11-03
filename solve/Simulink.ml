@@ -57,7 +57,7 @@ struct
   noop (MAP.put basic_fxns "\int" "simulink/Continuous/Integrator");;
   noop (MAP.put basic_fxns "in" "simulink/Ports & Subsystems/In1");;
   noop (MAP.put basic_fxns "out" "simulink/Ports & Subsystems/Out1");;
-  noop (MAP.put basic_fxns "const" "simulink/Math Operations/Const");;
+  noop (MAP.put basic_fxns "const" "simulink/Math Operatio(ns/Const");;
   noop (MAP.put basic_fxns "*v" "simulink/Math Operations/Gain");;
   noop (MAP.put basic_fxns "-" "simulink/Math Operations/Subtract");;
   noop (MAP.put basic_fxns "mfxn" "simulink/Math Operations/Math Function");;
@@ -128,7 +128,9 @@ struct
     let stmts = QUEUE.to_list stmtq in
     [
       MATComment("circuit build script");
-      MATFxnDecl("build_circuit",[],stmts)
+      MATFxnDecl("build_circuit",[],stmts);
+      MATComment("");
+      MATStmt(MATFxn("build_circuit",[]));
     ]
 
   let matvar2str (xvar:matvar) = match xvar with
@@ -172,6 +174,7 @@ struct
       | MATFxnDecl(name,vars,stmts) ->
         begin
           let args = List.map (fun x -> MATVar(x)) vars in
+          os (sp^"function ");
           matexpr2buf fb (MATFxn(name,args));
           os "\n";
           List.iter (fun x -> _matst2buf (ident+1) x) stmts
