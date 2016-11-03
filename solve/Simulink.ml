@@ -58,7 +58,7 @@ struct
   noop (MAP.put basic_fxns "in" "simulink/Ports & Subsystems/In1");;
   noop (MAP.put basic_fxns "out" "simulink/Ports & Subsystems/Out1");;
   noop (MAP.put basic_fxns "const" "simulink/Math Operatio(ns/Const");;
-  noop (MAP.put basic_fxns "*v" "simulink/Math Operations/Gain");;
+  noop (MAP.put basic_fxns "gain" "simulink/Math Operations/Gain");;
   noop (MAP.put basic_fxns "-" "simulink/Math Operations/Subtract");;
   noop (MAP.put basic_fxns "mfxn" "simulink/Math Operations/Math Function");;
   noop (MAP.put basic_fxns "minmax" "simulink/Math Operations/MinMax");;
