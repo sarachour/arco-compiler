@@ -423,6 +423,14 @@ struct
   let empty x =
     List.length x = 0
 
+  let last x =
+    List.nth x (List.length x - 1)
+
+  let rec except_last x = match x with
+    | [h] -> []
+    | h::t -> h::(except_last t)
+    | [] -> []
+
   let iter = List.iter
   (*joins list into tuples*)
   let zip a b =
