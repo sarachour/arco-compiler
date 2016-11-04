@@ -13,4 +13,4 @@ make_config debug_eq.cfg 2 3
 make_config eq.cfg 2 2 
 make_config multi.cfg 1 1 
 make_config prod.cfg 0 1 
-make_config proddbg.cfg 0 3 
+make_config proddbg.cfg 0 5

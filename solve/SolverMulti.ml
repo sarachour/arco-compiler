@@ -458,6 +458,16 @@ struct
       tbl.search <- search;
       tbl
 
+  let mk_glbl_tbl_copy (tbl:gltbl): gltbl =
+    let ntbl : gltbl = GoalTableFactory.mktbl tbl.env in
+    ntbl.search <- tbl.search;
+    begin
+      match SearchLib.root tbl.search with
+      |Some(root) -> SearchLib.clear_cursor ntbl.search
+      | None -> error "mk_global_tbl_copy" "there is no root cursor;";
+    end;
+    ntbl
+   
   (*a solution is complete if all the routing connections are on inputs*)
   let is_complete_sln ms (tbl:gltbl) =
     let valid = REF.mk true in
@@ -490,7 +500,8 @@ struct
   (*determine if the solution is complete or not and augment tree*)
   let complete_sln ms (tbl:gltbl) (sln: sstep snode) =
     let depth = get_glbl_int "slvr-global-depth" in
-    SearchLib.move_cursor tbl.search tbl sln;
+    let tmp_tbl = mk_glbl_tbl_copy tbl in 
+    SearchLib.move_cursor tbl.search tmp_tbl sln;
     if is_complete_sln ms tbl then
       Some(sln)
     else
@@ -523,7 +534,7 @@ struct
         begin
           (*iterate over each result and see if the configuration is still partial*)
           let complete_sln_steps = OPTION.conc_list (List.map (fun sln ->
-              complete_sln ms tbl sln 
+              complete_sln ms tbl sln
             ) sln_list)
           in
           (*if there are some incomplete solutions*)
@@ -531,18 +542,14 @@ struct
             _find_global_solution ()
           else
             begin
-            SearchLib.clear_cursor tbl.search;
-            begin
               match complete_sln_steps with
               | h::t ->
                 Some(h::t)
               | [] ->
                 None
             end
-            end
         end
       | None ->
-        SearchLib.clear_cursor tbl.search;
         None
     in
     _find_global_solution ()

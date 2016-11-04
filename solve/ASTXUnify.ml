@@ -28,8 +28,8 @@ open MathLib
 exception ASTUnifierException of (string)
 let error n msg = raise (ASTUnifierException(n^": "^msg))
 
-let spy_print_debug = print_debug 4 "sympy"
-let _print_debug = print_debug 3 "uni"
+let spy_print_debug = print_debug 8 "sympy"
+let _print_debug = print_debug 7 "uni"
 let debug : string -> unit =_print_debug  
 let spydebug: string -> unit =spy_print_debug  
 let auni_menu = menu 3

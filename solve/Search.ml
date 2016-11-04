@@ -355,7 +355,7 @@ struct
           env
     | None ->
         let to_node = TREE.get_path sr.tree next in
-        List.iter (fun x -> noop (apply_node sr env x)) to_node;
+        List.iter (fun x -> noop (apply_node sr env x)) (LIST.rev to_node);
         (sr.curs <- Some next);
         env
     in
@@ -538,6 +538,9 @@ struct
 
     | None ->
       error "initenv" "can't initialize environment when tehre is no root"
+
+  let set_cursor sr c =
+    sr.curs <- Some(c)
 
   let setroot (type a) (type b) (sr:(a,b) ssearch) (env:b) (sts:a list) =
     let steps = List.sort (sr.order) sts in

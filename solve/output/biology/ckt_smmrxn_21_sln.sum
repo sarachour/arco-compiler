@@ -1,0 +1,41 @@
+
+=== Route ===
+
+val 10 -> input.V[0].X
+val 0.11 -> input.V[1].X
+val 0 -> [input.V[2].X,input.V[4].X,input.V[3].X]
+val 0.15 -> input.V[5].X
+val 0.004 -> input.V[6].X
+val 1 -> [input.I[0].X,input.I[1].X]
+
+
+=== Generate ===
+lc S -> mm[0].Y
+lc E -> mm[0].X
+out ES -> [output.V[0].O,mm[0].XY,vadd[2].OUT2,output.V[1].O]
+
+val 10 -> input.V[0].O
+val 0.11 -> input.V[1].O
+val 0 -> [input.V[2].O,input.V[3].O,input.V[4].O]
+val 0.15 -> input.V[5].O
+val 0.004 -> input.V[6].O
+val 1 -> [input.I[1].O,input.I[0].O]
+
+ast (10*E*S) -> [vgain[1].P,vgain[1].P]
+
+=== Connect ===
+input.I[0].O ->  mm[0].kr
+vadd[2].OUT2 ->  output.V[0].X
+mm[0].Y ->  vgain[1].Z
+mm[0].X ->  vgain[1].X
+input.V[2].O ->  vadd[2].OUT2_0
+input.V[3].O ->  vadd[2].C
+input.I[1].O ->  mm[0].kf
+input.V[1].O ->  mm[0].Ytot
+mm[0].XY ->  output.V[1].X
+vgain[1].P ->  vadd[2].B
+input.V[0].O ->  vadd[2].D
+input.V[4].O ->  vadd[2].A
+input.V[5].O ->  mm[0].Xtot
+input.V[6].O ->  vgain[1].Y
+

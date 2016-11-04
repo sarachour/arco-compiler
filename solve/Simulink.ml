@@ -579,6 +579,7 @@ struct
       MATComment("circuit build script");
       MATFxnDecl("preamble",[],stmts);
       MATFxnDecl("build_comp_library",[],libstmts);
+      MATComment("");MATComment("");
       MATFxnDecl("build_circuit",[],circ_stmts);
       MATComment("");
     ]
