@@ -77,7 +77,7 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
       slvr_print_inter "---- Generating Simulink File ---";
       let matfile = (out^"_"^(string_of_int i)^".m") in
       let matcode : matst list =
-        SimulinkGen.to_simulink slntbl mappings out 
+        SimulinkGen.to_simulink slntbl mappings (out^"_"^(string_of_int i)) 
       in
       SimulinkGen.to_file matcode matfile
       end

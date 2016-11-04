@@ -582,6 +582,8 @@ struct
       MATComment("");MATComment("");
       MATFxnDecl("build_circuit",[],circ_stmts);
       MATComment("");
+      MATStmt(MATFxn("build_comp_library",[]));
+      MATStmt(MATFxn("build_circuit",[]));
     ]
 
   let matvar2str (xvar:matvar) = match xvar with
@@ -628,7 +630,8 @@ struct
           os (sp^"function ");
           matexpr2buf fb (MATFxn(name,args));
           os "\n";
-          List.iter (fun x -> _matst2buf (ident+1) x) stmts
+          List.iter (fun x -> _matst2buf (ident+1) x) stmts;
+          os "end\n"
         end
       | MATStmt(expr) ->
         begin
@@ -651,6 +654,7 @@ struct
           _matst2buf (ident+1) ifblk;
           os (sp^"else ");
           _matst2buf (ident+1) elseblk;
+          os (sp^"end\n")
         end
       | MATComment(x) ->
         os (sp^"%"^x^"\n")
