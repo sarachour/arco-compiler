@@ -259,13 +259,13 @@ struct
   let add_route_line src snk = match src, snk with
     | SIMBlockIn(ns1,cmp1,inp),SIMBlockOut(ns2,cmp2,out) ->
       if ns1 = ns2 then
-        add_line (ns_to_str ns1) (loc2path snk) (loc2path src)
+        add_line (STRING.remove_last_char (ns_to_str ns1)) (loc2path snk) (loc2path src)
       else
         error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
 
     | SIMBlockOut(ns1,cmp1,out),SIMBlockIn(ns2,cmp2,inp) ->
       if ns1 = ns2 then
-        add_line (ns_to_str ns1) (loc2path src) (loc2path snk)
+        add_line (STRING.remove_last_char (ns_to_str ns1)) (loc2path src) (loc2path snk)
       else
         error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
 

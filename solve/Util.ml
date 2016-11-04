@@ -220,6 +220,8 @@ struct
   let removeprefix (s:string) (prefix:string)  =
     List.nth (Str.split (Str.regexp prefix) s) 0
 
+  let remove_last_char (s:string) =
+    String.sub s 0 (String.length s - 1)
 end
 
 module FUN =
