@@ -259,13 +259,13 @@ struct
   let add_route_line src snk = match src, snk with
     | SIMBlockIn(ns1,cmp1,inp),SIMBlockOut(ns2,cmp2,out) ->
       if ns1 = ns2 then
-        add_line (ns_to_str ns1) (cmp2^"/"^out) (cmp1^"/"^inp)
+        add_line (ns_to_str ns1) (loc2path snk) (loc2path src)
       else
         error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
 
     | SIMBlockOut(ns1,cmp1,out),SIMBlockIn(ns2,cmp2,inp) ->
       if ns1 = ns2 then
-        add_line (ns_to_str ns1) (cmp1^"/"^out) (cmp2^"/"^inp)
+        add_line (ns_to_str ns1) (loc2path src) (loc2path snk)
       else
         error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
 
@@ -326,7 +326,8 @@ struct
     if defined loc = false then      
       begin
         declare_vars [loc;internal_loc];
-        declare_vars [loc_out_port;int_loc_in_port;int_loc_out_port];
+        declare_vars [loc_out_port;
+                      int_loc_in_port;int_loc_out_port];
         declare_vars [external_loc];
         q (add_route_block (get_basic_fxn "in")  loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc)
@@ -343,9 +344,9 @@ struct
     (*the iytoyt has an internal and external lock*)
     if defined loc = false then      
       begin
-        declare_vars [loc;external_loc;internal_loc;
-                      int_loc_out_port;int_loc_out_port
-                     ];
+        declare_vars [loc;external_loc;internal_loc];
+        declare_vars [loc_in_port;
+                      int_loc_out_port;int_loc_out_port];
         q (add_route_block (get_basic_fxn "out") loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc);
         q (add_route_line int_loc_out_port loc_in_port)
@@ -359,6 +360,7 @@ struct
     if defined loc = false then
       begin
         declare_var (loc);
+        declare_var (loc_out);
         q (add_route_block (get_basic_fxn "const") (loc));
         q (set_route_param
              loc "Value"
@@ -465,6 +467,7 @@ struct
     let base_loc = mk_sim_in loc "B" in
     let exp_loc = mk_sim_in loc "E" in
     let out_loc = mk_sim_out loc "O" in
+    declare_vars [base_loc;exp_loc;out_loc];
     loc,base_loc,exp_loc,out_loc
 
     
@@ -544,19 +547,20 @@ struct
     q (add_route_block (get_basic_fxn "int") loc);
     let integ_in = mk_sim_in loc "I" in
     let integ_out = mk_sim_out loc "O" in
+    declare_vars [integ_in;integ_out];
     loc,integ_in,integ_out
 
   let expr2blockdiag (q:matst->unit) (namespace:simns)  (expr:hwvid ast)  =
     let cmp = LIST.last namespace in
-    let ns = LIST.except_last namespace in
+    (*let ns = LIST.except_last namespace in*)
     let rec _expr2blockdiag el =
       match el with
       | Term(HNPort(HWKInput,_,port,_)) ->
-        SIMBlockOut(namespace,port,"O")
+        SIMBlockOut(namespace,"_"^port,"O")
       | Term(HNPort(HWKOutput,_,port,_)) ->
-        SIMBlockOut(namespace,port,"O")
+        SIMBlockOut(namespace,"_"^port,"O")
       | Term(HNParam(_,name)) ->
-        SIMBlockOut(namespace,name,"O")
+        SIMBlockOut(namespace,"_"^name,"O")
       | Term(_) ->
         error "conv" "unhandled term time"
       | Decimal(d) ->
@@ -658,16 +662,16 @@ struct
         ()
     );
     HwLib.comp_iter_outs comp (fun vr ->
-        let int_out = SIMBlockIn(namespace,vr.port,"I") in
+        let int_out = SIMBlockIn(cmpns,vr.port,"I") in
         match vr.bhvr,vr.defs with
         | HWBAnalog(bhvr),HWDAnalog(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
           (*compute handles*)
-          let handle = expr2blockdiag q namespace bhvr.rhs in
-          let var_handle = expr2blockdiag q namespace bhvr.stoch.std in
-          (*let _,clamp_in,clamp_out= create_clamp q namespace min max in*)
+          let handle = expr2blockdiag q cmpns bhvr.rhs in
+          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
           (*this is where you'd pipe the output through a few things*)
-          let _,variance,noise_in,noise_out = create_noise q namespace in 
+          let _,variance,noise_in,noise_out = create_noise q cmpns in 
           (*then you connect*)
           q (add_route_line handle noise_in);
           q (add_route_line var_handle variance);
@@ -676,14 +680,14 @@ struct
         | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
           let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
-          let handle = expr2blockdiag q namespace bhvr.rhs in
+          let handle = expr2blockdiag q cmpns bhvr.rhs in
           (*this is where you'd pipe the output through a few things*)
-          let var_handle = expr2blockdiag q namespace bhvr.stoch.std in
-          (*let _,clamp_in,clamp_out= create_clamp q namespace min max in*)
-          let _,sclamp_in,sclamp_out= create_clamp q namespace smin smax in
+          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
+          let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
           (*this is where you'd pipe the output through a few things*)
-          let _,variance,noise_in,noise_out = create_noise q namespace in 
-          let _,integ_in,integ_out = create_integrator q namespace in
+          let _,variance,noise_in,noise_out = create_noise q cmpns in 
+          let _,integ_in,integ_out = create_integrator q cmpns in
           (*then you connect*)
           q (add_route_line handle noise_in);
           q (add_route_line var_handle variance);
@@ -693,10 +697,10 @@ struct
           (*then you connect*)
           ()
         | HWBAnalog(bhvr),HWDDigital(defs) ->
-          let handle = expr2blockdiag q namespace bhvr.rhs in
+          let handle = expr2blockdiag q cmpns bhvr.rhs in
           let sample,_ = defs.freq in
           let _,sample_in,sample_out =
-            create_sample q namespace (float_of_number sample)
+            create_sample q cmpns (float_of_number sample)
           in
           q (add_route_line handle sample_in);
           q (add_route_line sample_out int_out);
