@@ -9,6 +9,8 @@ open IntervalLib
 open SolverCompLib
 open SlnLib
 
+open Interactive
+
 type matvar =
   | MATScalar of string
 
@@ -38,6 +40,8 @@ struct
 
 end
 
+let _print_debug = print_debug 1 "dbg"
+let debug = print_debug 1 "dbg"
 
 module SimulinkGen =
 struct
@@ -83,25 +87,40 @@ struct
     MAP.clear symtbl.paths;
     MAP.clear symtbl.blocks
 
-  let blk_outport_to_id blk port =
-    let simblock = MAP.get symtbl.blocks blk in
-    MAP.get simblock.outs port
-
-  let blk_inport_to_id blk port =
-    let simblock = MAP.get symtbl.blocks blk in
-    MAP.get simblock.ins port
-
   let ns_to_str ns =
     match ns with
     | h::t -> (List.fold_left (fun s x -> s^"/"^x) h t)^"/"
     | [] -> ""
 
-  let loc2path x = match x with
+  let blk_outport_to_id blk port =
+    if MAP.has symtbl.blocks blk then
+      let simblock = MAP.get symtbl.blocks blk in
+      if MAP.has simblock.outs port then
+        MAP.get simblock.outs port
+      else
+        error "blk_outport_to_id" ("port doesn't exist: "^blk^" for "^port)
+    else
+      error "blk_outport_to_id" ("block doesn't exist: "^blk^" for "^port)
+
+  let blk_inport_to_id blk port =
+    if MAP.has symtbl.blocks blk then
+      let simblock = MAP.get symtbl.blocks blk in
+      if MAP.has simblock.ins port then
+        MAP.get simblock.ins port
+      else
+        error "blk_inport_to_id" ("port doesn't exist: "^blk^" for "^port)
+
+    else
+      error "blk_inport_to_id" ("block doesn't exist: "^blk^" for "^port)
+
+  let rec loc2path x = match x with
     | SIMBlock(ns,blk) -> (ns_to_str ns)^blk
     | SIMBlockIn(ns,blk,p) ->
-      (ns_to_str ns)^blk^"/"^(string_of_int (blk_outport_to_id blk p))
+      let blkpath = loc2path (SIMBlock(ns,blk)) in
+      (ns_to_str ns)^blk^"/"^(string_of_int (blk_inport_to_id blkpath p))
     | SIMBlockOut(ns,blk,p) ->
-      (ns_to_str ns)^blk^"/"^(string_of_int (blk_inport_to_id blk p))
+      let blkpath = loc2path (SIMBlock(ns,blk)) in
+      (ns_to_str ns)^blk^"/"^(string_of_int (blk_outport_to_id blkpath p))
 
   let has_block x =
     match x with
@@ -116,9 +135,7 @@ struct
     | _ -> error "mk_sim_in" "input must be on a block"
 
   let mk_sim_out x p = match x with
-    | SIMBlock(ns,blk) ->
-
-      SIMBlockOut(ns,blk,p)
+    | SIMBlock(ns,blk) -> SIMBlockOut(ns,blk,p)
     | _ -> error "mk_sim_in" "input must be on a block"
 
   (*make an input in the enclosing parameter*)
@@ -130,7 +147,7 @@ struct
       SIMBlockIn(pns,cmp,p)
     else
       error "mk_sim_ext_in"
-        ("cannot make an external input for nonexistant block:"^(loc2path par_cmp))
+        ("cannot make an external input ("^p^") for nonexistant block:"^(loc2path par_cmp))
 
   let mk_sim_ext_out ns p =
     let cmp = LIST.last ns in
@@ -144,16 +161,23 @@ struct
   let declare_var (k:simel)=
     begin
       match k with
-      | SIMBlock(ns,blk) ->
-        noop (MAP.put symtbl.blocks (loc2path k) {ins=MAP.make();outs=MAP.make()})
-      | SIMBlockIn(ns,blk,inp) ->
-        let blk = get_block (SIMBlock(ns,blk)) in
-        noop (MAP.put blk.ins inp (MAP.size blk.ins + 1))
-      | SIMBlockOut(ns,blk,inp) ->
-        let blk = get_block (SIMBlock(ns,blk)) in
-        noop (MAP.put blk.outs inp (MAP.size blk.outs + 1))
+      | SIMBlock(ns,blkn) ->
+        if MAP.has symtbl.blocks (loc2path k) = false then
+          debug ("   > declare cmp "^(loc2path (SIMBlock(ns,blkn))));
+          noop (MAP.put symtbl.blocks (loc2path k) {ins=MAP.make();outs=MAP.make()})
+      | SIMBlockIn(ns,blkn,inp) ->
+        let blk = get_block (SIMBlock(ns,blkn)) in
+        if MAP.has blk.ins inp = false then
+          debug ("   > declare in "^(loc2path (SIMBlock(ns,blkn)))^" -> "^inp);
+          noop (MAP.put blk.ins inp (MAP.size blk.ins + 1))
+      | SIMBlockOut(ns,blkn,out) ->
+        let blk = get_block (SIMBlock(ns,blkn)) in
+        if MAP.has blk.outs out = false then
+          debug ("   > declare out "^(loc2path (SIMBlock(ns,blkn)))^" -> "^out);
+          noop (MAP.put blk.outs out (MAP.size blk.outs + 1))
     end;
     let path = loc2path k in
+    debug (">+ "^path);
     MAP.put symtbl.paths path k;
     ()
 
@@ -237,16 +261,28 @@ struct
       if ns1 = ns2 then
         add_line (ns_to_str ns1) (cmp2^"/"^out) (cmp1^"/"^inp)
       else
-        error "add_route_line" "namespaces don't match"
+        error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
 
-    | SIMBlockIn(ns1,cmp1,inp),SIMBlockOut(ns2,cmp2,out) ->
+    | SIMBlockOut(ns1,cmp1,out),SIMBlockIn(ns2,cmp2,inp) ->
       if ns1 = ns2 then
-        add_line (ns_to_str ns1) (cmp2^"/"^out) (cmp1^"/"^inp)
+        add_line (ns_to_str ns1) (cmp1^"/"^out) (cmp2^"/"^inp)
       else
-        error "add_route_line" "namespaces don't match"
+        error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
+
+
+    | SIMBlockIn(_),SIMBlockIn(_) ->
+      error "add_route_line"
+        ("cannot connect input to input: "^(loc2path src)^"->"^(loc2path snk))
+
+    | SIMBlockOut(_),SIMBlockOut(_) ->
+      error "add_route_line"
+        ("cannot connect output to output: "^(loc2path src)^"->"^(loc2path snk))
 
     | _ ->
-      error "add_route_line" "unexpected"
+      error "add_route_line"
+        ("cannot connect comps: "^(loc2path src)^"->"^(loc2path snk))
+        
+
 
   let remove_line ns (gsrc:string)  (gsnk:string) =
     let src = relative ns gsrc in
@@ -280,19 +316,22 @@ struct
   let create_in q (ns:string list) (vr:string)=
     (*comp*)
     let loc = SIMBlock(ns,vr) in
-    let external_loc = mk_sim_ext_in ns vr in
     let internal_loc = SIMBlock(ns,"_"^vr) in
+    (*output port from external*)
     let loc_out_port = mk_sim_out loc "O" in
-    let int_loc_out_port = mk_sim_out loc "O" in
+    (*output port for internal*)
+    let int_loc_out_port = mk_sim_out internal_loc "O" in
+    let int_loc_in_port = mk_sim_in internal_loc "I" in
+    let external_loc = mk_sim_ext_in ns vr in
     if defined loc = false then      
       begin
-        declare_vars [external_loc;loc;internal_loc;
-                      loc_out_port;int_loc_out_port];
-        
+        declare_vars [loc;internal_loc];
+        declare_vars [loc_out_port;int_loc_in_port;int_loc_out_port];
+        declare_vars [external_loc];
         q (add_route_block (get_basic_fxn "in")  loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc)
       end;
-    loc_out_port,int_loc_out_port
+    loc_out_port,int_loc_in_port
 
   let create_out q ns (vr:string) =
     let loc = SIMBlock(ns,vr) in
@@ -442,6 +481,7 @@ struct
          (MATLit(MATStr(string_of_float min))));
     let inp_loc = mk_sim_in loc "I" in
     let out_loc = mk_sim_out loc "O" in
+    declare_vars [inp_loc;out_loc];
     loc,inp_loc,out_loc
 
   let create_sample q namespace sample =
@@ -463,7 +503,8 @@ struct
     let sample_out = mk_sim_out loc "O" in
     let mul_in1 = mk_sim_in vloc "I1" in
     let mul_in2 = mk_sim_in vloc "I2" in
-    let mul_out = mk_sim_in vloc "O" in
+    let mul_out = mk_sim_out vloc "O" in
+    declare_vars [sample_out;mul_in1;mul_in2;mul_out];
     q (add_route_line sample_out mul_in2);
     loc,mul_in1,mul_out
 
@@ -486,10 +527,12 @@ struct
    let noise_out = mk_sim_out loc "O" in
    let mul_in1 = mk_sim_in vloc "I1" in
    let mul_in2 = mk_sim_in vloc "I2" in
-   let mul_out = mk_sim_in vloc "O" in
+   let mul_out = mk_sim_out vloc "O" in
    let add_in1 = mk_sim_in aloc "I1" in
    let add_in2 = mk_sim_in aloc "I2" in
-   let add_out = mk_sim_in aloc "O" in
+   let add_out = mk_sim_out aloc "O" in
+   declare_vars [noise_out;mul_in1;mul_in2;mul_out;
+             add_in1;add_in2;add_out];
    q (add_route_line noise_out mul_in2);
    q (add_route_line mul_out add_in2);
    vloc,mul_in1,add_in1,add_out
@@ -500,7 +543,7 @@ struct
     declare_var (loc);
     q (add_route_block (get_basic_fxn "int") loc);
     let integ_in = mk_sim_in loc "I" in
-    let integ_out = mk_sim_in loc "O" in
+    let integ_out = mk_sim_out loc "O" in
     loc,integ_in,integ_out
 
   let expr2blockdiag (q:matst->unit) (namespace:simns)  (expr:hwvid ast)  =
@@ -509,11 +552,11 @@ struct
     let rec _expr2blockdiag el =
       match el with
       | Term(HNPort(HWKInput,_,port,_)) ->
-        SIMBlockIn(ns,cmp,port)
+        SIMBlockOut(namespace,port,"O")
       | Term(HNPort(HWKOutput,_,port,_)) ->
-        SIMBlockOut(ns,cmp,port)
+        SIMBlockOut(namespace,port,"O")
       | Term(HNParam(_,name)) ->
-        SIMBlockOut(ns,cmp,name)
+        SIMBlockOut(namespace,name,"O")
       | Term(_) ->
         error "conv" "unhandled term time"
       | Decimal(d) ->
@@ -570,21 +613,23 @@ struct
 
   let create_subsystem q namespace name =
     let loc = SIMBlock(namespace,name) in
+    declare_var loc;
     q (add_route_block (get_basic_fxn "comp") loc);
     q (remove_line (loc2path loc) "In1/1" "Out1/1");
     q (remove_block (loc2path loc) "In1");
     q (remove_block (loc2path loc) "Out1");
     loc
 
-  let create_block circuit (comp:hwvid hwcomp) : matst list =
+  let create_block namespace (comp:hwvid hwcomp) : matst list =
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
     let cmploc,cmpns =
-      match create_subsystem q circuit (HwLib.hwcompname2str comp.name) with
+      match create_subsystem q namespace (HwLib.hwcompname2str comp.name) with
       | SIMBlock(ns,str) -> SIMBlock(ns,str),ns @ [str]
       | _ -> error "create_block" "subsystem must be a block"
     in
+    declare_var cmploc;
     HwLib.comp_iter_ins comp (fun vr ->
         let ext_in,int_in = create_in q cmpns vr.port in
         match vr.defs with
@@ -613,16 +658,16 @@ struct
         ()
     );
     HwLib.comp_iter_outs comp (fun vr ->
-        let int_out = mk_sim_out cmploc vr.port in
+        let int_out = SIMBlockIn(namespace,vr.port,"I") in
         match vr.bhvr,vr.defs with
         | HWBAnalog(bhvr),HWDAnalog(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
           (*compute handles*)
-          let handle = expr2blockdiag q cmpns bhvr.rhs in
-          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
+          let handle = expr2blockdiag q namespace bhvr.rhs in
+          let var_handle = expr2blockdiag q namespace bhvr.stoch.std in
+          (*let _,clamp_in,clamp_out= create_clamp q namespace min max in*)
           (*this is where you'd pipe the output through a few things*)
-          let _,variance,noise_in,noise_out = create_noise q cmpns in 
+          let _,variance,noise_in,noise_out = create_noise q namespace in 
           (*then you connect*)
           q (add_route_line handle noise_in);
           q (add_route_line var_handle variance);
@@ -631,14 +676,14 @@ struct
         | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
           let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
-          let handle = expr2blockdiag q cmpns bhvr.rhs in
+          let handle = expr2blockdiag q namespace bhvr.rhs in
           (*this is where you'd pipe the output through a few things*)
-          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
-          let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+          let var_handle = expr2blockdiag q namespace bhvr.stoch.std in
+          (*let _,clamp_in,clamp_out= create_clamp q namespace min max in*)
+          let _,sclamp_in,sclamp_out= create_clamp q namespace smin smax in
           (*this is where you'd pipe the output through a few things*)
-          let _,variance,noise_in,noise_out = create_noise q cmpns in 
-          let _,integ_in,integ_out = create_integrator q cmpns in
+          let _,variance,noise_in,noise_out = create_noise q namespace in 
+          let _,integ_in,integ_out = create_integrator q namespace in
           (*then you connect*)
           q (add_route_line handle noise_in);
           q (add_route_line var_handle variance);
@@ -648,10 +693,10 @@ struct
           (*then you connect*)
           ()
         | HWBAnalog(bhvr),HWDDigital(defs) ->
-          let handle = expr2blockdiag q cmpns bhvr.rhs in
+          let handle = expr2blockdiag q namespace bhvr.rhs in
           let sample,_ = defs.freq in
           let _,sample_in,sample_out =
-            create_sample q cmpns (float_of_number sample)
+            create_sample q namespace (float_of_number sample)
           in
           q (add_route_line handle sample_in);
           q (add_route_line sample_out int_out);
