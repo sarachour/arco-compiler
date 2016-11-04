@@ -168,13 +168,17 @@ struct
       | SIMBlockIn(ns,blkn,inp) ->
         let blk = get_block (SIMBlock(ns,blkn)) in
         if MAP.has blk.ins inp = false then
-          debug ("   > declare in "^(loc2path (SIMBlock(ns,blkn)))^" -> "^inp);
-          noop (MAP.put blk.ins inp (MAP.size blk.ins + 1))
+          begin
+            debug ("   > declare in "^(loc2path (SIMBlock(ns,blkn)))^" -> "^inp);
+            noop (MAP.put blk.ins inp (MAP.size blk.ins + 1))
+          end
       | SIMBlockOut(ns,blkn,out) ->
         let blk = get_block (SIMBlock(ns,blkn)) in
         if MAP.has blk.outs out = false then
-          debug ("   > declare out "^(loc2path (SIMBlock(ns,blkn)))^" -> "^out);
-          noop (MAP.put blk.outs out (MAP.size blk.outs + 1))
+          begin
+            debug ("   > declare out "^(loc2path (SIMBlock(ns,blkn)))^" -> "^out);
+            noop (MAP.put blk.outs out (MAP.size blk.outs + 1))
+          end
     end;
     let path = loc2path k in
     debug (">+ "^path);
@@ -346,7 +350,7 @@ struct
       begin
         declare_vars [loc;external_loc;internal_loc];
         declare_vars [loc_in_port;
-                      int_loc_out_port;int_loc_out_port];
+                      int_loc_in_port;int_loc_out_port];
         q (add_route_block (get_basic_fxn "out") loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc);
         q (add_route_line int_loc_out_port loc_in_port)
