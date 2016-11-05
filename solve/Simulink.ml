@@ -503,7 +503,7 @@ struct
          (MATLit(MATStr(string_of_float sample))));
     q (set_route_param
          (loc) "PulseWidth"         
-         (MATLit(MATStr("50"))));
+         (MATLit(MATStr("100"))));
     q (set_route_param
          (vloc) "Inputs"
          (MATLit(MATStr("**"))));
