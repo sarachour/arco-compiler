@@ -25,6 +25,25 @@ function build_circuit()
   add_line('ckt_smmrxn_2/circuit','input.V[1]/1','mm[0]/2');
   add_line('ckt_smmrxn_2/circuit','mm[0]/2','output.V[0]/1');
   add_line('ckt_smmrxn_2/circuit','input.V[0]/1','mm[0]/3');
+  add_block('simulink/Sources/Constant','ckt_smmrxn_2/circuit/const_698');
+  set_param('ckt_smmrxn_2/circuit/const_698','Value','0.11');
+  add_line('ckt_smmrxn_2/circuit','const_698/1','input.V[0]/1');
+  add_block('simulink/Sources/Constant','ckt_smmrxn_2/circuit/const_700');
+  set_param('ckt_smmrxn_2/circuit/const_700','Value','0.');
+  add_line('ckt_smmrxn_2/circuit','const_700/1','input.V[1]/1');
+  add_block('simulink/Sources/Constant','ckt_smmrxn_2/circuit/const_702');
+  set_param('ckt_smmrxn_2/circuit/const_702','Value','0.15');
+  add_line('ckt_smmrxn_2/circuit','const_702/1','input.V[2]/1');
+  add_block('simulink/Sources/Constant','ckt_smmrxn_2/circuit/const_704');
+  set_param('ckt_smmrxn_2/circuit/const_704','Value','1.');
+  add_line('ckt_smmrxn_2/circuit','const_704/1','input.I[0]/1');
+  add_block('simulink/Sources/Constant','ckt_smmrxn_2/circuit/const_706');
+  set_param('ckt_smmrxn_2/circuit/const_706','Value','1.');
+  add_line('ckt_smmrxn_2/circuit','const_706/1','input.I[1]/1');
+  add_block('simulink/Ports & Subsystems/Out1','ckt_smmrxn_2/circuit/output.V[0]_out');
+  add_block('simulink/Math Operations/Gain','ckt_smmrxn_2/circuit/_output.V[0]_out');
+  add_line('ckt_smmrxn_2/circuit','_output.V[0]_out/1','output.V[0]_out/1');
+  add_line('ckt_smmrxn_2/circuit','output.V[0]/1','_output.V[0]_out/1');
 end
 %
 %

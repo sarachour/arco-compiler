@@ -757,6 +757,39 @@ struct
         let dst_loc = SIMBlockIn(circ_ns,(HwLib.hwcompinst2str dst.comp),dst.port) in
         q (add_route_line src_loc dst_loc)
       );
+    SlnLib.iter_routes sln (fun (l:ulabel) generates -> match l with
+        | MOutLabel(_) ->
+          error "create_circuit" "there should not be any out-> in routes"
+        | MLocalLabel(_) ->
+          error "create_circuit" "there should not be any local-> in routes"
+        | MInLabel(lbl) ->
+          let dst_loc :simel = SIMBlockIn(circ_ns,(HwLib.hwcompinst2str lbl.wire.comp),lbl.wire.port) in
+          let src_loc_out_int,src_loc_in_ext =
+            create_in q circ_ns ((HwLib.hwcompinst2str lbl.wire.comp)^"_in")
+          in
+          q (add_route_line src_loc_out_int src_loc_in_ext);
+          q (add_route_line src_loc_out_int dst_loc)
+        | MExprLabel(_) ->
+          error "create_circuit" "there should not be any expr -> routes"
+        | ValueLabel(lbl) ->
+          let dst_loc : simel= SIMBlockIn(circ_ns,(HwLib.hwcompinst2str lbl.wire.comp),lbl.wire.port) in
+          let src_loc_out : simel = create_const q circ_ns (float_of_number lbl.value) in
+          q (add_route_line src_loc_out dst_loc)
+      );
+      SlnLib.iter_generates sln (fun (l:ulabel) routes -> match l with
+          | MOutLabel(lbl) ->
+            begin
+              match lbl.wire.comp.name with
+              | HWCmOutput(_) ->
+                let src_loc : simel = SIMBlockOut(circ_ns,HwLib.hwcompinst2str lbl.wire.comp,lbl.wire.port) in
+                let dst_loc_in,int_loc_in =
+                  create_out q circ_ns ((HwLib.hwcompinst2str lbl.wire.comp)^"_out")
+                in
+                q (add_route_line src_loc int_loc_in)
+              | _ -> ()
+            end
+          | _ -> ()
+        );
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
     stmts
