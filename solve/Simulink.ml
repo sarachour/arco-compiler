@@ -336,7 +336,7 @@ struct
         q (add_route_block (get_basic_fxn "in")  loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc)
       end;
-    loc_out_port,int_loc_in_port
+    loc_out_port,int_loc_in_port,int_loc_out_port
 
   let create_out q ns (vr:string) =
     let loc = SIMBlock(ns,vr) in
@@ -355,7 +355,7 @@ struct
         q (add_route_block (get_basic_fxn "gain") internal_loc);
         q (add_route_line int_loc_out_port loc_in_port)
       end;
-    loc_in_port,int_loc_in_port
+    int_loc_in_port,int_loc_out_port,loc_in_port
 
   let create_const (q:matst->unit) (namespace:simns) (value:float) =
     let id = symtbl_size () in
@@ -554,6 +554,32 @@ struct
     declare_vars [integ_in;integ_out];
     loc,integ_in,integ_out
 
+
+  let create_linmap q namespace (mp:hw_mapping) (inverse:bool) =
+    let id = symtbl_size () in
+    let offloc = SIMBlock(namespace,"lmap_ofs_"^(string_of_int id)) in
+    let scloc = SIMBlock(namespace,"lmap_sc_"^(string_of_int id)) in
+    let scaling_fact = if inverse then 1.0 /. mp.scale else mp.scale in
+    let offset_fact =
+      if inverse then 0. -. mp.offset /. mp.scale else mp.offset
+    in
+    declare_vars [offloc;scloc];
+    let scfact_out = create_const q namespace scaling_fact in
+    let offfact_out = create_const q namespace offset_fact in 
+    q (add_route_block (get_basic_fxn "*") scloc);
+    q (add_route_block (get_basic_fxn "+") offloc);
+    let mul_in1 = mk_sim_in scloc "I1" in
+    let mul_in2 = mk_sim_in scloc "I2" in
+    let mul_out = mk_sim_out scloc "O" in
+    let add_in1 = mk_sim_in offloc "I1" in
+    let add_in2 = mk_sim_in offloc "I2" in
+    let add_out = mk_sim_out offloc "O" in
+    declare_vars [mul_in1;mul_in2;mul_out;add_in1;add_in2;add_out];
+    q (add_route_line scfact_out mul_in2);
+    q (add_route_line offfact_out add_in2);
+    q (add_route_line mul_out add_in1);
+    mul_in1,add_out
+
   let expr2blockdiag (q:matst->unit) (namespace:simns)  (expr:hwvid ast)  =
     let cmp = LIST.last namespace in
     (*let ns = LIST.except_last namespace in*)
@@ -639,19 +665,19 @@ struct
     in
     declare_var cmploc;
     HwLib.comp_iter_ins comp (fun vr ->
-        let ext_in,int_in = create_in q cmpns vr.port in
+        let ext_out,int_in,int_out = create_in q cmpns vr.port in
         match vr.defs with
         | HWDAnalog(defs) ->
           let min,max = IntervalLib.interval2numbounds defs.ival in
           let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
-          q (add_route_line ext_in clamp_in);
+          q (add_route_line ext_out clamp_in);
           q (add_route_line clamp_out int_in);
         | HWDDigital(defs) ->
           let sample,_ = defs.freq in
           let sample_cmp,sample_in,sample_out =
             create_sample q cmpns (float_of_number sample)
           in
-          q (add_route_line ext_in sample_in);
+          q (add_route_line ext_out sample_in);
           q (add_route_line sample_out int_in);
           ()
         | _ -> error "comp_iter_ins" "unexpected"
@@ -661,7 +687,7 @@ struct
         ()
     );
     HwLib.comp_iter_params comp (fun (par:hwparam) ->
-        let ext_in,int_in = create_in q cmpns par.name in
+        let ext_in,int_in,int_out = create_in q cmpns par.name in
         q (add_route_line ext_in int_in);
         ()
     );
@@ -736,7 +762,7 @@ struct
   let get_comp_from_lib namespace (name:hwcompname) =
     namespace^"/library/"^(HwLib.hwcompname2str name)
 
-  let create_circuit (tbl) namespace mappings =
+  let create_circuit (tbl) namespace (mappings:(wireid,hw_mapping) map) =
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
@@ -764,11 +790,14 @@ struct
           error "create_circuit" "there should not be any local-> in routes"
         | MInLabel(lbl) ->
           let dst_loc :simel = SIMBlockIn(circ_ns,(HwLib.hwcompinst2str lbl.wire.comp),lbl.wire.port) in
-          let src_loc_out_int,src_loc_in_ext =
+          let src_out_ext,src_in_int,src_out_int =
             create_in q circ_ns ((HwLib.hwcompinst2str lbl.wire.comp)^"_in")
           in
-          q (add_route_line src_loc_out_int src_loc_in_ext);
-          q (add_route_line src_loc_out_int dst_loc)
+          let mapping = MAP.get mappings lbl.wire in
+          let linmap_in,linmap_out= create_linmap q circ_ns mapping false in
+          q (add_route_line src_out_ext linmap_in);
+          q (add_route_line linmap_out src_in_int);
+          q (add_route_line src_out_int dst_loc);
         | MExprLabel(_) ->
           error "create_circuit" "there should not be any expr -> routes"
         | ValueLabel(lbl) ->
@@ -782,10 +811,14 @@ struct
               match lbl.wire.comp.name with
               | HWCmOutput(_) ->
                 let src_loc : simel = SIMBlockOut(circ_ns,HwLib.hwcompinst2str lbl.wire.comp,lbl.wire.port) in
-                let dst_loc_in,int_loc_in =
+                let dst_in_int,dst_out_int,dst_out_ext =
                   create_out q circ_ns ((HwLib.hwcompinst2str lbl.wire.comp)^"_out")
                 in
-                q (add_route_line src_loc int_loc_in)
+                let mapping = MAP.get mappings lbl.wire in
+                let linmap_in,linmap_out= create_linmap q circ_ns mapping true in
+                q (add_route_line src_loc linmap_in);
+                q (add_route_line linmap_out dst_in_int);
+                ()
               | _ -> ()
             end
           | _ -> ()
@@ -794,7 +827,7 @@ struct
     QUEUE.destroy stmtq;
     stmts
 
- let to_simulink (tbl:gltbl) (mappings:hw_mapping list) (name:string) =
+ let to_simulink (tbl:gltbl) (mappings:(wireid,hw_mapping) map) (name:string) =
     clear_tbl();
     let hw = tbl.env.hw in
     let stmtq = QUEUE.make () in

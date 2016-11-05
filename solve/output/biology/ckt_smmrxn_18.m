@@ -43,7 +43,17 @@ function build_circuit()
   add_block('simulink/Ports & Subsystems/Out1','ckt_smmrxn_18/circuit/output.V[0]_out');
   add_block('simulink/Math Operations/Gain','ckt_smmrxn_18/circuit/_output.V[0]_out');
   add_line('ckt_smmrxn_18/circuit','_output.V[0]_out/1','output.V[0]_out/1');
-  add_line('ckt_smmrxn_18/circuit','output.V[0]/1','_output.V[0]_out/1');
+  add_block('simulink/Sources/Constant','ckt_smmrxn_18/circuit/const_715');
+  set_param('ckt_smmrxn_18/circuit/const_715','Value','1.');
+  add_block('simulink/Sources/Constant','ckt_smmrxn_18/circuit/const_717');
+  set_param('ckt_smmrxn_18/circuit/const_717','Value','0.');
+  add_block('simulink/Math Operations/Product','ckt_smmrxn_18/circuit/lmap_sc_713');
+  add_block('simulink/Math Operations/Sum','ckt_smmrxn_18/circuit/lmap_ofs_713');
+  add_line('ckt_smmrxn_18/circuit','const_715/1','lmap_sc_713/2');
+  add_line('ckt_smmrxn_18/circuit','const_717/1','lmap_ofs_713/2');
+  add_line('ckt_smmrxn_18/circuit','lmap_sc_713/1','lmap_ofs_713/1');
+  add_line('ckt_smmrxn_18/circuit','output.V[0]/1','lmap_sc_713/1');
+  add_line('ckt_smmrxn_18/circuit','lmap_ofs_713/1','_output.V[0]_out/1');
 end
 %
 %

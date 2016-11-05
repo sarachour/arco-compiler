@@ -740,10 +740,10 @@ struct
     QUEUE.destroy(cstrq);
     cstrs
 
-  let mappings2str (lst:hw_mapping list ) =
-    List.fold_left (fun str mapping ->
+  let mappings2str (lst:(wireid,hw_mapping) map ) =
+    MAP.fold lst (fun wire mapping str ->
         str^(MappingResolver.hwmapping2str mapping)
-      ) "" lst
+      ) "" 
 
   let infer (tbl:gltbl)  : (wireid,hw_mapping) map option =
     let stmtq = QUEUE.make () in
@@ -761,7 +761,7 @@ struct
     enq (hwconn_derive_scaling_cstrs tbl);
     if REF.dr valid then
       let stmts = QUEUE.to_list stmtq in 
-      let sln : hw_mapping list option = MappingResolver.solve tbl stmts in
+      let sln : (wireid,hw_mapping) map option = MappingResolver.solve tbl stmts in
       QUEUE.destroy stmtq;
       sln
     else
