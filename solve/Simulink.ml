@@ -816,26 +816,26 @@ struct
                 let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
                 declare_clamp comp.name vr.port dcclamp;
                 q (add_route_line handle dclamp_in);
-                q (add_route_line dclamp_out integ_out);
+                q (add_route_line dclamp_out integ_in);
                 q (add_route_line integ_out sclamp_in);
                 q (add_route_line sclamp_out int_out);
                 ()
           end
           | HWBAnalog(bhvr),HWDDigital(defs) ->
-          let handle = expr2blockdiag q cmpns bhvr.rhs in
-          let sample,_ = defs.freq in
-          begin
-            match model_ideal() with
-            | true ->
-              q (add_route_line handle int_out)
-            | false -> 
-              let _,sample_in,sample_out =
-                create_sample q cmpns (float_of_number sample)
-              in
-              q (add_route_line handle sample_in);
-              q (add_route_line sample_out int_out);
-              ()
-          end
+            let handle = expr2blockdiag q cmpns bhvr.rhs in
+            let sample,_ = defs.freq in
+            begin
+              match model_ideal() with
+              | true ->
+                q (add_route_line handle int_out)
+              | false -> 
+                let _,sample_in,sample_out =
+                  create_sample q cmpns (float_of_number sample)
+                in
+                q (add_route_line handle sample_in);
+                q (add_route_line sample_out int_out);
+                ()
+            end
         | _ -> error "iter outs" "unexpected"
     );
     let stmts = QUEUE.to_list stmtq in
@@ -978,6 +978,7 @@ struct
 
  let to_simulink (tbl:gltbl) (mappings:(wireid,hw_mapping) map) (name:string) (form:simulink_format) =
     clear_tbl();
+    upd_format form;
     let hw = tbl.env.hw in
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
