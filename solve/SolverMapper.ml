@@ -432,7 +432,7 @@ struct
      tbl,z3stmts,Z3Int(0)
 
 
-  let solve gltbl (stmts:linear_stmt list) : hw_mapping list option =
+  let solve gltbl (stmts:linear_stmt list) : (wireid,hw_mapping) map option =
     (*helper function*)
     let tbl,stmts,minexpr = to_z3prob stmts in 
     let result : z3sln =
@@ -745,7 +745,7 @@ struct
         str^(MappingResolver.hwmapping2str mapping)
       ) "" lst
 
-  let infer (tbl:gltbl)  : hw_mapping list option =
+  let infer (tbl:gltbl)  : (wireid,hw_mapping) map option =
     let stmtq = QUEUE.make () in
     let valid = REF.mk true in 
     let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
