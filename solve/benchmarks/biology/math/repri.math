@@ -33,28 +33,28 @@ time t : s
 
 
 rel TRLacL = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (LacLp^n)))
-map TRLacl = [0,1] M
+def TRLacL mag = [0,1] M
 
 rel TRTetR = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (TetRp^n)))
-map TRTetR = [0,1] M
+def TRTetR mag = [0,1] M
 
 rel TRclp =  a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (clp^n)))
-map TRclp = [0,1] M
+def TRclp mag = [0,1] M
 
 rel ddt LacLm = (TRLacL) - (kd_mrna*LacLm) init 0
-map LacLm = [0,1] M
+def LacLm mag = [0,1] M
 
 rel ddt clm = (TRclp) - (kd_mrna*clm) init 0
-map clm = [0,1] M
+def clm mag = [0,1] M
 
 rel ddt TetRm = ((TRTetR)) - (kd_mrna*TetRm) init 0
-map TetRm = [0,1] M
+def TetRm mag = [0,1] M
 
 rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 0
-map LacLp = [0,1] M
+def LacLp mag = [0,1] M
 
 rel ddt clp = (k_tl*clm)-(kd_prot*clp) init 0
-map clp = [0,1] M
+def clp mag = [0,1] M
 
 rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0
-map TetRp = [0,1] M
+def TetRp mag = [0,1] M
