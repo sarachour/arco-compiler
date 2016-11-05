@@ -736,7 +736,7 @@ struct
   let get_comp_from_lib namespace (name:hwcompname) =
     namespace^"/library/"^(HwLib.hwcompname2str name)
 
-  let create_circuit (tbl) namespace =
+  let create_circuit (tbl) namespace mappings =
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
@@ -804,7 +804,7 @@ struct
     _model_preamble stmtq model_name;
     debug ("=== Emitting Library ===");
     let libstmts = (create_library [model_name] hw) in
-    let circ_stmts = create_circuit tbl [model_name] in
+    let circ_stmts = create_circuit tbl [model_name] mappings in
     let preamble_stmts = QUEUE.to_list stmtq in
     let main_stmts = [
       MATStmt(MATFxn("preamble",[]));

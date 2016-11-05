@@ -293,7 +293,7 @@ struct
     "   [h]:"^(IntervalLib.numinterval2str eff_hrng)^"\n"^
     "   [m]:"^(IntervalLib.numinterval2str eff_mrng)^"\n"
 
-  let z3result2mapping gltbl symtbl (asgns:z3assign list): hw_mapping list =
+  let z3result2mapping gltbl symtbl (asgns:z3assign list): (wireid,hw_mapping) map =
     let data = MAP.make () in
     let upd_map_result id fxn =
       if MAP.has data id = false then
@@ -354,12 +354,11 @@ struct
         | _ ->
           error "z3result2mapresult" "unhandled"
     ) asgns;
-    let result = MAP.map data (fun wire data ->
+    MAP.iter data (fun wire data ->
         debug ("[MAP]>> "^hwmapping2str data);
-        data 
-      )
-    in
-    result
+        ()
+      );
+    data
 
   let to_z3prob stmts : (symtbl*z3st list*z3expr) =
     let tbl = {id2w=MAP.make();w2id=MAP.make()} in
