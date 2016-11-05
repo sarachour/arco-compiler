@@ -8,6 +8,7 @@ open HWData
 open IntervalLib
 open SolverCompLib
 open SlnLib
+open SolverMapper
 
 open Interactive
 
@@ -108,17 +109,20 @@ struct
     (*fully qualified name*)
     paths: (string,simel) map;
     (*comp to block info*)
-    blocks: (string,simblock) map
+    blocks: (string,simblock) map;
+    clamps: (hwcompname,(string,simel) map) map;
   }
 
   let symtbl = {
     paths = MAP.make();
     blocks = MAP.make();
+    clamps = MAP.make();
   }
 
   let clear_tbl () =
     MAP.clear symtbl.paths;
-    MAP.clear symtbl.blocks
+    MAP.clear symtbl.blocks;
+    MAP.clear symtbl.clamps
 
   let ns_to_str ns =
     match ns with
@@ -190,6 +194,17 @@ struct
       SIMBlockOut(pns,cmp,p)
     else
       error "mk_sim_ext_in" "cannot make an external input for nonexistant block"
+
+  let declare_clamp cmp port cmploc =
+    if MAP.has symtbl.clamps cmp = false then
+      noop (MAP.put symtbl.clamps cmp (MAP.make()));
+    let cmp_clamps = MAP.get symtbl.clamps cmp in
+    MAP.put cmp_clamps port cmploc
+
+  let iter_clamps cmp fn =
+    if MAP.has symtbl.clamps cmp then
+      let mp = MAP.get symtbl.clamps cmp in
+      MAP.iter mp (fun v l -> fn v l)
 
   let declare_var (k:simel)=
     begin
@@ -507,7 +522,16 @@ struct
     declare_vars [base_loc;exp_loc;out_loc];
     loc,base_loc,exp_loc,out_loc
 
-    
+
+  let update_clamp q loc min max =
+    q (set_route_param
+         (loc) "UpperLimit"         
+         (MATLit(MATStr(string_of_float max))));
+    q (set_route_param
+         (loc) "LowerLimit"         
+         (MATLit(MATStr(string_of_float min))));
+    ()
+
   let create_clamp q namespace min max =
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"sat_"^(string_of_int id)) in
@@ -690,10 +714,17 @@ struct
         let ext_out,int_in,int_out = create_in q cmpns vr.port in
         match vr.defs with
         | HWDAnalog(defs) ->
-          let min,max = IntervalLib.interval2numbounds defs.ival in
-          let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
-          q (add_route_line ext_out clamp_in);
-          q (add_route_line clamp_out int_in);
+          begin
+            match model_ideal() with
+            | true ->
+              q (add_route_line ext_out int_in)
+
+            | false ->
+              let min,max = IntervalLib.interval2numbounds defs.ival in
+              let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
+              q (add_route_line ext_out clamp_in);
+              q (add_route_line clamp_out int_in);
+          end
         | HWDDigital(defs) ->
           let sample,_ = defs.freq in
           let sample_cmp,sample_in,sample_out =
@@ -720,7 +751,7 @@ struct
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
           (*compute handles*)
           let handle = expr2blockdiag q cmpns bhvr.rhs in
-          let min,max = IntervalLib.interval2numbounds defs.ival in
+          let min,max = -1.,-1. in
           begin
             match model_noise(), model_ideal() with
             | true,true ->
@@ -733,7 +764,8 @@ struct
             | true,false ->
               let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
               let _,variance,noise_in,noise_out = create_noise q cmpns in 
-              let _,clamp_in,clamp_out= create_clamp q cmpns min max in
+              let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
+              declare_clamp comp.name vr.port clamp;
               q (add_route_line handle clamp_in);
               q (add_route_line clamp_out noise_in);
               q (add_route_line var_handle variance);
@@ -742,7 +774,8 @@ struct
             | false,true ->
               ()
             | false,false ->
-              let _,clamp_in,clamp_out= create_clamp q cmpns min max in
+              let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
+              declare_clamp comp.name vr.port clamp;
               q (add_route_line handle clamp_in);
               q (add_route_line clamp_out int_out);
               ()
@@ -752,7 +785,7 @@ struct
         | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
           let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
-          let dmin,dmax = IntervalLib.interval2numbounds defs.deriv.ival in
+          let dmin,dmax =  -1.,-1. in
           let handle = expr2blockdiag q cmpns bhvr.rhs in
           let _,integ_in,integ_out = create_integrator q cmpns in
           begin
@@ -768,8 +801,9 @@ struct
               | true,false ->
                 let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
                 let _,variance,noise_in,noise_out = create_noise q cmpns in 
-                let _,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
-                let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
+                let sclamp,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                declare_clamp comp.name vr.port dcclamp;
                 q (add_route_line handle dclamp_in);
                 q (add_route_line dclamp_out noise_in);
                 q (add_route_line var_handle variance);
@@ -782,8 +816,9 @@ struct
                 q (add_route_line integ_out int_out);
                 () 
               | false,false ->
-                let _,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
+                let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
                 let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                declare_clamp comp.name vr.port dcclamp;
                 q (add_route_line handle dclamp_in);
                 q (add_route_line dclamp_out integ_out);
                 q (add_route_line integ_out sclamp_in);
@@ -847,7 +882,19 @@ struct
         let loc = SIMBlock(circ_ns,HwLib.hwcompinst2str inst) in
         let refr = SIMBlock(lib_ns,HwLib.hwcompname2str inst.name) in
         decl_copy refr loc;
-        q (copy_route_block refr loc)
+        q (copy_route_block refr loc);
+        (*specialize intervals*)
+        iter_clamps inst.name (fun portname cloc ->
+            let ival = IntervalCompute.compute_hw_interval tbl ccomp.d ccomp.inst ccomp.cfg portname in
+            let min,max = IntervalLib.interval2numbounds ival in 
+            match cloc with
+            | SIMBlock(templ_ns,clampname) ->
+              let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],clampname) in
+              update_clamp q newblock min max
+            | _ ->
+              error "create_circuit" "expected sim block"
+            ()
+        )
       );
     SlnLib.iter_conns sln (fun (src:wireid) (dst:wireid) ->
         let src_loc = SIMBlockOut(circ_ns,(HwLib.hwcompinst2str src.comp),src.port) in

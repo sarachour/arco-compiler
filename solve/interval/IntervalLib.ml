@@ -54,7 +54,10 @@ struct
         | BNDNum(min),BNDNum(max) -> min,max
         | _ -> error "interval2numbounds" "not expecting inf bound"
       end
-    | _ -> error "interval2numbounds" "not expecting quantized interval"
+    | MixedInterval(i) ->
+      error "interval2numbounds" "not expecting mixed interval"
+    | Quantize(x) ->
+      error "interval2numbounds" "not expecting quantized interval"
 
   let interval2numinterval (x:interval) =
     let min,max = interval2numbounds x in

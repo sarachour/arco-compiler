@@ -154,7 +154,31 @@ struct
       
       (*declare equivalence classes for a mapping*)
 
-
+  let compute_deriv_hw_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
+    let hwid2ival (x:hwvid) : interval=
+      match x with
+      |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
+      |HNPort(knd,cmp,port,param) ->
+        begin
+          match (HwLib.comp_getvar comp port).defs with
+          | HWDAnalog(d) -> d.ival
+          | HWDAnalogState(x) -> x.stvar.ival
+          | HWDDigital(d) -> d.ival
+        end
+      |HNTime -> error "compute_hw_interval" "unexpected time"
+    in
+    let vr = HwLib.comp_getvar comp port in
+    match vr.bhvr,vr.defs with
+    | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
+      let conc_rhs =
+        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
+      in
+      debug ("computing interval "^(HwLib.hast2str conc_rhs));
+      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
+      debug ("  -> "^IntervalLib.interval2str ival);
+      ival
+    | _ -> error "compute_deriv_hw_interval" "unexpected bhvr/defs match"
+   
   let compute_wire_interval tbl (wire:wireid) =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
     let ival = compute_hw_interval tbl ccomp.d wire.comp.inst ccomp.cfg wire.port in
