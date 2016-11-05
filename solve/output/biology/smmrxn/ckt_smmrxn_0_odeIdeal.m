@@ -312,7 +312,7 @@ function build_comp_library()
   add_block('simulink/Ports & Subsystems/In1','ckt_smmrxn_0_odeIdeal/library/input.V/X');
   add_block('simulink/Math Operations/Gain','ckt_smmrxn_0_odeIdeal/library/input.V/_X');
   add_block('simulink/Discontinuities/Quantizer','ckt_smmrxn_0_odeIdeal/library/input.V/smp_239');
-  set_param('ckt_smmrxn_0_odeIdeal/library/input.V/smp_239','Interval','1e-05');
+  set_param('ckt_smmrxn_0_odeIdeal/library/input.V/smp_239','QuantizationInterval','1e-05');
   add_line('ckt_smmrxn_0_odeIdeal/library/input.V','X/1','smp_239/1');
   add_line('ckt_smmrxn_0_odeIdeal/library/input.V','smp_239/1','_X/1');
   add_block('simulink/Ports & Subsystems/Out1','ckt_smmrxn_0_odeIdeal/library/input.V/O');
@@ -464,7 +464,7 @@ function build_comp_library()
   add_block('simulink/Ports & Subsystems/In1','ckt_smmrxn_0_odeIdeal/library/input.I/X');
   add_block('simulink/Math Operations/Gain','ckt_smmrxn_0_odeIdeal/library/input.I/_X');
   add_block('simulink/Discontinuities/Quantizer','ckt_smmrxn_0_odeIdeal/library/input.I/smp_389');
-  set_param('ckt_smmrxn_0_odeIdeal/library/input.I/smp_389','Interval','1e-05');
+  set_param('ckt_smmrxn_0_odeIdeal/library/input.I/smp_389','QuantizationInterval','1e-05');
   add_line('ckt_smmrxn_0_odeIdeal/library/input.I','X/1','smp_389/1');
   add_line('ckt_smmrxn_0_odeIdeal/library/input.I','smp_389/1','_X/1');
   add_block('simulink/Ports & Subsystems/Out1','ckt_smmrxn_0_odeIdeal/library/input.I/O');

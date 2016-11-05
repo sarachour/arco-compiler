@@ -550,7 +550,7 @@ struct
     declare_vars [loc];
     q (add_route_block (get_basic_fxn "disc") loc);
     q (set_route_param
-         (loc) "Interval"         
+         (loc) "QuantizationInterval"         
          (MATLit(MATStr(string_of_float sample))));
     let sample_out = mk_sim_out loc "O" in
     let sample_in = mk_sim_in loc "I" in

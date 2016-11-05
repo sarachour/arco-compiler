@@ -33,7 +33,7 @@ time t : s
 
 
 rel TRLacL = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (LacLp^n)))
-def TRLacL mag = [0,1] M
+def TRLac  mag = [0,1] M
 
 rel TRTetR = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (TetRp^n)))
 def TRTetR mag = [0,1] M
