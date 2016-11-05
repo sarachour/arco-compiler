@@ -1,0 +1,9 @@
+comp vadd 0
+comp mm 0
+bind value I of mm 0 kr :: 1
+bind var V of mm 0 X :: var S
+bind value I of mm 0 kf :: 1
+bind var V of mm 0 Y :: var E
+bind value V of mm 0 Xtot :: 0.11
+bind value V of mm 0 Ytot :: 0.15
+bind var V of mm 0 XY :: var ES

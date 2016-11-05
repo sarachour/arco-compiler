@@ -1,0 +1,108 @@
+Comps:
+
+vgain | 0 = [4,3,1,2]
+switch | 0 = []
+input.I | 0 = [0,1,2,3]
+output.V | 0 = []
+copy.V | 0 = []
+vadd | 0 = [4,3,1,0,2,5]
+ihill | 0 = [5,3,1]
+vtoi | 0 = []
+igenebind | 0 = []
+mm | 0 = []
+input.V | 0 = [18,17,15,8,7,6,5,1,3,9,12,13,14,19,21]
+itov | 0 = [1,3]
+iadd | 0 = [2,1,0]
+output.I | 0 = []
+copy.I | 0 = []
+
+Conns:
+input.V[8].O->vgain[1].Y
+vadd[4].A->input.V[1].O
+input.V[19].O->vadd[5].OUT2_0
+input.I[3].O->ihill[1].Vmax
+vadd[1].B->vgain[1].P
+input.V[9].O->ihill[1].n
+input.I[0].O->itov[1].X
+iadd[1].D->input.I[1].O
+iadd[2].C->input.I[1].O
+vadd[5].A->input.V[1].O
+input.V[5].O->vadd[1].OUT2_0
+vgain[4].Y->input.V[8].O
+iadd[0].D->input.I[1].O
+input.I[1].O->iadd[0].C
+vadd[5].C->input.V[1].O
+input.V[21].O->itov[3].K
+input.V[12].O->vadd[2].OUT2_0
+vadd[4].B->vgain[4].P
+iadd[2].D->input.I[1].O
+input.I[2].O->iadd[0].A
+vadd[0].A->input.V[1].O
+ihill[3].Vmax->input.I[3].O
+vadd[3].A->vgain[3].P
+input.V[17].O->vgain[3].Y
+vadd[5].B->itov[3].Y
+vadd[2].B->input.V[1].O
+vadd[1].A->input.V[1].O
+iadd[1].A->input.I[2].O
+ihill[3].n->input.V[9].O
+input.V[7].O->vgain[1].X
+ihill[5].Vmax->input.I[3].O
+vadd[2].C->input.V[1].O
+iadd[2].A->input.I[2].O
+iadd[2].B->ihill[5].REP
+vadd[2].A->vgain[2].P
+input.V[13].O->vadd[2].D
+vgain[3].X->input.V[8].O
+vadd[4].C->input.V[1].O
+ihill[5].n->input.V[9].O
+input.V[14].O->vgain[2].X
+iadd[0].B->ihill[1].REP
+input.V[1].O->vadd[0].C
+iadd[1].B->ihill[3].REP
+input.V[3].O->vadd[0].OUT2_0
+input.V[6].O->vadd[1].D
+vadd[3].D->input.V[6].O
+vadd[0].B->itov[1].Y
+input.V[15].O->vadd[3].OUT2_0
+vadd[3].C->input.V[1].O
+iadd[1].C->input.I[1].O
+vadd[1].C->input.V[1].O
+vadd[3].B->input.V[1].O
+input.V[18].O->vadd[4].OUT2_0
+vgain[4].X->input.V[7].O
+vgain[2].Y->input.V[8].O
+
+Labels:
+I(ihill[3].Km): bind KM
+I(ihill[5].Km): bind KM
+V(input.V[18].O): bind TetRm_0
+V(vgain[1].Z): bind TRLacL
+V(input.V[15].O): bind clm_0
+V(vgain[2].Z): bind LacLm
+V(input.V[6].O): bind 1.5051499783
+V(input.V[3].O): bind clp_0
+V(input.V[1].O): bind 0
+V(input.V[14].O): bind 752.57498916
+V(vadd[5].D): bind TetRp
+V(input.V[13].O): bind 0.3010299956
+I(itov[3].X): bind TetRm
+V(input.V[7].O): bind 250
+V(vadd[0].D): bind clp
+I(ihill[3].S): bind TetRp
+I(ihill[1].Km): bind KM
+V(input.V[17].O): bind 0.004
+I(input.I[2].O): bind 0.0005
+I(ihill[1].S): bind LacLp
+V(input.V[12].O): bind LacLp_0
+V(input.V[21].O): bind 30.1029995664
+V(vgain[4].Z): bind TRTetR
+I(input.I[1].O): bind 0
+I(ihill[5].S): bind clp
+V(input.V[5].O): bind LacLm_0
+I(input.I[0].O): bind 30.1029995664
+V(input.V[9].O): bind 2
+I(input.I[3].O): bind 0.4995
+V(input.V[19].O): bind TetRp_0
+V(input.V[8].O): bind 1
+

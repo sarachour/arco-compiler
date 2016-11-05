@@ -1,0 +1,59 @@
+Comps:
+
+vgain | 0 = []
+switch | 0 = [0]
+input.I | 0 = [1,0,2,3]
+output.V | 0 = []
+copy.V | 0 = []
+vadd | 0 = [1,0]
+ihill | 0 = [0,1]
+vtoi | 0 = [1]
+igenebind | 0 = []
+mm | 0 = []
+input.V | 0 = [6,3,0,1,2,4,5]
+itov | 0 = [3,1]
+iadd | 0 = []
+output.I | 0 = []
+copy.I | 0 = []
+
+Conns:
+input.I[3].O->itov[1].X
+vadd[1].B->input.V[4].O
+input.I[0].O->switch[0].SUB
+input.V[5].O->vadd[0].OUT2_0
+switch[0].Kmod->vtoi[1].Y
+input.I[1].O->ihill[0].Vmax
+input.I[2].O->ihill[1].Vmax
+input.V[0].O->vtoi[1].X
+input.V[4].O->vadd[0].A
+vadd[1].A->itov[3].Y
+itov[3].X->input.I[3].O
+input.V[2].O->switch[0].n
+input.V[1].O->vtoi[1].K
+ihill[1].n->input.V[0].O
+input.V[3].O->ihill[0].n
+input.V[6].O->vadd[1].OUT2_0
+vadd[0].B->itov[1].Y
+vadd[0].C->input.V[4].O
+vadd[1].C->input.V[4].O
+
+Labels:
+V(input.V[6].O): bind U_0
+V(input.V[3].O): bind 2.5
+V(input.V[1].O): bind IPTG
+V(itov[1].K): bind VTF
+V(input.V[2].O): bind 2.0015
+V(vadd[0].D): bind V
+I(ihill[1].Km): bind Km
+V(input.V[4].O): bind 0
+V(input.V[0].O): bind 1
+I(input.I[2].O): bind 15.6
+I(ihill[1].S): bind umodif
+V(itov[3].K): bind UTF
+I(input.I[1].O): bind 156.25
+V(input.V[5].O): bind V_0
+I(input.I[0].O): bind 33763.2520764
+I(ihill[0].S): bind V
+I(input.I[3].O): bind 10
+I(ihill[0].Km): bind Km
+
