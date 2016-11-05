@@ -211,25 +211,21 @@ struct
       match k with
       | SIMBlock(ns,blkn) ->
         if MAP.has symtbl.blocks (loc2path k) = false then
-          debug ("   > declare cmp "^(loc2path (SIMBlock(ns,blkn))));
           noop (MAP.put symtbl.blocks (loc2path k) {ins=MAP.make();outs=MAP.make()})
       | SIMBlockIn(ns,blkn,inp) ->
         let blk = get_block (SIMBlock(ns,blkn)) in
         if MAP.has blk.ins inp = false then
           begin
-            debug ("   > declare in "^(loc2path (SIMBlock(ns,blkn)))^" -> "^inp);
             noop (MAP.put blk.ins inp (MAP.size blk.ins + 1))
           end
       | SIMBlockOut(ns,blkn,out) ->
         let blk = get_block (SIMBlock(ns,blkn)) in
         if MAP.has blk.outs out = false then
           begin
-            debug ("   > declare out "^(loc2path (SIMBlock(ns,blkn)))^" -> "^out);
             noop (MAP.put blk.outs out (MAP.size blk.outs + 1))
           end
     end;
     let path = loc2path k in
-    debug (">+ "^path);
     MAP.put symtbl.paths path k;
     ()
 
@@ -868,6 +864,15 @@ struct
   let get_comp_from_lib namespace (name:hwcompname) =
     namespace^"/library/"^(HwLib.hwcompname2str name)
 
+  let get_mapping mappings wire =
+    if MAP.has mappings wire then
+      MAP.get mappings wire
+    else
+      let mapstr : string= SolverMapper.mappings2str mappings in
+      warn "get_mapping" mapstr;
+      error "get_mapping" ("mapping for wire "^(SlnLib.wireid2str wire)^" does not exist:\n"^mapstr)
+
+
   let create_circuit (tbl) namespace (mappings:(wireid,hw_mapping) map) =
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
@@ -932,7 +937,7 @@ struct
           begin
             match model_mapper () with
             | true ->
-              let mapping = MAP.get mappings lbl.wire in
+              let mapping = get_mapping mappings lbl.wire in
               let linmap_in,linmap_out= create_linmap q circ_ns mapping false in
               q (add_route_line src_loc_out linmap_in);
               q (add_route_line linmap_out dst_loc)
@@ -951,11 +956,18 @@ struct
                 let dst_in_int,dst_out_int,dst_out_ext =
                   create_out q circ_ns ((HwLib.hwcompinst2str lbl.wire.comp)^"_out")
                 in
-                let mapping = MAP.get mappings lbl.wire in
-                let linmap_in,linmap_out= create_linmap q circ_ns mapping true in
-                q (add_route_line src_loc linmap_in);
-                q (add_route_line linmap_out dst_in_int);
-                ()
+                begin
+                  match model_mapper () with
+                  | true ->
+                    let mapping = get_mapping mappings lbl.wire in
+                    let linmap_in,linmap_out= create_linmap q circ_ns mapping true in
+                    q (add_route_line src_loc linmap_in);
+                    q (add_route_line linmap_out dst_in_int);
+                    ()
+                  | false ->
+                    q (add_route_line src_loc dst_in_int)
+                end
+
               | _ -> ()
             end
           | _ -> ()
