@@ -600,45 +600,49 @@ struct
     match maybe_root with
     | Some(root) ->
       SearchLib.move_cursor tbl.search tbl root;
-      tbl
-    | None -> error "mk_partial_table" "there is no root"
+      Some tbl
+    | None ->
+      None
 
   (*TODO*)
   let find_partial_solution (ms:musearch) (pvar:string) (nslns:int) : ((sstep snode) list) option =
     let mint,musr = mkmenu ms in
     (*TODO: why isn't there a root*)
-    let ptbl = mk_partial_tbl ms pvar in
-    let currsols : int = SearchLib.num_solutions ptbl.search None in
-    (*original solution set*)
-    let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
-    begin
-      let is_new (q:sstep snode) =
-        List.length (LIST.filter (fun (x:sstep snode) -> q.id = x.id) orig) = 0
-      in
-      let depth = get_glbl_int "slvr-partial-depth" in
-      debug "find a partial solution";
-      debug "== Finding Local Solution ==";
-      debug ("== Current # Solutions: "^(string_of_int currsols));
-      debug ("== # New Solutions To Find: "^(string_of_int nslns));
-      musr ();
-      let maybe_results : ((sstep snode) list) option = SolverEqn.solve ptbl (nslns+currsols) depth in
-      SearchLib.clear_cursor ptbl.search;
-      debug "=== returned from partial search ===";
-      musr();
-      match maybe_results with
-      | None ->
-        debug ">>> No Partial Results Found <<<";
-        None
-      | Some(results) ->
-        debug ">>> Partial Results Found <<<";
-        let new_results :(sstep snode) list = List.filter (fun result -> is_new result) results in
-        begin
-          match new_results with
-          | [] -> None
-          | lst -> Some(lst)
-        end
-    end
-
+    match mk_partial_tbl ms pvar with
+        | Some(ptbl) ->
+          let currsols : int = SearchLib.num_solutions ptbl.search None in
+          (*original solution set*)
+          let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
+          begin
+            let is_new (q:sstep snode) =
+              List.length (LIST.filter (fun (x:sstep snode) -> q.id = x.id) orig) = 0
+            in
+            let depth = get_glbl_int "slvr-partial-depth" in
+            debug "find a partial solution";
+            debug "== Finding Local Solution ==";
+            debug ("== Current # Solutions: "^(string_of_int currsols));
+            debug ("== # New Solutions To Find: "^(string_of_int nslns));
+            musr ();
+            let maybe_results : ((sstep snode) list) option = SolverEqn.solve ptbl (nslns+currsols) depth in
+            SearchLib.clear_cursor ptbl.search;
+            debug "=== returned from partial search ===";
+            musr();
+            match maybe_results with
+            | None ->
+              debug ">>> No Partial Results Found <<<";
+              None
+            | Some(results) ->
+              debug ">>> Partial Results Found <<<";
+              let new_results :(sstep snode) list = List.filter (fun result -> is_new result) results in
+              begin
+                match new_results with
+                | [] -> None
+                | lst -> Some(lst)
+              end
+          end
+        | None ->
+          warn "find_partial_solution" "nowhere left to search.";
+          None
 
 
 
@@ -714,7 +718,9 @@ struct
       
     let augment_with_new_partial_sln (ms:musearch) (pvar) (nslns) =
       let _ = _print_debug "finding new partial solution" in
-      let slns : (sstep snode list) option = find_partial_solution ms pvar nslns in
+      let slns : (sstep snode list) option =
+        find_partial_solution ms pvar nslns
+      in
       let _ = _print_debug "done with search" in
       let res : 'a option = augment_with_partial_solution ms pvar slns in
       res

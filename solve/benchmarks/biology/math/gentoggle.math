@@ -18,7 +18,7 @@ param gamma : none = 1.0
 param Cv : none = 1
 param Cu : 1/mol  = 1
 param kdeg : (mol/s) = 0.001
-param Kmp : (mol/s) = 1
+param Km : (mol/s) = 1
 
 
 output U : mol
@@ -26,7 +26,7 @@ output V : mol
 local umodif : mol
 local UTF : mol
 local VTF : mol
-local Km : mol
+%local Km : mol
 
 input IPTG : mol
 def IPTG mag = [0,1] mol
@@ -34,7 +34,7 @@ def IPTG mag = [0,1] mol
 %this relation is solvable
 %individually, everything is solvable
 
-rel Km = Kmp
+%rel Km = Kmp
 rel umodif = (U)/((1+IPTG/K)^nu)
 
 
