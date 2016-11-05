@@ -5,18 +5,6 @@
 % oscillator. Fill in later.
 % Depth 20, pattern 3
 
-type s
-
-local A : none %2
-local C : none %3
-local DA : none %4
-local DAp : none %5
-local DR : none%6
-local DRp : none %7
-local MA : none %8
-local MR : none %9
-local R : none %10
-
 
 
 param r1_gamma : none = 50
@@ -36,15 +24,44 @@ param r14_alpha : none = 50
 param r15_delta : none = 0.5
 param r16_beta : none = 5.0
 
+local A : none %2
+local C : none %3
+local DA : none %4
+local DAp : none %5
+local DR : none%6
+local DRp : none %7
+local MA : none %8
+local MR : none %9
+local R : none %10
 
+
+
+type s
 time t : s
 
-rel deriv(A,t) =  (( r6_theta*DAp) + ( MA*r10_beta) + ( A*DR*r11_gamma) + ( DRp*r12_theta))- (( A*R*r1_gamma) + ( A*r2_delta) + ( A*DA*r5_gamma)) with A(0) = 0
-rel deriv(C,t) = ( A*R*r1_gamma) - ( C*r3_delta) with C(0) = 0
-rel deriv(DA,t) = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) with DA(0) = 0
-rel deriv(DAp,t) = (( A*DA*r5_gamma)+( r8_alpha*DAp))-(( r6_theta*DAp)+( r8_alpha*DAp)) with DAp(0) = 0
-rel deriv(DR,t) = (( DRp*r12_theta)+( r13_alpha*DR))-(( A*DR*r11_gamma)+( r13_alpha*DR)) with DR(0) = 0
-rel deriv(DRp,t) = (( A*DR*r11_gamma) + ( DRp*r14_alpha)) - (( DRp*r14_alpha) + ( DRp*r12_theta)) with DRp(0) = 0
-rel deriv(MA,t) = (( r7_alpha*DA)+( r8_alpha*DAp)+( MA*r10_beta))-(( MA*r10_beta)+( MA*r9_delta)) with MA(0) = 0
-rel deriv(MR,t) = (( r13_alpha*DR) + ( DRp*r14_alpha) +( MR*r16_beta)) - (( MR*r15_delta) + ( MR*r16_beta)) with MR(0) = 0
-rel deriv(R,t) =  (( C*r3_delta) + ( MR*r16_beta)) - (( R*r4_delta) + ( A*R*r1_gamma)) with R(0) = 0
+rel ddt A =  (( r6_theta*DAp) + ( MA*r10_beta) + ( A*DR*r11_gamma) + ( DRp*r12_theta))- (( A*R*r1_gamma) + ( A*r2_delta) + ( A*DA*r5_gamma)) init 0
+def A mag = [0,1] A 
+
+rel ddt C = ( A*R*r1_gamma) - ( C*r3_delta) init 0
+def C mag = [0,1] A 
+
+rel ddt DA = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) init 0
+def DA mag = [0,1] A 
+
+rel ddt DAp = (( A*DA*r5_gamma)+( r8_alpha*DAp))-(( r6_theta*DAp)+( r8_alpha*DAp)) init 0
+def DAp mag = [0,1] A 
+
+rel ddt DR = (( DRp*r12_theta)+( r13_alpha*DR))-(( A*DR*r11_gamma)+( r13_alpha*DR)) init 0
+def DR mag = [0,1] A 
+
+rel ddt DRp = (( A*DR*r11_gamma) + ( DRp*r14_alpha)) - (( DRp*r14_alpha) + ( DRp*r12_theta)) init 0
+def DRp mag = [0,1] A 
+
+rel ddt MA = (( r7_alpha*DA)+( r8_alpha*DAp)+( MA*r10_beta))-(( MA*r10_beta)+( MA*r9_delta)) init 0
+def MA mag = [0,1] A 
+
+rel ddt MR = (( r13_alpha*DR) + ( DRp*r14_alpha) +( MR*r16_beta)) - (( MR*r15_delta) + ( MR*r16_beta)) init 0
+def MR mag = [0,1] A 
+
+rel ddt R =  (( C*r3_delta) + ( MR*r16_beta)) - (( R*r4_delta) + ( A*R*r1_gamma)) init 0
+def R mag = [0,1] A 

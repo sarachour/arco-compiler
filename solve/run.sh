@@ -34,9 +34,10 @@ fi
 OUTDIR=output/$HWSPEC
 TMPDIR=tmp
 
-mkdir -p $OUTDIR
+mkdir -p $OUTDIR/$NAME
 mkdir -p $TMPDIR
 
-mv ckt_* $OUTDIR/
+mv ckt_* $OUTDIR/$NAME/
+
 mv *.smt2 $TMPDIR/
 mv *.debug.txt $TMPDIR

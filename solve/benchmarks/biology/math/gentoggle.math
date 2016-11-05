@@ -34,7 +34,6 @@ def IPTG mag = [0,1] mol
 %this relation is solvable
 %individually, everything is solvable
 
-%rel Km = Kmp
 rel umodif = (U)/((1+IPTG/K)^nu)
 
 

@@ -1,10 +1,10 @@
 
 type us
-type mA
+type uA
 type mV
 type bits
 
-prop I : mA
+prop I : uA
 prop V : mV
 prop D : bits
 
@@ -12,33 +12,33 @@ time t: us
 
 digital input I
   input X {D:bits}
-  output O {I:mA}
-  def I(O) mag = [0,1] mA
+  output O {I:uA}
+  def I(O) mag = [0.0001,10] uA
   def D(X) repr = SEEEEMMM 
   def D(X) sample = 0.00001 us
-  def D(X) mag = [0,1] mA
+  def D(X) mag = [0.0001,10] uA
 
   rel I(O) = D(X)
   var I(O) = I(O)*0.00001 shape UNIFORM
 end
 
 digital output I
-  input X {I:mA}
-  def I(X) mag = [0,1] mA
+  input X {I:uA}
+  def I(X) mag = [0.0001,10] uA
 
   output O {D:bits}
   def D(O) repr = SEEEEMMM
   def D(O) sample = 0.001 us
-  def D(O) mag = [0,1] mA
+  def D(O) mag = [0.0001,10] uA
 
   rel D(O) = I(X)
 end
 
 comp copy I
-  input X {I:mA}
-  def I(X) mag = [0,1] mA
+  input X {I:uA}
+  def I(X) mag = [0.0001,10] uA
 
-  output Y {I:mA}
+  output Y {I:uA}
 
   rel I(Y) = I(X)
   var I(Y) = I(Y)*0.00001 shape UNIFORM
@@ -60,7 +60,7 @@ end
 digital output V
   input X {V:mV}
   output O {D:bits}
-  def V(X) mag = [0,5] mV
+  def V(X) mag = [0.0001,3300] mV
 
   def D(O) sample = 0.001 us
   def D(O) repr = SEEEMMMM 
@@ -84,16 +84,16 @@ end
 
 comp vgain
   input X {V:mV}
-  def I(X) mag = [0,1] mA
+  def I(X) mag = [0.0001,10] uA
 
   input Y {V:mV}
-  def I(Y) mag = [0,1] mA
+  def I(Y) mag = [0.0001,10] uA
   
   input Z {V:mV}
-  def I(Z) mag = [0,1] mA
+  def I(Z) mag = [0.0001,10] uA
   
   output P {V:mV}
-  def I(P) mag = [0,1] mA
+  def V(P) mag = [0.0001,3300] mV
 
   rel V(P) = (V(X)/V(Y))*V(Z)*0.04
 
@@ -101,16 +101,16 @@ comp vgain
 
 end
 comp iadd
-  input A {I:mA}
-  input B {I:mA}
-  input C {I:mA}
-  input D {I:mA}
-  output OUT {I:mA}
-  def I(A) mag = [0,1] mA 
-  def I(B) mag = [0,1] mA 
-  def I(C) mag = [0,1] mA 
-  def I(D) mag = [0,1] mA
-  def I(OUT) mag = [0,1] mA
+  input A {I:uA}
+  input B {I:uA}
+  input C {I:uA}
+  input D {I:uA}
+  output OUT {I:uA}
+  def I(A) mag = [0.0001,10] uA 
+  def I(B) mag = [0.0001,10] uA 
+  def I(C) mag = [0.0001,10] uA 
+  def I(D) mag = [0.0001,10] uA
+  def I(OUT) mag = [0.0001,10] uA
   rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
 
 end
@@ -142,11 +142,11 @@ end
 comp vtoi
   input X {V:mV}
   input K {V:mV}
-  output Y {I:mA}
+  output Y {I:uA}
 
-  def I(Y) mag = [0,1] mA
-  def I(X) mag = [0,1] mV
-  def V(K) mag = [1,4] mV
+  def I(Y) mag = [0.0001,10] uA
+  def V(K) mag = [1,3300] mV
+  def V(X) mag = [1,3300] mV
 
   rel I(Y) = (1/V(K))*V(X)
   
@@ -155,11 +155,11 @@ comp vtoi
 end
 
 comp itov
-  input X {I:mA}
+  input X {I:uA}
   input K {V:mV}
   output Y {V:mV}
-  def I(X) mag = [0,1] mA
-  def V(K) mag = [0,1] mV
+  def I(X) mag = [0.0001,10] uA
+  def V(K) mag = [1,3300] mV
 
   rel V(Y) = (V(K))*I(X)
 
@@ -169,17 +169,17 @@ end
 % Dynamic Systems Biology Modelling
 % page 311
 comp ihill
-  input Vmax {I:mA}
-  input S {I:mA}
+  input Vmax {I:uA}
+  input S {I:uA}
   param n : mV = {1,1.5,2,2.5,3,3.5}
-  input Km {I:mA}
+  input Km {I:uA}
 
-  def I(Vmax) mag = [0,1] mA
-  def I(S) mag = [0,1] mA
-  def I(Km) mag = [1,10] mA
+  def I(Vmax) mag = [0.0001,10] uA
+  def I(S) mag = [0.0001,10] uA
+  def I(Km) mag = [1,10] uA
 
-  output STIM {I:mA}
-  output REP {I:mA}
+  output STIM {I:uA}
+  output REP {I:uA}
   
   % s^n/(s^n + k^n)
   rel I(STIM) = I(Vmax)*(((I(S)/I(Km))^n)/( ((I(S)/I(Km))^n) + 1 ) )
@@ -189,15 +189,15 @@ comp ihill
 end
 
 comp igenebind
-  input TF {I:mA}
-  input K {I:mA}
-  input Vmax {I:mA}
+  input TF {I:uA}
+  input K {I:uA}
+  input Vmax {I:uA}
 
-  def I(TF) mag = [0,1] mA
-  def I(K) mag = [0,1] mA
-  def I(Vmax) mag = [0,1] mA
+  def I(TF) mag = [0.0001,10] uA
+  def I(K) mag = [0.0001,10] uA
+  def I(Vmax) mag = [0.0001,10] uA
 
-  output GE {I:mA}
+  output GE {I:uA}
 
   rel I(GE) = I(Vmax)*(1/(1+I(K)*I(TF)))
   sim igenebind TF K Vmax GE
@@ -208,15 +208,15 @@ comp mm
 
   input Xtot {V:mV}
   input Ytot {V:mV}
-  input kf {I:mA}
-  input kr {I:mA}
+  input kf {I:uA}
+  input kr {I:uA}
   input XY0 {V:mV}
 
-  def V(Xtot) mag = [0,1] mV
-  def V(Ytot) mag = [0,1] mV
-  def I(kf) mag = [0,1] mA
-  def I(kr) mag = [0,1] mA
-  def V(XY0) mag = [0,1] mV
+  def V(Xtot) mag = [0.0001,3300] mV
+  def V(Ytot) mag = [0.0001,3300] mV
+  def I(kf) mag = [0.0001,10] uA
+  def I(kr) mag = [0.0001,10] uA
+  def V(XY0) mag = [0.0001,3300] mV
 
 
   output XY {V:mV}
@@ -230,17 +230,17 @@ comp mm
 end
 
 comp switch
-  input SUB {I:mA}
-  input Vmax {I:mA}
+  input SUB {I:uA}
+  input Vmax {I:uA}
   input n {V:mV}
-  input Kmod {I:mA}
+  input Kmod {I:uA}
 
-  def I(SUB) mag = [0,1] mA
-  def I(Vmax) mag = [0,1] mA
+  def I(SUB) mag = [0.0001,10] uA
+  def I(Vmax) mag = [0.0001,10] uA
   def V(n) mag = [0,1] mV
-  def I(Kmod) mag = [1,10] mA
+  def I(Kmod) mag = [1,10] uA
 
-  output PROD {I:mA}
+  output PROD {I:uA}
 
   rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)))
 end
