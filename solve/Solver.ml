@@ -68,12 +68,12 @@ let canonicalize_sln (hw:hwvid hwenv) (s:sln) =
 
 
 let simulinkformat2suffix f = match f with
-  | SFIdealSDE -> "sde-ideal"
-  | SFIdealODE -> "ode-ideal"
-  | SFCircSDE -> "sde-circ"
-  | SFCircODE -> "ode-circ"
-  | SFCircMapODE -> "ode-circ-map"
-  | SFCircMapSDE -> "sde-circ-map"
+  | SFIdealSDE -> "sdeIdeal"
+  | SFIdealODE -> "odeIdeal"
+  | SFCircSDE -> "sdeCirc"
+  | SFCircODE -> "odeCirc"
+  | SFCircMapODE -> "odeCircMap"
+  | SFCircMapSDE -> "sdeCircMap"
 
 let to_mat_file slntbl out i format mappings =
   let base = out^"_"^(string_of_int i)^"_"^(simulinkformat2suffix format) in
@@ -101,6 +101,16 @@ let to_mat_file slntbl out i format mappings =
 let proc_sln (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Concrete slntbl ---";
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
+  let sln_sum : string= SlnLib.sln2str slntbl.sln_ctx ident MathLib.mid2str in
+  let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
+  IO.save (out^"_"^(string_of_int i)^"_sln.sum") sln_sum;
+  IO.save (out^"_"^(string_of_int i)^"_comp.sum") cmp_sum;
+  Printf.printf "===== Solution Found ======\n";
+  ()
+
+let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
+  slvr_print_inter "---- Calculating Concrete slntbl ---";
+  let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
   let mappings = SolverMapper.infer slntbl in
   to_mat_file slntbl out i SFIdealSDE mappings;
@@ -110,7 +120,6 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
   to_mat_file slntbl out i SFCircMapSDE mappings;
   to_mat_file slntbl out i SFCircMapODE mappings;
   slvr_print_inter "---- Generating Summary File ---";
-  let sln_sum : string= SlnLib.sln2str slntbl.sln_ctx ident MathLib.mid2str in
   let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
   begin
     match mappings with
@@ -122,10 +131,9 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
 
     | None -> ()
   end;
-  IO.save (out^"_"^(string_of_int i)^"_sln.sum") sln_sum;
-  IO.save (out^"_"^(string_of_int i)^"_comp.sum") cmp_sum;
-  Printf.printf "===== Solution Found ======\n";
+  Printf.printf "===== Mapping Solution Found ======\n";
   ()
+
 
 let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   init_utils();
@@ -140,6 +148,7 @@ let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   match maybe_slns with
   | Some(slns) ->
     List.iteri (fun id (x:gltbl) -> proc_sln out x id) slns;
+    List.iteri (fun id (x:gltbl) -> proc_sln_mappings out x id) slns;
     ()
   | None ->
     flush_all(); error "solver" "no solutions found"

@@ -31,3 +31,6 @@ solver: $(DEPS) $(COMP_DEPS) $(DIR_DEPS)
 clean:
 	ocamlbuild -clean
 	rm *.swo *.swp
+
+clean-out:
+	rm -rf output/*
