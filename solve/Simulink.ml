@@ -666,7 +666,7 @@ struct
         ()
     );
     HwLib.comp_iter_outs comp (fun vr ->
-        let int_out = SIMBlockIn(cmpns,vr.port,"I") in
+        let int_out = SIMBlockIn(cmpns,"_"^vr.port,"I") in
         match vr.bhvr,vr.defs with
         | HWBAnalog(bhvr),HWDAnalog(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
@@ -718,7 +718,8 @@ struct
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
-    let lib_ns :string  list = match create_subsystem q namespace ("library") with
+    let lib_ns :string  list =
+      match create_subsystem q namespace ("library") with
       | SIMBlock(ns,cmp) -> ns@[cmp]
     in
     qs [MATComment("");MATComment("")];

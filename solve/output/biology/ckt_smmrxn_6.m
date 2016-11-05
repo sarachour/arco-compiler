@@ -111,7 +111,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/mm','unzv_54/1','unza_54/2');
   add_line('ckt_smmrxn_6/library/mm','sum_49/1','unza_54/1');
   add_line('ckt_smmrxn_6/library/mm','const_52/1','unzv_54/1');
-  add_line('ckt_smmrxn_6/library/mm','unza_54/1','X/1');
+  add_line('ckt_smmrxn_6/library/mm','unza_54/1','_X/1');
   add_block('simulink/Math Operations/Product','ckt_smmrxn_6/library/mm/mul_62');
   set_param('ckt_smmrxn_6/library/mm/mul_62','Inputs','***');
   add_line('ckt_smmrxn_6/library/mm','_kf/1','mul_62/1');
@@ -142,7 +142,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/mm','const_72/1','unzv_76/1');
   add_line('ckt_smmrxn_6/library/mm','unza_76/1','int_84/1');
   add_line('ckt_smmrxn_6/library/mm','int_84/1','sat_74/1');
-  add_line('ckt_smmrxn_6/library/mm','sat_74/1','XY/1');
+  add_line('ckt_smmrxn_6/library/mm','sat_74/1','_XY/1');
   add_block('simulink/Math Operations/Sum','ckt_smmrxn_6/library/mm/sum_86');
   set_param('ckt_smmrxn_6/library/mm/sum_86','Inputs','+-');
   add_line('ckt_smmrxn_6/library/mm','_Ytot/1','sum_86/1');
@@ -158,7 +158,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/mm','unzv_91/1','unza_91/2');
   add_line('ckt_smmrxn_6/library/mm','sum_86/1','unza_91/1');
   add_line('ckt_smmrxn_6/library/mm','const_89/1','unzv_91/1');
-  add_line('ckt_smmrxn_6/library/mm','unza_91/1','Y/1');
+  add_line('ckt_smmrxn_6/library/mm','unza_91/1','_Y/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/vgain');
   delete_line('ckt_smmrxn_6/library/vgain','In1/1','Out1/1');
@@ -210,7 +210,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/vgain','unzv_136/1','unza_136/2');
   add_line('ckt_smmrxn_6/library/vgain','mul_130/1','unza_136/1');
   add_line('ckt_smmrxn_6/library/vgain','const_134/1','unzv_136/1');
-  add_line('ckt_smmrxn_6/library/vgain','unza_136/1','P/1');
+  add_line('ckt_smmrxn_6/library/vgain','unza_136/1','_P/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/switch');
   delete_line('ckt_smmrxn_6/library/switch','In1/1','Out1/1');
@@ -276,7 +276,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/switch','unzv_193/1','unza_193/2');
   add_line('ckt_smmrxn_6/library/switch','div_188/1','unza_193/1');
   add_line('ckt_smmrxn_6/library/switch','const_191/1','unzv_193/1');
-  add_line('ckt_smmrxn_6/library/switch','unza_193/1','PROD/1');
+  add_line('ckt_smmrxn_6/library/switch','unza_193/1','_PROD/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/ihill');
   delete_line('ckt_smmrxn_6/library/ihill','In1/1','Out1/1');
@@ -353,7 +353,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/ihill','unzv_261/1','unza_261/2');
   add_line('ckt_smmrxn_6/library/ihill','mul_256/1','unza_261/1');
   add_line('ckt_smmrxn_6/library/ihill','const_259/1','unzv_261/1');
-  add_line('ckt_smmrxn_6/library/ihill','unza_261/1','STIM/1');
+  add_line('ckt_smmrxn_6/library/ihill','unza_261/1','_STIM/1');
   add_block('simulink/Math Operations/Math Function','ckt_smmrxn_6/library/ihill/pow_269');
   set_param('ckt_smmrxn_6/library/ihill/pow_269','Function','pow');
   add_line('ckt_smmrxn_6/library/ihill','_n/1','pow_269/2');
@@ -389,7 +389,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/ihill','unzv_289/1','unza_289/2');
   add_line('ckt_smmrxn_6/library/ihill','mul_284/1','unza_289/1');
   add_line('ckt_smmrxn_6/library/ihill','const_287/1','unzv_289/1');
-  add_line('ckt_smmrxn_6/library/ihill','unza_289/1','REP/1');
+  add_line('ckt_smmrxn_6/library/ihill','unza_289/1','_REP/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/itov');
   delete_line('ckt_smmrxn_6/library/itov','In1/1','Out1/1');
@@ -427,7 +427,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/itov','unzv_321/1','unza_321/2');
   add_line('ckt_smmrxn_6/library/itov','mul_316/1','unza_321/1');
   add_line('ckt_smmrxn_6/library/itov','const_319/1','unzv_321/1');
-  add_line('ckt_smmrxn_6/library/itov','unza_321/1','Y/1');
+  add_line('ckt_smmrxn_6/library/itov','unza_321/1','_Y/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/output.I');
   delete_line('ckt_smmrxn_6/library/output.I','In1/1','Out1/1');
@@ -450,7 +450,7 @@ function build_comp_library()
   set_param('ckt_smmrxn_6/library/output.I/smpv_341','Inputs','**');
   add_line('ckt_smmrxn_6/library/output.I','smp_341/1','smpv_341/2');
   add_line('ckt_smmrxn_6/library/output.I','_X/1','smpv_341/1');
-  add_line('ckt_smmrxn_6/library/output.I','smpv_341/1','O/1');
+  add_line('ckt_smmrxn_6/library/output.I','smpv_341/1','_O/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/output.V');
   delete_line('ckt_smmrxn_6/library/output.V','In1/1','Out1/1');
@@ -473,7 +473,7 @@ function build_comp_library()
   set_param('ckt_smmrxn_6/library/output.V/smpv_358','Inputs','**');
   add_line('ckt_smmrxn_6/library/output.V','smp_358/1','smpv_358/2');
   add_line('ckt_smmrxn_6/library/output.V','_X/1','smpv_358/1');
-  add_line('ckt_smmrxn_6/library/output.V','smpv_358/1','O/1');
+  add_line('ckt_smmrxn_6/library/output.V','smpv_358/1','_O/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/input.V');
   delete_line('ckt_smmrxn_6/library/input.V','In1/1','Out1/1');
@@ -503,7 +503,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/input.V','unzv_380/1','unza_380/2');
   add_line('ckt_smmrxn_6/library/input.V','_X/1','unza_380/1');
   add_line('ckt_smmrxn_6/library/input.V','const_378/1','unzv_380/1');
-  add_line('ckt_smmrxn_6/library/input.V','unza_380/1','O/1');
+  add_line('ckt_smmrxn_6/library/input.V','unza_380/1','_O/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/copy.V');
   delete_line('ckt_smmrxn_6/library/copy.V','In1/1','Out1/1');
@@ -530,7 +530,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/copy.V','unzv_402/1','unza_402/2');
   add_line('ckt_smmrxn_6/library/copy.V','_X/1','unza_402/1');
   add_line('ckt_smmrxn_6/library/copy.V','const_400/1','unzv_402/1');
-  add_line('ckt_smmrxn_6/library/copy.V','unza_402/1','Y/1');
+  add_line('ckt_smmrxn_6/library/copy.V','unza_402/1','_Y/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/vtoi');
   delete_line('ckt_smmrxn_6/library/vtoi','In1/1','Out1/1');
@@ -574,7 +574,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/vtoi','unzv_439/1','unza_439/2');
   add_line('ckt_smmrxn_6/library/vtoi','mul_434/1','unza_439/1');
   add_line('ckt_smmrxn_6/library/vtoi','const_437/1','unzv_439/1');
-  add_line('ckt_smmrxn_6/library/vtoi','unza_439/1','Y/1');
+  add_line('ckt_smmrxn_6/library/vtoi','unza_439/1','_Y/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/vadd');
   delete_line('ckt_smmrxn_6/library/vadd','In1/1','Out1/1');
@@ -647,7 +647,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/vadd','unzv_505/1','unza_505/2');
   add_line('ckt_smmrxn_6/library/vadd','mul_500/1','unza_505/1');
   add_line('ckt_smmrxn_6/library/vadd','const_503/1','unzv_505/1');
-  add_line('ckt_smmrxn_6/library/vadd','unza_505/1','OUT/1');
+  add_line('ckt_smmrxn_6/library/vadd','unza_505/1','_OUT/1');
   add_block('simulink/Math Operations/Sum','ckt_smmrxn_6/library/vadd/sub_513');
   set_param('ckt_smmrxn_6/library/vadd/sub_513','Inputs','++');
   add_line('ckt_smmrxn_6/library/vadd','_A/1','sub_513/1');
@@ -684,7 +684,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/vadd','const_528/1','unzv_532/1');
   add_line('ckt_smmrxn_6/library/vadd','unza_532/1','int_540/1');
   add_line('ckt_smmrxn_6/library/vadd','int_540/1','sat_530/1');
-  add_line('ckt_smmrxn_6/library/vadd','sat_530/1','OUT2/1');
+  add_line('ckt_smmrxn_6/library/vadd','sat_530/1','_OUT2/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/copy.I');
   delete_line('ckt_smmrxn_6/library/copy.I','In1/1','Out1/1');
@@ -715,7 +715,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/copy.I','unzv_559/1','unza_559/2');
   add_line('ckt_smmrxn_6/library/copy.I','_X/1','unza_559/1');
   add_line('ckt_smmrxn_6/library/copy.I','mul_556/1','unzv_559/1');
-  add_line('ckt_smmrxn_6/library/copy.I','unza_559/1','Y/1');
+  add_line('ckt_smmrxn_6/library/copy.I','unza_559/1','_Y/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/iadd');
   delete_line('ckt_smmrxn_6/library/iadd','In1/1','Out1/1');
@@ -772,7 +772,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/iadd','unzv_609/1','unza_609/2');
   add_line('ckt_smmrxn_6/library/iadd','sum_603/1','unza_609/1');
   add_line('ckt_smmrxn_6/library/iadd','const_607/1','unzv_609/1');
-  add_line('ckt_smmrxn_6/library/iadd','unza_609/1','OUT/1');
+  add_line('ckt_smmrxn_6/library/iadd','unza_609/1','_OUT/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/input.I');
   delete_line('ckt_smmrxn_6/library/input.I','In1/1','Out1/1');
@@ -806,7 +806,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/input.I','unzv_637/1','unza_637/2');
   add_line('ckt_smmrxn_6/library/input.I','_X/1','unza_637/1');
   add_line('ckt_smmrxn_6/library/input.I','mul_634/1','unzv_637/1');
-  add_line('ckt_smmrxn_6/library/input.I','unza_637/1','O/1');
+  add_line('ckt_smmrxn_6/library/input.I','unza_637/1','_O/1');
   %
   add_block('simulink/Ports & Subsystems/Subsystem','ckt_smmrxn_6/library/igenebind');
   delete_line('ckt_smmrxn_6/library/igenebind','In1/1','Out1/1');
@@ -867,7 +867,7 @@ function build_comp_library()
   add_line('ckt_smmrxn_6/library/igenebind','unzv_689/1','unza_689/2');
   add_line('ckt_smmrxn_6/library/igenebind','mul_684/1','unza_689/1');
   add_line('ckt_smmrxn_6/library/igenebind','const_687/1','unzv_689/1');
-  add_line('ckt_smmrxn_6/library/igenebind','unza_689/1','GE/1');
+  add_line('ckt_smmrxn_6/library/igenebind','unza_689/1','_GE/1');
 end
 %
 %
