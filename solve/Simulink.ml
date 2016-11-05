@@ -33,6 +33,14 @@ type matst =
   | MATFxnDecl of string*(matvar list)*(matst list)
 
 
+type simulink_format =
+  | SFIdealSDE
+  | SFIdealODE
+  | SFCircSDE
+  | SFCircODE
+  | SFCircMapSDE
+  | SFCircMapODE
+
 
 module SimulinkRouter =
 struct
@@ -46,6 +54,31 @@ let debug = print_debug 1 "dbg"
 module SimulinkGen =
 struct
 
+  let simulink_format = REF.mk SFIdealODE
+
+  let upd_format form =
+    REF.upd simulink_format (fun x -> form)
+
+  let model_noise ()= match REF.dr simulink_format with
+    | SFIdealSDE -> true
+    | SFCircSDE -> true
+    | SFCircMapSDE -> true
+    | _ -> false
+
+  let model_ideal () = match REF.dr simulink_format with
+    | SFCircSDE -> false
+    | SFCircODE -> false
+    | SFCircMapSDE -> false
+    | SFCircMapODE -> false
+    | SFIdealSDE -> true
+    | SFIdealODE -> true
+
+  let model_mapper form = match REF.dr simulink_format with
+    | SFCircMapODE -> true
+    | SFCircMapSDE -> true
+    | _ -> false
+
+
   let basic_fxns = MAP.make ();;
   noop (MAP.put basic_fxns "*" "simulink/Math Operations/Product");;
   noop (MAP.put basic_fxns "+" "simulink/Math Operations/Sum");;
@@ -55,7 +88,7 @@ struct
   noop (MAP.put basic_fxns "out" "simulink/Ports & Subsystems/Out1");;
   noop (MAP.put basic_fxns "const" "simulink/Sources/Constant");;
   noop (MAP.put basic_fxns "noise" "simulink/Sources/Uniform Random Number");;
-  noop (MAP.put basic_fxns "pulse" "simulink/Sources/Pulse Generator");;
+  noop (MAP.put basic_fxns "disc" "simulink/Discontinuities/Quantizer");;
   noop (MAP.put basic_fxns "gain" "simulink/Math Operations/Gain");;
   noop (MAP.put basic_fxns "-" "simulink/Math Operations/Subtract");;
   noop (MAP.put basic_fxns "mfxn" "simulink/Math Operations/Math Function");;
@@ -494,26 +527,15 @@ struct
   let create_sample q namespace sample =
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"smp_"^(string_of_int id)) in
-    let vloc = SIMBlock(namespace,"smpv_"^(string_of_int id)) in
-    declare_vars [loc;vloc];
-    q (add_route_block (get_basic_fxn "pulse") loc);
-    q (add_route_block (get_basic_fxn "*") vloc);
+    declare_vars [loc];
+    q (add_route_block (get_basic_fxn "disc") loc);
     q (set_route_param
-         (loc) "Period"         
+         (loc) "Interval"         
          (MATLit(MATStr(string_of_float sample))));
-    q (set_route_param
-         (loc) "PulseWidth"         
-         (MATLit(MATStr("100"))));
-    q (set_route_param
-         (vloc) "Inputs"
-         (MATLit(MATStr("**"))));
     let sample_out = mk_sim_out loc "O" in
-    let mul_in1 = mk_sim_in vloc "I1" in
-    let mul_in2 = mk_sim_in vloc "I2" in
-    let mul_out = mk_sim_out vloc "O" in
-    declare_vars [sample_out;mul_in1;mul_in2;mul_out];
-    q (add_route_line sample_out mul_in2);
-    loc,mul_in1,mul_out
+    let sample_in = mk_sim_in loc "I" in
+    declare_vars [sample_out;sample_in];
+    loc,sample_in,sample_out
 
   let create_noise q namespace =
    let id = symtbl_size () in
@@ -698,42 +720,91 @@ struct
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
           (*compute handles*)
           let handle = expr2blockdiag q cmpns bhvr.rhs in
-          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
-          (*this is where you'd pipe the output through a few things*)
-          let _,variance,noise_in,noise_out = create_noise q cmpns in 
+          let min,max = IntervalLib.interval2numbounds defs.ival in
+          begin
+            match model_noise(), model_ideal() with
+            | true,true ->
+              let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+              let _,variance,noise_in,noise_out = create_noise q cmpns in 
+              q (add_route_line handle noise_in);
+              q (add_route_line var_handle variance);
+              q (add_route_line noise_out int_out);
+              ()
+            | true,false ->
+              let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+              let _,variance,noise_in,noise_out = create_noise q cmpns in 
+              let _,clamp_in,clamp_out= create_clamp q cmpns min max in
+              q (add_route_line handle clamp_in);
+              q (add_route_line clamp_out noise_in);
+              q (add_route_line var_handle variance);
+              q (add_route_line noise_out int_out);
+              ()
+            | false,true ->
+              ()
+            | false,false ->
+              let _,clamp_in,clamp_out= create_clamp q cmpns min max in
+              q (add_route_line handle clamp_in);
+              q (add_route_line clamp_out int_out);
+              ()
+              (*this is where you'd pipe the output through a few things*)
           (*then you connect*)
-          q (add_route_line handle noise_in);
-          q (add_route_line var_handle variance);
-          q (add_route_line noise_out int_out);
-          ()
+          end
         | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
           let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
+          let dmin,dmax = IntervalLib.interval2numbounds defs.deriv.ival in
           let handle = expr2blockdiag q cmpns bhvr.rhs in
-          (*this is where you'd pipe the output through a few things*)
-          let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-          (*let _,clamp_in,clamp_out= create_clamp q cmpns min max in*)
-          let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
-          (*this is where you'd pipe the output through a few things*)
-          let _,variance,noise_in,noise_out = create_noise q cmpns in 
           let _,integ_in,integ_out = create_integrator q cmpns in
-          (*then you connect*)
-          q (add_route_line handle noise_in);
-          q (add_route_line var_handle variance);
-          q (add_route_line noise_out integ_in);
-          q (add_route_line integ_out sclamp_in);
-          q (add_route_line sclamp_out int_out);
-          (*then you connect*)
-          ()
-        | HWBAnalog(bhvr),HWDDigital(defs) ->
+          begin
+            match model_noise(),model_ideal() with
+              | true,true ->
+                (*this is where you'd pipe the output through a few things*)
+                let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+                let _,variance,noise_in,noise_out = create_noise q cmpns in 
+                q (add_route_line handle noise_in);
+                q (add_route_line var_handle variance);
+                q (add_route_line noise_out integ_in);
+                q (add_route_line integ_out int_out);
+              | true,false ->
+                let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+                let _,variance,noise_in,noise_out = create_noise q cmpns in 
+                let _,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
+                let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                q (add_route_line handle dclamp_in);
+                q (add_route_line dclamp_out noise_in);
+                q (add_route_line var_handle variance);
+                q (add_route_line noise_out integ_in);
+                q (add_route_line integ_out sclamp_in);
+                q (add_route_line sclamp_out int_out);
+                ()
+              | false,true ->
+                q (add_route_line handle integ_in);
+                q (add_route_line integ_out int_out);
+                () 
+              | false,false ->
+                let _,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
+                let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                q (add_route_line handle dclamp_in);
+                q (add_route_line dclamp_out integ_out);
+                q (add_route_line integ_out sclamp_in);
+                q (add_route_line sclamp_out int_out);
+                ()
+          end
+          | HWBAnalog(bhvr),HWDDigital(defs) ->
           let handle = expr2blockdiag q cmpns bhvr.rhs in
           let sample,_ = defs.freq in
-          let _,sample_in,sample_out =
-            create_sample q cmpns (float_of_number sample)
-          in
-          q (add_route_line handle sample_in);
-          q (add_route_line sample_out int_out);
+          begin
+            match model_ideal() with
+            | true ->
+              q (add_route_line handle int_out)
+            | false -> 
+              let _,sample_in,sample_out =
+                create_sample q cmpns (float_of_number sample)
+              in
+              q (add_route_line handle sample_in);
+              q (add_route_line sample_out int_out);
+              ()
+          end
         | _ -> error "iter outs" "unexpected"
     );
     let stmts = QUEUE.to_list stmtq in
@@ -793,17 +864,36 @@ struct
           let src_out_ext,src_in_int,src_out_int =
             create_in q circ_ns ((HwLib.hwcompinst2str lbl.wire.comp)^"_in")
           in
-          let mapping = MAP.get mappings lbl.wire in
-          let linmap_in,linmap_out= create_linmap q circ_ns mapping false in
-          q (add_route_line src_out_ext linmap_in);
-          q (add_route_line linmap_out src_in_int);
-          q (add_route_line src_out_int dst_loc);
+          begin
+            match model_mapper () with
+            | true ->
+              let mapping = MAP.get mappings lbl.wire in
+              let linmap_in,linmap_out= create_linmap q circ_ns mapping false in
+              q (add_route_line src_out_ext linmap_in);
+              q (add_route_line linmap_out src_in_int);
+              q (add_route_line src_out_int dst_loc)
+            | false ->
+              q (add_route_line src_out_ext src_in_int);
+              q (add_route_line src_out_int dst_loc)
+          end
+
         | MExprLabel(_) ->
           error "create_circuit" "there should not be any expr -> routes"
         | ValueLabel(lbl) ->
           let dst_loc : simel= SIMBlockIn(circ_ns,(HwLib.hwcompinst2str lbl.wire.comp),lbl.wire.port) in
           let src_loc_out : simel = create_const q circ_ns (float_of_number lbl.value) in
-          q (add_route_line src_loc_out dst_loc)
+          begin
+            match model_mapper () with
+            | true ->
+              let mapping = MAP.get mappings lbl.wire in
+              let linmap_in,linmap_out= create_linmap q circ_ns mapping false in
+              q (add_route_line src_loc_out linmap_in);
+              q (add_route_line linmap_out dst_loc)
+            | false ->
+              q (add_route_line src_loc_out dst_loc)
+          end
+
+
       );
       SlnLib.iter_generates sln (fun (l:ulabel) routes -> match l with
           | MOutLabel(lbl) ->
@@ -827,7 +917,7 @@ struct
     QUEUE.destroy stmtq;
     stmts
 
- let to_simulink (tbl:gltbl) (mappings:(wireid,hw_mapping) map) (name:string) =
+ let to_simulink (tbl:gltbl) (mappings:(wireid,hw_mapping) map) (name:string) (form:simulink_format) =
     clear_tbl();
     let hw = tbl.env.hw in
     let stmtq = QUEUE.make () in

@@ -65,31 +65,55 @@ let canonicalize_sln (hw:hwvid hwenv) (s:sln) =
   ()
 
 *)
+
+
+let simulinkformat2suffix f = match f with
+  | SFIdealSDE -> "sde-ideal"
+  | SFIdealODE -> "ode-ideal"
+  | SFCircSDE -> "sde-circ"
+  | SFCircODE -> "ode-circ"
+  | SFCircMapODE -> "ode-circ-map"
+  | SFCircMapSDE -> "sde-circ-map"
+
+let to_mat_file slntbl out i format mappings =
+  let base = out^"_"^(string_of_int i)^"_"^(simulinkformat2suffix format) in
+  let matfile = base^".m" in
+  let matcode : matst list option= match format,mappings with
+    | SFCircMapODE,Some(mappings) ->
+      Some(SimulinkGen.to_simulink slntbl mappings base format)
+    | SFCircMapSDE,Some(mappings) ->
+      Some(SimulinkGen.to_simulink slntbl mappings base format)
+    | SFCircMapODE,_ ->
+      warn "to_mat_file" "cannot generate mapped simulink file";
+      None
+    | SFCircMapSDE,_ ->
+      warn "to_mat_file" "cannot generate mapped simulink file";
+      None
+    | _,_ ->
+      Some(SimulinkGen.to_simulink slntbl (MAP.make ()) base format)
+  in
+  match matcode with
+  | Some(code) ->
+      SimulinkGen.to_file code matfile
+  | None ->
+    warn "to_mat_file" "cannot emit code"
+
 let proc_sln (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Concrete slntbl ---";
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
-  let mappings_maybe = SolverMapper.infer slntbl in
-  begin
-    match mappings_maybe with
-    | Some(mappings) ->
-      begin
-      slvr_print_inter "---- Generating Simulink File ---";
-      let matfile = (out^"_"^(string_of_int i)^".m") in
-      let matcode : matst list =
-        SimulinkGen.to_simulink slntbl mappings (out^"_"^(string_of_int i)) 
-      in
-      SimulinkGen.to_file matcode matfile
-      end
-    | None ->
-      slvr_print_inter "---- NO SIMULINK FILE. NO MAPPING ---";
-      ()
-  end;
+  let mappings = SolverMapper.infer slntbl in
+  to_mat_file slntbl out i SFIdealSDE mappings;
+  to_mat_file slntbl out i SFIdealODE mappings;
+  to_mat_file slntbl out i SFCircSDE mappings;
+  to_mat_file slntbl out i SFCircODE mappings;
+  to_mat_file slntbl out i SFCircMapSDE mappings;
+  to_mat_file slntbl out i SFCircMapODE mappings;
   slvr_print_inter "---- Generating Summary File ---";
   let sln_sum : string= SlnLib.sln2str slntbl.sln_ctx ident MathLib.mid2str in
   let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
   begin
-    match mappings_maybe with
+    match mappings with
     | Some(mappings) ->
       begin
         let map_sum = SolverMapper.mappings2str mappings in
