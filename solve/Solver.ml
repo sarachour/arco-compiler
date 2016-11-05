@@ -105,6 +105,10 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
   let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
   IO.save (out^"_"^(string_of_int i)^"_sln.sum") sln_sum;
   IO.save (out^"_"^(string_of_int i)^"_comp.sum") cmp_sum;
+  to_mat_file slntbl out i SFIdealSDE None;
+  to_mat_file slntbl out i SFIdealODE None;
+  to_mat_file slntbl out i SFCircSDE None;
+  to_mat_file slntbl out i SFCircODE None;
   Printf.printf "===== Solution Found ======\n";
   ()
 
@@ -113,10 +117,6 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
   let mappings = SolverMapper.infer slntbl in
-  to_mat_file slntbl out i SFIdealSDE mappings;
-  to_mat_file slntbl out i SFIdealODE mappings;
-  to_mat_file slntbl out i SFCircSDE mappings;
-  to_mat_file slntbl out i SFCircODE mappings;
   to_mat_file slntbl out i SFCircMapSDE mappings;
   to_mat_file slntbl out i SFCircMapODE mappings;
   slvr_print_inter "---- Generating Summary File ---";
@@ -131,7 +131,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
 
     | None -> ()
   end;
-  Printf.printf "===== Mapping Solution Found ======\n";
+  Printf.printf "===== Mapping Step Finished ======\n";
   ()
 
 
@@ -152,35 +152,3 @@ let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
     ()
   | None ->
     flush_all(); error "solver" "no solutions found"
-(*
-  let _ = slvr_print_inter "===== Beginning Interactive Solver ======\n" in
-  let nslns = Globals.get_glbl_int "slvr-solutions" in
-  let slns : (sln list) option = MultiSearch.msolve (REF.mk sl) msearch nslns in
-  match slns with
-    | Some(slns) ->
-      let outp_sln sln i =
-        (*canonicalize the solution*)
-        let sln = SlnLib.conc_sln sl sln in 
-        let _ = canonicalize_sln hw sln in
-        (*
-        let _ = Printf.printf "===== Concretizing to Spice File ======\n" in
-        let _ = try
-          let sp = SpiceLib.to_spice sl sln in
-          IO.save (out^"."^(string_of_int i)) (SpiceLib.to_str sp)
-        with
-          | SpiceLibException(m) -> Printf.printf "ERROR: SPICE Generation Failed. %s" m
-        in
-        *)
-        let _ = Printf.printf "===== Concretizing to summary file =====\n" in
-        let _ = IO.save (out^".summary."^(string_of_int i)) (SlnLib.tostr sln) in
-        let _ = SlnLib.repr2file (out^".caml."^(string_of_int i)) sln in
-        let _ = Printf.printf "===== Solution Found ======\n" in
-        ()
-      in
-      let _ = List.iteri (fun i x -> outp_sln x i) slns in
-      ()
-    | None ->
-      let _ = flush_all () in
-      error "solve" " no solution Found."
-  ()
-      *)
