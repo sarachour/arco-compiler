@@ -747,7 +747,7 @@ struct
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
           (*compute handles*)
           let handle = expr2blockdiag q cmpns bhvr.rhs in
-          let min,max = -1.,-1. in
+          let min,max = 0.,1. in
           begin
             match model_noise(), model_ideal() with
             | true,true ->
@@ -781,7 +781,7 @@ struct
         | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
           let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
-          let dmin,dmax =  -1.,-1. in
+          let dmin,dmax =  0.,1. in
           let handle = expr2blockdiag q cmpns bhvr.rhs in
           let _,integ_in,integ_out = create_integrator q cmpns in
           begin

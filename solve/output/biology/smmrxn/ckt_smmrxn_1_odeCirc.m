@@ -136,8 +136,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/mm','_Xtot/1','sum_49/1');
   add_line('ckt_smmrxn_1_odeCirc/library/mm','_XY/1','sum_49/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/mm/sat_52');
-  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_52','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_52','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_52','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_52','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/mm','sum_49/1','sat_52/1');
   add_line('ckt_smmrxn_1_odeCirc/library/mm','sat_52/1','_X/1');
   add_block('simulink/Math Operations/Product','ckt_smmrxn_1_odeCirc/library/mm/mul_54');
@@ -155,8 +155,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/mm','mul_58/1','sum_61/2');
   add_block('simulink/Continuous/Integrator','ckt_smmrxn_1_odeCirc/library/mm/int_64');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/mm/sat_66');
-  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_66','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_66','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_66','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_66','LowerLimit','0.');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/mm/sat_68');
   set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_68','UpperLimit','1.');
   set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_68','LowerLimit','0.');
@@ -169,8 +169,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/mm','_Ytot/1','sum_70/1');
   add_line('ckt_smmrxn_1_odeCirc/library/mm','_XY/1','sum_70/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/mm/sat_73');
-  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_73','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_73','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_73','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/mm/sat_73','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/mm','sum_70/1','sat_73/1');
   add_line('ckt_smmrxn_1_odeCirc/library/mm','sat_73/1','_Y/1');
   %
@@ -214,8 +214,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/vgain','_Z/1','mul_106/2');
   add_line('ckt_smmrxn_1_odeCirc/library/vgain','const_104/1','mul_106/3');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/vgain/sat_110');
-  set_param('ckt_smmrxn_1_odeCirc/library/vgain/sat_110','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/vgain/sat_110','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vgain/sat_110','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vgain/sat_110','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/vgain','mul_106/1','sat_110/1');
   add_line('ckt_smmrxn_1_odeCirc/library/vgain','sat_110/1','_P/1');
   %
@@ -273,8 +273,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/switch','_Vmax/1','div_156/1');
   add_line('ckt_smmrxn_1_odeCirc/library/switch','pow_153/1','div_156/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/switch/sat_159');
-  set_param('ckt_smmrxn_1_odeCirc/library/switch/sat_159','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/switch/sat_159','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/switch/sat_159','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/switch/sat_159','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/switch','div_156/1','sat_159/1');
   add_line('ckt_smmrxn_1_odeCirc/library/switch','sat_159/1','_PROD/1');
   %
@@ -343,8 +343,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','_Vmax/1','mul_216/1');
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','div_213/1','mul_216/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/ihill/sat_219');
-  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_219','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_219','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_219','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_219','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','mul_216/1','sat_219/1');
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','sat_219/1','_STIM/1');
   add_block('simulink/Math Operations/Math Function','ckt_smmrxn_1_odeCirc/library/ihill/pow_221');
@@ -372,8 +372,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','_Vmax/1','mul_236/1');
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','div_233/1','mul_236/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/ihill/sat_239');
-  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_239','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_239','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_239','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/ihill/sat_239','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','mul_236/1','sat_239/1');
   add_line('ckt_smmrxn_1_odeCirc/library/ihill','sat_239/1','_REP/1');
   %
@@ -403,8 +403,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/itov','_K/1','mul_260/1');
   add_line('ckt_smmrxn_1_odeCirc/library/itov','_X/1','mul_260/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/itov/sat_263');
-  set_param('ckt_smmrxn_1_odeCirc/library/itov/sat_263','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/itov/sat_263','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/itov/sat_263','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/itov/sat_263','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/itov','mul_260/1','sat_263/1');
   add_line('ckt_smmrxn_1_odeCirc/library/itov','sat_263/1','_Y/1');
   %
@@ -460,8 +460,8 @@ function build_comp_library()
   add_block('simulink/Math Operations/Gain','ckt_smmrxn_1_odeCirc/library/input.V/_O');
   add_line('ckt_smmrxn_1_odeCirc/library/input.V','_O/1','O/1');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/input.V/sat_305');
-  set_param('ckt_smmrxn_1_odeCirc/library/input.V/sat_305','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/input.V/sat_305','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/input.V/sat_305','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/input.V/sat_305','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/input.V','_X/1','sat_305/1');
   add_line('ckt_smmrxn_1_odeCirc/library/input.V','sat_305/1','_O/1');
   %
@@ -480,8 +480,8 @@ function build_comp_library()
   add_block('simulink/Math Operations/Gain','ckt_smmrxn_1_odeCirc/library/copy.V/_Y');
   add_line('ckt_smmrxn_1_odeCirc/library/copy.V','_Y/1','Y/1');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/copy.V/sat_319');
-  set_param('ckt_smmrxn_1_odeCirc/library/copy.V/sat_319','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/copy.V/sat_319','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/copy.V/sat_319','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/copy.V/sat_319','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/copy.V','_X/1','sat_319/1');
   add_line('ckt_smmrxn_1_odeCirc/library/copy.V','sat_319/1','_Y/1');
   %
@@ -517,8 +517,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/vtoi','div_342/1','mul_345/1');
   add_line('ckt_smmrxn_1_odeCirc/library/vtoi','_X/1','mul_345/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/vtoi/sat_348');
-  set_param('ckt_smmrxn_1_odeCirc/library/vtoi/sat_348','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/vtoi/sat_348','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vtoi/sat_348','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vtoi/sat_348','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/vtoi','mul_345/1','sat_348/1');
   add_line('ckt_smmrxn_1_odeCirc/library/vtoi','sat_348/1','_Y/1');
   %
@@ -583,8 +583,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/vadd','sum_397/1','mul_403/1');
   add_line('ckt_smmrxn_1_odeCirc/library/vadd','const_401/1','mul_403/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/vadd/sat_406');
-  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_406','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_406','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_406','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_406','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/vadd','mul_403/1','sat_406/1');
   add_line('ckt_smmrxn_1_odeCirc/library/vadd','sat_406/1','_OUT/1');
   add_block('simulink/Math Operations/Sum','ckt_smmrxn_1_odeCirc/library/vadd/sub_408');
@@ -608,8 +608,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/vadd','const_418/1','mul_420/2');
   add_block('simulink/Continuous/Integrator','ckt_smmrxn_1_odeCirc/library/vadd/int_423');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/vadd/sat_425');
-  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_425','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_425','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_425','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_425','LowerLimit','0.');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/vadd/sat_427');
   set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_427','UpperLimit','5.');
   set_param('ckt_smmrxn_1_odeCirc/library/vadd/sat_427','LowerLimit','0.');
@@ -633,8 +633,8 @@ function build_comp_library()
   add_block('simulink/Math Operations/Gain','ckt_smmrxn_1_odeCirc/library/copy.I/_Y');
   add_line('ckt_smmrxn_1_odeCirc/library/copy.I','_Y/1','Y/1');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/copy.I/sat_441');
-  set_param('ckt_smmrxn_1_odeCirc/library/copy.I/sat_441','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/copy.I/sat_441','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/copy.I/sat_441','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/copy.I/sat_441','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/copy.I','_X/1','sat_441/1');
   add_line('ckt_smmrxn_1_odeCirc/library/copy.I','sat_441/1','_Y/1');
   %
@@ -683,8 +683,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/iadd','_C/1','sum_479/2');
   add_line('ckt_smmrxn_1_odeCirc/library/iadd','_D/1','sum_479/3');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/iadd/sat_483');
-  set_param('ckt_smmrxn_1_odeCirc/library/iadd/sat_483','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/iadd/sat_483','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/iadd/sat_483','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/iadd/sat_483','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/iadd','sum_479/1','sat_483/1');
   add_line('ckt_smmrxn_1_odeCirc/library/iadd','sat_483/1','_OUT/1');
   %
@@ -702,8 +702,8 @@ function build_comp_library()
   add_block('simulink/Math Operations/Gain','ckt_smmrxn_1_odeCirc/library/input.I/_O');
   add_line('ckt_smmrxn_1_odeCirc/library/input.I','_O/1','O/1');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/input.I/sat_497');
-  set_param('ckt_smmrxn_1_odeCirc/library/input.I/sat_497','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/input.I/sat_497','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/input.I/sat_497','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/input.I/sat_497','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/input.I','_X/1','sat_497/1');
   add_line('ckt_smmrxn_1_odeCirc/library/input.I','sat_497/1','_O/1');
   %
@@ -756,8 +756,8 @@ function build_comp_library()
   add_line('ckt_smmrxn_1_odeCirc/library/igenebind','_Vmax/1','mul_538/1');
   add_line('ckt_smmrxn_1_odeCirc/library/igenebind','div_535/1','mul_538/2');
   add_block('simulink/Discontinuities/Saturation','ckt_smmrxn_1_odeCirc/library/igenebind/sat_541');
-  set_param('ckt_smmrxn_1_odeCirc/library/igenebind/sat_541','UpperLimit','-1.');
-  set_param('ckt_smmrxn_1_odeCirc/library/igenebind/sat_541','LowerLimit','-1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/igenebind/sat_541','UpperLimit','1.');
+  set_param('ckt_smmrxn_1_odeCirc/library/igenebind/sat_541','LowerLimit','0.');
   add_line('ckt_smmrxn_1_odeCirc/library/igenebind','mul_538/1','sat_541/1');
   add_line('ckt_smmrxn_1_odeCirc/library/igenebind','sat_541/1','_GE/1');
 end
