@@ -449,7 +449,7 @@ digital:
   | digital DEF portprop SAMPLE EQ number TOKEN EOL {
       let port,prop = $3 and comp = get_cmpname() and rate = $6 and typ = $7 in
       HwLib.upd_defs dat (fun d -> match d with
-         | HWDDigital(x) -> x.freq <- (rate,typ); d 
+         | HWDDigital(x) -> x.sample <- (rate,typ); d 
       ) comp port
   }
   | digital DEF portprop REPR EQ TOKEN EOL {

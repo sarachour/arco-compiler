@@ -477,6 +477,8 @@ struct
   let rule_exp (a:interval) : interval =
     error "rule" "exp unimplemented"
 
+  let add (a:interval) (b:interval) = rule_sum a b
+
 
   let rule_neg (a:interval)  : interval = _compute_interval1 a bound_neg
 

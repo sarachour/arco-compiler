@@ -48,7 +48,7 @@ struct
   let mdef2str (v:string) (m:mdef) : string = match m with
     | MDefStVar(d) -> "[ddt "^v^"]="^(IntervalLib.interval2str d.deriv.ival)^" / "^
                     "["^v^"]="^(IntervalLib.interval2str d.stvar.ival)^" / "^
-                    "ddt >= "^(string_of_number d.time_step)
+                    "ddt >= "^(string_of_number d.sample)
 
     | MDefVar(d) -> "["^v^"]="^(IntervalLib.interval2str d.ival)
 
@@ -233,7 +233,7 @@ struct
           let def : mstvardef = {
             deriv=mkmvardef();
             stvar=mkmvardef();
-            time_step = Integer(1);
+            sample = Integer(1);
           }  in
           dat.bhvr <- MBhvStateVar(bhv);
           dat.defs <- MDefStVar(def);

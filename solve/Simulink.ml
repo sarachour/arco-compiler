@@ -43,9 +43,66 @@ type simulink_format =
   | SFCircMapODE
 
 
+type simblock = {
+  ins : (string,int) map;
+  outs: (string,int) map;
+}
+type simns = string list
+type simel =
+  | SIMBlock of simns*string 
+  | SIMBlockIn of simns*string*string
+  | SIMBlockOut of simns*string*string
+
 module SimulinkRouter =
 struct
+  type routing_block = {
+    x:int;
+    y:int;
+    w:int;
+    h:int;
+  }
 
+  type routing_env = {
+    blocks:(string,routing_block) map;
+    mutable w:int;
+    mutable h:int;
+  }
+
+  let env = {blocks=MAP.make();w=100;h=100;}
+
+  let clear () =
+    MAP.clear env.blocks;
+    env.w <- 100;
+    env.h <- 100
+
+  let place plc =
+    let loc = {
+      x=RAND.rand_int(env.w);
+      y=RAND.rand_int(env.h);
+      w = 5;
+      h = 2;
+    } in
+    MAP.put env.blocks plc loc;
+    loc
+
+  let position q route=
+    let p = if MAP.has env.blocks route then
+        MAP.get env.blocks route
+      else
+        place route
+    in
+    let posarr =
+      List.map (fun x -> MATInt(x)) [p.x;p.y;p.w;p.h]
+    in
+     q (MATStmt(MATFxn("set_param",[
+        MATLit(MATStr(route));
+        MATLit(MATStr("position"));
+        MATLit(MATArr(posarr))
+      ])))
+
+  
+
+  
 
 end
 
@@ -94,16 +151,6 @@ struct
   noop (MAP.put basic_fxns "-" "simulink/Math Operations/Subtract");;
   noop (MAP.put basic_fxns "mfxn" "simulink/Math Operations/Math Function");;
   noop (MAP.put basic_fxns "comp" "simulink/Ports & Subsystems/Subsystem");;
-
-  type simblock = {
-    ins : (string,int) map;
-    outs: (string,int) map;
-  }
-  type simns = string list
-  type simel =
-    | SIMBlock of simns*string 
-    | SIMBlockIn of simns*string*string
-    | SIMBlockOut of simns*string*string
 
   type symtbl = {
     (*fully qualified name*)
@@ -377,6 +424,7 @@ struct
         declare_vars [loc_out_port;
                       int_loc_in_port;int_loc_out_port];
         declare_vars [external_loc];
+        SimulinkRouter.position q (loc2path loc);
         q (add_route_block (get_basic_fxn "in")  loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc)
       end;
@@ -395,6 +443,7 @@ struct
         declare_vars [loc;external_loc;internal_loc];
         declare_vars [loc_in_port;
                       int_loc_in_port;int_loc_out_port];
+        SimulinkRouter.position q (loc2path loc);
         q (add_route_block (get_basic_fxn "out") loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc);
         q (add_route_line int_loc_out_port loc_in_port)
@@ -409,6 +458,7 @@ struct
       begin
         declare_var (loc);
         declare_var (loc_out);
+        SimulinkRouter.position q (loc2path loc);
         q (add_route_block (get_basic_fxn "const") (loc));
         q (set_route_param
              loc "Value"
@@ -422,6 +472,7 @@ struct
     let loc = SIMBlock(namespace,"sum_"^(string_of_int id)) in
     let inpstr=  "+"^(STRING.repeat "-" (n_inps-1)) in
     declare_var (loc);
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "+") loc);
     q (set_route_param
          loc "Inputs"
@@ -441,6 +492,7 @@ struct
     let loc = SIMBlock(namespace,"neg_"^(string_of_int id)) in
     let inpstr=  "-" in
     declare_var (loc);
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "+") loc);
     q (set_route_param
          loc "Inputs"
@@ -456,6 +508,7 @@ struct
     let loc = SIMBlock(namespace,"sub_"^(string_of_int id)) in
     let inpstr=  STRING.repeat "+" n_inps in
     declare_var (loc);
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "+") loc);
     q (set_route_param
          loc "Inputs"
@@ -475,6 +528,7 @@ struct
     let loc = SIMBlock(namespace,"mul_"^(string_of_int id)) in
     let inpstr=  STRING.repeat "*" n_inps in
     declare_var (loc);
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "*") loc);
     q (set_route_param
          loc "Inputs"
@@ -493,6 +547,7 @@ struct
     let loc = SIMBlock(namespace,"div_"^(string_of_int id)) in
     let inpstr=  "*/" in
     declare_var (loc);
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "*") loc);
     q (set_route_param
          loc "Inputs"
@@ -508,6 +563,7 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"pow_"^(string_of_int id)) in
     declare_var (loc);
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "mfxn") loc);
     q (set_route_param
          loc "Function"
@@ -532,6 +588,7 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"sat_"^(string_of_int id)) in
     declare_var (loc);
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "sat") loc);
     q (set_route_param
          (loc) "UpperLimit"         
@@ -548,6 +605,7 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"smp_"^(string_of_int id)) in
     declare_vars [loc];
+    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "disc") loc);
     q (set_route_param
          (loc) "QuantizationInterval"         
@@ -563,6 +621,9 @@ struct
    let aloc = SIMBlock(namespace,"unza_"^(string_of_int id)) in
    let vloc = SIMBlock(namespace,"unzv_"^(string_of_int id)) in
    declare_vars [loc;aloc;vloc];
+   SimulinkRouter.position q (loc2path loc);
+   SimulinkRouter.position q (loc2path aloc);
+   SimulinkRouter.position q (loc2path vloc);
    q (add_route_block (get_basic_fxn "noise") loc);
    q (add_route_block (get_basic_fxn "*") vloc);
    q (add_route_block (get_basic_fxn "+") aloc);
@@ -722,7 +783,7 @@ struct
               q (add_route_line clamp_out int_in);
           end
         | HWDDigital(defs) ->
-          let sample,_ = defs.freq in
+          let sample,_ = defs.sample in
           let sample_cmp,sample_in,sample_out =
             create_sample q cmpns (float_of_number sample)
           in
@@ -823,7 +884,7 @@ struct
           end
           | HWBAnalog(bhvr),HWDDigital(defs) ->
             let handle = expr2blockdiag q cmpns bhvr.rhs in
-            let sample,_ = defs.freq in
+            let sample,_ = defs.sample in
             begin
               match model_ideal() with
               | true ->
@@ -890,7 +951,7 @@ struct
         q (copy_route_block refr loc);
         (*specialize intervals*)
         iter_clamps inst.name (fun portname cloc ->
-            let ival = IntervalCompute.compute_hw_interval tbl ccomp.d ccomp.inst ccomp.cfg portname in
+            let ival = IntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname in
             let min,max = IntervalLib.interval2numbounds ival in 
             match cloc with
             | SIMBlock(templ_ns,clampname) ->
@@ -1013,10 +1074,14 @@ struct
   let matvar2str (xvar:matvar) = match xvar with
     | MATScalar(v) -> v
 
-  let matlit2str (lit:matlit) = match lit with
+  let rec matlit2str (lit:matlit) = match lit with
     | MATStr(v) ->("'"^v^"'")
     | MATInt(x) -> string_of_int x
     | MATFloat(x) -> string_of_float x
+    | MATArr(h::t) -> "["^(
+        List.fold_left (fun r x -> r^","^(matlit2str x)) (matlit2str h) t
+      )^"]"
+    | MATArr([]) -> "[]"
 
   let matexpr2buf fb (xexpr:matexpr) : unit =
     let os x = noop (output_string fb x) in

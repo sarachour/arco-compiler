@@ -53,7 +53,7 @@ type linear_stmt =
   | SVCoverLTE of (linear_smt_id ast) list
   | SVCoverGTE of (linear_smt_id ast) list
   | SVDeclMapVar of linear_smt_id
-
+  | SVLTE of (linear_id ast*linear_id ast)
 
 type linear_mapping = {
   scale : linear_id ast;
@@ -68,17 +68,15 @@ let no_number_cstrs_DBG =false
 
 module IntervalCompute =
 struct
-  (*if you have a dangling math expression on a port, find the [expr], and then*)
-  let compute_math_interval (tbl:gltbl) (uast:unid ast) : interval =
-    let unid2ival (id:unid) = match id with
-      |MathId(MNVar(MInput,v)) ->
+  let compute_mid_interval tbl (id:mid) = match id with
+      |MNVar(MInput,v) ->
         begin
           let mvar = MathLib.getvar tbl.env.math v in
           match mvar.defs with
           | MDefVar(def) -> def.ival
           | _ -> error "ccompute_math_interval" "state variable cannom be input" 
         end
-      |MathId(MNVar(MOutput,v)) ->
+      |MNVar(MOutput,v) ->
         begin
           let mvar = MathLib.getvar tbl.env.math v in
           match mvar.defs with
@@ -86,7 +84,7 @@ struct
           | MDefStVar(def) -> def.stvar.ival
         end
 
-      |MathId(MNVar(MLocal,v)) ->
+      |MNVar(MLocal,v) ->
         begin
           let mvar = MathLib.getvar tbl.env.math v in
           match mvar.defs with
@@ -95,25 +93,24 @@ struct
         end
 
 
-      | MathId(MNParam(par,num)) ->
+      | MNParam(par,num)->
         Quantize([float_of_number num])
-      | HwId(_) ->
-        error "compute_math_interval" "unexpected hardware id"
-      | _ ->
-        error "compute_math_interval" "hwid id undefined"
-    in
+      | MNTime ->
+        error "compute_mid_interval" "time not expected"
+
+  (*if you have a dangling math expression on a port, find the [expr], and then*)
+  let compute_mexpr_interval (tbl:gltbl) (uast:mid ast) : interval =
     let math_interval =
       try
-        IntervalLib.derive_interval uast unid2ival
+        IntervalLib.derive_interval uast (compute_mid_interval tbl) 
       with
       | IntervalLibError(e) ->
-        warn "derive_math_interval" ("in the following expr:"^(uast2str uast));
+        warn "derive_math_interval" ("in the following expr:"^(MathLib.mast2str uast));
         raise (IntervalLibError e)
     in
     math_interval
 
-  let compute_hw_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
-    let hwid2ival (x:hwvid) : interval=
+  let compute_hwid_interval comp (x:hwvid) : interval=
       match x with
       |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
       |HNPort(knd,cmp,port,param) ->
@@ -124,7 +121,17 @@ struct
           | HWDDigital(d) -> d.ival
         end
       |HNTime -> error "compute_hw_interval" "unexpected time"
-    in
+
+  let compute_hwexpr_interval comp inst cfg rhs : interval =
+    let conc_rhs =
+        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg rhs
+      in
+      debug ("computing interval "^(HwLib.hast2str conc_rhs));
+      let ival = IntervalLib.derive_interval conc_rhs (compute_hwid_interval comp) in
+      debug ("  -> "^IntervalLib.interval2str ival);
+      ival
+
+  let compute_hwport_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
     let vr = HwLib.comp_getvar comp port in
     match vr.bhvr,vr.defs with
     | HWBInput,HWDAnalog(defs) ->
@@ -132,73 +139,198 @@ struct
     | HWBInput,HWDDigital(defs) ->
       defs.ival
     | HWBAnalog(bhvr),_ ->
-      let conc_rhs =
-        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
-      in
-      debug ("computing interval "^(HwLib.hast2str conc_rhs));
-      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
-      debug ("  -> "^IntervalLib.interval2str ival);
-      ival
-
+      compute_hwexpr_interval comp inst cfg bhvr.rhs 
     | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
       defs.stvar.ival
     | HWBDigital(bhvr),_ ->
-      let conc_rhs =
-        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
-      in
-      debug ("computing interval "^(HwLib.hast2str conc_rhs));
-      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
-      debug ("  -> "^IntervalLib.interval2str ival);
-      ival
+      compute_hwexpr_interval comp inst cfg bhvr.rhs
+      
     | _ -> error "compute_hw_interval" "unexpected bhvr/defs match"
       
       (*declare equivalence classes for a mapping*)
 
-  let compute_deriv_hw_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
-    let hwid2ival (x:hwvid) : interval=
-      match x with
-      |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
-      |HNPort(knd,cmp,port,param) ->
-        begin
-          match (HwLib.comp_getvar comp port).defs with
-          | HWDAnalog(d) -> d.ival
-          | HWDAnalogState(x) -> x.stvar.ival
-          | HWDDigital(d) -> d.ival
-        end
-      |HNTime -> error "compute_hw_interval" "unexpected time"
-    in
+  let compute_deriv_hwport_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
     let vr = HwLib.comp_getvar comp port in
     match vr.bhvr,vr.defs with
     | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
-      let conc_rhs =
-        ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg bhvr.rhs
-      in
-      debug ("computing interval "^(HwLib.hast2str conc_rhs));
-      let ival = IntervalLib.derive_interval conc_rhs hwid2ival in
-      debug ("  -> "^IntervalLib.interval2str ival);
-      ival
+      compute_hwexpr_interval comp inst cfg bhvr.rhs
     | _ -> error "compute_deriv_hw_interval" "unexpected bhvr/defs match"
    
   let compute_wire_interval tbl (wire:wireid) =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
-    let ival = compute_hw_interval tbl ccomp.d wire.comp.inst ccomp.cfg wire.port in
+    let ival = compute_hwport_interval tbl ccomp.d wire.comp.inst ccomp.cfg wire.port in
     let min,max = IntervalLib.interval2numbounds ival in
     {min=min;max=max}
 
-  let get_wire_math_expr (tbl) (wire:wireid) : unid ast option =
+  let get_wire_math_expr (tbl) (wire:wireid) : mid ast option =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
-    let cfg_maybe :unid ast option = ConcCompLib.get_var_config ccomp.cfg wire.port in
-    cfg_maybe
+    match ConcCompLib.get_var_config ccomp.cfg wire.port with
+    | Some(uast) -> Some(uast2mast uast)
+    | None -> None
 
   let compute_wire_math_interval tbl (wire:wireid) : num_interval =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
-    let cfg_maybe :unid ast option = ConcCompLib.get_var_config ccomp.cfg wire.port in
-    match cfg_maybe with
+    match get_wire_math_expr tbl wire with
     |Some(cfg) -> IntervalLib.interval2numinterval
-      (compute_math_interval tbl cfg)
+      (compute_mexpr_interval tbl cfg)
     | _ ->
       {min=999.;max=999.}
 end
+
+
+
+
+
+(*
+   Compute the noise with proapgaiton
+*)
+module NoiseCompute =
+struct
+
+  let mk_no_noise () =
+    IntervalLib.mk_ival (BNDNum 0.) (BNDNum 0.)
+      
+
+  let _compute_mid_noise tbl (id:mid) (mexpr2noise:gltbl->mid ast->interval)= match id with
+      |MNVar(MInput,v) ->
+        begin
+          let mvar = MathLib.getvar tbl.env.math v in
+          match mvar.bhvr with
+          | MBhvInput -> mk_no_noise ()
+          | _ -> error "ccompute_math_noise" "state variable cannom be input" 
+        end
+      |MNVar(_,v) ->
+        begin
+          let mvar = MathLib.getvar tbl.env.math v in
+          (**)
+          match mvar.bhvr with
+          | MBhvStateVar(bhv) ->
+            let this_noise : interval =
+              IntervalCompute.compute_mexpr_interval tbl bhv.stoch.std
+            in
+            let prop_noise : interval = (mexpr2noise tbl bhv.rhs) in
+            let noise = IntervalLib.add this_noise prop_noise in
+            noise
+          | MBhvVar(bhv) ->
+            let this_noise : interval =
+              IntervalCompute.compute_mexpr_interval tbl bhv.stoch.std
+            in
+            let prop_noise : interval = (mexpr2noise tbl bhv.rhs) in
+            let noise = IntervalLib.add this_noise prop_noise in
+            noise
+          | _ -> error "mnvar" "no expected an input or undefined"
+        end
+      
+      | MNParam(par,num) ->
+        mk_no_noise() 
+      | _ ->
+        error "compute_math_noise" "time id undefined"
+
+
+(*if you have a dangling math expression on a port, find the [expr], and then*)
+  let rec compute_mexpr_noise (tbl:gltbl) (uast:mid ast) : interval =
+    let math_noise =
+      try
+        IntervalLib.derive_interval uast
+          (fun x -> _compute_mid_noise tbl x compute_mexpr_noise)
+      with
+      | IntervalLibError(e) ->
+        warn "derive_math_noise" ("in the following expr:"^(MathLib.mast2str uast));
+        raise (IntervalLibError e)
+    in
+    math_noise
+
+
+  let compute_mid_noise tbl x = _compute_mid_noise tbl x compute_mexpr_noise
+  
+
+  let rec _compute_hwid_noise tbl comp inst cfg (x:hwvid) hwvar2noise : interval=
+    
+    match x with
+      |HNParam(cmp,x) ->
+        error "compute_hw_noise" "must be fully specified"
+      |HNPort(knd,cmp,port,param) ->
+        let vr = HwLib.comp_getvar comp port in
+        hwvar2noise tbl comp inst cfg port
+          
+      |HNTime ->
+        error "compute_hw_noise" "unexpected time"
+
+
+  let compute_hwexpr_noise tbl comp inst cfg (rhs:hwvid ast) hwvar2noise : interval =
+    let conc_rhs =
+      ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg rhs
+    in
+    debug ("computing interval "^(HwLib.hast2str conc_rhs));
+    let ival = IntervalLib.derive_interval conc_rhs
+        (fun x -> _compute_hwid_noise tbl comp inst cfg x hwvar2noise) in
+    debug ("  -> "^IntervalLib.interval2str ival);
+    ival
+
+(*
+     for hardware, backpropagate to compute noise. I.E. find connected output.
+  *)
+  let rec compute_hwvar_noise (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
+    let compute_propagating_noise  (prop:hwvid ast) (std:hwvid ast) : interval =
+        let this_noise : interval =
+          IntervalCompute.compute_hwexpr_interval comp inst cfg std
+        in
+        (*determine the noise of the propagating function*)
+        let prop_noise : interval = compute_hwexpr_noise tbl comp inst cfg prop compute_hwvar_noise in
+        let noise = IntervalLib.add this_noise prop_noise in
+        noise
+    in
+    let vr = HwLib.comp_getvar comp port in
+    match vr.bhvr,vr.defs with
+    (*analog input produces noise*)
+    | HWBInput,HWDAnalog(defs) ->
+      begin
+        let wire = (HwLib.port2wire comp.name inst port) in
+        match (SlnLib.getsrcs tbl.sln_ctx wire) with
+        | WCollEmpty -> mk_no_noise()
+        | WCollOne(src_wire) ->
+          (*get the originating wire*)
+          let ccomp : ucomp_conc = SolverCompLib.get_conc_comp tbl src_wire.comp in
+          compute_hwvar_noise tbl ccomp.d ccomp.inst ccomp.cfg src_wire.port
+
+        | WCollMany(_) ->
+          error "compute_hw_noise" "multiple source wires unhandled"
+      end
+     (*digital input produces no noise*)
+    | HWBInput,HWDDigital(defs) ->
+      mk_no_noise ()
+     (*compute hwexpr noise*)
+    | HWBAnalog(bhv),_ ->
+      compute_propagating_noise bhv.rhs bhv.stoch.std 
+     (*compute hwexpr noise*)
+    | HWBAnalogState(bhv),HWDAnalogState(defs) ->
+      compute_propagating_noise bhv.rhs bhv.stoch.std 
+
+    | HWBDigital(bhv),_ ->
+      compute_propagating_noise bhv.rhs (Integer(0)) 
+    | _ -> error "compute_hw_noise" "unexpected bhvr/defs match"
+      
+      (*declare equivalence classes for a mapping*)
+
+  let compute_hwid_noise tbl comp inst cfg port = _compute_hwid_noise tbl comp inst cfg port compute_hwvar_noise
+   
+  let compute_wire_noise tbl (wire:wireid) =
+    let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
+    let ival = compute_hwvar_noise tbl ccomp.d wire.comp.inst ccomp.cfg wire.port in
+    let min,max = IntervalLib.interval2numbounds ival in
+    {min=min;max=max}
+
+
+  let compute_wire_math_noise tbl (wire:wireid) : num_interval =
+    let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
+    let cfg_maybe :mid ast option = IntervalCompute.get_wire_math_expr tbl wire in
+    match cfg_maybe with
+    |Some(cfg) -> IntervalLib.interval2numinterval
+      (compute_mexpr_noise tbl cfg )
+    | _ ->
+      {min=999.;max=999.}
+end
+
 
 module MappingResolver =
 struct
@@ -342,7 +474,7 @@ struct
         upd_map_result wire (fun x -> x.wire<- wire);
         begin
           match math_expr with
-          | Some(expr) -> upd_map_result wire (fun x -> x.expr <- expr)
+          | Some(expr) -> upd_map_result wire (fun x -> x.expr <- mast2uast expr)
           | _ -> ()
         end;
         upd_map_result wire (fun x -> x.mrng <- math_ival);
@@ -435,6 +567,10 @@ struct
         enq (Z3Comment "");
         enq (Z3Comment(linearstmt2str s));
         enq (mkeq (z3lst))
+      | SVLTE(a,b) ->
+        let asmt = expr_to_z3prob a in
+        let bsmt = expr_to_z3prob b in
+        enq (Z3Assert(Z3LTE(asmt,bsmt)))
     in
     (*traverse statements*)
     List.iter stmt_to_z3prob stmts;
@@ -704,8 +840,8 @@ struct
     ConcCompLib.iter_var_cfg cfg
       (fun (port:string) (x:hwvarcfg) ->
         let wire = SlnLib.mkwire comp.name inst port in
-        let mival : interval = IntervalCompute.compute_math_interval tbl x.expr in
-        let hival : interval = IntervalCompute.compute_hw_interval tbl comp inst cfg port in
+        let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
+        let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
         let queue_quant v (h:interval_data) =
           if no_number_cstrs_DBG then
             ()
@@ -764,6 +900,66 @@ struct
     QUEUE.destroy(cstrq);
     cstrs
 
+  (*
+    for each generated statevar def, ensure that the state variable we mapped to
+     has the same speed. Also ensure the speed combined with any sort of output measurement
+     for that property has a period less than or equal to the sampling rate
+  *)
+  let hwgen_derive_speed_cstrs (tbl:gltbl) =
+    let cstrq = QUEUE.make () in
+    let stvars = QUEUE.make () in
+    let q x = noop (QUEUE.enqueue cstrq x) in
+    let qstvar x = noop (QUEUE.enqueue stvars x) in
+    (*derive the speed equivalence relation*)
+    SlnLib.iter_generates tbl.sln_ctx (fun (x:ulabel) (routes) ->
+        let vr_maybe = match x with
+          | MOutLabel(v)-> Some (v.wire,MathLib.getvar tbl.env.math v.var)
+          | MLocalLabel(v)->Some (v.wire,MathLib.getvar tbl.env.math v.var)
+          | _ -> None
+        in
+        match vr_maybe with
+        | Some(wire,vr) ->
+          begin
+            match vr.defs with
+            | MDefStVar(stvar) ->
+              begin
+                qstvar(wire);
+                let math_sample = ASTLib.number2ast stvar.sample in 
+                begin
+                  match wire.comp.name with
+                  | HWCmOutput(_) ->
+                    let ovar = HwLib.wire2hwvar tbl.env.hw wire in
+                    (*get the sampling rate.*)
+                    begin
+                      match ovar.defs with
+                      | HWDDigital(dig) ->
+                        let hw_sample,_ = dig.sample in
+                        let hw_sample_expr = OpN(Mult,[
+                            Term(SVScaleVar(wire));
+                            ASTLib.number2ast hw_sample
+                          ]) in
+                        q (SVLTE(hw_sample_expr,math_sample))
+                      | _ ->
+                        error "hwconn_derive_speed_constraints" "cannot derive speed of analog port"
+                    end
+                  | _ -> ()
+                end
+              
+              end
+            | _ -> ()
+          end
+        | None -> ()
+   );
+  let args = QUEUE.map stvars (fun stvar -> Term(SVScaleVar(stvar))) in
+  q (SVEquals(args));
+  let cstrs = QUEUE.to_list cstrq in
+  QUEUE.destroy(cstrq);
+  cstrs
+
+  (*given the scaling factor, scale up the noise + noise propagation*)
+  let hwgen_derive_noise_cstrs (tbl:gltbl) =
+    []
+
   let mappings2str (lst:(wireid,hw_mapping) map ) =
     MAP.fold lst (fun wire mapping str ->
         str^(MappingResolver.hwmapping2str mapping)
@@ -773,6 +969,7 @@ struct
     let stmtq = QUEUE.make () in
     let valid = REF.mk true in 
     let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
+    (*iter used comps to generate coverage constraints.*)
     SolverCompLib.iter_used_comps tbl (fun inst ccomp ->
         let steps =
           try
@@ -782,7 +979,12 @@ struct
         in
         enq (steps)
       );
+    (*derive constraints from connections made by the solution*)
     enq (hwconn_derive_scaling_cstrs tbl);
+    (*derive constraints on the uniformity of the speed*)
+    enq (hwgen_derive_speed_cstrs tbl);
+    (*derive constraints that ensure the noise is minimized*)
+    enq (hwgen_derive_noise_cstrs tbl);
     if REF.dr valid then
       let stmts = QUEUE.to_list stmtq in 
       let sln : (wireid,hw_mapping) map option = MappingResolver.solve tbl stmts in
@@ -790,4 +992,17 @@ struct
       sln
     else
       None
+end
+
+module SolverMappingHeuristics =
+struct
+
+
+  let mapping_heuristic (tbl:gltbl) = ()
+
+  let noise_heuristic (tbl:gltbl) = ()
+
+  let sample_heuristic (tbl:gltbl) = ()
+
+
 end

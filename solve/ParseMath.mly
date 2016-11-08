@@ -179,7 +179,7 @@ st:
   | DEF DDT TOKEN TIME number {
     let name = $3 and step = $5 in
     MathLib.upd_def dat name (fun x -> match x with
-       | MDefStVar(d) -> d.time_step <- step; x
+       | MDefStVar(d) -> d.sample <- step; x
        | _ -> error "def ddt time" "must be defined after relation"
        );
   }

@@ -310,8 +310,14 @@ struct
     let v = getvar e cname port in
     v.prop
 
+  let port2wire compname inst port : wireid=
+    {comp={name=compname;inst=inst};port=port}
+
   let wire2prop e (wire:wireid) =
     getprop e wire.comp.name wire.port
+
+  let wire2hwvar e (wire:wireid) =
+    getvar e wire.comp.name wire.port
 
   let getcomps e  =
     MAP.to_values e.comps
@@ -402,7 +408,7 @@ struct
     {stvar=mkastvardefs();deriv=mkadefs()}
 
   let mkddefs () : hwddefs =
-    {ival=IntervalLib.mkdflt_ival();repr=(1,4,7); freq=(Integer 0,"?")}
+    {ival=IntervalLib.mkdflt_ival();repr=(1,4,7); sample=(Integer 0,"?")}
 
 
   let mkstoch () : 'a stoch = StochLib.mkstoch()
