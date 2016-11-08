@@ -85,7 +85,7 @@ struct
     MAP.put env.blocks plc loc;
     loc
 
-  let position q route=
+  let position q route : unit=
     let p = if MAP.has env.blocks route then
         MAP.get env.blocks route
       else
@@ -445,8 +445,8 @@ struct
                       int_loc_in_port;int_loc_out_port];
         q (add_route_block (get_basic_fxn "out") loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc);
-        q (add_route_line int_loc_out_port loc_in_port)
-        SimulinkRouter.position q (loc2path loc);
+        q (add_route_line int_loc_out_port loc_in_port);
+        SimulinkRouter.position q (loc2path loc)
       end;
     int_loc_in_port,int_loc_out_port,loc_in_port
 
@@ -462,7 +462,7 @@ struct
         q (set_route_param
              loc "Value"
              (MATLit(MATStr(string_of_float value)))
-          )
+          );
         SimulinkRouter.position q (loc2path loc);
       end;
     loc_out

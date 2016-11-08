@@ -957,8 +957,7 @@ struct
   cstrs
 
   (*given the scaling factor, scale up the noise + noise propagation*)
-  let hwgen_derive_noise_cstrs (tbl:gltbl) =
-    []
+  let hwgen_derive_noise_cstrs (tbl:gltbl) =[]
 
   let mappings2str (lst:(wireid,hw_mapping) map ) =
     MAP.fold lst (fun wire mapping str ->
@@ -994,9 +993,15 @@ struct
       None
 end
 
-module SolverMappingHeuristics =
+module SolverMapperHeuristics =
 struct
 
+
+  let noise_summary (tbl:gltbl) =
+    debug "noise summary"
+
+  let map_summary (tbl:gltbl) =
+    debug "mapping summary"
 
   let mapping_heuristic (tbl:gltbl) = ()
 

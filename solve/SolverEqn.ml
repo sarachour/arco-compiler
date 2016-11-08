@@ -46,8 +46,10 @@ struct
 
 
   let mkmenu (v:gltbl) (currgoal:goal option) =
-    let menu_desc = "t=search-tree, s=sol, @=curr, g=goals, c=conc-comps\n"^
-                    "n=node-steps m=mapping any-key=continue, q=quit" in
+    let menu_desc =
+      "\n   t=search-tree\ts=sol\t@=curr\tg=goals\tc=conc-comps"^
+      "\n   n=node-steps\tm=mapping\tx=summarize\tany-key=continue\tq=quit"
+    in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
         let _ = Printf.printf "\n%s\n\n" (SearchLib.search2str v.search) in
@@ -62,6 +64,7 @@ struct
         let _ = on_finished() in
         ()
 
+  
       else if STRING.startswith inp "p" then
         let path = SearchLib.path2str 1 v.search (SearchLib.cursor v.search) in
         let _ = Printf.printf "\n%s\n\n" ( path ) in
@@ -82,6 +85,13 @@ struct
         begin
           Printf.printf ("---- Inferring ------\n");
           noop (SolverMapper.infer v)
+        end
+      else if STRING.startswith inp "x" then
+        begin
+          Printf.printf ("---- Summarizing Map ------\n");
+          noop (SolverMapperHeuristics.map_summary v);
+          Printf.printf ("---- Summarizing Noise ------\n");
+          noop (SolverMapperHeuristics.noise_summary v)
         end
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===\n" in
