@@ -27,6 +27,9 @@ open SolverCompLib
 open IntervalData
 open IntervalLib
 
+open StochData
+open StochLib
+
 open Z3Data
 open Z3Lib
 
@@ -162,15 +165,15 @@ struct
     let min,max = IntervalLib.interval2numbounds ival in
     {min=min;max=max}
 
-  let get_wire_math_expr (tbl) (wire:wireid) : mid ast option =
+  let get_wire_label_expr (tbl) (wire:wireid) : mid ast option =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
     match ConcCompLib.get_var_config ccomp.cfg wire.port with
     | Some(uast) -> Some(uast2mast uast)
     | None -> None
 
-  let compute_wire_math_interval tbl (wire:wireid) : num_interval =
+  let compute_wire_label_interval tbl (wire:wireid) : num_interval =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
-    match get_wire_math_expr tbl wire with
+    match get_wire_label_expr tbl wire with
     |Some(cfg) -> IntervalLib.interval2numinterval
       (compute_mexpr_interval tbl cfg)
     | _ ->
@@ -187,17 +190,17 @@ end
 module NoiseCompute =
 struct
 
-  let mk_no_noise () =
-    IntervalLib.mk_ival (BNDNum 0.) (BNDNum 0.)
+  let mk_no_noise (mean:interval) =
+    StochLib.mk_rand_var mean (IntervalLib.mk_ival_from_floats 0. 0.)
       
 
-  let _compute_mid_noise tbl (id:mid) (mexpr2noise:gltbl->mid ast->interval)= match id with
+  let _compute_mid_noise tbl (id:mid) (mexpr2noise:gltbl->mid ast->rand_var)= match id with
       |MNVar(MInput,v) ->
         begin
           let mvar = MathLib.getvar tbl.env.math v in
-          match mvar.bhvr with
-          | MBhvInput -> mk_no_noise ()
-          | _ -> error "ccompute_math_noise" "state variable cannom be input" 
+          match mvar.defs,mvar.bhvr with
+          | MDefVar(def),MBhvInput-> mk_no_noise (def.ival)
+          | _ -> error "ccompute_math_noise" "state variable cannot be input" 
         end
       |MNVar(_,v) ->
         begin
@@ -205,38 +208,34 @@ struct
           (**)
           match mvar.bhvr with
           | MBhvStateVar(bhv) ->
-            let this_noise : interval =
-              IntervalCompute.compute_mexpr_interval tbl bhv.stoch.std
-            in
-            let prop_noise : interval = (mexpr2noise tbl bhv.rhs) in
-            let noise = IntervalLib.add this_noise prop_noise in
+            let this_noise : rand_var = mexpr2noise tbl bhv.stoch.std in
+            let prop_noise : rand_var = (mexpr2noise tbl bhv.rhs) in
+            let noise = StochLib.add this_noise prop_noise in
             noise
           | MBhvVar(bhv) ->
-            let this_noise : interval =
-              IntervalCompute.compute_mexpr_interval tbl bhv.stoch.std
-            in
-            let prop_noise : interval = (mexpr2noise tbl bhv.rhs) in
-            let noise = IntervalLib.add this_noise prop_noise in
+            let this_noise : rand_var =  mexpr2noise tbl bhv.stoch.std in
+            let prop_noise : rand_var = (mexpr2noise tbl bhv.rhs) in
+            let noise = StochLib.add this_noise prop_noise in
             noise
           | _ -> error "mnvar" "no expected an input or undefined"
         end
       
       | MNParam(par,num) ->
-        mk_no_noise() 
+        mk_no_noise(IntervalLib.mk_ival_from_floats (float_of_number num) (float_of_number num)) 
       | _ ->
         error "compute_math_noise" "time id undefined"
 
 
 (*if you have a dangling math expression on a port, find the [expr], and then*)
-  let rec compute_mexpr_noise (tbl:gltbl) (uast:mid ast) : interval =
+  let rec compute_mexpr_noise (tbl:gltbl) (uast:mid ast) : rand_var =
     let math_noise =
       try
-        IntervalLib.derive_interval uast
+        StochLib.derive_noise uast
           (fun x -> _compute_mid_noise tbl x compute_mexpr_noise)
       with
-      | IntervalLibError(e) ->
+      | StochLibError(e) ->
         warn "derive_math_noise" ("in the following expr:"^(MathLib.mast2str uast));
-        raise (IntervalLibError e)
+        raise (StochLibError e)
     in
     math_noise
 
@@ -244,7 +243,7 @@ struct
   let compute_mid_noise tbl x = _compute_mid_noise tbl x compute_mexpr_noise
   
 
-  let rec _compute_hwid_noise tbl comp inst cfg (x:hwvid) hwvar2noise : interval=
+  let rec _compute_hwid_noise tbl comp inst cfg (x:hwvid) hwvar2noise : rand_var=
     
     match x with
       |HNParam(cmp,x) ->
@@ -257,27 +256,27 @@ struct
         error "compute_hw_noise" "unexpected time"
 
 
-  let compute_hwexpr_noise tbl comp inst cfg (rhs:hwvid ast) hwvar2noise : interval =
+  let compute_hwexpr_noise tbl comp inst cfg (rhs:hwvid ast) hwvar2noise : rand_var =
     let conc_rhs =
       ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg rhs
     in
-    debug ("computing interval "^(HwLib.hast2str conc_rhs));
-    let ival = IntervalLib.derive_interval conc_rhs
+    debug ("computing noise "^(HwLib.hast2str conc_rhs));
+    let ival = StochLib.derive_noise conc_rhs
         (fun x -> _compute_hwid_noise tbl comp inst cfg x hwvar2noise) in
-    debug ("  -> "^IntervalLib.interval2str ival);
+    debug ("  -> "^StochLib.randvar2str ival);
     ival
 
 (*
      for hardware, backpropagate to compute noise. I.E. find connected output.
   *)
   let rec compute_hwvar_noise (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
-    let compute_propagating_noise  (prop:hwvid ast) (std:hwvid ast) : interval =
-        let this_noise : interval =
-          IntervalCompute.compute_hwexpr_interval comp inst cfg std
+    let compute_propagating_noise  (prop:hwvid ast) (std:hwvid ast) : rand_var =
+        let this_noise : rand_var =
+          compute_hwexpr_noise tbl comp inst cfg std compute_hwvar_noise
         in
         (*determine the noise of the propagating function*)
-        let prop_noise : interval = compute_hwexpr_noise tbl comp inst cfg prop compute_hwvar_noise in
-        let noise = IntervalLib.add this_noise prop_noise in
+        let prop_noise : rand_var = compute_hwexpr_noise tbl comp inst cfg prop compute_hwvar_noise in
+        let noise = StochLib.add this_noise prop_noise in
         noise
     in
     let vr = HwLib.comp_getvar comp port in
@@ -287,7 +286,7 @@ struct
       begin
         let wire = (HwLib.port2wire comp.name inst port) in
         match (SlnLib.getsrcs tbl.sln_ctx wire) with
-        | WCollEmpty -> mk_no_noise()
+        | WCollEmpty -> mk_no_noise (defs.ival)
         | WCollOne(src_wire) ->
           (*get the originating wire*)
           let ccomp : ucomp_conc = SolverCompLib.get_conc_comp tbl src_wire.comp in
@@ -298,7 +297,7 @@ struct
       end
      (*digital input produces no noise*)
     | HWBInput,HWDDigital(defs) ->
-      mk_no_noise ()
+      mk_no_noise (defs.ival)
      (*compute hwexpr noise*)
     | HWBAnalog(bhv),_ ->
       compute_propagating_noise bhv.rhs bhv.stoch.std 
@@ -317,18 +316,15 @@ struct
   let compute_wire_noise tbl (wire:wireid) =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
     let ival = compute_hwvar_noise tbl ccomp.d wire.comp.inst ccomp.cfg wire.port in
-    let min,max = IntervalLib.interval2numbounds ival in
-    {min=min;max=max}
+    ival
 
-
-  let compute_wire_math_noise tbl (wire:wireid) : num_interval =
+  let compute_wire_label_noise tbl (wire:wireid) : rand_var =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
-    let cfg_maybe :mid ast option = IntervalCompute.get_wire_math_expr tbl wire in
+    let cfg_maybe :mid ast option = IntervalCompute.get_wire_label_expr tbl wire in
     match cfg_maybe with
-    |Some(cfg) -> IntervalLib.interval2numinterval
-      (compute_mexpr_noise tbl cfg )
-    | _ ->
-      {min=999.;max=999.}
+    |Some(cfg) -> (compute_mexpr_noise tbl cfg )
+    | _ -> mk_no_noise (IntervalLib.mk_ival_from_floats 0. 0.)
+      
 end
 
 
@@ -468,8 +464,8 @@ struct
       in
       match wire with
       | Some(wire) ->
-        let math_ival = IntervalCompute.compute_wire_math_interval gltbl wire in
-        let math_expr = IntervalCompute.get_wire_math_expr gltbl wire in
+        let math_ival = IntervalCompute.compute_wire_label_interval gltbl wire in
+        let math_expr = IntervalCompute.get_wire_label_expr gltbl wire in
         let hw_ival = IntervalCompute.compute_wire_interval gltbl wire in
         upd_map_result wire (fun x -> x.wire<- wire);
         begin
@@ -998,10 +994,26 @@ struct
 
 
   let noise_summary (tbl:gltbl) =
-    debug "noise summary"
+    (*for each generated output*)
+    SlnLib.iter_generates tbl.sln_ctx (fun (g:ulabel) routes ->
+        let wire = SlnLib.label2wire g in
+        let hwnoise = NoiseCompute.compute_wire_noise tbl wire in
+        let mnoise = NoiseCompute.compute_wire_label_noise tbl wire in
+        debug ((SlnLib.ulabel2str g)^":"
+               ^(StochLib.randvar2str hwnoise)^" -> "^
+               (StochLib.randvar2str mnoise))
+      )
+
 
   let map_summary (tbl:gltbl) =
-    debug "mapping summary"
+    SlnLib.iter_generates tbl.sln_ctx (fun (g:ulabel) routes ->
+        let wire = SlnLib.label2wire g in
+        let hwival = IntervalCompute.compute_wire_interval tbl wire in
+        let mival = IntervalCompute.compute_wire_label_interval tbl wire in
+        debug ((SlnLib.ulabel2str g)^":"^
+               (IntervalLib.numinterval2str hwival)^" -> "^
+               (IntervalLib.numinterval2str mival))
+      )
 
   let mapping_heuristic (tbl:gltbl) = ()
 

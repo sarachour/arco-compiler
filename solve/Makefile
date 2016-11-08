@@ -2,7 +2,7 @@
 DIFFEQ=../diffeq
 #DEPS=*.ml *.mly *.ml l
 DEPS=*.ml 
-DIR_DEPS=interval stochastic
+DIR_DEPS=
 COMP_DEPS=*.mly *.mll
 ARGS=C_INCLUDE_PATH=/opt/local/include LIBRARY_PATH=/opt/local/lib CC=gcc-mp-4.8
 FLAGS=-use-ocamlfind -use-menhir -menhir "menhir --infer --explain"
@@ -15,11 +15,6 @@ all: solver solver.debug
 config:
 	cd benchmarks/simple/configs; ./make_configs.sh
 
-interval:
-	cd interval; make
-
-stochatstic:
-	cd stochastics; make
 solver.debug: $(DEPS) $(COMP_DEPS) $(DIR_DEPS)
 	 $(ARGS) ocamlbuild $(DEBUG_FLAGS) $(FLAGS) Main.byte && mv Main.byte solver.debug
 	 chmod +x solver.debug

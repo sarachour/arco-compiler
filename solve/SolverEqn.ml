@@ -47,8 +47,7 @@ struct
 
   let mkmenu (v:gltbl) (currgoal:goal option) =
     let menu_desc =
-      "\n   t=search-tree\ts=sol\t@=curr\tg=goals\tc=conc-comps"^
-      "\n   n=node-steps\tm=mapping\tx=summarize\tany-key=continue\tq=quit"
+      "\n   {t,s,@,g,c,n,m,x,q}"
     in
     let rec menu_handle inp on_finished=
       if STRING.startswith inp "t" then
