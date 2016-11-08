@@ -135,8 +135,12 @@ comp vadd
   %def I(OUT) mag = [0,5] mV
 
   rel V(OUT) =  ((V(A) + V(B)) - V(C) - V(D))*0.1
+  
+
   rel ddt V(OUT2) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))*0.1  init V(OUT2_0)
-  def I(OUT2) mag = [0,5] mV
+  def V(OUT2) mag = [0,5] mV
+  var ddt V(OUT2) = 0.1*V(OUT2) + 0.01 shape GAUSS
+
 end
 
 comp vtoi
@@ -227,6 +231,8 @@ comp mm
   rel V(Y) = V(Ytot) - V(XY)
   rel ddt V(XY) = I(kf)*V(X)*V(Y) - I(kr)*V(XY) init V(XY0)
   def V(XY) mag = [0,1] mV
+  var ddt V(XY) = 0.05*V(XY) + 0.01 shape GAUSS
+
 end
 
 comp switch

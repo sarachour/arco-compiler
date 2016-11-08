@@ -194,7 +194,13 @@ struct
     StochLib.mk_rand_var mean (IntervalLib.mk_ival_from_floats 0. 0.)
       
 
-  let _compute_mid_noise tbl (id:mid) (mexpr2noise:gltbl->mid ast->rand_var)= match id with
+  let _stack = STACK.make ()
+  let _stack_push x = STACK.push _stack x
+  let _stack_pop () = STACK.pop _stack
+  let _stack_has x = STACK.has _stack x 
+
+
+  let _compute_mid_noise tbl (id:mid) (mvar2noise:gltbl->string->rand_var)= match id with
       |MNVar(MInput,v) ->
         begin
           let mvar = MathLib.getvar tbl.env.math v in
@@ -204,20 +210,8 @@ struct
         end
       |MNVar(_,v) ->
         begin
-          let mvar = MathLib.getvar tbl.env.math v in
+          mvar2noise tbl v
           (**)
-          match mvar.bhvr with
-          | MBhvStateVar(bhv) ->
-            let this_noise : rand_var = mexpr2noise tbl bhv.stoch.std in
-            let prop_noise : rand_var = (mexpr2noise tbl bhv.rhs) in
-            let noise = StochLib.add this_noise prop_noise in
-            noise
-          | MBhvVar(bhv) ->
-            let this_noise : rand_var =  mexpr2noise tbl bhv.stoch.std in
-            let prop_noise : rand_var = (mexpr2noise tbl bhv.rhs) in
-            let noise = StochLib.add this_noise prop_noise in
-            noise
-          | _ -> error "mnvar" "no expected an input or undefined"
         end
       
       | MNParam(par,num) ->
@@ -227,11 +221,11 @@ struct
 
 
 (*if you have a dangling math expression on a port, find the [expr], and then*)
-  let rec compute_mexpr_noise (tbl:gltbl) (uast:mid ast) : rand_var =
+  let _compute_mexpr_noise (tbl:gltbl) (uast:mid ast) mvar2noise : rand_var =
     let math_noise =
       try
         StochLib.derive_noise uast
-          (fun x -> _compute_mid_noise tbl x compute_mexpr_noise)
+          (fun x -> _compute_mid_noise tbl x mvar2noise)
       with
       | StochLibError(e) ->
         warn "derive_math_noise" ("in the following expr:"^(MathLib.mast2str uast));
@@ -240,11 +234,47 @@ struct
     math_noise
 
 
-  let compute_mid_noise tbl x = _compute_mid_noise tbl x compute_mexpr_noise
-  
+  let rec compute_mvar_noise (tbl:gltbl) (vr:string) : rand_var =
+    let mvar = MathLib.getvar tbl.env.math vr in
+    if _stack_has vr then
+      match mvar.defs with
+      | MDefVar(defs) -> mk_no_noise defs.ival
+      | MDefStVar(defs) -> mk_no_noise defs.stvar.ival
+    else
+      begin
+        _stack_push vr;
+        let noise = match mvar.bhvr with
+          | MBhvStateVar(bhv) ->
+            let this_noise : rand_var =
+              _compute_mexpr_noise tbl bhv.stoch.std compute_mvar_noise
+            in
+            let prop_noise : rand_var =
+              _compute_mexpr_noise tbl bhv.rhs compute_mvar_noise
+            in
+            let noise = StochLib.add this_noise prop_noise in
+            noise
+          | MBhvVar(bhv) ->
+            let this_noise : rand_var =
+              _compute_mexpr_noise tbl bhv.stoch.std compute_mvar_noise
+            in
+            let prop_noise : rand_var =
+              _compute_mexpr_noise tbl bhv.rhs compute_mvar_noise
+            in
+            let noise = StochLib.add this_noise prop_noise in
+            noise
+          | _ -> error "mnvar" "no expected an input or undefined"
+        in
+        _stack_pop ();
+        noise
+      end
+
+
+  let compute_mid_noise tbl x = _compute_mid_noise tbl x compute_mvar_noise
+
+  let compute_mexpr_noise tbl uast =
+    _compute_mexpr_noise tbl uast compute_mvar_noise
 
   let rec _compute_hwid_noise tbl comp inst cfg (x:hwvid) hwvar2noise : rand_var=
-    
     match x with
       |HNParam(cmp,x) ->
         error "compute_hw_noise" "must be fully specified"
@@ -260,10 +290,8 @@ struct
     let conc_rhs =
       ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg rhs
     in
-    debug ("computing noise "^(HwLib.hast2str conc_rhs));
     let ival = StochLib.derive_noise conc_rhs
         (fun x -> _compute_hwid_noise tbl comp inst cfg x hwvar2noise) in
-    debug ("  -> "^StochLib.randvar2str ival);
     ival
 
 (*
@@ -280,36 +308,52 @@ struct
         noise
     in
     let vr = HwLib.comp_getvar comp port in
-    match vr.bhvr,vr.defs with
-    (*analog input produces noise*)
-    | HWBInput,HWDAnalog(defs) ->
+    let stack_vr :string =
+      SlnLib.wireid2str ({comp={name=comp.name;inst=inst};port=port})
+    in
+    if _stack_has stack_vr then
+      match vr.defs with
+      | HWDAnalog(defs) -> mk_no_noise defs.ival 
+      | HWDAnalogState(defs) -> mk_no_noise defs.stvar.ival 
+      | HWDDigital(defs) -> mk_no_noise defs.ival 
+    else
       begin
-        let wire = (HwLib.port2wire comp.name inst port) in
-        match (SlnLib.getsrcs tbl.sln_ctx wire) with
-        | WCollEmpty -> mk_no_noise (defs.ival)
-        | WCollOne(src_wire) ->
-          (*get the originating wire*)
-          let ccomp : ucomp_conc = SolverCompLib.get_conc_comp tbl src_wire.comp in
-          compute_hwvar_noise tbl ccomp.d ccomp.inst ccomp.cfg src_wire.port
+        _stack_push stack_vr;
+        let noise = match vr.bhvr,vr.defs with
+          (*analog input produces noise*)
+          | HWBInput,HWDAnalog(defs) ->
+            begin
+              let wire = (HwLib.port2wire comp.name inst port) in
+              match (SlnLib.getsrcs tbl.sln_ctx wire) with
+              | WCollEmpty -> mk_no_noise (defs.ival)
+              | WCollOne(src_wire) ->
+                (*get the originating wire*)
+                let ccomp : ucomp_conc = SolverCompLib.get_conc_comp tbl src_wire.comp in
+                compute_hwvar_noise tbl ccomp.d ccomp.inst ccomp.cfg src_wire.port
 
-        | WCollMany(_) ->
-          error "compute_hw_noise" "multiple source wires unhandled"
+              | WCollMany(_) ->
+                error "compute_hw_noise" "multiple source wires unhandled"
+            end
+          (*digital input produces no noise*)
+          | HWBInput,HWDDigital(defs) ->
+            mk_no_noise (defs.ival)
+          (*compute hwexpr noise*)
+          | HWBAnalog(bhv),_ ->
+            compute_propagating_noise bhv.rhs bhv.stoch.std 
+          (*compute hwexpr noise*)
+          | HWBAnalogState(bhv),HWDAnalogState(defs) ->
+            let stvar = compute_propagating_noise bhv.rhs bhv.stoch.std in
+            {mean=defs.stvar.ival;std=stvar.std}
+          | HWBDigital(bhv),_ ->
+            compute_propagating_noise bhv.rhs (Integer(0)) 
+          | _ -> error "compute_hw_noise" "unexpected bhvr/defs match"
+        in
+        _stack_pop ();
+        noise
       end
-     (*digital input produces no noise*)
-    | HWBInput,HWDDigital(defs) ->
-      mk_no_noise (defs.ival)
-     (*compute hwexpr noise*)
-    | HWBAnalog(bhv),_ ->
-      compute_propagating_noise bhv.rhs bhv.stoch.std 
-     (*compute hwexpr noise*)
-    | HWBAnalogState(bhv),HWDAnalogState(defs) ->
-      compute_propagating_noise bhv.rhs bhv.stoch.std 
 
-    | HWBDigital(bhv),_ ->
-      compute_propagating_noise bhv.rhs (Integer(0)) 
-    | _ -> error "compute_hw_noise" "unexpected bhvr/defs match"
-      
-      (*declare equivalence classes for a mapping*)
+
+  (*declare equivalence classes for a mapping*)
 
   let compute_hwid_noise tbl comp inst cfg port = _compute_hwid_noise tbl comp inst cfg port compute_hwvar_noise
    
@@ -999,9 +1043,9 @@ struct
         let wire = SlnLib.label2wire g in
         let hwnoise = NoiseCompute.compute_wire_noise tbl wire in
         let mnoise = NoiseCompute.compute_wire_label_noise tbl wire in
-        debug ((SlnLib.ulabel2str g)^":"
-               ^(StochLib.randvar2str hwnoise)^" -> "^
-               (StochLib.randvar2str mnoise))
+        debug ("label:"^(SlnLib.ulabel2str g)^":\n"^
+               "  "^(StochLib.randvar2str hwnoise)^"\n"^
+               "  "^(StochLib.randvar2str mnoise)^"\n")
       )
 
 
