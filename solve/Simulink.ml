@@ -443,10 +443,10 @@ struct
         declare_vars [loc;external_loc;internal_loc];
         declare_vars [loc_in_port;
                       int_loc_in_port;int_loc_out_port];
-        SimulinkRouter.position q (loc2path loc);
         q (add_route_block (get_basic_fxn "out") loc);
         q (add_route_block (get_basic_fxn "gain") internal_loc);
         q (add_route_line int_loc_out_port loc_in_port)
+        SimulinkRouter.position q (loc2path loc);
       end;
     int_loc_in_port,int_loc_out_port,loc_in_port
 
@@ -458,12 +458,12 @@ struct
       begin
         declare_var (loc);
         declare_var (loc_out);
-        SimulinkRouter.position q (loc2path loc);
         q (add_route_block (get_basic_fxn "const") (loc));
         q (set_route_param
              loc "Value"
              (MATLit(MATStr(string_of_float value)))
           )
+        SimulinkRouter.position q (loc2path loc);
       end;
     loc_out
 
@@ -472,7 +472,6 @@ struct
     let loc = SIMBlock(namespace,"sum_"^(string_of_int id)) in
     let inpstr=  "+"^(STRING.repeat "-" (n_inps-1)) in
     declare_var (loc);
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "+") loc);
     q (set_route_param
          loc "Inputs"
@@ -481,6 +480,7 @@ struct
         (fun (x:int) -> mk_sim_in loc ("I"^(string_of_int x)))
         (LIST.mkrange 1 n_inps)
     in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars inp_locs;
     let out_loc = mk_sim_out loc "O" in
     declare_var out_loc;
@@ -492,11 +492,11 @@ struct
     let loc = SIMBlock(namespace,"neg_"^(string_of_int id)) in
     let inpstr=  "-" in
     declare_var (loc);
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "+") loc);
     q (set_route_param
          loc "Inputs"
          (MATLit(MATStr(inpstr))));
+    SimulinkRouter.position q (loc2path loc);
     let inp_loc = mk_sim_in loc "I" in
     let out_loc = mk_sim_out loc "O" in
     declare_vars [inp_loc;out_loc];
@@ -508,7 +508,6 @@ struct
     let loc = SIMBlock(namespace,"sub_"^(string_of_int id)) in
     let inpstr=  STRING.repeat "+" n_inps in
     declare_var (loc);
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "+") loc);
     q (set_route_param
          loc "Inputs"
@@ -517,6 +516,7 @@ struct
         (fun (x:int) -> mk_sim_in loc ("I"^(string_of_int x)))
         (LIST.mkrange 1 n_inps)
     in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars inp_locs;
     let out_loc = mk_sim_out loc "O" in
     declare_var out_loc;
@@ -528,7 +528,6 @@ struct
     let loc = SIMBlock(namespace,"mul_"^(string_of_int id)) in
     let inpstr=  STRING.repeat "*" n_inps in
     declare_var (loc);
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "*") loc);
     q (set_route_param
          loc "Inputs"
@@ -537,6 +536,7 @@ struct
         (fun (x:int) -> mk_sim_in loc ("I"^(string_of_int x)))
         (LIST.mkrange 1 n_inps)
     in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars inp_locs;
     let out_loc = mk_sim_out loc "O" in
     declare_var out_loc;
@@ -547,7 +547,6 @@ struct
     let loc = SIMBlock(namespace,"div_"^(string_of_int id)) in
     let inpstr=  "*/" in
     declare_var (loc);
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "*") loc);
     q (set_route_param
          loc "Inputs"
@@ -555,6 +554,7 @@ struct
     let numer_loc = mk_sim_in loc "N" in
     let denom_loc = mk_sim_in loc "D" in
     let out_loc = mk_sim_out loc "O" in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars [numer_loc;denom_loc;out_loc];
     loc,numer_loc,denom_loc,out_loc
 
@@ -563,7 +563,6 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"pow_"^(string_of_int id)) in
     declare_var (loc);
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "mfxn") loc);
     q (set_route_param
          loc "Function"
@@ -571,6 +570,7 @@ struct
     let base_loc = mk_sim_in loc "B" in
     let exp_loc = mk_sim_in loc "E" in
     let out_loc = mk_sim_out loc "O" in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars [base_loc;exp_loc;out_loc];
     loc,base_loc,exp_loc,out_loc
 
@@ -588,7 +588,6 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"sat_"^(string_of_int id)) in
     declare_var (loc);
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "sat") loc);
     q (set_route_param
          (loc) "UpperLimit"         
@@ -598,6 +597,7 @@ struct
          (MATLit(MATStr(string_of_float min))));
     let inp_loc = mk_sim_in loc "I" in
     let out_loc = mk_sim_out loc "O" in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars [inp_loc;out_loc];
     loc,inp_loc,out_loc
 
@@ -605,13 +605,13 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"smp_"^(string_of_int id)) in
     declare_vars [loc];
-    SimulinkRouter.position q (loc2path loc);
     q (add_route_block (get_basic_fxn "disc") loc);
     q (set_route_param
          (loc) "QuantizationInterval"         
          (MATLit(MATStr(string_of_float sample))));
     let sample_out = mk_sim_out loc "O" in
     let sample_in = mk_sim_in loc "I" in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars [sample_out;sample_in];
     loc,sample_in,sample_out
 
@@ -621,9 +621,6 @@ struct
    let aloc = SIMBlock(namespace,"unza_"^(string_of_int id)) in
    let vloc = SIMBlock(namespace,"unzv_"^(string_of_int id)) in
    declare_vars [loc;aloc;vloc];
-   SimulinkRouter.position q (loc2path loc);
-   SimulinkRouter.position q (loc2path aloc);
-   SimulinkRouter.position q (loc2path vloc);
    q (add_route_block (get_basic_fxn "noise") loc);
    q (add_route_block (get_basic_fxn "*") vloc);
    q (add_route_block (get_basic_fxn "+") aloc);
@@ -633,7 +630,9 @@ struct
    q (set_route_param
          (vloc) "Inputs"
          (MATLit(MATStr("**"))));
-
+   SimulinkRouter.position q (loc2path loc);
+   SimulinkRouter.position q (loc2path aloc);
+   SimulinkRouter.position q (loc2path vloc);
    let noise_out = mk_sim_out loc "O" in
    let mul_in1 = mk_sim_in vloc "I1" in
    let mul_in2 = mk_sim_in vloc "I2" in
@@ -654,6 +653,7 @@ struct
     q (add_route_block (get_basic_fxn "int") loc);
     let integ_in = mk_sim_in loc "I" in
     let integ_out = mk_sim_out loc "O" in
+    SimulinkRouter.position q (loc2path loc);
     declare_vars [integ_in;integ_out];
     loc,integ_in,integ_out
 
@@ -671,6 +671,8 @@ struct
     let offfact_out = create_const q namespace offset_fact in 
     q (add_route_block (get_basic_fxn "*") scloc);
     q (add_route_block (get_basic_fxn "+") offloc);
+    SimulinkRouter.position q (loc2path scloc);
+    SimulinkRouter.position q (loc2path offloc);
     let mul_in1 = mk_sim_in scloc "I1" in
     let mul_in2 = mk_sim_in scloc "I2" in
     let mul_out = mk_sim_out scloc "O" in
