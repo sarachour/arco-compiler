@@ -27,10 +27,11 @@ open SolverMulti
 
 
 open HWConnRslvr 
-open SolverMapper 
 open SolverCompLib
 open Simulink
 
+open MapMain 
+open MapUtil
 (*
 A solution is a set of connections  and components. A solution
 may additionally contain any pertinent error and magnitude mappings
@@ -41,31 +42,6 @@ let error n m = raise (SolverError (n^":"^m))
 let slvr_print_debug = print_debug 1
 let slvr_menu = menu 1
 let slvr_print_inter = print_inter 1
-
-(*
-let canonicalize_sln (hw:hwvid hwenv) (s:sln) =
-  
-  let newlabels = MAP.make () in
-  let mklbl wire propmap =
-    MAP.put newlabels wire propmap
-  in
-  let proc_wire wire propmap =
-    let c,i,p = wire in
-    let cname : string = UnivLib.unodeid2name c in
-    match c with
-    | UNoInput(prop) -> if HwLib.getkind hw cname p = HNInput then ()
-      else let _ = mklbl wire propmap in ()
-    | UNoOutput(prop) -> if HwLib.getkind hw cname p = HNOutput then ()
-      else let _ = mklbl wire propmap in ()
-    | _ -> let _ = mklbl wire propmap in ()
-  in
-  (*only keep assignments on one end of the input or output port*)
-  let _ = MAP.iter s.labels (fun wire props -> proc_wire wire props) in
-  let _ = MAP.set s.labels newlabels in
-  ()
-
-*)
-
 
 let simulinkformat2suffix f = match f with
   | SFIdealSDE -> "sdeIdeal"
@@ -116,7 +92,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Concrete slntbl ---";
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
-  let mappings = SolverMapper.infer slntbl in
+  let mappings = MapMain.infer slntbl in
   to_mat_file slntbl out i SFCircMapSDE mappings;
   to_mat_file slntbl out i SFCircMapODE mappings;
   slvr_print_inter "---- Generating Summary File ---";
@@ -125,7 +101,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
     match mappings with
     | Some(mappings) ->
       begin
-        let map_sum = SolverMapper.mappings2str mappings in
+        let map_sum = MapUtil.mappings2str mappings in
         IO.save (out^"_"^(string_of_int i)^"_map.sum") map_sum
       end
 

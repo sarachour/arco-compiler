@@ -20,7 +20,10 @@ open SolverGoalTableFactory
 open SolverData
 open SolverUtil
 open SolverRslv
-open SolverMapper
+
+open MapMain
+open MapHeuristics
+
 open SolverSearch 
 open GoalLib 
 
@@ -83,14 +86,14 @@ struct
       else if STRING.startswith inp "m" then
         begin
           Printf.printf ("---- Inferring ------\n");
-          noop (SolverMapper.infer v)
+          noop (MapMain.infer v)
         end
       else if STRING.startswith inp "x" then
         begin
           Printf.printf ("---- Summarizing Map ------\n");
-          noop (SolverMapperHeuristics.map_summary v);
+          noop (MapHeuristics.map_summary v);
           Printf.printf ("---- Summarizing Noise ------\n");
-          noop (SolverMapperHeuristics.noise_summary v)
+          noop (MapHeuristics.noise_summary v)
         end
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===\n" in

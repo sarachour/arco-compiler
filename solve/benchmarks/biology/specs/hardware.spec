@@ -126,15 +126,20 @@ comp vadd
   output OUT2 {V:mV}
 
   % does not take inputs outside of this range
-  def I(A) mag = [0,5] mV
-  def I(B) mag = [0,5] mV 
-  def I(C) mag = [0,5] mV 
-  def I(D) mag = [0,5] mV
-  def I(OUT2_0) mag = [0,5] mV
-  % only produces outputs in this range
-  %def I(OUT) mag = [0,5] mV
+  param BSW : none = {0,1}
+  param CSW : none = {0,1}
+  param DSW : none = {0,1}
 
-  rel V(OUT) =  ((V(A) + V(B)) - V(C) - V(D))*0.1
+  def V(A) mag = [0.0001,3300] mV
+  def V(B) mag = [0.0001,3300] mV 
+  def V(C) mag = [0.0001,3300] mV 
+  def V(D) mag = [0.0001,3300] mV
+  def V(OUT2_0) mag = [0.0001,3300] mV
+
+  % only produces outputs in this range
+  %def I(OUT) mag = [0.0001,3300] mV
+
+  rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   
 
   rel ddt V(OUT2) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))*0.1  init V(OUT2_0)

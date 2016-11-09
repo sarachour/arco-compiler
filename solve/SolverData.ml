@@ -152,14 +152,7 @@ type sstep =
 
 
 (*how much to scale and offset from math to hw*)
-type hw_mapping = {
-  mutable scale:float;
-  mutable offset:float;
-  mutable mrng:num_interval;
-  mutable hrng:num_interval;
-  mutable wire: wireid;
-  mutable expr: unid ast;
-}
+
 type uenv =  {
   hw: hwvid hwenv;
   math: mid menv;

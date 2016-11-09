@@ -8,7 +8,11 @@ open HWData
 open IntervalLib
 open SolverCompLib
 open SlnLib
-open SolverMapper
+
+
+open MapUtil
+open MapData
+open MapIntervalCompute
 
 open Interactive
 
@@ -931,7 +935,7 @@ struct
     if MAP.has mappings wire then
       MAP.get mappings wire
     else
-      let mapstr : string= SolverMapper.mappings2str mappings in
+      let mapstr : string= MapUtil.mappings2str mappings in
       warn "get_mapping" mapstr;
       error "get_mapping" ("mapping for wire "^(SlnLib.wireid2str wire)^" does not exist:\n"^mapstr)
 
