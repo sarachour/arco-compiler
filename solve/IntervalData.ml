@@ -50,7 +50,10 @@ type 'a scale_mapper = {
 type 'a offset_mapper = {
   offset:'a ast;
 }
-
+type cover_gap = {
+  left:float;
+  right:float;
+}
 type 'a mapper =
   | MAPLinear of 'a linear_mapper
   | MAPScale of 'a scale_mapper

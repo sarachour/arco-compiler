@@ -34,6 +34,11 @@ open MapUtil
 open MapIntervalCompute
 open MapNoiseCompute
 
+exception MapSMTResolverError of string
+
+let error n m = raise (MapSMTResolverError (n^":"^m))
+
+let debug = print_debug 2 "map-rslv"
 
 module MapSMTResolver =
 struct

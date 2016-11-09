@@ -73,8 +73,12 @@ module MapUtil = struct
       ">= "^(_plst lst linearsmtexpr2str)
     | SVDeclMapVar(id) ->
       "decl "^(linearsmtid2str id)
-
-
+    | SVNoOffset(ast) ->
+      "!off "^(linearexpr2str ast)
+    | SVNoScale(ast) ->
+      "!sc "^(linearexpr2str ast)
+    | SVLTE(lhs,rhs) ->
+      (linearexpr2str lhs)^"<"^(linearexpr2str rhs)
 
   let mkhwmapping () =
     {

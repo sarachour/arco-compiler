@@ -90,10 +90,8 @@ struct
         end
       else if STRING.startswith inp "x" then
         begin
-          Printf.printf ("---- Summarizing Map ------\n");
-          noop (MapHeuristics.map_summary v);
-          Printf.printf ("---- Summarizing Noise ------\n");
-          noop (MapHeuristics.noise_summary v)
+          Printf.printf ("---- Summarizing Heuristics------\n");
+          noop (MapHeuristics.heuristic v);
         end
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===\n" in

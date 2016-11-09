@@ -27,9 +27,15 @@ open MapUtil
 
 
 
+
 exception MapIntervalComputeError of string
+    
+
+let debug = print_debug 2 "eqn"
 
 let error n m = raise (MapIntervalComputeError (n^":"^m))
+
+
 module IntervalCompute =
 struct
   let compute_mid_interval tbl (id:mid) = match id with
@@ -76,7 +82,7 @@ struct
 
   let compute_hwid_interval comp (x:hwvid) : interval=
       match x with
-      |HNParam(cmp,x) -> error "compute_hw_interval" "must be fully specified"
+      |HNParam(cmp,x) -> error "compute_hw_interval" ("must be fully specified: "^x)
       |HNPort(knd,cmp,port,param) ->
         begin
           match (HwLib.comp_getvar comp port).defs with

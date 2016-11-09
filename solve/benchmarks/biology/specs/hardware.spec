@@ -142,7 +142,7 @@ comp vadd
   rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   
 
-  rel ddt V(OUT2) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))*0.1  init V(OUT2_0)
+  rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2))*0.1  init V(OUT2_0)
   def V(OUT2) mag = [0,5] mV
   var ddt V(OUT2) = 0.1*V(OUT2) + 0.01 shape GAUSS
 

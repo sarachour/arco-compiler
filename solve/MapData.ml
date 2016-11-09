@@ -20,6 +20,8 @@ type linear_smt_id =
   | SVSlackVar of linear_slack_dir*float*wireid
 
 type linear_stmt =
+  | SVNoOffset of linear_id ast
+  | SVNoScale of linear_id ast
   | SVEquals of (linear_id ast) list
   | SVCoverEq of (linear_smt_id ast) list
   | SVCoverLTE of (linear_smt_id ast) list
@@ -32,14 +34,6 @@ type linear_mapping = {
   offset : linear_id ast;
   term: hwvid ast;
 }
-
-type map_req =
-  | RequireOffset of num_interval*num_interval
-  | RequireScale of num_interval*num_interval
-  | RequireNoScale
-  | RequireNoOffset
-  | RequireScaleEq of wireid
-
 type hw_mapping = {
   mutable scale:float;
   mutable offset:float;
@@ -50,12 +44,12 @@ type hw_mapping = {
 }
 
 type map_heuristic = {
-  mapping:hw_mapping;
-  math_noise:rand_var;
-  hw_noise:rand_var;
-  math_ival:rand_var;
-  hw_ival:rand_var;
-  mutable reqs:map_req list;
+  mutable math_rng:num_interval;
+  mutable hw_rng:num_interval;
+  mutable math_noise:rand_var;
+  mutable hw_noise:rand_var;
+  mutable scale: bool;
+  mutable offset: bool;
 }
 
 type map_heuristics = {

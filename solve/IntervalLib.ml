@@ -45,6 +45,114 @@ struct
     {min=MATH.min [mmin;mmax];max=MATH.max [mmin;mmax]}
 
 
+  let compute_frac_gap (cover:num_interval) (gap:cover_gap) =
+    let uncovered = gap.left +. gap.right in
+    let cover = cover.max -. cover.min in
+    if cover = 0. && uncovered = 0. then
+      0.
+    else if cover = 0. then
+      infinity
+    else
+      uncovered /. cover
+
+  let midpoint (v:num_interval) : float =
+    (v.max +. v.min) /. 2.
+
+  let compute_cover_gap (cover:num_interval) (targ:num_interval) : cover_gap =
+    let left = MATH.max [0.;targ.min -. cover.min] in
+    let right = MATH.max [0.;cover.max -. targ.max] in
+    {left=left;right=right}
+
+  (*map host to targ,maximizing the cover. The mapping takes us from host to targ*)
+  let compute_linear (host:num_interval) (targ:num_interval) : float*float*cover_gap =
+    if host.max = host.min && targ.max = targ.min then
+      begin
+        let offset = targ.max -. (midpoint host) in
+       0.,offset,{left=0.;right=0.}
+      end
+    else if host.max = host.min then
+      begin
+        1.,0.,{left=1.;right=1.}
+      end
+    else if targ.max = targ.min then
+      begin
+        let offset = targ.max -. (midpoint host) in
+        offset,0.,{left=1.;right=1.}
+      end
+    else
+      begin
+        let scale = (targ.max -. targ.min) /. (host.max -. host.min) in
+        let offset=  targ.max -. scale *. host.max in 
+        scale,offset,{left=0.; right=0.}
+      end
+
+  let compute_scale (host:num_interval) (targ:num_interval) =
+    if host.max = host.min && targ.max = targ.min then
+      begin
+        if targ.max != 0. && midpoint host != 0. then
+          begin
+            let scale = targ.max /. (midpoint host) in
+            scale,{left=0.;right=0.}
+          end
+        else
+          begin
+            if targ.max = host.max then
+              1.,{left=0.;right=0.}
+            else
+              1.,{left=1.;right=1.}
+          end
+      end
+    else if host.max = host.min then
+      begin
+        0.,{left=1.;right=1.}
+      end
+    else if targ.max = targ.min then
+      begin
+        if targ.max != 0. && midpoint host != 0. then
+          begin
+            let scale = targ.max /. (midpoint host) in
+            scale,{left=0.;right=0.}
+          end
+        else
+          begin
+          if targ.max <= host.max && targ.max >= host.min then
+            1.,{left=0.;right=0.}
+          else
+            1.,{left=host.min -. targ.max;right=host.max-.targ.max}
+          end
+      end
+    else
+      let scale = targ.max /. host.max in
+      let new_host = transform host scale 0. in
+      scale,compute_cover_gap new_host targ
+
+  let compute_offset (host:num_interval) (targ:num_interval) =
+    if host.max = host.min && targ.max = targ.min then
+      begin
+        let offset = targ.max -. (midpoint host) in
+        offset,{left=0.;right=0.}
+      end
+    else if host.max = host.min then
+      begin
+        0.,{left=1.;right=1.}
+      end
+    else if targ.max = targ.min then
+      begin
+        let offset = targ.max -. (midpoint host) in
+        offset,{left=0.;right=1.}
+      end
+    else
+    let offset = targ.min -. host.min in
+    let new_host = transform host 1. offset in
+    offset,compute_cover_gap new_host targ
+
+  let compute_direct (host:num_interval) (targ:num_interval) =
+    compute_cover_gap host targ
+
+  let is_mixed_interval (x:interval) =
+    match x with
+    | MixedInterval(h::h2::t) -> true
+    | _ -> false
 
   let interval2numbounds (x:interval) =
     match x with
@@ -54,10 +162,21 @@ struct
         | BNDNum(min),BNDNum(max) -> min,max
         | _ -> error "interval2numbounds" "not expecting inf bound"
       end
+    (*this happens*)
+    | MixedInterval([i]) ->
+      begin
+        match i.min,i.max with
+        | BNDNum(min),BNDNum(max) -> min,max
+        | _ -> error "interval2numbounds" "not expecting inf bound"
+      end
     | MixedInterval(i) ->
       error "interval2numbounds" "not expecting mixed interval"
-    | Quantize(x) ->
+    | Quantize([v]) ->
+      v,v
+    | Quantize(_) -> 
       error "interval2numbounds" "not expecting quantized interval"
+    | IntervalUnknown(_) ->
+      error "interval2bounds" "unxpected unknown interval"
 
   let interval2numinterval (x:interval) =
     let min,max = interval2numbounds x in
@@ -154,40 +273,7 @@ struct
   let bound_is_zero (b:bound) = match b with
     | BNDNum(n) -> n = 0.
     | _ -> false
-(*
-  let corners (a:interval) (b:interval) (f:float->float->float) =
-    let base =
-      [f a.min b.min; f a.min b.max; f a.max b.min; f a.max b.max] in
-    base
-      
-  let contains_negative (a:interval) =
-    a.min <= 0.
 
-  let rule_sum (a:interval) (b:interval) =
-    let corns = corners a b (fun x y -> x+.y) in 
-    {min=MATH.min corns; max=MATH.max corns}
-
-  let rule_prod (a:interval) (b:interval) =
-    let corns = corners a b (fun x y -> x*.y) in 
-    {min=MATH.min corns; max=MATH.max corns}
-
-  let rule_sub (a:interval) (b:interval) =
-    let corns = corners a b (fun x y -> x-.y) in 
-    {min=MATH.min corns; max=MATH.max corns}
-
-
-  let rule_power (base:interval) (exp:interval) =
-    if contains_negative exp && contains_zero base then
-        error "rule_power" "contains infinity."
-    else
-      let corns = corners base exp (fun x y -> x**y) in
-      {min=MATH.min corns; max=MATH.max corns}
-
-
-  let rule_exp expo = error "rule_exp" "unimpl"
-  let rule_div numer denom = error "rule_div" "unimpl"
-  let rule_neg expr = error "rule_neg" "unimpl"
-  *)
 
 
   let min_bound (a:bound) (b:bound) = match a,b with

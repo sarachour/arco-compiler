@@ -54,6 +54,8 @@ struct
 
 
 
+
+
   (*propagate wire rules for scaling factors *)
   let derive_scaling_factor (node:hwvid ast) (feedback:wireid list) (cfg:hwcompcfg)
     : (linear_stmt list)*linear_mapping =
@@ -65,9 +67,9 @@ struct
     in
     let cstrs : linear_stmt queue = QUEUE.make () in 
     let add_cstr x =
-      debug ("expr+ "^(MapUtil.linearstmt2str x));
       noop (QUEUE.enqueue cstrs x)
     in
+    let add_cstrs x = noop (QUEUE.enqueue_all cstrs x) in
     let rec _derive_scaling_factor (node) : (linear_mapping) =
       match node with
       | Term(HNPort(knd,HCMGlobal(cmp),port,prop)) ->
@@ -117,7 +119,7 @@ struct
         else
           begin
           (*all offsets must equal zero*)
-          add_cstr (SVEquals(Integer(0)::offsets));
+          List.iter (fun offset -> add_cstr (SVNoOffset(offset)))offsets;
           {scale=OpN(Mult,scales);offset=Integer(0);term=node;}
           end
 
@@ -136,12 +138,12 @@ struct
         let ln = _derive_scaling_factor num in
         let ld = _derive_scaling_factor denom in
         (*all offsets must equal zero*)
-        add_cstr (SVEquals([Integer(0);ln.offset;ld.offset]));
+        add_cstrs ([SVNoOffset(ln.offset);SVNoOffset(ld.offset)]);
         {scale=Op2(Div,ln.scale,ld.scale);offset=Integer(0);term=node;}
 
       | Op1(Exp,expr) ->
         let expr = _derive_scaling_factor expr in
-        add_cstr (SVEquals([Integer(1);expr.scale]));
+        add_cstr (SVNoScale(expr.scale));
         {scale=Op1(Exp,expr.offset); offset=Integer(0); term=node; }
 
       | Op1(Neg,expr) ->
@@ -151,8 +153,8 @@ struct
       | Op2(Power,base,exp) ->
         let exp = _derive_scaling_factor exp in
         let base = _derive_scaling_factor base in
-        add_cstr (SVEquals([Integer(1);base.scale;exp.scale]));
-        add_cstr (SVEquals([Integer(0);base.offset;exp.offset]));
+        add_cstrs ([SVNoScale(base.scale);SVNoScale(exp.scale)]);
+        add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
         {scale=Integer(1); offset=Integer(0);term=node;}
 
       | Integer(0) ->
@@ -189,8 +191,8 @@ struct
             begin
               if dumb_cstrs_DBG then
                 enqs [
-                  SVEquals([Term(SVScaleVar(wire));Integer(1)]);
-                  SVEquals([Term(SVOffsetVar(wire));Integer(0)]);
+                  SVNoScale(Term (SVScaleVar wire));
+                  SVNoOffset(Term (SVOffsetVar wire));
                 ]
               else
                 enqs cstrs;
@@ -205,14 +207,15 @@ struct
             begin
               if dumb_cstrs_DBG then
                 enqs [
-                  SVEquals([Term(SVScaleVar(wire));Integer(1)]);
-                  SVEquals([Term(SVOffsetVar(wire));Integer(0)]);
+                  SVNoScale(Term (SVScaleVar wire));
+                  SVNoOffset(Term (SVOffsetVar wire));
                 ]
               else
                 enqs cstrs;
             end;
             enq (SVEquals([Term(SVScaleVar(wire));linear.scale]));
-            enq (SVEquals([Term(SVOffsetVar(wire));linear.offset;Integer(0)]));
+            enq (SVNoOffset(Term (SVOffsetVar(wire))));
+            enq (SVNoOffset(linear.offset));
             (*initial condition constraints*)
             enq (SVEquals([Term(SVScaleVar(icwire));linear.scale]));
             enq (SVEquals([Term(SVOffsetVar(icwire));linear.offset])); 
