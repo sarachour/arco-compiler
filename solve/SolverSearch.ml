@@ -48,13 +48,13 @@ struct
                                          (HwLib.hwcompname2str goal.src.comp.name)^"."^goal.src.port
                                          ^"->"^(HwLib.hwcompname2str goal.dst.comp.name)^"."^goal.dst.port
 
-  let increase_goal_weight (g:goal_data) : unit =
+  let increase_goal_weight (g:goal_data) scale : unit =
     debug ("> weight++: "^(__goal2weightkey g));
-    SearchWeights.increase_weight weights (__goal2weightkey g)
+    SearchWeights.increase_weight weights (__goal2weightkey g) scale
 
-  let decrease_goal_weight (g:goal_data) : unit =
+  let decrease_goal_weight (g:goal_data) scale : unit =
     debug ("> weight--: "^(__goal2weightkey g));
-    SearchWeights.decrease_weight weights (__goal2weightkey g)
+    SearchWeights.decrease_weight weights (__goal2weightkey g) scale
 
 
 
@@ -101,14 +101,29 @@ struct
     let delta = 0. in
     let state = LIST.sum score_single s in
     SearchLib.mkscore state delta
+  
+  let score_by_weighed_goal_count_and_depth  (s:sstep list) =
+    let score_single st = match st with
+      | SModGoalCtx(SGAddGoal(g)) ->
+        0. -. (GoalLib.goal_difficulty g.d)*.(1. +. get_goal_weight g)
+      | SModGoalCtx(SGRemoveGoal(g)) ->
+        (GoalLib.goal_difficulty g.d)*.(1. +. get_goal_weight g)
+      | SModGoalCtx(_) ->  0.
+      | _ -> 0.
+    in
+    let delta = 10. in
+    let state = LIST.sum score_single s in
+    SearchLib.mkscore state delta
  
 
+    
   let score_step () =
     let typ = get_glbl_string "eqn-selector-branch" in
     match typ with
     | "goals" -> score_by_goal_count
     | "goal-weight" -> score_by_weighed_goal_count
-    | "uniform" -> score_uniform 
+    | "goal-weight-and-depth" -> score_by_weighed_goal_count_and_depth
+    | "uniform" -> score_uniform
     | "_" ->   error "score_step" "unknown strategy for eqn-selector-branch"
 
   let goalstep2str (n:sgoalctx) = match n with

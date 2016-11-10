@@ -115,7 +115,7 @@ let solve (hw:hwvid hwenv) (prob:mid menv) (out:string) =
   init_utils();
   let sl = {hw=hw;math=prob;goal_cnt=0;} in
 
-  let msearch = MultiSearch.mkmulti sl in
+  let msearch = MultiSearch.mkmulti sl out in
   slvr_print_inter "===== Beginning Interactive Solver ======\n";
   let nslns : int = Globals.get_glbl_int "slvr-solutions" in
   slvr_print_inter ("### Looking for :"^(string_of_int nslns)^" Solutions ======\n");

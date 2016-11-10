@@ -258,10 +258,13 @@ struct
       && is_conn && hv.prop = prop
 
   let compatible_hwvar_with_conn env cfg hv (src_wire:wireid) (dest_wire:wireid) =
-    let prop = HwLib.getprop env src_wire.comp.name src_wire.port in
+    let prop = HwLib.getprop env dest_wire.comp.name dest_wire.port in
     let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
-      bhvr_is_expr hv
-      && (List.length (get_extendable_inputs_for_conn_goal env cfg hv dest_wire prop)) > 0
+    let extendable_inputs = get_extendable_inputs_for_conn_goal env cfg hv dest_wire prop in
+    debug ("hwvar with conn? # usable inputs: "^(LIST.length2str extendable_inputs)^" / "^
+          (if is_conn then "connected" else "disconnected")^" / "^prop^"=?"^hv.prop^"\n");
+    bhvr_is_expr hv
+      && (List.length extendable_inputs) > 0
       && is_conn && hv.prop = prop
 
   let compatible_hwvar_with_goal tbl cfg (hv:'a hwportvar) (v:unifiable_goal) : bool =

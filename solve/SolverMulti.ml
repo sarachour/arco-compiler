@@ -26,6 +26,8 @@ open SolverEqn
 open SolverMultiData
 open GoalLib
 
+open SolverEmitSolution
+
 exception SolverMultiError of string
 
 let error n m = raise (SolverMultiError (n^":"^m))
@@ -554,21 +556,7 @@ struct
     in
     _find_global_solution ()
 
-  (*get the existing global solution*)
-  let get_existing_global_solution (ms:musearch) (key:string) (id:int) : gltbl=
-    (*initialize table*)
-    let gtree : (sstep,gltbl) ssearch= MAP.get ms.state.globals key in
-    let ptbl = GoalTableFactory.mktbl ms.state.env in
-    ptbl.search <- gtree;
-    (*apply root*)
-    SearchLib.initenv ptbl.search ptbl;
-    (*apply root.*)
-    let mint,musr = SolverEqn.mkmenu ptbl None in
-    debug ("=> Global Solution: "^key^" :: "^(string_of_int id));
-    (*Interactive.force (fun () -> noop (musr()));*)
-    let slnnode = SearchLib.id2node gtree id in
-    SearchLib.move_cursor gtree ptbl slnnode;  
-    ptbl
+  
 
   let has_partial_search (ms:musearch) (name:string) : bool =
     MAP.has ms.state.partials name 
@@ -645,6 +633,38 @@ struct
           None
 
 
+(*get the existing global solution*)
+  let get_existing_global_solution (ms:musearch) (key:string) (id:int) : gltbl=
+    (*initialize table*)
+    let gtree : (sstep,gltbl) ssearch= MAP.get ms.state.globals key in
+    let ptbl = GoalTableFactory.mktbl ms.state.env in
+    ptbl.search <- gtree;
+    (*apply root*)
+    SearchLib.initenv ptbl.search ptbl;
+    (*apply root.*)
+    let mint,musr = SolverEqn.mkmenu ptbl None in
+    debug ("=> Global Solution: "^key^" :: "^(string_of_int id));
+    (*Interactive.force (fun () -> noop (musr()));*)
+    let slnnode = SearchLib.id2node gtree id in
+    SearchLib.move_cursor gtree ptbl slnnode;  
+    ptbl
+
+  let emit_solution (ms:musearch) (glbl_node:mustep snode) =
+    let curs = SearchLib.cursor ms.search in
+    SearchLib.solution ms.search glbl_node;
+    SearchLib.move_cursor ms.search ms.state glbl_node;
+    let pkey = set2key ms.state.local in
+    let ident = ms.state.global in
+    match ident with
+    | Some(id) ->
+      let ptbl = get_existing_global_solution ms pkey id.ident in
+      SolverEmitSolution.proc_sln ms.name ptbl ms.nslns; 
+      SolverEmitSolution.proc_sln_mappings ms.name ptbl ms.nslns; 
+      ms.nslns <- ms.nslns + 1;
+      SearchLib.move_cursor ms.search ms.state curs;
+      ()
+    | None ->
+      ()
 
   (*Find and add a new partial solutions to different nodes *)
     let augment_with_partial_solution (ms:musearch) (pvar:string) (slns: sstep snode list option) :  'a option =
@@ -657,7 +677,7 @@ struct
           SearchLib.mknode_child_from_steps ms.search ms.state steps 
         in
         if get_unsolved_var ms = None then
-          noop (SearchLib.solution ms.search glbl_node)
+          emit_solution ms glbl_node
         else
           ()
       in
@@ -667,7 +687,7 @@ struct
             |SModGoalCtx(SGRemoveGoal(goal_data)) ->
               begin
                 match goal_data.d with
-                | GUnifiable(GUMathGoal(g)) ->(MSSolveVar(g.d.name))::lst
+                | GUnifiable(GUMathGoal(g)) -> (MSSolveVar(g.d.name))::lst
                 | _ -> lst
               end
             | _ -> lst
@@ -843,11 +863,11 @@ struct
         if x.knd = MOutput || x.knd = MLocal then
           noop (PRIOQUEUE.add tmpq x) 
       );
-    let lst = List.map (fun x -> x.name) (PRIOQUEUE.to_list tmpq) in
+    let lst = List.map (fun (x:mid mvar) -> x.name) (PRIOQUEUE.to_list tmpq) in
     QUEUE.enqueue_all vars lst;
     ()
 
-  let mkmulti (env:uenv) : musearch =
+  let mkmulti (env:uenv) (name:string) : musearch =
     (*make a top level table with default goals*)
     let scratch = GoalTableFactory.mktbl env in
     let _ = GoalTableFactory.mkgoalroot scratch  in
@@ -870,6 +890,8 @@ struct
       order = order;
       search = mtree;
       state = mtbl;
+      name=name;
+      nslns=0;
     }
     in
     msearch

@@ -33,7 +33,7 @@ exception MapHeuristicError of string
 
 let error n m = raise (MapHeuristicError (n^":"^m))
 
-let debug = print_debug 2 "map-heur"
+let debug = print_debug 3 "map-heur"
 
 module MapHeuristics =
 struct
@@ -68,7 +68,7 @@ struct
   *)
   
   let mkheuristics () =
-    {mappings=MAP.make()}
+    {mappings=MAP.make();valid=true}
 
   let mkheuristic tbl heur wire =
     let hwival = IntervalCompute.compute_wire_interval tbl wire in
@@ -98,6 +98,14 @@ struct
       if IntervalLib.is_mixed_interval h.hw_noise.std then
         0. -. iscore
       else
+      if IntervalLib.has_inf_bound h.hw_noise.std
+         || IntervalLib.has_inf_bound h.math_noise.std
+      then
+        begin
+          heur.valid <- false;
+          0. -. (infinity)
+        end
+      else
         let hwnoise = (i2ni h.hw_noise.std) in
         let mathnoise = (i2ni h.math_noise.std) in 
         let ngap =fxn hwnoise  mathnoise in
@@ -108,12 +116,18 @@ struct
     | true,true ->
       evaluate (fun hw math ->
           let sc,off,gap= IntervalLib.compute_linear hw math in
-          debug ("> "^(string_of_float sc)^", "^(string_of_float off));
+          debug ("> scale="^(string_of_float sc)^", offset="^(string_of_float off));
+          debug ("[gap] "^(IntervalLib.covergap2str gap));
           gap
         ) h
 
     | true,false ->
-      evaluate (fun hw math -> let _,gap= IntervalLib.compute_scale hw math in gap) h
+      evaluate (fun hw math ->
+          let scale,gap= IntervalLib.compute_scale hw math in
+          debug (">scale="^(string_of_float scale));
+          debug ("[gap] "^(IntervalLib.covergap2str gap));
+          gap
+        ) h
 
     | false,true ->
       evaluate (fun hw math -> let _,gap= IntervalLib.compute_offset hw math in gap) h 
@@ -136,8 +150,8 @@ struct
     "   [math]: "^(IntervalLib.numinterval2str h.math_rng)^"\n"^
     "   [hw]: "^(IntervalLib.numinterval2str h.hw_rng)^"\n"^
     "--- STDEV ---\n"^
-    "   [math]: "^(StochLib.randvar2str h.hw_noise)^"\n"^
-    "   [hw]: "^(StochLib.randvar2str h.math_noise)^"\n"^
+    "   [math]: "^(StochLib.randvar2str h.math_noise)^"\n"^
+    "   [hw]: "^(StochLib.randvar2str h.hw_noise)^"\n"^
     "--- MAP ----\n"^
     "["^(if h.scale then "scale" else "")^" "^(if h.offset then "offset" else "")^"]\n"
 
@@ -149,8 +163,6 @@ struct
   let rec derive_no_offset_cstrs expr =
     match expr with
     | Term(SVOffsetVar(wire)) -> [wire]
-    | OpN(Mult,exprs) ->
-      List.fold_left (fun r e -> r @ (derive_no_offset_cstrs e)) [] exprs 
     | _ -> []
 
   (*derive which wires have no offsets*)
@@ -239,14 +251,23 @@ struct
     (*go through and assemble mappings*)
     match derive_heuristics tbl with
     | Some(heuristics) ->
-      SlnLib.iter_labels tbl.sln_ctx (fun (g:ulabel) routes ->
-        let wire = SlnLib.label2wire g in
-        debug ("label:"^(SlnLib.ulabel2str g)^":\n");
-        let h = get_heuristic tbl heuristics wire in 
-        debug (mapheuristic2str h);
-        let score = compute_score tbl heuristics wire in
-        debug ("score:"^(string_of_float score)^"\n");
-        ()
-      )
-    | None -> error "heuristic" "unsolvable. This branch is a deadend"
+      begin
+        let run_score = REF.mk 0. in
+        SlnLib.iter_labels tbl.sln_ctx (fun (g:ulabel) routes ->
+          let wire = SlnLib.label2wire g in
+          debug ("label:"^(SlnLib.ulabel2str g)^":\n");
+          let h = get_heuristic tbl heuristics wire in 
+          debug (mapheuristic2str h);
+          let score = compute_score tbl heuristics wire in
+          debug ("score:"^(string_of_float score)^"\n");
+          REF.upd run_score (fun x -> x +. score);
+          ()
+          );
+        if heuristics.valid then
+          Some (REF.dr run_score)
+        else
+          None
+      end
+    | None ->
+      None
 end

@@ -44,14 +44,15 @@ type hw_mapping = {
 }
 
 type map_heuristic = {
-  mutable math_rng:num_interval;
-  mutable hw_rng:num_interval;
-  mutable math_noise:rand_var;
-  mutable hw_noise:rand_var;
+  math_rng:num_interval;
+  hw_rng:num_interval;
+  math_noise:rand_var;
+  hw_noise:rand_var;
   mutable scale: bool;
   mutable offset: bool;
 }
 
 type map_heuristics = {
   mappings:(wireid,map_heuristic) map;
+  mutable valid: bool;
 }

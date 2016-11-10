@@ -224,6 +224,13 @@ struct
         let asmt = expr_to_z3prob a in
         let bsmt = expr_to_z3prob b in
         enq (Z3Assert(Z3LTE(asmt,bsmt)))
+      | SVNoOffset(expr) ->
+        let z3expr = expr_to_z3prob expr in 
+        enq (Z3Assert(Z3Eq(z3expr,Z3Int(0))))
+      | SVNoScale(expr) ->
+        let z3expr = expr_to_z3prob expr in 
+        enq (Z3Assert(Z3Eq(z3expr,Z3Int(1))))
+
     in
     (*traverse statements*)
     List.iter stmt_to_z3prob stmts;

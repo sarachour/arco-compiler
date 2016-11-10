@@ -163,6 +163,7 @@ struct
   *)
   let test_node_validity (tbl:gltbl) (node:sstep snode) (depth:int) : bool=
     begin
+      let mint,musr = mkmenu tbl (None) in
       let old_cursor, old_depth = backup_and_move_cursor tbl node in 
       debug ("-> [valid?] testing node "^(string_of_int node.id));
       let is_valid : bool =
@@ -182,8 +183,25 @@ struct
         end
       else
         true
-    in
-    is_valid
+      in
+      match MapHeuristics.heuristic tbl with
+      | Some(score) -> if MATH.is_infinite score
+        then
+          begin
+            debug ("[test-node-validity][FAIL] mapping scoring is too high:"^(string_of_float score));
+            musr();
+            SearchLib.deadend tbl.search node tbl;
+            false
+          end
+        else
+          begin
+            debug ("[test-node-validity][PASS] mapping is plausible: "^(string_of_float score));
+            is_valid
+          end
+      | None ->
+        debug "[test-node-validity][FAIL] mapping is invalid by construction.";
+        SearchLib.deadend tbl.search node tbl;
+        false
   end
 
 
@@ -529,7 +547,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
             SearchLib.mknode_child_from_steps tbl.search tbl (ssteps);
             Some(ssteps)
           | None ->
-            debug ("    -> invalid_asign");
+            debug ("    -> failed to convert unify steps");
             None
         ) results
       in
@@ -698,13 +716,13 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
       if nsols > 0 then
         begin
           debug ("[FOUND-SOLS] ===> Found <"^(string_of_int nsols)^"> solutions");
-          SlvrSearchLib.increase_goal_weight (GUnifiable g);
+          SlvrSearchLib.increase_goal_weight (GUnifiable g) 0.5;
           ()
         end
       else
         begin
           debug ("//NO-SOLS// ===> Found no solutions");
-          SlvrSearchLib.decrease_goal_weight (GUnifiable g);
+          SlvrSearchLib.decrease_goal_weight (GUnifiable g) 1.;
           SearchLib.deadend tbl.search (SearchLib.cursor tbl.search) tbl;
           ()
         end

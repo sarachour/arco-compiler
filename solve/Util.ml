@@ -108,6 +108,9 @@ end
 
 module MATH =
 struct
+  let is_infinite x =
+    x = infinity || x = 0.-.infinity
+
   let max x y = 
           if x < y then y else x
 

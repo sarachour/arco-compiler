@@ -47,4 +47,7 @@ type musearch = {
   mutable order: string queue;
   mutable avail_comps : (hwcompname, ucomp) map;
   mutable goals : (int,goal) map;
+
+  name:string;
+  mutable nslns:int;
 }

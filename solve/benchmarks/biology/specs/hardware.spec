@@ -106,7 +106,8 @@ comp iadd
   input C {I:uA}
   input D {I:uA}
   output OUT {I:uA}
-  def I(A) mag = [0.0001,10] uA 
+
+  def I(A) mag = [0.0001,10] uA
   def I(B) mag = [0.0001,10] uA 
   def I(C) mag = [0.0001,10] uA 
   def I(D) mag = [0.0001,10] uA
@@ -128,7 +129,6 @@ comp vadd
   % does not take inputs outside of this range
   param BSW : none = {0,1}
   param CSW : none = {0,1}
-  param DSW : none = {0,1}
 
   def V(A) mag = [0.0001,3300] mV
   def V(B) mag = [0.0001,3300] mV 
@@ -139,10 +139,10 @@ comp vadd
   % only produces outputs in this range
   %def I(OUT) mag = [0.0001,3300] mV
 
-  rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
+  rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - V(D))*0.25
   
 
-  rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2))*0.1  init V(OUT2_0)
+  rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - V(D)*V(OUT2))*0.1  init V(OUT2_0)
   def V(OUT2) mag = [0,5] mV
   var ddt V(OUT2) = 0.1*V(OUT2) + 0.01 shape GAUSS
 
@@ -264,7 +264,7 @@ schematic
   inst input I : 50
   inst output I : 10
   inst copy I : 10
-  inst mm : 2
+  inst mm : 4
   inst switch : 15
 
   inst input V : 125
@@ -329,6 +329,7 @@ schematic
 
   conn iadd -> output(I)
   conn iadd -> ihill
+  conn iadd -> vgain 
   conn iadd -> switch
   conn iadd -> igenebind
   conn iadd -> itov

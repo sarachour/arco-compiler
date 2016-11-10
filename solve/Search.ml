@@ -30,24 +30,24 @@ struct
   } 
 
   (**)
-  let increase_weight w step =
+  let increase_weight w step scale =
     let curr_weight =
       MAP.get_dflt w.weights step 1.
     in
-    noop (MAP.put w.weights step (curr_weight+.(w.compute step)))
+    noop (MAP.put w.weights step (curr_weight+.scale*.(w.compute step)))
 
-  let decrease_weight w step =
+  let decrease_weight w step scale =
     let curr_weight =
       MAP.get_dflt w.weights step 1.
     in
-    noop (MAP.put w.weights step (curr_weight-.(w.compute step)))
+    noop (MAP.put w.weights step (curr_weight-.scale*.(w.compute step)))
 
 
   let update_weights w steps direct_fxn =
     List.iter (fun x ->
         if direct_fxn x then
-          increase_weight w x
-      else decrease_weight w x) steps
+          increase_weight w x 1.
+      else decrease_weight w x 1.) steps
 
   let get_weight w step =
     let cnt = MAP.get_dflt w.weights step 1. in

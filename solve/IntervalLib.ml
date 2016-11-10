@@ -45,6 +45,10 @@ struct
     {min=MATH.min [mmin;mmax];max=MATH.max [mmin;mmax]}
 
 
+  let covergap2str gap =
+    "<"^(string_of_float gap.left)^","^(string_of_float gap.right)^">"
+
+
   let compute_frac_gap (cover:num_interval) (gap:cover_gap) =
     let uncovered = gap.left +. gap.right in
     let cover = cover.max -. cover.min in
@@ -63,12 +67,40 @@ struct
     let right = MATH.max [0.;cover.max -. targ.max] in
     {left=left;right=right}
 
+  let compute_offset_for_value  (host:num_interval) (targ:float) =
+    let no_error = {left=0.;right=0.} in
+    if targ < host.min then
+      targ -. host.min,no_error
+    else if targ > host.max then
+      host.max -. targ,no_error
+    else
+      1.,no_error
+
+  let compute_scale_for_value (host:num_interval) (targ:float) =
+    let no_error = {left=0.;right=0.} in
+    let some_error = {left=1.;right=1.} in
+    if host.min = 0. && host.max = 0. then
+      begin
+        if targ = 0. then 1.,no_error else 1.,some_error
+      end
+    else if targ = 0. then
+      1.,{left=host.min;right=host.max}
+    else
+      if targ < host.min && host.min != 0.  then
+        targ /. host.min,no_error
+      else if targ > host.max && host.max != 0. then
+        targ /. host.max,no_error
+      else if host.min = 0. || host.max = 0. then
+        targ /. (midpoint host),no_error
+      else
+        1.,no_error
+
   (*map host to targ,maximizing the cover. The mapping takes us from host to targ*)
   let compute_linear (host:num_interval) (targ:num_interval) : float*float*cover_gap =
     if host.max = host.min && targ.max = targ.min then
       begin
-        let offset = targ.max -. (midpoint host) in
-       0.,offset,{left=0.;right=0.}
+       let off,ret = compute_offset_for_value host targ.max in 
+       0.,off,ret
       end
     else if host.max = host.min then
       begin
@@ -76,8 +108,8 @@ struct
       end
     else if targ.max = targ.min then
       begin
-        let offset = targ.max -. (midpoint host) in
-        offset,0.,{left=1.;right=1.}
+        let off,ret = compute_offset_for_value host targ.max in 
+        0.,off,ret
       end
     else
       begin
@@ -88,59 +120,29 @@ struct
 
   let compute_scale (host:num_interval) (targ:num_interval) =
     if host.max = host.min && targ.max = targ.min then
-      begin
-        if targ.max != 0. && midpoint host != 0. then
-          begin
-            let scale = targ.max /. (midpoint host) in
-            scale,{left=0.;right=0.}
-          end
-        else
-          begin
-            if targ.max = host.max then
-              1.,{left=0.;right=0.}
-            else
-              1.,{left=1.;right=1.}
-          end
-      end
+      compute_scale_for_value host targ.max
+
     else if host.max = host.min then
-      begin
         0.,{left=1.;right=1.}
-      end
+
+    (* the case where we're mapping to a value*)
     else if targ.max = targ.min then
-      begin
-        if targ.max != 0. && midpoint host != 0. then
-          begin
-            let scale = targ.max /. (midpoint host) in
-            scale,{left=0.;right=0.}
-          end
-        else
-          begin
-          if targ.max <= host.max && targ.max >= host.min then
-            1.,{left=0.;right=0.}
-          else
-            1.,{left=host.min -. targ.max;right=host.max-.targ.max}
-          end
-      end
+      compute_scale_for_value host targ.max
+
     else
       let scale = targ.max /. host.max in
       let new_host = transform host scale 0. in
-      scale,compute_cover_gap new_host targ
+      scale,(compute_cover_gap new_host targ)
 
   let compute_offset (host:num_interval) (targ:num_interval) =
     if host.max = host.min && targ.max = targ.min then
-      begin
-        let offset = targ.max -. (midpoint host) in
-        offset,{left=0.;right=0.}
-      end
+      compute_offset_for_value host targ.max
     else if host.max = host.min then
       begin
         0.,{left=1.;right=1.}
       end
     else if targ.max = targ.min then
-      begin
-        let offset = targ.max -. (midpoint host) in
-        offset,{left=0.;right=1.}
-      end
+      compute_offset_for_value host targ.max
     else
     let offset = targ.min -. host.min in
     let new_host = transform host 1. offset in
@@ -167,7 +169,7 @@ struct
       begin
         match i.min,i.max with
         | BNDNum(min),BNDNum(max) -> min,max
-        | _ -> error "interval2numbounds" "not expecting inf bound"
+        | _ -> error "interval2numbounds" "mix not expecting inf bound"
       end
     | MixedInterval(i) ->
       error "interval2numbounds" "not expecting mixed interval"
@@ -263,6 +265,20 @@ struct
     | BNDNum(v) -> Some (float_to_dir v) 
     | BNDInf(dir) -> Some dir
     | _ -> None
+
+  let is_inf_bound (a:bound) = match a with
+    | BNDInf(_) -> true
+    | _ -> false
+
+  let rec has_inf_bound (x:interval) =
+    match x with
+    | Interval(a) ->
+      (is_inf_bound a.min) || (is_inf_bound a.max)
+    | MixedInterval(alst) ->
+      List.fold_left (fun x (a:interval_data) ->
+          (is_inf_bound a.max) || (is_inf_bound a.min)||x)false alst
+    | Quantize(_) -> false
+    | IntervalUnknown(_) -> true
 
   let ival_data_contains_zero (a:interval_data) = match a.min,a.max with
     | BNDNum(n),BNDNum(n2) -> n <= 0. && n2 >= 0.
@@ -524,7 +540,7 @@ struct
     | BNDNum(av),BNDNum(bv) ->
       begin
         match bound_is_zero num, bound_is_zero denom with
-        | true,true -> error "bound_div" "0/0 = NaN"
+        | true,true -> BNDInf(QDPositive)
         | true,false -> BNDNum(0.)
         | false,true -> BNDInf(float_to_dir av)
         | false,false -> BNDNum (av /. bv)
@@ -548,6 +564,7 @@ struct
     | BNDNum(_),BNDInf(QDNegative) -> BNDNum(0.)
     | BNDNum(_),BNDInf(QDPositive) -> BNDNum(0.)
     | BNDInf(_),BNDInf(_) -> error "bound_pow" "infinity to the infinity"
+    | BNDInf(x),BNDNum(y) -> BNDInf(x) 
     | _ -> error "bound_pow" "unimplemented"
 
   let rule_sum (a:interval) (b:interval) : interval = _compute_interval2 a b bound_sum
