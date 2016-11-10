@@ -275,5 +275,8 @@ struct
         None
       end
 
+  let save_z3_problem gltbl (stmts:linear_stmt list) name inst  =
+    let tbl,stmts,minexpr = to_z3prob stmts in
+    Z3Lib.save_z3_prob (name^"_"^(string_of_int inst)^"_map") stmts minexpr true 
 end
 

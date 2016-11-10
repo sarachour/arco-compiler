@@ -128,13 +128,28 @@ struct
 
 
 
-
+  let test_node_map_cons tbl node =
+    match MapHeuristics.heuristic tbl with
+      | Some(score) -> if MATH.is_infinite score
+        then
+          begin
+            debug ("[test-node-validity][FAIL] mapping scoring is too high:"^(string_of_float score));
+            false
+          end
+        else
+          begin
+            debug ("[test-node-validity][PASS] mapping is plausible: "^(string_of_float score));
+            true
+          end
+      | None ->
+        debug "[test-node-validity][FAIL] mapping is invalid by construction.";
+        false
 
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
     let mint,_ = mkmenu v None in
     debug "[mark-if-solution] testing if solution.";
     if GoalLib.num_active_goals v = 0 then
-      if HwConnRslvrLib.consistent v then
+      if HwConnRslvrLib.consistent v && test_node_map_cons v curr then
         begin
           debug "[mark-if-solution] found concrete hardware. marking as solution.";
           noop (SearchLib.solution v.search curr);
@@ -143,7 +158,7 @@ struct
         end
       else
         begin
-          debug "[mark-if-solution] cannot concretize hardware.";
+          debug "[mark-if-solution] cannot concretize hardware, or mapping is bad.";
           noop (SearchLib.deadend v.search curr v)
         end
     else
@@ -156,6 +171,7 @@ struct
     let old_depth =  List.length (TREE.get_path tbl.search.tree node) in
     SearchLib.move_cursor tbl.search tbl node;
     (old_cursor,old_depth)
+
 
 
   (*test whether the node is valid, if it is valid, return true. Otherwise, return false
@@ -184,24 +200,14 @@ struct
       else
         true
       in
-      match MapHeuristics.heuristic tbl with
-      | Some(score) -> if MATH.is_infinite score
-        then
-          begin
-            debug ("[test-node-validity][FAIL] mapping scoring is too high:"^(string_of_float score));
-            musr();
-            SearchLib.deadend tbl.search node tbl;
-            false
-          end
-        else
-          begin
-            debug ("[test-node-validity][PASS] mapping is plausible: "^(string_of_float score));
-            is_valid
-          end
-      | None ->
-        debug "[test-node-validity][FAIL] mapping is invalid by construction.";
-        SearchLib.deadend tbl.search node tbl;
-        false
+      if test_node_map_cons tbl node then
+        is_valid
+      else
+        begin
+          SearchLib.deadend tbl.search node tbl;
+          false
+        end
+
   end
 
 

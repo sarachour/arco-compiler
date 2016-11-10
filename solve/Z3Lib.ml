@@ -330,6 +330,30 @@ struct
     in
     if possible_v < repl then possible_v else repl
 
+  let save_z3_prob (root:string) (stmts:z3st list) (expr:z3expr) use_dreal =
+    let nstmts =
+      if use_dreal then
+      let minvar = "__minima__" in
+      let min_decl = Z3ConstDecl(minvar,Z3Real) in 
+      let min_stmt = Z3Assert(Z3Eq(Z3Var(minvar),expr)) in 
+      let nstmts = ((min_decl::stmts)@[min_stmt]) in
+      nstmts
+    else
+      let nstmts = (stmts @ [Z3Minimize expr]) in
+      nstmts
+    in
+    let fstmts =
+      if use_dreal then
+        (Z3Stmt("(set-logic QF_NRA)")::nstmts) @ [Z3SAT]
+      else
+        nstmts @ [Z3SAT; Z3DispModel]
+    in
+    let smtfile =  root^".smt2" in
+    let oc = open_out smtfile in
+    z3stmts2buf oc fstmts;
+    close_out oc;
+    ()
+
   let minimize (root:string) (stmts:z3st list) (expr:z3expr) (minbnd:float) (maxbnd:float) use_dreal: z3sln=
     if use_dreal then
       begin
@@ -344,7 +368,7 @@ struct
                 ) model (Z3QInterval Z3QAny) 
         in
         let min_decl = Z3ConstDecl(minvar,Z3Real) in 
-        let min_stmt = Z3Assert(Z3Eq(Z3Var(minvar),expr)) in 
+        let min_stmt = Z3Assert(Z3Eq(Z3Var(minvar),expr)) in
         (*
            the minimize subroutine
         *)

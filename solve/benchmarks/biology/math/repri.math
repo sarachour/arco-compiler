@@ -11,13 +11,13 @@ local TRLacL : M
 local TRTetR : M
 local TRclp : M
 
-local LacLp : M
-local TetRp : M
-local clp : M
+output LacLp : M
+output TetRp : M
+output clp : M
 
-local LacLm : M
-local TetRm : M
-local clm : M
+output LacLm : M
+output TetRm : M
+output clm : M
 
 
 param k_tl : 1/s = 3.01029995664
@@ -33,13 +33,10 @@ time t : s
 
 
 rel TRLacL = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (LacLp^n)))
-def TRLacL  mag = [0,1] M
 
 rel TRTetR = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (TetRp^n)))
-def TRTetR mag = [0,1] M
 
 rel TRclp =  a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (clp^n)))
-def TRclp mag = [0,1] M
 
 rel ddt LacLm = (TRLacL) - (kd_mrna*LacLm) init 0
 def LacLm mag = [0,1] M

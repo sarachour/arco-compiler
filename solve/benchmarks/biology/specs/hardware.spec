@@ -84,18 +84,18 @@ end
 
 comp vgain
   input X {V:mV}
-  def I(X) mag = [0.0001,10] uA
+  def V(X) mag = [0.0001,3300] mV
 
   input Y {V:mV}
-  def I(Y) mag = [0.0001,10] uA
+  def V(Y) mag = [1,3300] mV
   
   input Z {V:mV}
-  def I(Z) mag = [0.0001,10] uA
+  def V(Z) mag = [0.0001,3300] mV
   
   output P {V:mV}
   def V(P) mag = [0.0001,3300] mV
 
-  rel V(P) = (V(X)/V(Y))*V(Z)*0.04
+  rel V(P) = (V(X)/V(Y))*V(Z)*0.5
 
   sim vgain X Y Z P
 
@@ -154,7 +154,7 @@ comp vtoi
   input K {V:mV}
   output Y {I:uA}
 
-  def I(Y) mag = [0.0001,10] uA
+  %def I(Y) mag = [0.0001,10] uA
   def V(K) mag = [1,3300] mV
   def V(X) mag = [1,3300] mV
 
@@ -169,7 +169,7 @@ comp itov
   input K {V:mV}
   output Y {V:mV}
   def I(X) mag = [0.0001,10] uA
-  def V(K) mag = [1,3300] mV
+  def V(K) mag = [1,330] mV
 
   rel V(Y) = (V(K))*I(X)
 
@@ -181,20 +181,20 @@ end
 comp ihill
   input Vmax {I:uA}
   input S {I:uA}
-  input n {I:uA}
+  input n {V:uA}
   input Km {I:uA}
 
   def I(Vmax) mag = [0.0001,10] uA
-  def I(S) mag = [0.0001,10] uA
+  def I(S) mag = [1,10] uA
   def I(Km) mag = [1,10] uA
-  def I(n) mag = [0.5,5] uA
+  def V(n) mag = [1,5] uA
 
   output STIM {I:uA}
   output REP {I:uA}
   
   % s^n/(s^n + k^n)
-  rel I(STIM) = I(Vmax)*(((I(S)/I(Km))^n)/( ((I(S)/I(Km))^n) + 1 ) )
-  rel I(REP) = I(Vmax)*((I(Km)^n)/( ((I(S))^n) + (I(Km)^n) ) )
+  rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
+  rel I(REP) = I(Vmax)*( (I(Km)^V(n))/( (I(S)^V(n)) + (I(Km)^V(n)) ) )
 
   sim ihill Vmax S n Km STM REP
 end
@@ -210,7 +210,7 @@ comp igenebind
 
   output GE {I:uA}
 
-  rel I(GE) = I(Vmax)*(1/(1+I(K)*I(TF)))
+  rel I(GE) = I(Vmax)*(1/(1+ I(K)*I(TF)))
   sim igenebind TF K Vmax GE
 end
 
@@ -281,6 +281,7 @@ schematic
   inst ihill : 8
 
   inst itov : 30
+
   inst vtoi : 30
 
 

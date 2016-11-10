@@ -15,4 +15,10 @@ module MapMain = struct
       sln
     | None -> None
 
+  let save_z3_problem (tbl:gltbl) name inst =
+    match MapProblemGenerator.generate_problem tbl with
+    | Some(stmts) ->
+      noop (MapSMTResolver.save_z3_problem tbl stmts name inst) 
+    | None ->() 
+
 end

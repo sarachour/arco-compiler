@@ -47,6 +47,11 @@ struct
       (IntervalLib.mk_ival_from_floats 0. 0.)
       noise
 
+  let mk_zero_dist () =
+    StochLib.mk_rand_var
+      (IntervalLib.mk_ival_from_floats 0. 0.)
+      (IntervalLib.mk_ival_from_floats 0. 0.)
+
   let _stack = STACK.make ()
   let _stack_push x = STACK.push _stack x
   let _stack_pop () = STACK.pop _stack

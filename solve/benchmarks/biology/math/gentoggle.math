@@ -18,7 +18,7 @@ param gamma : none = 1.0
 param Cv : none = 1
 param Cu : 1/mol  = 1
 param kdeg : (mol/s) = 0.001
-param Km : (mol/s) = 1
+%param Km : (mol/s) = 1
 
 
 output U : mol
@@ -26,7 +26,9 @@ output V : mol
 local umodif : mol
 local UTF : mol
 local VTF : mol
-%local Km : mol
+
+input Km : mol
+def Km mag = [0.5,1] mol
 
 input IPTG : mol
 def IPTG mag = [0,1] mol
@@ -36,8 +38,7 @@ def IPTG mag = [0,1] mol
 
 rel umodif = (U)/((1+IPTG/K)^nu)
 
-
-rel UTF = (((Cu*a1)*(Km^beta))/((Km^beta) +(V^beta)))
+rel UTF = (Cu*a1)*((Km^beta)/((Km^beta) +(V^beta)))
 rel VTF = (((Cv*a2)*(Km^gamma))/((Km*gamma) + (umodif^gamma)))
 
 rel ddt U =  (UTF) - (Cu*kdeg*U) init 0.35

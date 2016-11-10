@@ -73,10 +73,15 @@ struct
   let mkheuristic tbl heur wire =
     let hwival = IntervalCompute.compute_wire_interval tbl wire in
     let mival = IntervalCompute.compute_wire_label_interval tbl wire in
-    let hwnoise = NoiseCompute.compute_wire_noise tbl wire in
-    let mnoise = NoiseCompute.compute_wire_label_noise tbl wire in
+    (*
+     let hwnoise = NoiseCompute.compute_wire_noise tbl wire in
+     let mnoise = NoiseCompute.compute_wire_label_noise tbl wire in
+    *)
+    let hwnoise = NoiseCompute.mk_zero_dist () in
+    let mnoise = NoiseCompute.mk_zero_dist () in
     let heuristic : map_heuristic = {
-      hw_rng = hwival; math_rng= mival; hw_noise=hwnoise; math_noise=mnoise;
+      hw_rng = hwival; math_rng= mival;
+      hw_noise=hwnoise; math_noise=mnoise;
       scale = true; offset = true;
     } in
     MAP.put heur.mappings wire heuristic;
