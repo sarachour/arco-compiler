@@ -649,9 +649,16 @@ struct
     SearchLib.move_cursor gtree ptbl slnnode;
     ptbl
 
+
+  let get_global_solution_from_node ms x : gltbl option =
+    SearchLib.move_cursor ms.search ms.state x;
+    match ms.state.global with
+    | Some(gid) ->
+      Some(get_existing_global_solution ms gid.mvr_seq gid.ident)
+    | None -> None
+
   let emit_solution (ms:musearch) (glbl_node:mustep snode) =
     let curs = SearchLib.cursor ms.search in
-    SearchLib.solution ms.search glbl_node;
     SearchLib.move_cursor ms.search ms.state glbl_node;
     let pkey = set2key ms.state.local in
     let ident = ms.state.global in
@@ -666,6 +673,45 @@ struct
     | None ->
       ()
 
+  let get_global_solutions (ms:musearch) =
+    let snodes = SearchLib.get_solutions ms.search None in
+      debug ("Number of Solutions: "^(string_of_int (List.length  snodes)));
+      let slns : gltbl option list = List.fold_left (
+          fun (rest:gltbl option list) (x:mustep snode) ->
+            (get_global_solution_from_node ms x)::rest
+      ) [] snodes
+      in
+      OPTION.conc_list slns 
+
+  let mark_if_new_solution (ms:musearch) (node:mustep snode) =
+    let mint,musr = mkmenu ms in
+    if get_unsolved_var ms = None then
+      begin
+        let csln = OPTION.force_conc (get_global_solution_from_node ms node) in
+        let slns = get_global_solutions ms in
+        let isnew = REF.mk true in
+        List.iter (fun sln ->
+            if SlnLib.slns_equiv csln.sln_ctx sln.sln_ctx
+            then REF.upd isnew (fun x -> false)
+          ) slns;
+        if REF.dr isnew then
+          begin
+            debug (">>>NEW SOLUTION!<<<");
+            SearchLib.move_cursor ms.search ms.state node;
+            SearchLib.solution ms.search node;
+            emit_solution ms node;
+            ()
+          end
+        else
+          begin
+            debug (">>>NOT NEW! KILLING SOLUTION<<<");
+            noop (SearchLib.visited ms.search node );
+            ()
+          end
+      end
+    else
+      ()
+
   (*Find and add a new partial solutions to different nodes *)
     let augment_with_partial_solution (ms:musearch) (pvar:string) (slns: sstep snode list option) :  'a option =
       let mint,musr = mkmenu ms in
@@ -676,10 +722,7 @@ struct
         let glbl_node :mustep snode =
           SearchLib.mknode_child_from_steps ms.search ms.state steps 
         in
-        if get_unsolved_var ms = None then
-          emit_solution ms glbl_node
-        else
-          ()
+        mark_if_new_solution ms glbl_node
       in
       let add_lcl_sln (curs:mustep snode) (node:sstep snode) = 
         let partial = MAP.get ms.state.partials pvar in
@@ -707,7 +750,7 @@ struct
         | Some(slns) ->
           debug ("  >> Found # Global Solutions: "^(string_of_int (List.length slns)));
           List.iter (fun sln -> add_glbl_sln partial_node sln) slns;
-          SearchLib.visited ms.search partial_node;
+          SearchLib.try_visited ms.search partial_node;
           ()
         | None ->
           debug ("  >> Found NO Solutions.");
@@ -833,20 +876,7 @@ struct
       _msolve ();
       debug "===== Getting Solutions =====";
       musr ();
-      let snodes = SearchLib.get_solutions ms.search None in
-      debug ("Number of Solutions: "^(string_of_int (List.length  snodes)));
-      let slns = List.fold_left (
-          fun (rest:gltbl list) (x:mustep snode) ->
-            SearchLib.move_cursor ms.search ms.state x;
-            match ms.state.global with 
-            | Some(gid) ->
-              let s : gltbl  =
-                get_existing_global_solution ms gid.mvr_seq gid.ident
-              in
-                s::rest
-            | None -> rest
-      ) [] snodes
-      in
+      let slns = get_global_solutions ms in 
       match slns with
       | h::t -> Some(h::t)
       |[] ->None

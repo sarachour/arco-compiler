@@ -7,8 +7,8 @@
 type s
 type M
 
-local E : M
-local S : M
+output E : M
+output S : M
 output ES : M
 
 param ETOT : M = 0.15

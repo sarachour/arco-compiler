@@ -450,6 +450,12 @@ struct
     murder_branch sr n;
     ()
 
+  let try_visited (type a) (type b) (sr:(a,b) ssearch) (n:a snode):unit =
+    if TREE.hasnode sr.tree n  then
+      visited sr n
+    else
+      ()
+
   let deadend (type a) (type b) (sr:(a,b) ssearch) (node_to_kill:a snode) (env:b): b =
     SStatLib.deadend sr.st node_to_kill;
     ORDSET.rm sr.frontier (REF.mk node_to_kill);

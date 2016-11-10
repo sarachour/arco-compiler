@@ -72,19 +72,19 @@ struct
     mutable h:int;
   }
 
-  let env = {blocks=MAP.make();w=100;h=100;}
+  let env = {blocks=MAP.make();w=1000;h=1000;}
 
   let clear () =
     MAP.clear env.blocks;
-    env.w <- 100;
-    env.h <- 100
+    env.w <- 1000;
+    env.h <- 1000
 
   let place plc =
     let loc = {
       x=RAND.rand_int(env.w);
       y=RAND.rand_int(env.h);
-      w = 5;
-      h = 2;
+      w = 50;
+      h = 20;
     } in
     MAP.put env.blocks plc loc;
     loc
@@ -758,6 +758,7 @@ struct
     let loc = SIMBlock(namespace,name) in
     declare_var loc;
     q (add_route_block (get_basic_fxn "comp") loc);
+    SimulinkRouter.position q (loc2path loc);
     q (remove_line (loc2path loc) "In1/1" "Out1/1");
     q (remove_block (loc2path loc) "In1");
     q (remove_block (loc2path loc) "Out1");

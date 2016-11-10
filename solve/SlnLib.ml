@@ -9,10 +9,13 @@ open Unit
 open MathData
 
 open AST
+open Interactive
 
 exception SolverSlnError of string
 
 let error n m = raise (SolverSlnError (n^":"^m))
+let _print_debug = print_debug 3 "sln"
+let debug = print_debug 3 "sln"
 
 module SlnLib =
 struct
@@ -387,7 +390,33 @@ struct
     in
     str
 
-  let slns_equiv (a:('a,'b) sln) (b:('a,'b) sln) : bool =
-    let ndiff_insts = MAP.diff a.comps b.comps in
+
+  let usln2str x = sln2str x ident MathLib.mid2str
+
+  let slns_equiv (a:usln) (b:usln) : bool =
+    let wcoll_equiv x y = match x,y with
+      | WCollEmpty,WCollEmpty -> true
+      | WCollOne(x),WCollOne(y) -> y = x
+      | WCollMany(x),WCollMany(y) -> LIST.equiv x y
+      | _ -> false
+    in
+    let label_equiv (lbls1:ulabels) (lbls2:ulabels) : bool =
+      let outsv = MAP.equiv lbls1.outs lbls2.outs wcoll_equiv in
+      let ins = MAP.equiv lbls1.ins lbls2.ins wcoll_equiv in
+      let locals = MAP.equiv lbls1.locals lbls2.locals wcoll_equiv in
+      let vals = MAP.equiv lbls1.vals lbls2.vals wcoll_equiv in
+      let exprs = MAP.equiv lbls1.exprs lbls2.exprs wcoll_equiv in
+      outsv && ins && locals && vals && exprs
+    in
+    let conn_equiv (a:conn_env) (b:conn_env) =
+      MAP.equiv a.src2dest b.src2dest (fun x y -> SET.equiv x y) 
+    in
+    let insts = MAP.equiv a.comps b.comps (fun x y -> x = y) in
+    let lbls = (label_equiv a.generate b.generate) && (label_equiv a.route b.route) in
+    let conns = conn_equiv a.conns b.conns in
+    debug ("DIFF\n");
+    debug (">>>>>>>>>>>>>\n"^(usln2str a));
+    debug ("<<<<<<<<<<<<<\n"^(usln2str b));
+    conns && lbls && insts
 
 end

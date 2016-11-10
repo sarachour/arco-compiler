@@ -622,6 +622,8 @@ struct
     List.length lst_minus_other == 0 && List.length other_minus_lst == 0
 
 
+  let equiv = same_membership
+
   let permutations (type a) (options:(a list) list) =
     let rec explore options (selections:(a list) list) = match options with
       |(curr_option)::t ->
@@ -854,6 +856,7 @@ struct
   let max = 25;;
 
 
+    
   let make (type a) (type b) () : (a,b) map =
     Hashtbl.create max
 
@@ -963,6 +966,30 @@ struct
   let keys (type a) (type b) (x:(a,b) map) : (a) list =
     fold x (fun q v k -> (q)::k) []
 
+  let diff (type a) (type b) (x:(a,b) map) (y:(a,b) map) cmp:(a*b) list =
+    let diff1 = fold x (fun key vl df ->
+        if has y key then
+          let vl2 = get y key in
+          begin
+            if  cmp vl vl2 then df else (key,vl)::df
+          end
+        else
+          (key,vl)::df
+      ) [] in 
+    let diff2 = fold y (fun key vl df ->
+        if has x key then
+          let vl2 = get x key in
+          begin
+            if cmp vl vl2 then df else (key,vl)::df
+          end
+        else
+          (key,vl)::df
+      ) diff1 in
+    diff2
+
+  let equiv x y cmp =
+    List.length (diff x y cmp) = 0
+
   let from_list (type a) (type b) (x:(a*b) list) : (a,b) map =
     let mp = make() in
     let _ = List.iter (fun (k,v) -> let _ = put mp k v in ()) x in
@@ -997,7 +1024,8 @@ struct
     if LIST.same_membership (keys x) (keys y) = false then false
     else
     fold x (fun k v eq -> ((get y k) = v) && eq)  true
-      
+
+
 
 end
 
@@ -1076,6 +1104,10 @@ struct
       (fun x -> if has sub x then () else return (add diff x) ())
     in
     diff
+
+  let equiv x y =
+    MAP.equiv x y (fun x y -> x = y)
+
   let rand (type a) (s:a set) =
     let lst = MAP.keys s in
     LIST.rand lst

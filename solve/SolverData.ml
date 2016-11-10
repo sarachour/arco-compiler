@@ -120,6 +120,7 @@ type ucomp_conc = {
 
 type usln = (string,mid) sln
 type ulabel = (string,mid) label
+type ulabels = (string,mid) labels
 (*Different kinds of labels*)
 
 
