@@ -48,11 +48,11 @@ digital input V
   input X {D:bits}
   output O {V:mV}
 
-  def V(O) mag = [0,5] mV
+  def V(O) mag = [0,3300] mV
 
   def D(X) sample = 0.00001 us
   def D(X) repr = SEEEMMMM
-  def D(X) mag = [0,5] mV
+  def D(X) mag = [0,3300] mV
 
   rel V(O) = D(X)
 end
@@ -64,7 +64,7 @@ digital output V
 
   def D(O) sample = 0.001 us
   def D(O) repr = SEEEMMMM 
-  def D(O) mag = [0,5] mV
+  def D(O) mag = [0,3300] mV
 
   rel D(O) = V(X)
   sim vout X O
@@ -131,10 +131,10 @@ comp vadd
   param CSW : none = {0,1}
   param DSW : none = {0,1}
 
-  def V(A) mag = [0.0001,3300] mV
-  def V(B) mag = [0.0001,3300] mV 
-  def V(C) mag = [0.0001,3300] mV 
-  def V(D) mag = [0.0001,3300] mV
+  def V(A) mag = [0,3300] mV
+  def V(B) mag = [0,3300] mV 
+  def V(C) mag = [0,3300] mV 
+  def V(D) mag = [0,3300] mV
   def V(OUT2_0) mag = [0,3300] mV
 
   % only produces outputs in this range

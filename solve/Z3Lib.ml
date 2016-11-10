@@ -13,6 +13,7 @@ type z3doc = z3st list
 
 let z3_print_debug = print_debug 4
 let debug = print_debug 4
+let log = print_debug 1
 
 module Z3Lib =
 struct
@@ -41,6 +42,7 @@ struct
   let z3vartyp2str x = match x with
   | Z3Bool -> "Bool"
   | Z3Int -> "Int"
+  | _ -> "TODO"
 
   let z3st2str x =
     match x with
@@ -48,7 +50,11 @@ struct
     | Z3Assert(q) -> "(assert "^(z3expr2str q)^")"
     | Z3SAT -> "(check-sat)"
     | Z3DispModel -> "(get-model)"
+    | _ -> "TODO"
 
+  let z3interval2str x = match x with
+    | Z3QInfinite(_) -> "infty"
+    | Z3QRange(min,max) -> "range["^(string_of_float min)^","^(string_of_float max)^"]"
 
   let z3expr2buf fb x =
     let os x = output_string fb x in
@@ -304,7 +310,7 @@ struct
     flush_all ();
     begin
       if use_dreal then
-        Sys.command ("dReal --model "^smtfile^" > "^resfile)
+        Sys.command ("dReal --model --parallel  "^smtfile^" > "^resfile)
       else
         Sys.command ("z3 -smt2 "^smtfile^" > "^resfile)
     end;
@@ -318,17 +324,6 @@ struct
       z
     end
 
-  let get_min_val (v:z3qty) repl =
-    let possible_v = match v with
-    | Z3QInt(i) -> (float_of_int i)
-    | Z3QFloat(i) -> (i)
-    | Z3QInterval(Z3QRange(vmin,vmax)) -> (vmin)
-    | Z3QInterval(Z3QLowerBound(vmin)) -> (vmin)
-    | Z3QInterval(Z3QUpperBound(vmax)) -> (vmax)
-    | Z3QInterval(_) -> repl
-    | _ -> error "compute_bounds" "unhandled"
-    in
-    if possible_v < repl then possible_v else repl
 
   let save_z3_prob (root:string) (stmts:z3st list) (expr:z3expr) use_dreal =
     let nstmts =
@@ -353,7 +348,26 @@ struct
     z3stmts2buf oc fstmts;
     close_out oc;
     ()
+  let get_min_val (v:z3qty) repl =
+    let possible_v = match v with
+    | Z3QInt(i) -> (float_of_int i)
+    | Z3QFloat(i) -> (i)
+    | Z3QInterval(Z3QRange(vmin,vmax)) -> (vmin)
+    | Z3QInterval(Z3QLowerBound(vmin)) -> (vmin)
+    | Z3QInterval(Z3QUpperBound(vmax)) -> (vmax)
+    | Z3QInterval(Z3QInfinite(inf)) -> 
+      warn "get_min_val" ("interval is infinite");
+      repl
+    | Z3QInterval(Z3QAny) ->
+      warn "get_min_val" "interval is a don't care";
+      repl
+    | _ -> error "compute_bounds" "unhandled"
+    in
+    if possible_v < repl then possible_v else repl
 
+  (*strategy*)
+
+  type minimize_strategy = BinarySearch | LinearSearch | BestEffort
   let minimize (root:string) (stmts:z3st list) (expr:z3expr) (minbnd:float) (maxbnd:float) use_dreal: z3sln=
     if use_dreal then
       begin
@@ -372,29 +386,35 @@ struct
         (*
            the minimize subroutine
         *)
+        let max_depth = 0 in
+        let min_strategy = BestEffort in 
         let rec _minimize min max (depth:int): z3sln option=
-          if depth >= 3 then None else
-            let midpoint = (min+.max)/. 2. in
+          if depth >= max_depth then None else
+            let target_val = match min_strategy with
+              | BinarySearch -> (min+.max)/. 2.
+              | LinearSearch -> (max-.min)*.0.9 +. min
+              | BestEffort -> max
+            in
             (*compute using the midpoint as a bound*)
-            debug "_minimize" (">>> DReal running with max minval = "^(string_of_float midpoint));
+            log "minimize" (">>> DReal running with max minval = "^(string_of_float target_val));
             let result: z3sln =
-                let min_expr = Z3Assert(Z3LTE(Z3Var(minvar),Z3Real(midpoint))) in
+                let min_expr = Z3Assert(Z3LT(Z3Var(minvar),Z3Real(target_val))) in
                 exec root ((min_decl::stmts)@[min_stmt;min_expr]) use_dreal 
             in
             match has_solution result with
             | Some(model) ->
-              let new_midpoint = get_min_val (get_min_qty model) midpoint in 
-              if midpoint = new_midpoint then Some result else
-                let better_result = _minimize min new_midpoint (depth+1) in
+              let new_val = get_min_val (get_min_qty model) target_val in 
+              if target_val = new_val then Some result else
+                let better_result = _minimize min new_val (depth+1) in
                 begin
                   match better_result with
                   | Some(better_result) -> Some better_result
                   | _ -> Some result
                 end
             | None ->
-              _minimize midpoint max (depth+1) 
+              _minimize target_val max (depth+1) 
         in
-        debug "_minimize" (">>> DReal running feasibility with no minimizer ceiling");
+        log "minimize" (">>> DReal running feasibility with no minimizer ceiling");
         let initial_result = exec root ((min_decl::stmts)@[min_stmt]) use_dreal in
         match has_solution initial_result with
         | Some(init_sln) ->

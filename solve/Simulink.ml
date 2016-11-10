@@ -819,31 +819,38 @@ struct
           begin
             match model_noise(), model_ideal() with
             | true,true ->
-              let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-              let _,variance,noise_in,noise_out = create_noise q cmpns in 
-              q (add_route_line handle noise_in);
-              q (add_route_line var_handle variance);
-              q (add_route_line noise_out int_out);
-              ()
+              begin
+                let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+                let _,variance,noise_in,noise_out = create_noise q cmpns in 
+                q (add_route_line handle noise_in);
+                q (add_route_line var_handle variance);
+                q (add_route_line noise_out int_out);
+                ()
+              end
             | true,false ->
               let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
               let _,variance,noise_in,noise_out = create_noise q cmpns in 
               let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
-              declare_clamp comp.name vr.port clamp;
-              q (add_route_line handle clamp_in);
-              q (add_route_line clamp_out noise_in);
-              q (add_route_line var_handle variance);
-              q (add_route_line noise_out int_out);
-              ()
+              begin
+                declare_clamp comp.name vr.port clamp;
+                q (add_route_line handle clamp_in);
+                q (add_route_line clamp_out noise_in);
+                q (add_route_line var_handle variance);
+                q (add_route_line noise_out int_out);
+                ()
+              end
+
             | false,true ->
               q (add_route_line handle int_out);
               ()
             | false,false ->
-              let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
-              declare_clamp comp.name vr.port clamp;
-              q (add_route_line handle clamp_in);
-              q (add_route_line clamp_out int_out);
-              ()
+              begin
+                let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
+                declare_clamp comp.name vr.port clamp;
+                q (add_route_line handle clamp_in);
+                q (add_route_line clamp_out int_out);
+                ()
+              end
               (*this is where you'd pipe the output through a few things*)
           (*then you connect*)
           end
@@ -855,40 +862,52 @@ struct
           let _,integ_in,integ_out = create_integrator q cmpns in
           begin
             match model_noise(),model_ideal() with
-              | true,true ->
-                (*this is where you'd pipe the output through a few things*)
-                let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                let _,variance,noise_in,noise_out = create_noise q cmpns in 
-                q (add_route_line handle noise_in);
-                q (add_route_line var_handle variance);
-                q (add_route_line noise_out integ_in);
-                q (add_route_line integ_out int_out);
+            | true,true ->
+                begin
+                  (*this is where you'd pipe the output through a few things*)
+                  let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+                  let _,variance,noise_in,noise_out = create_noise q cmpns in 
+                  q (add_route_line handle noise_in);
+                  q (add_route_line var_handle variance);
+                  q (add_route_line noise_out integ_in);
+                  q (add_route_line integ_out int_out);
+                end
+
               | true,false ->
-                let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                let _,variance,noise_in,noise_out = create_noise q cmpns in 
-                let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
-                let sclamp,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
-                declare_clamp comp.name vr.port dcclamp;
-                q (add_route_line handle dclamp_in);
-                q (add_route_line dclamp_out noise_in);
-                q (add_route_line var_handle variance);
-                q (add_route_line noise_out integ_in);
-                q (add_route_line integ_out sclamp_in);
-                q (add_route_line sclamp_out int_out);
-                ()
+                begin
+                  let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
+                  let _,variance,noise_in,noise_out = create_noise q cmpns in 
+                  let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
+                  let sclamp,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                  declare_clamp comp.name vr.port dcclamp;
+                  q (add_route_line handle dclamp_in);
+                  q (add_route_line dclamp_out noise_in);
+                  q (add_route_line var_handle variance);
+                  q (add_route_line noise_out integ_in);
+                  q (add_route_line integ_out sclamp_in);
+                  q (add_route_line sclamp_out int_out);
+                  ()
+                end
+
               | false,true ->
-                q (add_route_line handle integ_in);
-                q (add_route_line integ_out int_out);
-                () 
+                begin
+                  q (add_route_line handle integ_in);
+                  q (add_route_line integ_out int_out);
+                  ()
+                end
+
               | false,false ->
-                let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
-                let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
-                declare_clamp comp.name vr.port dcclamp;
-                q (add_route_line handle dclamp_in);
-                q (add_route_line dclamp_out integ_in);
-                q (add_route_line integ_out sclamp_in);
-                q (add_route_line sclamp_out int_out);
-                ()
+                begin
+                  let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
+                  let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                  declare_clamp comp.name vr.port dcclamp;
+                  q (add_route_line handle dclamp_in);
+                  q (add_route_line dclamp_out integ_in);
+                  q (add_route_line integ_out sclamp_in);
+                  q (add_route_line sclamp_out int_out);
+                  ()
+                end
+
           end
           | HWBAnalog(bhvr),HWDDigital(defs) ->
             let handle = expr2blockdiag q cmpns bhvr.rhs in

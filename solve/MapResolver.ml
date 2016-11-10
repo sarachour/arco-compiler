@@ -226,10 +226,12 @@ struct
         enq (Z3Assert(Z3LTE(asmt,bsmt)))
       | SVNoOffset(expr) ->
         let z3expr = expr_to_z3prob expr in 
-        enq (Z3Assert(Z3Eq(z3expr,Z3Int(0))))
+        enq (Z3Comment "no offset");
+        enq (Z3Assert(Z3Eq(z3expr,Z3Real(0.))))
       | SVNoScale(expr) ->
         let z3expr = expr_to_z3prob expr in 
-        enq (Z3Assert(Z3Eq(z3expr,Z3Int(1))))
+        enq (Z3Comment "no scale");
+        enq (Z3Assert(Z3Eq(z3expr,Z3Real(1.))))
 
     in
     (*traverse statements*)
@@ -237,7 +239,7 @@ struct
     let z3stmts = QUEUE.to_list stmtq in 
     QUEUE.destroy stmtq;
     let absval (expr) =
-      Z3IfThenElse(Z3GTE(expr,Z3Int(0)),expr, Z3Neg(expr))
+      Z3IfThenElse(Z3GTE(expr,Z3Real(0.)),expr, Z3Neg(expr))
     in
     let z3minterms : z3expr list = MAP.map slackvars
         (fun svar weight ->
@@ -254,9 +256,10 @@ struct
 
   let solve gltbl (stmts:linear_stmt list) : (wireid,hw_mapping) map option =
     (*helper function*)
-    let tbl,stmts,minexpr = to_z3prob stmts in 
+    let tbl,stmts,minexpr = to_z3prob stmts in
+    let maxval = 999999999999999999999999999999. in 
     let result : z3sln =
-      Z3Lib.minimize "mapper" (stmts) minexpr 0. 1. true in
+      Z3Lib.minimize "mapper" (stmts) minexpr 0. maxval true in
     if result.sat then
       begin
       match result.model with

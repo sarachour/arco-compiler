@@ -20,8 +20,8 @@ param kcat : 1/s = 0.01
 time t : s
 
 % structural information
-def E mag = [0,1] M
-def S mag = [0,1] M
+def E mag = [0,0.15] M
+def S mag = [0,0.11] M
 
 % search constraints
 %want sample ES at 0.0001 s
@@ -36,7 +36,7 @@ rel ddt ES = (kf*E*S) - kr*ES init 0
 
 % N(mu,t), white noise gaussian additive white noise for noise generator N(0,1)
 var ddt ES = ES*0.01 shape GAUSS
-def ES mag = [0,1] M 
+def ES mag = [0,0.11] M 
 def ddt ES time 0.001 
 
 

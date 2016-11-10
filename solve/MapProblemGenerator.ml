@@ -42,6 +42,7 @@ let error n m = raise (MapProblemGeneratorError (n^":"^m))
 
 let debug = print_debug 4 "prob-gen"
 let dumb_cstrs_DBG = false 
+  
 
 (*disable this if you aren't getting anything*)
 let no_number_cstrs_DBG = false 
@@ -78,17 +79,11 @@ struct
           match LIST.has feedback wire with
           | true ->
             {
-              scale=Integer(1);
-              offset=Integer(0);
+              scale=Decimal(1.);
+              offset=Decimal(0.);
               term=node;
             }
           | false ->
-            let new_node = match ConcCompLib.get_var_config cfg port with
-              | Some(Integer(i)) -> Integer(i)
-              | Some(Decimal(i)) -> Decimal(i)
-              | Some(_) -> node
-              | None -> node
-            in
             {
               scale=Term(SVScaleVar(wire));
               offset=Term(SVOffsetVar(wire));
@@ -100,27 +95,27 @@ struct
         begin
           match ConcCompLib.get_param_config cfg name with
           | Some(Decimal value) ->
-            {scale=Integer(1); offset=Integer(0);term=Decimal(value);}
+            {scale=Decimal(1.); offset=Decimal(0.);term=Decimal(value);}
           | Some(Integer value) ->
-            {scale=Integer(1); offset=Integer(0);term=Integer(value);}
+            {scale=Decimal(1.); offset=Decimal(0.);term=Decimal(float_of_int value);}
           | None ->
-            {scale=Integer(1); offset=Integer(0);term=node;}
+            {scale=Decimal(1.); offset=Decimal(0.);term=node;}
         end
 
       | Term(HNTime) ->
-        {scale=Integer(1); offset=Integer(0);term=node;}
+        {scale=Decimal(1.); offset=Decimal(0.);term=node;}
       (*no offset unless the value is resolvable as a number*)
 
       | OpN(Mult,args) ->
         let (scales,offsets,terms) = decompose_list args _derive_scaling_factor in
         (*if this aggregate term is zero, then*)
         if LIST.count terms (fun term -> term = Integer(0) || term = Decimal(0.)) > 0 then
-          {scale=OpN(Mult,scales);offset=Integer(0);term=Integer(0);}
+          {scale=OpN(Mult,scales);offset=Decimal(0.);term=Decimal(0.);}
         else
           begin
           (*all offsets must equal zero*)
-          List.iter (fun offset -> add_cstr (SVNoOffset(offset)))offsets;
-          {scale=OpN(Mult,scales);offset=Integer(0);term=node;}
+          List.iter (fun offset -> add_cstr (SVNoOffset(offset))) offsets;
+          {scale=OpN(Mult,scales);offset=Decimal(0.);term=node;}
           end
 
       | OpN(Add,args) ->
@@ -139,12 +134,12 @@ struct
         let ld = _derive_scaling_factor denom in
         (*all offsets must equal zero*)
         add_cstrs ([SVNoOffset(ln.offset);SVNoOffset(ld.offset)]);
-        {scale=Op2(Div,ln.scale,ld.scale);offset=Integer(0);term=node;}
+        {scale=Op2(Div,ln.scale,ld.scale);offset=Decimal(0.);term=node;}
 
       | Op1(Exp,expr) ->
         let expr = _derive_scaling_factor expr in
         add_cstr (SVNoScale(expr.scale));
-        {scale=Op1(Exp,expr.offset); offset=Integer(0); term=node; }
+        {scale=Op1(Exp,expr.offset); offset=Decimal(0.); term=node; }
 
       | Op1(Neg,expr) ->
         let expr = _derive_scaling_factor expr in
@@ -155,19 +150,19 @@ struct
         let base = _derive_scaling_factor base in
         add_cstrs ([SVNoScale(base.scale);SVNoScale(exp.scale)]);
         add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
-        {scale=Integer(1); offset=Integer(0);term=node;}
+        {scale=Decimal(1.); offset=Decimal(0.);term=node;}
 
       | Integer(0) ->
-        {scale=Integer(0); offset=Integer(0);term=node;}
+        {scale=Decimal(0.); offset=Decimal(0.);term=node;}
 
       | Decimal(0.) ->
-        {scale=Integer(0); offset=Integer(0);term=node;}
+        {scale=Decimal(0.); offset=Decimal(0.);term=node;}
 
       | Integer(i) -> 
-        {scale=Integer(1); offset=Integer(0);term=node;}
+        {scale=Decimal(1.); offset=Decimal(0.);term=node;}
 
       | Decimal(d) ->
-        {scale=Integer(1); offset=Integer(0);term=node;}
+        {scale=Decimal(1.); offset=Decimal(0.);term=node;}
       | _ -> error "derive_scaling_factor" "unhandled"
     in
     let scaling = _derive_scaling_factor node in
@@ -190,10 +185,7 @@ struct
             let cstrs,linear = derive_scaling_factor bhvr.rhs [] cfg in
             begin
               if dumb_cstrs_DBG then
-                enqs [
-                  SVNoScale(Term (SVScaleVar wire));
-                  SVNoOffset(Term (SVOffsetVar wire));
-                ]
+               () 
               else
                 enqs cstrs;
             end;
@@ -206,10 +198,7 @@ struct
             let icwire = SlnLib.mkwire comp.name comp.inst icport in
             begin
               if dumb_cstrs_DBG then
-                enqs [
-                  SVNoScale(Term (SVScaleVar wire));
-                  SVNoOffset(Term (SVOffsetVar wire));
-                ]
+                ()
               else
                 enqs cstrs;
             end;
