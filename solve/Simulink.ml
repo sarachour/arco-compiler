@@ -96,7 +96,7 @@ struct
         place route
     in
     let posarr =
-      List.map (fun x -> MATInt(x)) [p.x;p.y;p.w;p.h]
+      List.map (fun x -> MATInt(x)) [p.x;p.y;p.x+p.w;p.w+p.h]
     in
      q (MATStmt(MATFxn("set_param",[
         MATLit(MATStr(route));
