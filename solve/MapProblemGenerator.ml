@@ -44,7 +44,7 @@ let debug = print_debug 4 "prob-gen"
 let dumb_cstrs_DBG = false
 
 (*disable this if you aren't getting anything*)
-let no_number_cstrs_DBG =false
+let no_number_cstrs_DBG = false 
 
 
 
@@ -391,8 +391,9 @@ struct
   cstrs
 
   (*given the scaling factor, scale up the noise + noise propagation*)
-  let hwgen_derive_noise_cstrs (tbl:gltbl) =[]
-
+  let hwgen_derive_noise_cstrs (tbl:gltbl) =
+    []
+                                            
   
 
   let generate_problem (tbl:gltbl) =

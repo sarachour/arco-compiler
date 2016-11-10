@@ -646,7 +646,8 @@ struct
     debug ("=> Global Solution: "^key^" :: "^(string_of_int id));
     (*Interactive.force (fun () -> noop (musr()));*)
     let slnnode = SearchLib.id2node gtree id in
-    SearchLib.move_cursor gtree ptbl slnnode;  
+    SearchLib.move_cursor gtree ptbl slnnode;
+    force (fun () -> musr());
     ptbl
 
   let emit_solution (ms:musearch) (glbl_node:mustep snode) =

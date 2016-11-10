@@ -504,7 +504,8 @@ struct
   let bound_sub (a:bound) (b:bound) : bound = match a,b with
     | BNDNum(av),BNDNum(bv) -> float_to_bound (av -. bv)
     | BNDInf(adir),BNDInf(bdir) -> if adir = bdir then a
-      else error "bound_sub" "cannot sub two infinities"
+      else
+        BNDInf(bdir)
     | BNDInf(_),_ -> a
     | _,BNDInf(_) -> b
     | _ -> error "bound_sub" "unimplemented"
@@ -547,7 +548,8 @@ struct
       end
     | BNDNum(_),BNDInf(_) ->BNDNum(0.)
     | BNDInf(adir),BNDNum(bv) -> BNDInf(derive_dir adir (float_to_dir bv))
-    | BNDInf(adir),BNDInf(bv) -> error "bound_div" "inf/inf = NaN"
+    | BNDInf(adir),BNDInf(bv) ->
+      BNDInf(derive_dir adir bv)
     | _ -> error "bound_div" "unimplemented"
 
   let bound_pow (base:bound) (exp:bound): bound =

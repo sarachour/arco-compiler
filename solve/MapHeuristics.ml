@@ -108,9 +108,11 @@ struct
       else
         let hwnoise = (i2ni h.hw_noise.std) in
         let mathnoise = (i2ni h.math_noise.std) in 
-        let ngap =fxn hwnoise  mathnoise in
-        let nscore= IntervalLib.compute_frac_gap (i2ni h.math_noise.std) ngap in
-        0. -. (iscore +. nscore)
+        (*
+         let ngap =fxn hwnoise  mathnoise in
+         let nscore= IntervalLib.compute_frac_gap (i2ni h.math_noise.std) ngap in
+        *)
+        0. -. (iscore) 
     in
     match h.scale,h.offset with
     | true,true ->

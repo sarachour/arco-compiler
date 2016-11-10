@@ -1050,9 +1050,19 @@ struct
 
 
 
+  let normalize_n_slns (sr:runify) nonnorm_n : int =
+    let cmp = sr.tbl.hwstate.comp in
+    let factor = REF.mk 1 in
+    HwLib.comp_iter_params cmp (fun (par:hwparam) ->
+        let n = List.length par.value in
+        REF.upd factor (fun x -> x * n)
+      );
+    nonnorm_n * (REF.dr factor)
+
   (*============ TREE START ===================*)
   (*select the next node to solve*)
-  let solve (type a) (sr:runify) desired_nslns =
+  let solve (type a) (sr:runify) nslns =
+    let desired_nslns = normalize_n_slns sr nslns in 
     let sysmenu,usrmenu = mkmenu sr in
     let _mnext () =
         let maybe_next_node = ASTUnifyTree.get_best_valid_node sr None in

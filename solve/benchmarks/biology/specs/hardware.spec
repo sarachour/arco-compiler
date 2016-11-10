@@ -107,11 +107,11 @@ comp iadd
   input D {I:uA}
   output OUT {I:uA}
 
-  def I(A) mag = [0.0001,10] uA
-  def I(B) mag = [0.0001,10] uA 
-  def I(C) mag = [0.0001,10] uA 
-  def I(D) mag = [0.0001,10] uA
-  def I(OUT) mag = [0.0001,10] uA
+  def I(A) mag = [0.0,5] uA
+  def I(B) mag = [0.0,5] uA 
+  def I(C) mag = [0.0,5] uA 
+  def I(D) mag = [0.0,5] uA
+  def I(OUT) mag = [0.0,10] uA
   rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
 
 end
@@ -129,20 +129,21 @@ comp vadd
   % does not take inputs outside of this range
   param BSW : none = {0,1}
   param CSW : none = {0,1}
+  param DSW : none = {0,1}
 
   def V(A) mag = [0.0001,3300] mV
   def V(B) mag = [0.0001,3300] mV 
   def V(C) mag = [0.0001,3300] mV 
   def V(D) mag = [0.0001,3300] mV
-  def V(OUT2_0) mag = [0.0001,3300] mV
+  def V(OUT2_0) mag = [0,3300] mV
 
   % only produces outputs in this range
-  %def I(OUT) mag = [0.0001,3300] mV
+  %def I(OUT) mag = [0.000,3300] mV
 
-  rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - V(D))*0.25
+  rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   
 
-  rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - V(D)*V(OUT2))*0.1  init V(OUT2_0)
+  rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2))*0.25  init V(OUT2_0)
   def V(OUT2) mag = [0,5] mV
   var ddt V(OUT2) = 0.1*V(OUT2) + 0.01 shape GAUSS
 
@@ -225,7 +226,7 @@ comp mm
   def V(Ytot) mag = [0.0001,3300] mV
   def I(kf) mag = [0.0001,10] uA
   def I(kr) mag = [0.0001,10] uA
-  def V(XY0) mag = [0.0001,3300] mV
+  def V(XY0) mag = [0.00,3300] mV
 
 
   output XY {V:mV}
