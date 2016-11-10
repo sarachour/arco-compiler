@@ -220,9 +220,7 @@ struct
     in
     SET.iter_i ids (fun (id:part_id) (idx:int)  ->
         let root_steps,part_steps  = partial_id_to_steps ms id in
-        let steps =
-          if idx = 0 then part_steps @ root_steps else part_steps
-        in
+        let steps = root_steps @ part_steps in 
         debug ("found # steps: "^(LIST.length2str steps));
         List.iter (fun stp -> noop (allocate id stp)) steps;
         List.iter (fun stp ->

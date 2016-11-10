@@ -111,6 +111,64 @@ module HwConnLib = struct
         else
           false
 
+  let get_dest_connections e srccomp srcport =
+    let srccls =  {comp=srccomp;port=srcport} in
+        if MAP.has e.conns.src2dest srccls then
+          let dests = MAP.get e.conns.src2dest srccls in
+          dests 
+        else
+         [] 
+
+  let get_src_connections e srccomp : wireclass list=
+    MAP.fold e.conns.src2dest (fun (k:wireclass) (v:wireclass list) r ->
+        if k.comp = srccomp then
+          k::r else
+          r
+      ) []
+
+  (*determine*)
+  let connection_distance e srcc srcp destc max =
+    let srccls =  {comp=srcc;port=srcp} in
+    let wirestk : wireclass stack = STACK.make () in
+    let push x = noop (STACK.push wirestk x) in
+    let pop () = noop (STACK.pop wirestk) in
+    
+    let rec _conn_dist (scls:wireclass) hop =
+      let compute_hops_from_dest dest=
+          begin
+            let src_conns : wireclass list = get_src_connections e dest in
+            let min = List.fold_left (fun (local_min:int option) (src:wireclass) ->
+                if STACK.has wirestk src then local_min else
+                  begin
+                    push src;
+                    let indent = STRING.repeat "  " (hop+1) in
+                    let nhops = _conn_dist scls (hop+1) in
+                    pop ();
+                    match local_min with
+                    | Some(m) ->
+                      if nhops < m then Some(nhops) else Some(m)
+                    | None -> Some(nhops)
+                  end
+              ) None src_conns
+            in
+            min
+          end
+      in
+      let dests = get_dest_connections e scls.comp scls.port in
+      let destcomps = LIST.uniq (List.map (fun (x:wireclass) -> x.comp) dests) in
+      if LIST.has destcomps destc || hop >= max then
+        hop
+      else
+        List.fold_left (fun min (dest:hwcompname) ->
+            match compute_hops_from_dest dest with
+            | Some(d) -> if d < min then d else min
+            | None -> min
+          ) (99999999) destcomps
+    in
+    push srccls;
+    let min = _conn_dist srccls 0 in
+    pop ();
+    min
 
   let env2str e : string =
     let ic2str src snk insts =

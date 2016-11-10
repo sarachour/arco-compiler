@@ -31,7 +31,7 @@ open MapUtil
 exception MapIntervalComputeError of string
     
 
-let debug = print_debug 2 "eqn"
+let debug = print_debug 4 "map-ival"
 
 let error n m = raise (MapIntervalComputeError (n^":"^m))
 

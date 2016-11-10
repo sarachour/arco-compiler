@@ -266,7 +266,7 @@ schematic
   inst input I : 50
   inst output I : 10
   inst copy I : 10
-  %inst mm : 4
+  inst mm : 4
   inst switch : 15
   
   inst input V : 125

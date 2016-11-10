@@ -260,15 +260,32 @@ struct
   let compatible_hwvar_with_conn env cfg hv (src_wire:wireid) (dest_wire:wireid) =
     let prop = HwLib.getprop env dest_wire.comp.name dest_wire.port in
     let src_is_connectable = HwLib.has_dest_connections env src_wire.comp.name src_wire.port in
-    if src_is_connectable  = false  then false else
-      let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
-      let extendable_inputs = get_extendable_inputs_for_conn_goal env cfg hv dest_wire prop in
-      debug ("hwvar with conn? # usable inputs: "^(LIST.length2str extendable_inputs)^" / "^
-            (if is_conn then "connected" else "disconnected")^" / "^prop^"=?"^hv.prop^"\n");
+    let allowable_dist = 0 in 
+    
+    (*only one component can bridge*)
+    let is_conn = HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port in 
+    let extendable_inputs : hwvid list =
+      get_extendable_inputs_for_conn_goal env cfg hv dest_wire prop
+    in
+    let acceptable =
       bhvr_is_expr hv
-        && (List.length extendable_inputs) > 0
-        && is_conn && hv.prop = prop
-
+      && (List.length extendable_inputs) > 0
+      && is_conn && hv.prop = prop && src_is_connectable
+    in
+    if acceptable then
+      let src_min_dist = if src_is_connectable then
+          HwLib.connection_distance env
+            src_wire.comp.name src_wire.port hv.comp (allowable_dist+1)
+        else 99999
+      in
+      debug ((HwLib.hwcompname2str hv.comp)^"."^hv.port
+             ^" || # ins: "^(LIST.length2str extendable_inputs)^" / "^
+            (if is_conn then "connected" else "disconnected")^" / "^prop^" ?= "^hv.prop^"/"^
+             "distance="^(string_of_int src_min_dist)^"\n");
+      src_min_dist <= allowable_dist
+    else
+      false
+      
   let compatible_hwvar_with_goal tbl cfg (hv:'a hwportvar) (v:unifiable_goal) : bool =
     let compat : bool = match v with
       | GUMathGoal(mgoal) -> compatible_hwvar_with_mvar cfg hv mgoal.d
@@ -283,7 +300,8 @@ struct
 
       | _ -> error "compatible_hwvar_with_goal" "unimpl"
     in
-    debug ((HwLib.hwcompname2str hv.comp)^"."^hv.port^" -> "^(string_of_bool compat)^"\n");
+    if compat then
+      debug ((HwLib.hwcompname2str hv.comp)^"."^hv.port^" -> "^(string_of_bool compat)^"\n");
     compat
 
   let compatible_comp_with_goal tbl (c:ucomp) (mv:unifiable_goal) : 'a hwportvar list =

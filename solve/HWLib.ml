@@ -780,6 +780,10 @@ struct
   let has_dest_connections (type a) (env:a hwenv) (srccmp:hwcompname) (srcport) =
     HwConnLib.has_dest_connections env srccmp srcport
 
+  let connection_distance (type a) (env:a hwenv)
+      (srccmp:hwcompname) (srcport) (destcmp:hwcompname) maxhops : int =
+    HwConnLib.connection_distance env srccmp srcport destcmp maxhops
+
   let wires_are_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool =
     is_connectable env src.comp.name src.port dest.comp.name dest.port
 end
