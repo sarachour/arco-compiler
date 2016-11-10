@@ -386,4 +386,8 @@ struct
               (conns2str s)
     in
     str
+
+  let slns_equiv (a:('a,'b) sln) (b:('a,'b) sln) : bool =
+    let ndiff_insts = MAP.diff a.comps b.comps in
+
 end
