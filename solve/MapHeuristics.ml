@@ -132,10 +132,21 @@ struct
         ) h
 
     | false,true ->
-      evaluate (fun hw math -> let _,gap= IntervalLib.compute_offset hw math in gap) h 
+      evaluate (fun hw math ->
+          let offset,gap= IntervalLib.compute_offset hw math in 
+          debug (">offset="^(string_of_float offset));
+          debug ("[gap] "^(IntervalLib.covergap2str gap));
+          gap
+
+        ) h
 
     | false,false ->
-      evaluate (fun hw math -> let gap= IntervalLib.compute_direct hw math in gap) h 
+      evaluate (fun hw math ->
+          let gap= IntervalLib.compute_direct hw math in
+          debug(">direct=1,0");
+          debug ("[gap] "^(IntervalLib.covergap2str gap));
+          gap
+        ) h
  
 
   let upd_heuristic tbl heur (x:wireid) (fn:map_heuristic->unit) =

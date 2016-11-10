@@ -95,6 +95,26 @@ struct
       else
         1.,no_error
 
+  let compute_direct_for_value host targ =
+    let no_error = {left=0.;right=0.} in
+    let some_error = {left=host.min -. targ;right=host.max -. targ} in
+    if host.min = host.max then
+      begin
+        if host.max = targ then
+          no_error
+        else
+          some_error
+      end
+
+    else
+      begin
+        if targ <= host.max && targ >= host.min then
+          no_error
+        else
+          some_error
+      end
+      
+
   (*map host to targ,maximizing the cover. The mapping takes us from host to targ*)
   let compute_linear (host:num_interval) (targ:num_interval) : float*float*cover_gap =
     if host.max = host.min && targ.max = targ.min then
@@ -148,8 +168,12 @@ struct
     let new_host = transform host 1. offset in
     offset,compute_cover_gap new_host targ
 
+
   let compute_direct (host:num_interval) (targ:num_interval) =
-    compute_cover_gap host targ
+    if  targ.max = targ.min then
+      compute_direct_for_value host targ.max
+    else
+      compute_cover_gap host targ
 
   let is_mixed_interval (x:interval) =
     match x with

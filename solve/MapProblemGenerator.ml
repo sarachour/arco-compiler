@@ -41,7 +41,7 @@ exception MapProblemGeneratorError of string
 let error n m = raise (MapProblemGeneratorError (n^":"^m))
 
 let debug = print_debug 4 "prob-gen"
-let dumb_cstrs_DBG = false
+let dumb_cstrs_DBG = true
 
 (*disable this if you aren't getting anything*)
 let no_number_cstrs_DBG = false 
