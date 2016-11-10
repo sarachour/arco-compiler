@@ -836,6 +836,7 @@ struct
               q (add_route_line noise_out int_out);
               ()
             | false,true ->
+              q (add_route_line handle int_out);
               ()
             | false,false ->
               let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
