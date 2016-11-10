@@ -27,14 +27,14 @@ ast (4*E*S) -> [vgain[0].P,vgain[0].P]
 vadd[1].OUT2 ->  output.V[1].X
 input.I[0].O ->  mm[2].kr
 mm[2].XY ->  output.V[0].X
-input.V[2].O ->  vadd[1].OUT2_0
 input.V[3].O ->  mm[2].Ytot
+input.V[2].O ->  vadd[1].OUT2_0
 input.I[1].O ->  mm[2].kf
 input.V[1].O ->  vadd[1].A
 vgain[0].P ->  vadd[1].B
 input.V[0].O ->  mm[2].Xtot
 mm[2].Y ->  vgain[0].X
-input.V[5].O ->  vgain[0].Y
 input.V[4].O ->  vadd[1].D
+input.V[5].O ->  vgain[0].Y
 mm[2].X ->  vgain[0].Z
 

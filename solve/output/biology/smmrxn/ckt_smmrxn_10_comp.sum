@@ -112,16 +112,16 @@ input Xtot.V
 <analog> [v]=[0.0001,3300.] {v}->[v]=@
 
 output X.V
-<analog>:(0.11-ES) / std=none 0
+<analog>:(0.15-ES) / std=none 0
 <analog> [v]=[-0.9999,3300.] {v}->[v]=@
 
 output XY.V
-<analog-st> ((1*S*E)-(1*ES)) ic=XY0.V / std=gauss ((0.05*ES)+0.01)
+<analog-st> ((1*E*S)-(1*ES)) ic=XY0.V / std=gauss ((0.05*ES)+0.01)
 <analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
 <analog-st> [v]=[0.,1.] {v}->[v]=@ {v}->*[v]=@
 
 output Y.V
-<analog>:(0.15-ES) / std=none 0
+<analog>:(0.11-ES) / std=none 0
 <analog> [v]=[-0.9999,3300.] {v}->[v]=@
 
 

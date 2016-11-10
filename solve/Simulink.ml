@@ -428,9 +428,9 @@ struct
         declare_vars [loc_out_port;
                       int_loc_in_port;int_loc_out_port];
         declare_vars [external_loc];
-        SimulinkRouter.position q (loc2path loc);
         q (add_route_block (get_basic_fxn "in")  loc);
-        q (add_route_block (get_basic_fxn "gain") internal_loc)
+        q (add_route_block (get_basic_fxn "gain") internal_loc);
+        SimulinkRouter.position q (loc2path loc)
       end;
     loc_out_port,int_loc_in_port,int_loc_out_port
 

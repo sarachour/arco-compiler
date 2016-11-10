@@ -26,8 +26,8 @@ ast (4*E*S) -> [vgain[1].P,vgain[1].P]
 === Connect ===
 vadd[2].OUT2 ->  output.V[0].X
 input.I[0].O ->  mm[0].kr
-mm[0].Y ->  vgain[1].Z
 mm[0].X ->  vgain[1].X
+mm[0].Y ->  vgain[1].Z
 input.V[2].O ->  vadd[2].OUT2_0
 input.V[3].O ->  mm[0].Xtot
 input.I[1].O ->  mm[0].kf

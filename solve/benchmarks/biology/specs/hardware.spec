@@ -181,12 +181,13 @@ end
 comp ihill
   input Vmax {I:uA}
   input S {I:uA}
-  param n : mV = {1,1.5,2,2.5,3,3.5}
+  input n {I:uA}
   input Km {I:uA}
 
   def I(Vmax) mag = [0.0001,10] uA
   def I(S) mag = [0.0001,10] uA
   def I(Km) mag = [1,10] uA
+  def I(n) mag = [0.5,5] uA
 
   output STIM {I:uA}
   output REP {I:uA}
@@ -249,7 +250,7 @@ comp switch
 
   def I(SUB) mag = [0.0001,10] uA
   def I(Vmax) mag = [0.0001,10] uA
-  def V(n) mag = [0,1] mV
+  def V(n) mag = [0.5,5] mV
   def I(Kmod) mag = [1,10] uA
 
   output PROD {I:uA}
