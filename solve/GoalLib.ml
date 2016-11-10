@@ -85,7 +85,7 @@ struct
     match results with
     | [h] -> Some h
     | [] -> None
-    | _ -> error "_get_goal" "more than one match"
+    | _ -> error "_get_goal" ("more than one match")
 
   let get_math_goal (type a) (tbl:gltbl) (targ:string) =
     let filter g = match g with
