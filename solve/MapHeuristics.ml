@@ -95,6 +95,8 @@ struct
     let evaluate fxn h =
       let igap = fxn h.hw_rng h.math_rng in
       let iscore = IntervalLib.compute_frac_gap h.math_rng igap in
+      0. -. iscore
+(*
       if IntervalLib.is_mixed_interval h.hw_noise.std then
         0. -. iscore
       else
@@ -112,7 +114,8 @@ struct
          let ngap =fxn hwnoise  mathnoise in
          let nscore= IntervalLib.compute_frac_gap (i2ni h.math_noise.std) ngap in
         *)
-        0. -. (iscore) 
+        0. -. (iscore)
+       *)
     in
     match h.scale,h.offset with
     | true,true ->
@@ -169,8 +172,19 @@ struct
     "["^(if h.scale then "scale" else "")^" "^(if h.offset then "offset" else "")^"]\n"
 
 
-  let heuristic_n_direct_offsets heur = 0
-  let heuristic_n_direct_scales heur = 0
+  let heuristic_n_direct_offsets heur =
+    let cnt = REF.mk 0 in
+    MAP.iter heur.mappings (fun wire mapdata ->
+        if mapdata.offset then (REF.upd cnt (fun x -> x+1))
+      );
+    REF.dr cnt
+
+  let heuristic_n_direct_scales heur = 
+    let cnt = REF.mk 0 in
+    MAP.iter heur.mappings (fun wire mapdata ->
+        if mapdata.offset then (REF.upd cnt (fun x -> x+1))
+      );
+    REF.dr cnt
 
   (*derive which wires have no offsets*)
   let rec derive_no_offset_cstrs expr =

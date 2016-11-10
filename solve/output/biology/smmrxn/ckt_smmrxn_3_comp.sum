@@ -5,7 +5,7 @@ input X.D
 
 output O.I
 <analog>:1 / std=uniform (1*1e-05)
-<analog> [v]=[0.0001,10.] {v}->[v]=@
+<analog> [v]=[0.,10.] {v}->[v]=@
 
 
 ==== input.I 1 ====
@@ -15,7 +15,7 @@ input X.D
 
 output O.I
 <analog>:1 / std=uniform (1*1e-05)
-<analog> [v]=[0.0001,10.] {v}->[v]=@
+<analog> [v]=[0.,10.] {v}->[v]=@
 
 
 ==== output.V 0 ====

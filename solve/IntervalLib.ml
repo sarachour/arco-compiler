@@ -525,7 +525,11 @@ struct
   let bound_sum (a:bound) (b:bound) : bound = match a,b with
     | BNDNum(av),BNDNum(bv) -> float_to_bound (av +. bv)
     | BNDInf(adir),BNDInf(bdir) -> if adir = bdir then a
-      else error "bound_sum" "cannot add two infinities"
+      else
+        begin
+          warn "bound_sum" "cannot add two infinities";
+          BNDInf(adir)
+        end
     | BNDInf(_),_ -> a
     | _,BNDInf(_) -> b
     | _ -> error "bound_sum" "unimplemented"

@@ -398,31 +398,39 @@ struct
 
   let generate_problem (tbl:gltbl) =
     let stmtq = QUEUE.make () in
-        let valid = REF.mk true in 
-        let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
-        (*iter used comps to generate coverage constraints.*)
-        SolverCompLib.iter_used_comps tbl (fun inst ccomp ->
-            let steps =
-              try
-                hwcomp_derive_scaling_factors tbl ccomp.d ccomp.inst ccomp.cfg
-              with
-              | IntervalLibError(e) -> REF.upd valid (fun x -> false); []
-            in
-            enq (steps)
-          );
-        (*derive constraints from connections made by the solution*)
-        enq (hwconn_derive_scaling_cstrs tbl);
-        (*derive constraints on the uniformity of the speed*)
-        enq (hwgen_derive_speed_cstrs tbl);
-        (*derive constraints that ensure the noise is minimized*)
-        enq (hwgen_derive_noise_cstrs tbl);
-        if REF.dr valid then
-          let stmts = QUEUE.to_list stmtq in
-          QUEUE.destroy stmtq;
-          Some(stmts)
-        else
-          None
-
+    let valid = REF.mk true in 
+    let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
+    try 
+      (*iter used comps to generate coverage constraints.*)
+      SolverCompLib.iter_used_comps tbl (fun inst ccomp ->
+          let steps =
+            try
+              hwcomp_derive_scaling_factors tbl ccomp.d ccomp.inst ccomp.cfg
+            with
+            | IntervalLibError(e) ->
+              begin
+                warn "map_problem_generator.interval_lib" e;
+                REF.upd valid (fun x -> false); []
+              end
+          in
+          enq (steps)
+        );
+      (*derive constraints from connections made by the solution*)
+      enq (hwconn_derive_scaling_cstrs tbl);
+      (*derive constraints on the uniformity of the speed*)
+      enq (hwgen_derive_speed_cstrs tbl);
+      (*derive constraints that ensure the noise is minimized*)
+      enq (hwgen_derive_noise_cstrs tbl);
+      if REF.dr valid then
+        let stmts = QUEUE.to_list stmtq in
+        QUEUE.destroy stmtq;
+        Some(stmts)
+      else
+        None
+    with
+    | MapProblemGeneratorError(e) ->
+      warn "map_problem_generator" e;
+      None
   
 end
 

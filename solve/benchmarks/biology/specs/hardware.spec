@@ -60,7 +60,7 @@ end
 digital output V
   input X {V:mV}
   output O {D:bits}
-  def V(X) mag = [0.0,3300] mV
+  def V(X) mag = [0.0001,3300] mV
 
   def D(O) sample = 0.001 us
   def D(O) repr = SEEEMMMM 
@@ -84,16 +84,16 @@ end
 
 comp vgain
   input X {V:mV}
-  def I(X) mag = [0.0,10] uA
+  def I(X) mag = [0.0001,10] uA
 
   input Y {V:mV}
-  def I(Y) mag = [0.0,10] uA
+  def I(Y) mag = [0.0001,10] uA
   
   input Z {V:mV}
-  def I(Z) mag = [0.0,10] uA
+  def I(Z) mag = [0.0001,10] uA
   
   output P {V:mV}
-  def V(P) mag = [0.0,3300] mV
+  def V(P) mag = [0.0001,3300] mV
 
   rel V(P) = (V(X)/V(Y))*V(Z)*0.04
 
@@ -127,20 +127,23 @@ comp vadd
   output OUT2 {V:mV}
 
   % does not take inputs outside of this range
+  param BSW : none = {0,1}
+  param CSW : none = {0,1}
+  param DSW : none = {0,1}
 
-  def V(A) mag = [0.0,3300] mV
-  def V(B) mag = [0.0,3300] mV 
-  def V(C) mag = [0.0,3300] mV 
-  def V(D) mag = [0.0,3300] mV
+  def V(A) mag = [0.0001,3300] mV
+  def V(B) mag = [0.0001,3300] mV 
+  def V(C) mag = [0.0001,3300] mV 
+  def V(D) mag = [0.0001,3300] mV
   def V(OUT2_0) mag = [0,3300] mV
 
   % only produces outputs in this range
   %def I(OUT) mag = [0.000,3300] mV
 
-  rel V(OUT) =  ((V(A) + V(B)) - V(C) - V(D))*0.25
+  rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   
 
-  rel ddt V(OUT2) = ((V(A) + V(B)) - V(C) - V(D)*V(OUT2))*0.25  init V(OUT2_0)
+  rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2))*0.25  init V(OUT2_0)
   def V(OUT2) mag = [0,5] mV
   var ddt V(OUT2) = 0.1*V(OUT2) + 0.01 shape GAUSS
 
@@ -151,7 +154,7 @@ comp vtoi
   input K {V:mV}
   output Y {I:uA}
 
-  def I(Y) mag = [0.0,10] uA
+  def I(Y) mag = [0.0001,10] uA
   def V(K) mag = [1,3300] mV
   def V(X) mag = [1,3300] mV
 
@@ -165,7 +168,7 @@ comp itov
   input X {I:uA}
   input K {V:mV}
   output Y {V:mV}
-  def I(X) mag = [0.0,10] uA
+  def I(X) mag = [0.0001,10] uA
   def V(K) mag = [1,3300] mV
 
   rel V(Y) = (V(K))*I(X)
@@ -181,8 +184,8 @@ comp ihill
   param n : mV = {1,1.5,2,2.5,3,3.5}
   input Km {I:uA}
 
-  def I(Vmax) mag = [0.0,10] uA
-  def I(S) mag = [0.0,10] uA
+  def I(Vmax) mag = [0.0001,10] uA
+  def I(S) mag = [0.0001,10] uA
   def I(Km) mag = [1,10] uA
 
   output STIM {I:uA}
@@ -200,9 +203,9 @@ comp igenebind
   input K {I:uA}
   input Vmax {I:uA}
 
-  def I(TF) mag = [0.0,10] uA
-  def I(K) mag = [0.0,10] uA
-  def I(Vmax) mag = [0.0,10] uA
+  def I(TF) mag = [0.0001,10] uA
+  def I(K) mag = [0.0001,10] uA
+  def I(Vmax) mag = [0.0001,10] uA
 
   output GE {I:uA}
 
@@ -219,10 +222,10 @@ comp mm
   input kr {I:uA}
   input XY0 {V:mV}
 
-  def V(Xtot) mag = [0.0,3300] mV
-  def V(Ytot) mag = [0.0,3300] mV
-  def I(kf) mag = [0.0,10] uA
-  def I(kr) mag = [0.0,10] uA
+  def V(Xtot) mag = [0.0001,3300] mV
+  def V(Ytot) mag = [0.0001,3300] mV
+  def I(kf) mag = [0.0001,10] uA
+  def I(kr) mag = [0.0001,10] uA
   def V(XY0) mag = [0.00,3300] mV
 
 
@@ -244,9 +247,9 @@ comp switch
   input n {V:mV}
   input Kmod {I:uA}
 
-  def I(SUB) mag = [0.0,10] uA
-  def I(Vmax) mag = [0.0,10] uA
-  def V(n) mag = [0,2] mV
+  def I(SUB) mag = [0.0001,10] uA
+  def I(Vmax) mag = [0.0001,10] uA
+  def V(n) mag = [0,1] mV
   def I(Kmod) mag = [1,10] uA
 
   output PROD {I:uA}
