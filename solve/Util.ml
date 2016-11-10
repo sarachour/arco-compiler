@@ -1066,6 +1066,10 @@ struct
   let fold_i  s f iv =
     MAP.fold s (fun x (i,v) -> (f x i v)) (0,iv)
 
+  let iter_i  (type a) (s:a set) (f:a->int->unit) =
+    let final : int = MAP.fold s (fun (x:a) y (i:int) -> f x i; i+1) 0 in
+    ()
+
   let map (type a) (type b) (s:a set) (f:a->b): b list  =
     let v = List.map f (MAP.keys s) in
     v

@@ -184,14 +184,14 @@ struct
     | GUnifiable(GUHWInExprGoal(_)) -> 2.
     | GUnifiable(GUHWConnInBlock(_)) -> 1.
     | GUnifiable(GUHWConnOutBlock(_)) -> 1.
-    | _ -> 0.
+    | GUnifiable(GUHWConnPorts(_)) -> 1.
 
   let ast_size_goal_difficulty (g) = match g with
     | GUnifiable(GUMathGoal(e)) -> 50.
     | GUnifiable(GUHWInExprGoal(e)) -> 2.*.(float_of_int (ASTLib.size e.expr))
     | GUnifiable(GUHWConnInBlock(_)) -> 1.
     | GUnifiable(GUHWConnOutBlock(_)) -> 1.
-    | _ -> 0.
+    | GUnifiable(GUHWConnPorts(_)) -> 1.
 
 
   let goal_difficulty = ast_size_goal_difficulty 

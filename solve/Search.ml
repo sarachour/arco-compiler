@@ -32,13 +32,13 @@ struct
   (**)
   let increase_weight w step scale =
     let curr_weight =
-      MAP.get_dflt w.weights step 1.
+      MAP.get_dflt w.weights step 0.0001
     in
     noop (MAP.put w.weights step (curr_weight+.scale*.(w.compute step)))
 
   let decrease_weight w step scale =
     let curr_weight =
-      MAP.get_dflt w.weights step 1.
+      MAP.get_dflt w.weights step 0.0001
     in
     noop (MAP.put w.weights step (curr_weight-.scale*.(w.compute step)))
 
@@ -222,7 +222,14 @@ struct
     n.s
 
   let get_path (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : a list =
-     fold_path sr n (fun x r -> x::r) []
+     fold_path sr n (fun (x:a) (r:a list) -> x::r) []
+
+  let get_path_nodes (type a) (type b) (sr:(a,b) ssearch) (n:a snode) : (a snode) list =
+    TREE.get_path sr.tree n
+
+  let node_path_to_steps (type a) (type b) (sr:(a,b) ssearch) (n:a snode list) : a list =
+    let els : a list = List.fold_left (fun r x -> x.s @ r) [] n in
+    els
 
   let path2str (type a) (type b) indent (sr:(a,b) ssearch) (n:a snode) : string =
     TREE.fold_path (fun (x:a snode) (r:string) ->
@@ -305,6 +312,9 @@ struct
       else ()
     in
     ()
+
+  let upd_score_frontier (type a) (type b) (sr:(a,b) ssearch) =
+    ORDSET.iter sr.frontier (fun node -> upd_score sr (REF.dr node))
 
   let apply_node (type a) (type b) (sr:(a,b) ssearch) (env:b) (node:a snode) =
     debug ("== apply node "^(string_of_int node.id)^" ===\n"^(steps2str 1 sr node.s)^"\n");

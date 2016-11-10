@@ -103,6 +103,15 @@ module HwConnLib = struct
     else
       false
 
+  let has_dest_connections e srccomp srcport =
+    let srccls =  {comp=srccomp;port=srcport} in
+        if MAP.has e.conns.src2dest srccls then
+          let dests = MAP.get e.conns.src2dest srccls in
+          List.length dests > 0
+        else
+          false
+
+
   let env2str e : string =
     let ic2str src snk insts =
       List.fold_right (fun inst str ->

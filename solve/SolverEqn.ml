@@ -472,25 +472,38 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
           (*input assignments become goals*)
           | RAddInAssign(v,cfg) ->
             if usable_passthrough cfg.expr then
-              enq (SModCompCtx(SCAddInCfg(compid,v,{expr=uproxy})))
+              begin
+                warn "add_passthru_step.RAddInAssign"
+                  ("this assignment is perfect!: "^v^"="^(uast2str cfg.expr));
+                enq (SModCompCtx(SCAddInCfg(compid,v,{expr=uproxy})))
+              end
             else
+              begin
               warn "add_passthru_step.RAddInAssign"
-                ("this assignment is too complicated: "^(uast2str cfg.expr));
+                ("this assignment is too complicated: "^v^"="^(uast2str cfg.expr));
               REF.upd valid (fun x -> false)
+              end
           (*out assignments are already satisfied*)
           | RAddOutAssign(v,cfg) ->
             if usable_passthrough cfg.expr then
-              enq (SModCompCtx(SCAddOutCfg(compid,v,{expr=uproxy})))
+              begin
+                warn "add_passthru_step.RAddInAssign"
+                    ("this assignment is perfect!: "^v^"="^(uast2str cfg.expr));
+                enq (SModCompCtx(SCAddOutCfg(compid,v,{expr=uproxy})))
+              end
             else
-              warn "add_passthru_step.RAddInAssign"
-                ("this assignment is too complicated: "^(uast2str cfg.expr));
-              REF.upd valid (fun x -> false)
+              begin
+                warn "add_passthru_step.RAddInAssign"
+                  ("this assignment is too complicated: "^v^"="^(uast2str cfg.expr));
+                REF.upd valid (fun x -> false)
+              end
 
           | RAddParAssign(v,cfg) ->
             error "add_passthru_step" "there's no way you assigned a tempvar to a param"
           | _ ->
             error "add_passthrough_step" "there's no way you have a disable assign in the passthru rsteps"
     in
+    debug ("==== "^(HwLib.hwcompname2str comp.d.name)^"====\n");
     List.iter add_passthru_step passthru_rsteps;
     let passthru_ssteps = QUEUE.to_list sstepq in
     QUEUE.destroy sstepq;
@@ -535,8 +548,11 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     | Term(_) -> OpN(Add,[x;Integer(0)])
     | _ -> x
 
-  let mkpassthruvar () =
+  let mkpassthruuexpr () =
     Term(MathId(ASTUnifier.tempmid()))
+
+  let mkpassthrumid () =
+    ASTUnifier.tempmid()
 
   (* Component unification algorithm*)
   let __unify_goal_with_comp (tbl:gltbl) (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
@@ -587,10 +603,10 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
           SolverCompLib.get_extendable_inputs_for_inblock_goal tbl.env.hw ConcCompLib.newcfg
             hwvar hgoal.wire hgoal.prop
         in
-        let results = passthru_unify tbl comp cfg inputs hwvar hgoal.expr (fun inits ->
+        let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid())) (fun inits ->
             ASTUnifier.unify_comp_with_hwvar
               tbl.env.hw tbl.env.math comp cfg inst
-              hwvar.port (mkpassthruvar()) inits
+              hwvar.port (mkpassthruuexpr()) inits
           )
         in
         commit_results results (fun ccomp (input,rsteps) inits ->
@@ -602,10 +618,10 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
           SolverCompLib.get_extendable_inputs_for_outblock_goal tbl.env.hw ConcCompLib.newcfg
             hwvar hgoal.wire hgoal.prop
         in
-        let results = passthru_unify tbl comp cfg inputs hwvar hgoal.expr (fun inits ->
+        let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid())) (fun inits ->
             ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
               comp cfg inst hwvar.port
-              (mkpassthruvar()) inits 
+              (mkpassthruuexpr()) inits 
           )
         in
         commit_results results (fun ccomp ((input,rsteps):string*rstep list) inits ->
@@ -623,10 +639,10 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
           SolverCompLib.get_extendable_inputs_for_conn_goal tbl.env.hw ConcCompLib.newcfg
             hwvar conns.src prop
         in
-        let results = passthru_unify tbl comp cfg inputs hwvar conns.expr (fun inits ->
+        let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid())) (fun inits ->
             ASTUnifier.unify_comp_with_hwvar
               tbl.env.hw tbl.env.math comp cfg inst
-              hwvar.port (mkpassthruvar()) inits
+              hwvar.port (mkpassthruuexpr()) inits
           )
         in
         commit_results results (fun ccomp ((input,rsteps):string*rstep list) inits ->
@@ -722,13 +738,13 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
       if nsols > 0 then
         begin
           debug ("[FOUND-SOLS] ===> Found <"^(string_of_int nsols)^"> solutions");
-          SlvrSearchLib.increase_goal_weight (GUnifiable g) 0.5;
+          SlvrSearchLib.increase_goal_weight tbl.search (GUnifiable g) 0.5;
           ()
         end
       else
         begin
           debug ("//NO-SOLS// ===> Found no solutions");
-          SlvrSearchLib.decrease_goal_weight (GUnifiable g) 1.;
+          SlvrSearchLib.increase_goal_weight tbl.search (GUnifiable g) 1.;
           SearchLib.deadend tbl.search (SearchLib.cursor tbl.search) tbl;
           ()
         end
@@ -766,12 +782,23 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     in
     List.iter (fun conn -> match conn with
         | GUnifiable(GUHWConnPorts(conn)) ->
-          enq (trivial_connection_to_steps tbl conn)
+          begin
+            SlvrSearchLib.decrease_goal_weight tbl.search (GUnifiable(GUHWConnPorts(conn))) 1.;
+            enq (trivial_connection_to_steps tbl conn)
+          end
         | _ -> ()
       ) conns;
     let steps = QUEUE.to_list stepq in
     QUEUE.destroy stepq;
-    SearchLib.mknode_child_from_steps tbl.search tbl steps
+    let curs = SearchLib.cursor tbl.search in
+    if List.length conns > 0 then
+      begin
+        SearchLib.visited tbl.search curs;
+        SearchLib.mknode_child_from_steps tbl.search tbl steps;
+        ()
+      end
+    else
+      ()
 
   let has_trivial_connections (tbl) =
     List.length (get_trivial_connections tbl) > 0
@@ -857,18 +884,31 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     end
 
   let solve (v:gltbl) (nslns:int) (depth:int) : ((sstep snode) list) option =
-    SlvrSearchLib.clear_weights ();
-    debug ("find # solutions: "^(string_of_int nslns));
-    match SearchLib.root v.search with
-    | Some(root) ->
+    let mint,musr = mkmenu v (None) in
+    try
       begin
-        solve_subtree v root nslns depth;
-        let slns = SearchLib.get_solutions v.search (Some root) in
-        let currslns = SearchLib.num_solutions v.search (Some root) in 
-        match slns with
-        | [] -> None
-        | lst -> Some(lst)
+        SlvrSearchLib.clear_weights ();
+        debug ("find # solutions: "^(string_of_int nslns));
+        match SearchLib.root v.search with
+        | Some(root) ->
+          begin
+            solve_subtree v root nslns depth;
+            let slns = SearchLib.get_solutions v.search (Some root) in
+            let currslns = SearchLib.num_solutions v.search (Some root) in 
+            match slns with
+            | [] -> None
+            | lst -> Some(lst)
+          end
+        | None -> error "solve" "the tree has no root."
       end
-    | None -> error "solve" "the tree has no root."
+    with
+    | SolverCompLibError(e) ->
+      begin
+        warn "[SOLVE][EXCEPTION]" e;
+        force (fun () -> musr());
+        force (fun () -> musr());
+        raise (SolverCompLibError e)
+      end
+
 
 end

@@ -44,17 +44,18 @@ struct
     | GUnifiable(GUHWConnInBlock(goal)) -> 
       "<conn-in-goal>"^(HwLib.hwcompname2str goal.wire.comp.name)^"."^goal.wire.port
     | GUnifiable(GUHWConnPorts(goal)) ->
-                                           "<conn-ports-goal>"^
-                                         (HwLib.hwcompname2str goal.src.comp.name)^"."^goal.src.port
-                                         ^"->"^(HwLib.hwcompname2str goal.dst.comp.name)^"."^goal.dst.port
+         "<conn-ports-goal>"^(HwLib.hwcompname2str goal.src.comp.name)^"."^goal.src.port
+                       ^"->"^(HwLib.hwcompname2str goal.dst.comp.name)^"."^goal.dst.port
 
-  let increase_goal_weight (g:goal_data) scale : unit =
+  let increase_goal_weight tree (g:goal_data) scale : unit =
     debug ("> weight++: "^(__goal2weightkey g));
-    SearchWeights.increase_weight weights (__goal2weightkey g) scale
+    SearchWeights.increase_weight weights (__goal2weightkey g) scale;
+    SearchLib.upd_score_frontier tree
 
-  let decrease_goal_weight (g:goal_data) scale : unit =
+  let decrease_goal_weight tree (g:goal_data) scale : unit =
     debug ("> weight--: "^(__goal2weightkey g));
-    SearchWeights.decrease_weight weights (__goal2weightkey g) scale
+    SearchWeights.decrease_weight weights (__goal2weightkey g) scale;
+    SearchLib.upd_score_frontier tree
 
 
 
@@ -105,14 +106,14 @@ struct
   let score_by_weighed_goal_count_and_depth  (s:sstep list) =
     let score_single st = match st with
       | SModGoalCtx(SGAddGoal(g)) ->
-        0. -. (GoalLib.goal_difficulty g.d)*.(1. +. get_goal_weight g)
+        0. -. ((GoalLib.goal_difficulty g.d)/.100.)*.(1. +. get_goal_weight g)
       | SModGoalCtx(SGRemoveGoal(g)) ->
-        (GoalLib.goal_difficulty g.d)*.(1. +. get_goal_weight g)
+        ((GoalLib.goal_difficulty g.d)/.100.)*.(1. +. get_goal_weight g)
       | SModGoalCtx(_) ->  0.
       | _ -> 0.
     in
-    let delta = 10. in
-    let state = LIST.sum score_single s in
+    let state = 0. in
+    let delta = LIST.sum score_single s in
     SearchLib.mkscore state delta
  
 

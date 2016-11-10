@@ -165,8 +165,17 @@ struct
   let partial_id_to_steps ms (id:part_id ) =
     let tree = MAP.get ms.state.partials id.mvr in
     let node = SearchLib.id2node tree id.ident in
-    let steps :sstep list = SearchLib.get_path tree node in
-    steps
+    let path_nodes = SearchLib.get_path_nodes tree node in
+    match path_nodes with
+    | root::path ->
+      (*exclude root node from path*)
+      let part_steps :sstep list = SearchLib.node_path_to_steps tree path in
+      let root_steps = root.s in
+      root.s,part_steps
+    | [root] ->
+      error "partial_id_to_steps" "only root node"
+    | [] ->
+      error "partial_id_to_steps" "node doesn't exist anymore"
 
   type lcl2glbl_mapper = {
     instmap: (part_id*hwcompinst,int) map;
@@ -209,12 +218,19 @@ struct
       | SModSln(SSlnAddComp(inst)) -> add_mapping mapper id inst
       | _ -> ()
     in
-    SET.iter ids (fun (id:part_id) ->
-        let steps : sstep list = partial_id_to_steps ms id in
+    SET.iter_i ids (fun (id:part_id) (idx:int)  ->
+        let root_steps,part_steps  = partial_id_to_steps ms id in
+        let steps =
+          if idx = 0 then part_steps @ root_steps else part_steps
+        in
         debug ("found # steps: "^(LIST.length2str steps));
-        List.iter (fun stp -> allocate id stp) steps;
+        List.iter (fun stp -> noop (allocate id stp)) steps;
         List.iter (fun stp ->
-            enq (SlvrSearchLib.inst2inst_step stp (fun inst -> get_mapping mapper id inst))
+            let stpi =
+              SlvrSearchLib.inst2inst_step stp
+                (fun inst -> get_mapping mapper id inst)
+            in
+            enq (stpi)
           ) steps;
         ()
     );
@@ -434,9 +450,10 @@ struct
     if MAP.has ms.state.globals key = false then
       begin
       let part_steps,gbl_steps_coll = build_global_steps ms in
+      GoalTableFactory.mkroot tbl part_steps;
       debug ("======= Partial (Root) Steps "^(LIST.length2str part_steps)^" =======");
       debug (SearchLib.steps2str 1 tbl.search part_steps);
-      GoalTableFactory.mkroot tbl part_steps;
+
       begin
         match SearchLib.root tbl.search with
         | Some(root) -> SearchLib.visited tbl.search root
@@ -460,15 +477,7 @@ struct
       tbl.search <- search;
       tbl
 
-  let mk_glbl_tbl_copy (tbl:gltbl): gltbl =
-    let ntbl : gltbl = GoalTableFactory.mktbl tbl.env in
-    ntbl.search <- tbl.search;
-    begin
-      match SearchLib.root tbl.search with
-      |Some(root) -> SearchLib.clear_cursor ntbl.search
-      | None -> error "mk_global_tbl_copy" "there is no root cursor;";
-    end;
-    ntbl
+  
    
   (*a solution is complete if all the routing connections are on inputs*)
   let is_complete_sln ms (tbl:gltbl) =
@@ -502,23 +511,26 @@ struct
   (*determine if the solution is complete or not and augment tree*)
   let complete_sln ms (tbl:gltbl) (sln: sstep snode) =
     let depth = get_glbl_int "slvr-global-depth" in
-    let tmp_tbl = mk_glbl_tbl_copy tbl in 
-    SearchLib.move_cursor tbl.search tmp_tbl sln;
+    let mint,musr = SolverEqn.mkmenu tbl None in
+    SearchLib.move_cursor tbl.search tbl sln;
     if is_complete_sln ms tbl then
       Some(sln)
     else
       begin
         (*declare not a solution*)
         SearchLib.not_solution tbl.search sln;
+        SearchLib.visited tbl.search sln;
         let branches : sstep list list = create_global_context ms tbl in 
         debug "======= New Path =======";
         List.iter (fun glbl_steps ->
           debug "======= Glbl (Node) Steps =======";
           debug (SearchLib.steps2str 2 tbl.search glbl_steps);
           debug "============================";
-          noop (SearchLib.mknode_child_from_steps tbl.search tbl glbl_steps)
+          SearchLib.move_cursor tbl.search tbl sln;
+          SearchLib.mknode_child_from_steps tbl.search tbl glbl_steps;
+          ()
         ) branches;
-        None
+        None 
       end
 
   (*find a global solution, given the set of partials that have been applied*)
@@ -716,6 +728,7 @@ struct
     let augment_with_partial_solution (ms:musearch) (pvar:string) (slns: sstep snode list option) :  'a option =
       let mint,musr = mkmenu ms in
       let curs = SearchLib.cursor ms.search in
+      let nglbl = Globals.get_glbl_int "multi-num-global-solutions" in
       let add_glbl_sln (curs:mustep snode) (node:sstep snode)  = 
         let key = (set2key ms.state.local) and ident = node.id in
         let steps = [MSGlobalApp({mvr_seq=key;ident=ident})] in
@@ -746,9 +759,10 @@ struct
         (*find a global solution*)
         debug " > Finding Global Solution";
         musr ();
-        match find_global_solution ms 1 with
+        match find_global_solution ms nglbl with
         | Some(slns) ->
-          debug ("  >> Found # Global Solutions: "^(string_of_int (List.length slns)));
+          debug ("  >> Found # Global Solutions: "^
+                 (string_of_int (List.length slns))^"/"^(string_of_int nglbl));
           List.iter (fun sln -> add_glbl_sln partial_node sln) slns;
           SearchLib.try_visited ms.search partial_node;
           ()

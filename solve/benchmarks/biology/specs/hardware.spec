@@ -181,7 +181,7 @@ end
 comp ihill
   input Vmax {I:uA}
   input S {I:uA}
-  input n {V:uA}
+  input n {V:mV}
   input Km {I:uA}
 
   def I(Vmax) mag = [0.0001,10] uA
@@ -266,9 +266,9 @@ schematic
   inst input I : 50
   inst output I : 10
   inst copy I : 10
-  inst mm : 4
+  %inst mm : 4
   inst switch : 15
-
+  
   inst input V : 125
   inst output V : 75
   inst copy V : 10
@@ -357,5 +357,6 @@ schematic
   conn vadd -> itov
   conn vadd -> vgain
   conn vadd -> vadd
+  conn vadd -> switch 
 
 end

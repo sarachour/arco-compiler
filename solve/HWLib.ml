@@ -777,6 +777,9 @@ struct
       (srccmp:hwcompname) (srcport) (destcmp:hwcompname) (destport) : bool =
     HwConnLib.is_connectable env srccmp srcport destcmp destport
 
+  let has_dest_connections (type a) (env:a hwenv) (srccmp:hwcompname) (srcport) =
+    HwConnLib.has_dest_connections env srccmp srcport
+
   let wires_are_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool =
     is_connectable env src.comp.name src.port dest.comp.name dest.port
 end
