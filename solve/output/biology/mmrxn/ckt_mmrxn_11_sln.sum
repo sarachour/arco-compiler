@@ -1,0 +1,66 @@
+
+=== Route ===
+
+val 10.1 -> [input.V[0].X,input.V[1].X]
+val 0 -> [input.V[2].X,input.V[7].X,input.V[6].X,input.V[5].X,input.V[4].X,input.V[3].X]
+val 12.616 -> input.V[8].X
+val 0.00317057704502 -> [input.V[9].X,input.V[10].X]
+val 0.00431965442765 -> input.V[11].X
+val 0.256 -> input.V[12].X
+val 0.124 -> input.V[13].X
+val 0.84 -> input.I[0].X
+val 1 -> [input.V[14].X,input.V[15].X]
+
+
+=== Generate ===
+lc S -> vadd[5].OUT2
+lc E -> vadd[2].OUT2
+lc ES -> vadd[7].OUT2
+out P -> [vadd[9].OUT2,output.V[0].O]
+
+val 10.1 -> [input.V[1].O,input.V[0].O]
+val 0 -> [input.V[2].O,input.V[6].O,input.V[7].O,input.V[5].O,input.V[4].O,input.V[3].O]
+val 12.616 -> input.V[8].O
+val 0.00317057704502 -> [input.V[10].O,input.V[9].O]
+val 0.00431965442765 -> input.V[11].O
+val 0.256 -> input.V[12].O
+val 0.124 -> input.V[13].O
+val 0.84 -> input.I[0].O
+val 1 -> [input.V[15].O,input.V[14].O]
+
+ast (12.616*E) -> [itov[4].Y,itov[4].Y]
+ast (12.616*S) -> [vgain[0].P,vgain[0].P]
+ast (0.84*ES) -> [itov[8].Y,itov[8].Y]
+ast (9.26*ES) -> [vgain[3].P,vgain[3].P]
+ast (10.1*ES) -> [itov[1].Y,itov[1].Y]
+ast (12.616*E*S) -> [vgain[6].P,vgain[6].P]
+
+=== Connect ===
+vadd[7].OUT2 ->  vgain[3].Z itov[1].X itov[8].K
+input.I[0].O ->  itov[8].X
+vadd[2].OUT2 ->  vgain[6].X itov[4].X
+input.V[9].O ->  vgain[6].Y
+itov[1].Y ->  vadd[2].B
+input.V[15].O ->  vgain[0].X
+input.V[13].O ->  vadd[2].OUT2_0
+vgain[6].P ->  vadd[7].B
+input.V[14].O ->  vgain[3].X
+input.V[11].O ->  vgain[3].Y
+itov[8].Y ->  vadd[9].B
+input.V[12].O ->  vadd[5].OUT2_0
+input.V[8].O ->  itov[4].K
+input.V[2].O ->  vadd[2].A
+vadd[5].OUT2 ->  vgain[0].Z vgain[6].Z
+input.V[3].O ->  vadd[5].A
+vgain[3].P ->  vadd[5].B
+input.V[1].O ->  itov[1].K
+vgain[0].P ->  vadd[2].D
+input.V[7].O ->  vadd[9].OUT2_0
+vadd[9].OUT2 ->  output.V[0].X
+input.V[10].O ->  vgain[0].Y
+input.V[0].O ->  vadd[7].D
+itov[4].Y ->  vadd[5].D
+input.V[4].O ->  vadd[7].OUT2_0
+input.V[5].O ->  vadd[7].A
+input.V[6].O ->  vadd[9].A
+
