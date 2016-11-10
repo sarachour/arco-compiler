@@ -670,11 +670,9 @@ struct
   let emit_solution (ms:musearch) (glbl_node:mustep snode) =
     let curs = SearchLib.cursor ms.search in
     SearchLib.move_cursor ms.search ms.state glbl_node;
-    let pkey = set2key ms.state.local in
-    let ident = ms.state.global in
-    match ident with
+    match ms.state.global with
     | Some(id) ->
-      let ptbl = get_existing_global_solution ms pkey id.ident in
+      let ptbl = get_existing_global_solution ms id.mvr_seq id.ident in
       SolverEmitSolution.proc_sln ms.name ptbl ms.nslns; 
       SolverEmitSolution.proc_sln_mappings ms.name ptbl ms.nslns; 
       ms.nslns <- ms.nslns + 1;
