@@ -84,7 +84,12 @@ struct
         if targ = 0. then 1.,no_error else 1.,some_error
       end
     else if targ = 0. then
-      1.,{left=host.min;right=host.max}
+      begin
+        if targ >= host.min && targ <= host.max then
+          1.,no_error
+        else
+          1.,{left=host.min;right=host.max}
+      end
     else
       if targ < host.min && host.min != 0.  then
         targ /. host.min,no_error
