@@ -1,0 +1,145 @@
+% aptosis
+% % https://www.ebi.ac.uk/biomodels-main/BIOMD0000000446
+% six diffeqs
+
+type s
+time t : s
+
+param tmr: none = 10.0
+param IRE1T: none = 1.0
+param PERKT: none = 1.0
+param eIF2aT: none = 1.0
+param CReP: none = 0.1
+param kf: none = 10.0
+param kr: none = 1.0
+param n: none = 4.0
+param nh: none = 2.0
+param extATT: none = 0.0
+param extPERK: none = 0.0
+param basalBiP: none = 1.0
+param basalXBP: none = 1.0
+param krcXU: none = 5.0
+param krcBiP: none = 5.0
+param krcWFS: none = 1.0
+param krcCHOP: none = 1.0
+param krcGADD34: none = 1.0
+param kmXbp: none = 10.0
+param kmAtfsXBP: none = 10.0
+param kmAtfsBiP: none = 1.0
+param kmAtff: none = 0.05
+param kmChop: none = 0.05
+param kmAtfs: none = 0.1
+param ksplice: none = 10.0
+param krcSplice: none = 1.0
+param trcXU: none = 1.0
+param trcBiP: none = 1.0
+param trcWFS: none = 1.0
+param trcCHOP: none = 1.0
+param trcGADD34: none = 1.0
+param ktrUFP: none = 1.0
+param ktrXS: none = 1.0
+param ktrBiP: none = 1.0
+param ktrATF6: none = 1.0
+param ktrWFS: none = 1.0
+param ktrATF4: none = 1.0
+param ktrCHOP: none = 1.0
+param ktrGADD34: none = 1.0
+param kdmXU: none = 1.0
+param kdmXS: none = 1.0
+param kdmBiP: none = 1.0
+param kdmWFS: none = 1.0
+param kdmCHOP: none = 1.0
+param kdmGADD34: none = 1.0
+param kdUFP: none = 0.1
+param kdXS: none = 0.1
+param kdBiP: none = 0.01
+param kdATF6: none = 0.1
+param kdATF6GB: none = 0.1
+param kdATF6p50: none = 0.1
+param kdWFS: none = 0.1
+param kdATF4: none = 0.1
+param kdCHOP: none = 0.1
+param kdGADD34: none = 0.1
+param mATF6T: none = 5.0
+param mATF4: none = 1.0
+param ktrans: none = 1.0
+param kcleave: none = 10.0
+param kphos: none = 5.0
+param kdephos: none = 0.5
+param kdeAW: none = 1.0
+param kbu: none = 0.0
+param switch: none = 0.0
+param kATF4: none = 0.1
+param J: none = 0.0010
+param K: none = 0.0010
+param kfbc: none = 10.0
+param kdbc: none = 0.1
+param kmbc: none = 0.03
+param kstr: none = 0.2
+param BAXT: none = 100.0
+param kfx: none = 1.0
+param kfxp: none = 3.0
+param kbx: none = 2.0
+param kasx: none = 90.0
+param kdsx: none = 0.05
+param ks3: none = 0.1
+param ks3p: none = 0.6
+param kd3: none = 0.01
+param kas3: none = 10.0
+param kds3: none = 0.01
+param kff: none = 10.0
+
+
+param cmp_ERlumen : none=1.0
+param cmp_cytoplasm : none =1.0
+param cmp_Golgi : none =1.0
+param cmp_mitochondria : none=1.0
+
+
+local UFP : none
+local BiP : none
+local IRE1 : none
+local PERK : none
+local ATF6 : none
+local spliceRate : none
+local Gamma : none
+local fGK : none
+local eIF2a : none
+local BCL2 : none
+local BH3 : none
+local BAXm : none
+local mUFPT : none
+
+local UFPT : none
+local BiUFP : none
+local BiRE1 : none
+local BiATF : none
+local BiPER : none
+local IRE1A : none
+local PERKA : none
+local mXbp1u : none
+local mXbp1s : none
+local Xbp1s : none
+local mBiPT : none
+local BiPT : none
+local ATF6T : none
+local ATF6GB : none
+local ATF6p50 : none
+local mWFS1 : none
+local WFS1 : none
+local ATF4 : none
+local mCHOP : none
+local CHOP : none
+local mGADD34 : none
+local GADD34 : none
+local BCL2T : none
+local BAXmT : none
+local BH3T : none
+local BAXmBCL2 : none
+local BH3BCL2 : none
+
+
+%rel spliceRate= 0.5*ksplice*(mXbp1u+0.5*n*IRE1A+krcSplice-((mXbp1u+0.5*n*IRE1A+krcSplice)^2-4*mXbp1u*0.5*n*IRE1A)^(0.5))
+%rel Gamma = (kphos*0.5*n*PERKA)*(J/eIF2aT) + (kdephos*(GADD34+CReP))*(K/eIF2aT)
+%rel fGK = (2*(kdephos*(GADD34+CReP))*(K/eIF2aT))/(Gamma + (( (Gamma^2) - (4*(kphos*0.5*n*PERKA-kdephos*(GADD34+CReP))*(kdephos*(GADD34+CReP))*(K/eIF2aT))^(0.5))) )
+rel deriv(PERKA,t) = ( (tmr*kff*UFP*PERK^n)) + (-((tmr*kr*PERKA)/(1+extPERK*UFP))) with PERKA(0) = 0
