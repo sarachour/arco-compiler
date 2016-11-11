@@ -15,10 +15,10 @@ exception HwConnRslvrLibError of string
 
 let error n m = raise (HwConnRslvrLibError (n^":"^m))
 
-let _print_debug = print_debug 2 "rslvr"
-let debug = print_debug 2 "rslvr"
-let _menu = menu 2
-let _print_inter = print_inter 2
+let _print_debug = print_debug 1 "rslvr"
+let debug = print_debug 1 "rslvr"
+let _menu = menu 1
+let _print_inter = print_inter 1
 
 module HwConnRslvrLib =
 struct

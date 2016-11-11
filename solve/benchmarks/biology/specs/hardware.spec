@@ -160,7 +160,7 @@ comp vtoi
   def V(X) mag = [1,3300] mV
 
   rel I(Y) = (1/V(K))*V(X)
-  var I(Y) = 0.001 shape GAUSS
+  var I(Y) = 0.000001 shape GAUSS
 
   sim vtoi X K Y
 

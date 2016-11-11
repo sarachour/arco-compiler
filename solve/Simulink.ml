@@ -5,6 +5,7 @@ open Util
 open HWLib
 open HWData
 
+open SolverUtil
 open IntervalLib
 open SolverCompLib
 open SlnLib
@@ -162,17 +163,20 @@ struct
     (*comp to block info*)
     blocks: (string,simblock) map;
     clamps: (hwcompname,(string,simel) map) map;
+    integs: (hwcompname,(string,simel) map) map;
   }
 
   let symtbl = {
     paths = MAP.make();
     blocks = MAP.make();
     clamps = MAP.make();
+    integs= MAP.make();
   }
 
   let clear_tbl () =
     MAP.clear symtbl.paths;
     MAP.clear symtbl.blocks;
+    MAP.clear symtbl.integs;
     MAP.clear symtbl.clamps
 
   let ns_to_str ns =
@@ -251,6 +255,20 @@ struct
       noop (MAP.put symtbl.clamps cmp (MAP.make()));
     let cmp_clamps = MAP.get symtbl.clamps cmp in
     MAP.put cmp_clamps port cmploc
+
+
+
+  let declare_integ cmp port cmploc =
+    if MAP.has symtbl.integs cmp = false then
+      noop (MAP.put symtbl.integs cmp (MAP.make()));
+    let cmp_integs = MAP.get symtbl.integs cmp in
+    MAP.put cmp_integs port cmploc
+
+  let get_integ cmp port =
+    if MAP.has symtbl.integs cmp = false then
+      noop (MAP.put symtbl.integs cmp (MAP.make()));
+    let cmp_integs = MAP.get symtbl.integs cmp in
+    MAP.get cmp_integs port
 
   let iter_clamps cmp fn =
     if MAP.has symtbl.clamps cmp then
@@ -661,6 +679,12 @@ struct
     declare_vars [integ_in;integ_out];
     loc,integ_in,integ_out
 
+  let update_ic q loc ic =
+    q (set_route_param
+         (loc) "InitialCondition"
+         (MATLit(MATStr(string_of_float ic))));
+    ()
+
 
   let create_linmap q namespace (mp:hw_mapping) (inverse:bool) =
     let id = symtbl_size () in
@@ -859,7 +883,8 @@ struct
           let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
           let dmin,dmax =  0.,1. in
           let handle = expr2blockdiag q cmpns bhvr.rhs in
-          let _,integ_in,integ_out = create_integrator q cmpns in
+          let integ,integ_in,integ_out = create_integrator q cmpns in
+          declare_integ comp.name vr.port integ;
           begin
             match model_noise(),model_ideal() with
             | true,true ->
@@ -998,7 +1023,30 @@ struct
               q (add_route_line src_loc_out par_loc)
             | None ->
               error "comp_iter" "parameter must be specialized."
-        )
+          );
+        HwLib.comp_iter_outs ccomp.d (fun (port:hwvid hwportvar) ->
+            match port.bhvr with
+            | HWBAnalogState(bhvr) ->
+              begin
+                let integ = get_integ ccomp.d.name port.port in
+                let icport,icprop = bhvr.ic in
+                let value_maybe = match ConcCompLib.get_var_config ccomp.cfg icport with
+                  | Some(Integer(u)) -> Some (float_of_int u)
+                  | Some(Decimal(u)) -> Some u
+                  | Some(q) -> error "create_circuit" ("expected numerical initial cond:"^(uast2str q))
+                  | None -> None
+                in
+                match integ,value_maybe with
+                | SIMBlock(templ_ns,integname),Some(value) ->
+                  begin
+                    let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],integname) in
+                    update_ic q newblock value
+                  end
+                | _ -> ()
+              end
+
+            | _ -> ()
+          )
 
       );
     SlnLib.iter_conns sln (fun (src:wireid) (dst:wireid) ->
