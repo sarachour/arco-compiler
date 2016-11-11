@@ -8,6 +8,7 @@ make clean; make
 
 ./run.sh run $BENCH > log.txt
 
+git pull
 git add output
 git commit -a -m "added results from <$BENCH> from job"
 git push
