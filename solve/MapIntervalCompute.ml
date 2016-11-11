@@ -44,7 +44,7 @@ struct
           let mvar = MathLib.getvar tbl.env.math v in
           match mvar.defs with
           | MDefVar(def) -> def.ival
-          | _ -> error "ccompute_math_interval" "state variable cannom be input" 
+          | _ -> error "ccompute_math_interval" "state variable cannot be input" 
         end
       |MNVar(MOutput,v) ->
         begin
@@ -82,15 +82,22 @@ struct
 
   let compute_hwid_interval comp (x:hwvid) : interval=
       match x with
-      |HNParam(cmp,x) -> error "compute_hw_interval" ("must be fully specified: "^x)
-      |HNPort(knd,cmp,port,param) ->
-        begin
-          match (HwLib.comp_getvar comp port).defs with
-          | HWDAnalog(d) -> d.ival
-          | HWDAnalogState(x) -> x.stvar.ival
-          | HWDDigital(d) -> d.ival
-        end
-      |HNTime -> error "compute_hw_interval" "unexpected time"
+        |HNParam(cmp,x) ->
+          begin
+            let param = HwLib.comp_getparam comp x in
+            let fvalue = List.map float_of_number param.value in
+            IntervalLib.mk_ival_from_floats
+              (MATH.min fvalue) (MATH.max fvalue)
+          end
+
+        |HNPort(knd,cmp,port,param) ->
+          begin
+            match (HwLib.comp_getvar comp port).defs with
+            | HWDAnalog(d) -> d.ival
+            | HWDAnalogState(x) -> x.stvar.ival
+            | HWDDigital(d) -> d.ival
+          end
+        |HNTime -> error "compute_hw_interval" "unexpected time"
 
   let compute_hwexpr_interval comp inst cfg rhs : interval =
     let conc_rhs =

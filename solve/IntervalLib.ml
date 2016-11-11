@@ -185,7 +185,7 @@ struct
     | MixedInterval(h::h2::t) -> true
     | _ -> false
 
-  let interval2numbounds (x:interval) =
+  let rec interval2numbounds (x:interval) =
     match x with
     | Interval(i) ->
       begin
@@ -200,12 +200,21 @@ struct
         | BNDNum(min),BNDNum(max) -> min,max
         | _ -> error "interval2numbounds" "mix not expecting inf bound"
       end
-    | MixedInterval(i) ->
-      error "interval2numbounds" "not expecting mixed interval"
-    | Quantize([v]) ->
-      v,v
-    | Quantize(_) -> 
+    | MixedInterval(h::t) ->
+      List.fold_left (fun (cmin,cmax) (x:interval_data)-> match x.min,x.max with
+          | BNDNum(min),BNDNum(max) ->
+            let nmin = if min < cmin then min else cmin in
+            let nmax = if max > cmax then max else cmax in
+            (nmin,nmax)
+          | _ ->
+            error "interval2numbounds" "mixed interval not expecting infinte bounds"
+        ) (interval2numbounds (Interval h)) t
+    | Quantize(h::t) ->
+      let fh = float_of_number h in 
+      (fh,fh)
       error "interval2numbounds" "not expecting quantized interval"
+    | MixedInterval(_) ->
+      error "interval2bounds" "unxpected empty mixed interval interval"
     | IntervalUnknown(_) ->
       error "interval2bounds" "unxpected unknown interval"
 
