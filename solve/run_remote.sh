@@ -2,7 +2,6 @@
 
 BENCH=$1 
 
-echo "y" | sudo apt-get install mailutils
 git pull
 make clean; make
 
