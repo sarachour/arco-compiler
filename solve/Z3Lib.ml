@@ -303,6 +303,8 @@ struct
     let smtfile =  "z3-tmp."^root^".smt2" in
     let resfile = "z3-res."^root^".res" in
     let oc = open_out smtfile in
+    (*solve for fif mintues*)
+    let timeout = 60*10 in
     (*let x = List.sort sortsts (LIST.uniq x) in*)
     z3stmts2buf oc stmts;
     close_out oc;
@@ -310,9 +312,11 @@ struct
     flush_all ();
     begin
       if use_dreal then
-        Sys.command ("dReal --model "^smtfile^" > "^resfile)
+        Sys.command ("./timebomb.sh 'dReal --model "^smtfile^" > "^resfile^"' "^
+                    (string_of_int timeout))
       else
-        Sys.command ("z3 -smt2 "^smtfile^" > "^resfile)
+        Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
+                    (string_of_int timeout))
     end;
     z3_print_debug "---> Finished Search\n";
     flush_all ();

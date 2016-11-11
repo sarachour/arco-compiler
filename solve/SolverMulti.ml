@@ -499,7 +499,7 @@ struct
           end
 
         | HWCmInput(cmp) ->
-          debug ":: found input route."
+          ()
         | _ ->
           warn "is_complete_sln" "not expected an output or a conn route"
 

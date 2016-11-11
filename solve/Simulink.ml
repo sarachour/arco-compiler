@@ -994,6 +994,7 @@ struct
             match vl with
             | Some(value) ->
               let src_loc_out : simel = create_const q circ_ns (float_of_number value) in
+              warn "iter_used_comps" ("adding assignment for "^par.name);
               q (add_route_line src_loc_out par_loc)
             | None ->
               error "comp_iter" "parameter must be specialized."

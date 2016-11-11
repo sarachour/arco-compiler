@@ -1,0 +1,20 @@
+
+output P : none
+local E : none
+local S : none
+local ES : none
+
+param kr1 : none = 10
+param kr2 : none = 5
+param KDrv : none = 10
+param KDfw : none =10
+param ratC8 : none = 0.1
+param ratC9 : none = 0.03
+param ratC10 : none = 0.06
+
+time t: none
+
+rel deriv(S,t) =( (5*(10/KDfw)*kr1 - (kr1/KDfw)*E*S) + kr1*ES) - (ratC9*kr2*S) with S(0) = 0
+rel deriv(E,t) = ( ( 10*(10/KDfw)*kr1 - (kr1/KDfw)*E*S) + kr1*ES + (kr1/KDfw)*ES) - ratC8*kr2*E with E(0) = 0
+rel deriv(ES,t) = (kr1/KDfw)*E*S - kr1*ES - (kr1/KDfw)*ES with ES(0) = 0
+rel deriv(P,t) = (kr1/KDfw)*ES - ratC10*kr2*P with P(0) = 0

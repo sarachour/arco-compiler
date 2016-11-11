@@ -1,0 +1,49 @@
+
+
+input Atot : none
+def Atot mag=[0,1] M
+
+input Btot : none
+def Btot mag=[0,1] M
+
+
+output Ctot : none
+param kr1 : none = 3
+
+time t : none
+
+
+rel ddt Ctot = kr1*Atot*0.1*Btot init 15
+def Ctot mag=[0,1] M
+
+%param ratC0 : none = 0
+%param kr2 : none = 5
+%param Cdeg : none = 0
+%param FF_SW3 : none = 1
+%param Cprod : none =  0
+%param kr1 : none = 10
+
+
+
+%param Atot : none = 10
+%param Btot : none = 10
+
+%A_FB_EN_0
+%param A_SW : none = 0
+%param B_SW : none = 0
+%param KDfw : none = 10
+%param n : none = 1
+
+
+%rel deriv(Ctot,t) = kr1*(Cprod + FF_SW3*rateFW) - kr2*(Cdeg + Ctot*ratC0) with Ctot(0) = 15
+
+% with all the variables plugged in
+ 
+
+%rel Afree = Atot - A_SW*Ctot
+%rel Afree = Atot - Ctot
+
+%rel Bfree = Btot - B_SW*Ctot
+%rel Bfree = Btot - Ctot
+
+%rel rateFW = Afree*((Bfree/KDfw)^n)

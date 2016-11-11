@@ -1,0 +1,21 @@
+
+local A : none
+local B : none
+output C : none
+local D : none
+
+param kr1 : none = 10
+param kr2 : none = 1
+param KDrv : none = 10
+param KDfw : none  = 10
+param ratC12 : none = 0.2
+param ratC13 : none = 0.2
+param ratC14 : none = 0.3
+param ratC15 : none = 0.2
+
+time t : none
+
+rel deriv(A,t) = (((10*(1/KDfw)*kr1) - (1/KDfw)*kr1*A*B) + (kr1/KDrv)*C*D) -kr2*ratC12*A with A(0) = 0
+rel deriv(B,t) = (((5*(1/KDfw)*kr1) - (1/KDfw)*kr1*A*B) + (kr1/KDrv)*C*D) -kr2*ratC13*B with B(0) = 0
+rel deriv(C,t) = (1/KDfw)*kr1*A*B - (kr1/KDrv)*C*D - kr2*ratC14*C with C(0) = 0
+rel deriv(D,t) = (1/KDfw)*kr1*A*B - (kr1/KDrv)*C*D - kr2*ratC15*D with D(0) = 0
