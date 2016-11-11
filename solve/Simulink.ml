@@ -837,7 +837,7 @@ struct
     );
     HwLib.comp_iter_outs comp (fun vr ->
         let int_out = SIMBlockIn(cmpns,"_"^vr.port,"I") in
-        let dflt_min,dflt_max = -2.,-1. in
+        let dflt_min,dflt_max = 0.,1. in
         match vr.bhvr,vr.defs with
         | HWBAnalog(bhvr),HWDAnalog(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
