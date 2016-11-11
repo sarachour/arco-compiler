@@ -196,7 +196,8 @@ struct
     let stmt_to_z3prob s = match s with
       | SVDeclMapVar(SVLinVar(SVScaleVar(x))) ->
         enq (Z3ConstDecl(linearid2name tbl (SVScaleVar x),Z3Real));
-        enq (Z3Assert(Z3GT(Z3Var(linearid2name tbl (SVScaleVar x)),Z3Real(0.))))
+        enq (Z3Assert(Z3GT(Z3Var(linearid2name tbl (SVScaleVar x)),Z3Real(0.00000001))))
+
       | SVDeclMapVar(SVLinVar(SVOffsetVar(x))) ->
         enq (Z3ConstDecl(linearid2name tbl (SVOffsetVar x),Z3Real))
       | SVDeclMapVar(SVSlackVar(dir,weight,x)) ->
