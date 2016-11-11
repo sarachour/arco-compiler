@@ -1040,7 +1040,11 @@ struct
                 | SIMBlock(templ_ns,integname),Some(value) ->
                   begin
                     let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],integname) in
-                    update_ic q newblock value
+                    let mapping =
+                      get_mapping mappings (HwLib.port2wire ccomp.d.name ccomp.inst port.port)
+                    in
+                    let new_value = mapping.scale*.value+.mapping.offset in
+                    update_ic q newblock new_value
                   end
                 | _ -> ()
               end
