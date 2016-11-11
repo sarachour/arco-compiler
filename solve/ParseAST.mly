@@ -30,7 +30,6 @@
 %type <string AST.ast> toplvl
 
 %type <string> term
-%type <(string AST.ast) list> explst
 
 %type <index> ind
 %type <string AST.ast> par
