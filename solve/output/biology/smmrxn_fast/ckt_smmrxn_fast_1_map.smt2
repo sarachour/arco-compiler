@@ -265,12 +265,16 @@
 ; 
 ; =  {of.vadd[2].OUT} {0.}
 (assert (= of_21 0.))
+; no scale
+(assert (= sc_17 1.))
+; no scale
+(assert (= 1. 1.))
 ; no offset
 (assert (= 0. 0.))
 ; no offset
 (assert (= of_17 0.))
 ; no offset
-(assert (= 0. 0.))
+(assert (= of_22 0.))
 ; no offset
 (assert (= 0. 0.))
 ; no offset
@@ -283,8 +287,8 @@
 ; =  {sc.vadd[2].A} {(1.*sc.vadd[2].B)}
 (assert (= sc_19 (* 1. sc_20)))
 ; 
-; =  {sc.vadd[2].A} {(1.*sc.vadd[2].C)} {(1.*sc.vadd[2].D*1.)}
-(assert (and (= sc_19 (* 1. sc_18)) (= sc_19 (* (* 1. sc_17) 1.))))
+; =  {sc.vadd[2].A} {(1.*sc.vadd[2].C)} {(1.*sc.vadd[2].D*sc.vadd[2].OUT2)}
+(assert (and (= sc_19 (* 1. sc_18)) (= sc_19 (* (* 1. sc_17) sc_22))))
 ; no offset
 (assert (= (- (+ of_19 0.) (+ 0. 0.)) 0.))
 ; no offset
@@ -391,10 +395,12 @@
 ; 
 ; =  {of.mm[0].X} {(of.mm[0].Xtot-of.mm[0].XY)}
 (assert (= of_28 (- of_27 of_29)))
+; no scale
+(assert (= sc_23 1.))
 ; no offset
 (assert (= of_23 0.))
 ; no offset
-(assert (= 0. 0.))
+(assert (= of_29 0.))
 ; no offset
 (assert (= of_26 0.))
 ; no offset
@@ -402,8 +408,8 @@
 ; no offset
 (assert (= of_30 0.))
 ; 
-; =  {(sc.mm[0].kf*sc.mm[0].X*sc.mm[0].Y)} {(sc.mm[0].kr*1.)}
-(assert (= (* (* sc_26 sc_28) sc_30) (* sc_23 1.)))
+; =  {(sc.mm[0].kf*sc.mm[0].X*sc.mm[0].Y)} {(sc.mm[0].kr*sc.mm[0].XY)}
+(assert (= (* (* sc_26 sc_28) sc_30) (* sc_23 sc_29)))
 ; 
 ; =  {sc.mm[0].XY} {(sc.mm[0].kf*sc.mm[0].X*sc.mm[0].Y)}
 (assert (= sc_29 (* (* sc_26 sc_28) sc_30)))

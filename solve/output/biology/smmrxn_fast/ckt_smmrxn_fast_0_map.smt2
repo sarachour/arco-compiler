@@ -165,10 +165,12 @@
 ; 
 ; =  {of.mm[0].X} {(of.mm[0].Xtot-of.mm[0].XY)}
 (assert (= of_15 (- of_14 of_16)))
+; no scale
+(assert (= sc_10 1.))
 ; no offset
 (assert (= of_10 0.))
 ; no offset
-(assert (= 0. 0.))
+(assert (= of_16 0.))
 ; no offset
 (assert (= of_13 0.))
 ; no offset
@@ -176,8 +178,8 @@
 ; no offset
 (assert (= of_17 0.))
 ; 
-; =  {(sc.mm[0].kf*sc.mm[0].X*sc.mm[0].Y)} {(sc.mm[0].kr*1.)}
-(assert (= (* (* sc_13 sc_15) sc_17) (* sc_10 1.)))
+; =  {(sc.mm[0].kf*sc.mm[0].X*sc.mm[0].Y)} {(sc.mm[0].kr*sc.mm[0].XY)}
+(assert (= (* (* sc_13 sc_15) sc_17) (* sc_10 sc_16)))
 ; 
 ; =  {sc.mm[0].XY} {(sc.mm[0].kf*sc.mm[0].X*sc.mm[0].Y)}
 (assert (= sc_16 (* (* sc_13 sc_15) sc_17)))
