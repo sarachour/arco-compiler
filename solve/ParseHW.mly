@@ -170,7 +170,6 @@
 %type <index list> inds
 %type <conn> connterm
 %type <HWData.hwcompname> compname
-%type <'a IntervalData.mapper> map_strategy
 %type <IntervalData.std_mapper> mapvar_map_strategy
 %type <hwvid IntervalData.mapper> hwexpr_map_strategy
 %type <unit> schem
