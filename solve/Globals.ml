@@ -30,6 +30,8 @@ let _ = MAP.put glbls "slvr-partial-depth" (GlblPropInt 32)
 let _ = MAP.put glbls "slvr-global-depth" (GlblPropInt 5)
 
 
+let _ = MAP.put glbls "z3-minimize-depth" (GlblPropInt 3)
+let _ = MAP.put glbls "z3-minimize-strategy" (GlblPropString "binary")
 
 (*
 

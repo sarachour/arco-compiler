@@ -390,8 +390,13 @@ struct
         (*
            the minimize subroutine
         *)
-        let max_depth = 0 in
-        let min_strategy = BestEffort in 
+        let max_depth = Globals.get_glbl_int "z3-minimize-depth" in
+        let min_strategy = match Globals.get_glbl_string "z3-minimize-strategy" with
+          | "binary" -> BinarySearch
+          | "linear" -> LinearSearch
+          | "effort" -> BestEffort
+          | _ -> error "min_strategy" "unknown"
+        in
         let rec _minimize min max (depth:int): z3sln option=
           if depth >= max_depth then None else
             let target_val = match min_strategy with
