@@ -8,7 +8,6 @@ NAME=$4
 
 SOLVER=./solver.debug
 
-git pull
 
 ./killall.sh dReal
 ./killall.sh solver.debug 
