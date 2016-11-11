@@ -96,7 +96,7 @@ comp vgain
   def V(P) mag = [0.0001,3300] mV
 
   rel V(P) = (V(X)/V(Y))*V(Z)*0.5
-  var ddt V(OUT) = 0.0001*V(P) + 0.01 shape GAUSS
+  var V(P) = 0.0001*V(P) + 0.01 shape GAUSS
 
   sim vgain X Y Z P
 
@@ -114,7 +114,7 @@ comp iadd
   def I(D) mag = [0.0,5] uA
   def I(OUT) mag = [0.0,10] uA
   rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
-  var ddt V(OUT) = 0.00001*V(OUT) + 0.001 shape GAUSS
+  var V(OUT) = 0.00001*V(OUT) + 0.001 shape GAUSS
 
 end
 
@@ -141,11 +141,12 @@ comp vadd
 
   % only produces outputs in this range
   rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
-  var ddt V(OUT) = 0.001*V(OUT) + 0.1 shape GAUSS
+  var V(OUT) = 0.001*V(OUT) + 0.1 shape GAUSS
 
   rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2))*0.25  init V(OUT2_0)
   def V(OUT2) mag = [0,3300] mV
   var ddt V(OUT2) = 0.001*V(OUT2) + 0.1 shape GAUSS
+  
 
 end
 
