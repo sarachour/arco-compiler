@@ -1,0 +1,45 @@
+% name "michaelis menten reaction"
+% 4 diffeqs
+
+% en.wikipedia.org/wiki/Michaelis-Menten_kinetics
+type s
+type M
+
+local E : M
+local S : M
+local ES : M
+output P : M
+
+param kf : 1/s = 3.154
+param kr : 1/s = 2.315
+param kcat : 1/s = 0.21
+
+time t : s
+
+
+def E mag = [0,1] M
+def S mag = [0,1] M
+def ES mag = [0,1] M
+def P mag = [0,1] M
+
+
+% individually solvable
+rel ddt S = (-kf)*E*S + kr*ES init 0.256
+def S mag = [0,1] M
+var ddt S = 0.04*S shape GAUSS
+def ddt S time 0.1 
+
+rel ddt E = (-kf)*E*S + kr*ES + kcat*ES init 0.124
+def E mag = [0,1] M
+var ddt E = 0.04*E shape GAUSS
+def ddt E time 0.1 
+
+rel ddt ES = kf*E*S - kr*ES - kcat*ES init 0
+def ES mag = [0,1] M
+var ddt ES = 0.04*ES shape GAUSS
+def ddt ES time 0.1 
+
+rel ddt P = kcat*ES init  0
+def P mag = [0,1] M
+var ddt P = 0.04*P shape GAUSS
+def ddt P time 0.1 
