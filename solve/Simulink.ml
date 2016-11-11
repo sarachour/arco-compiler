@@ -811,8 +811,8 @@ struct
               q (add_route_line ext_out int_in)
 
             | false ->
-              let min,max = IntervalLib.interval2numbounds defs.ival in
-              let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
+              let smin,smax = IntervalLib.interval2numbounds defs.ival in
+              let clamp,clamp_in,clamp_out= create_clamp q cmpns smin smax in
               q (add_route_line ext_out clamp_in);
               q (add_route_line clamp_out int_in);
           end
@@ -837,7 +837,7 @@ struct
     );
     HwLib.comp_iter_outs comp (fun vr ->
         let int_out = SIMBlockIn(cmpns,"_"^vr.port,"I") in
-        let dflt_min,dflt_max = 0.,1. in
+        let dflt_min,dflt_max = 0.,-1. in
         match vr.bhvr,vr.defs with
         | HWBAnalog(bhvr),HWDAnalog(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
@@ -999,6 +999,7 @@ struct
     let sln : usln = tbl.sln_ctx in
     let circ_ns :simns = match create_subsystem q namespace "circuit" with
       | SIMBlock(ns,cmp) -> ns@[cmp]
+      | _ -> error "create_circuit" "how is this not a block"
     in
     let lib_ns = namespace @ ["library"] in
     SolverCompLib.iter_used_comps tbl (fun (inst:hwcompinst) ccomp ->
@@ -1021,13 +1022,13 @@ struct
 
               | ClampDeriv(SIMBlock(stvar_ns,stvar_clampname),SIMBlock(deriv_ns,deriv_clampname)) ->
                 begin
-                  let ival =
+                  let stvar_ival =
                     IntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
                   in
                   let deriv_ival =
                     IntervalCompute.compute_deriv_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
                   in
-                  let smin,smax = IntervalLib.interval2numbounds ival in
+                  let smin,smax = IntervalLib.interval2numbounds stvar_ival in
                   let dmin,dmax = IntervalLib.interval2numbounds deriv_ival in
                   let stvar_newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],stvar_clampname) in
                   let deriv_newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],deriv_clampname) in
@@ -1036,7 +1037,6 @@ struct
                 end
               | _ ->
               error "create_circuit" "expected sim block"
-            ()
           );
         HwLib.comp_iter_params ccomp.d (fun (par:hwparam) ->
             let par_loc = SIMBlockIn(circ_ns,HwLib.hwcompinst2str inst,par.name) in
