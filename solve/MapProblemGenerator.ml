@@ -56,9 +56,33 @@ struct
 
 
 
+  let feedback_in_terms (fdbk:wireid list) (lst:hwvid ast list)  =
+    let rec is_term_feedback el = match el with
+      | OpN(Mult,exprs) ->
+        List.fold_left (fun isfdbk t -> isfdbk || is_term_feedback t) false exprs
+      | Op2(Div,expr1,expr2) ->
+        List.fold_left (fun isfdbk t -> isfdbk || is_term_feedback t) false [expr1;expr2]
+      | Term(HNPort(HWKOutput,HCMGlobal(cmpinst),port,prop)) ->
+        let w = HwLib.port2wire cmpinst.name cmpinst.inst port in
+        LIST.has fdbk w
+      | _ -> false
+    in
+    let feedback_exprs = List.filter is_term_feedback lst in
+    List.length feedback_exprs > 0
+
+  let get_nonfeedback_terms fdbk (lst:hwvid ast list) (scales:linear_id ast list) =
+    let rec get_nonfeedback_term (expr:hwvid ast) (sc:linear_id ast) =
+      if feedback_in_terms fdbk [expr] then
+        None
+      else
+        Some(sc)
+    in
+    let nonfeedback = List.map (fun (x,y) -> get_nonfeedback_term x y) (LIST.zip lst scales) in
+    OPTION.conc_list nonfeedback
+
 
   (*propagate wire rules for scaling factors *)
-  let derive_scaling_factor (node:hwvid ast) (feedback:wireid list) (cfg:hwcompcfg)
+  let derive_scaling_factor (node:hwvid ast) (fdbk:wireid list) (cfg:hwcompcfg)
     : (linear_stmt list)*linear_mapping =
     let decompose_list (args:hwvid ast list) (fn:hwvid ast -> linear_mapping)  =
       List.fold_right (fun farg (scales,offsets,terms) ->
@@ -76,14 +100,6 @@ struct
       | Term(HNPort(knd,HCMGlobal(cmp),port,prop)) ->
         let wire = SlnLib.mkwire cmp.name cmp.inst port in
         begin
-          match LIST.has feedback wire with
-          | true ->
-            {
-              scale=Decimal(1.);
-              offset=Decimal(0.);
-              term=node;
-            }
-          | false ->
             {
               scale=Term(SVScaleVar(wire));
               offset=Term(SVOffsetVar(wire));
@@ -113,9 +129,15 @@ struct
           {scale=OpN(Mult,scales);offset=Decimal(0.);term=Decimal(0.);}
         else
           begin
-          (*all offsets must equal zero*)
-          List.iter (fun offset -> add_cstr (SVNoOffset(offset))) offsets;
-          {scale=OpN(Mult,scales);offset=Decimal(0.);term=node;}
+            (*if this term contains feedback, the feedback term is the only thing scaled*)
+            if feedback_in_terms fdbk terms then
+              begin
+                let terms = get_nonfeedback_terms fdbk terms scales in
+                List.iter (fun term -> add_cstr (SVNoScale(term))) terms
+              end;
+            (*all offsets must equal zero*)
+            List.iter (fun offset -> add_cstr (SVNoOffset(offset))) offsets;
+            {scale=OpN(Mult,scales);offset=Decimal(0.);term=node;}
           end
 
       | OpN(Add,args) ->
