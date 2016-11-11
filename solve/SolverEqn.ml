@@ -129,21 +129,25 @@ struct
 
 
   let test_node_map_cons tbl node =
-    match MapHeuristics.heuristic tbl with
-      | Some(score) -> if MATH.is_infinite score
-        then
-          begin
-            debug ("[test-node-validity][FAIL] mapping scoring is too high:"^(string_of_float score));
-            false
-          end
-        else
-          begin
-            debug ("[test-node-validity][PASS] mapping is plausible: "^(string_of_float score));
-            true
-          end
-      | None ->
-        debug "[test-node-validity][FAIL] mapping is invalid by construction.";
-        false
+    let use_heuristic = Globals.get_glbl_bool "eqn-use-map-heuristic" in
+    if use_heuristic = false then
+      true
+    else
+      match MapHeuristics.heuristic tbl with
+        | Some(score) -> if MATH.is_infinite score
+          then
+            begin
+              debug ("[test-node-validity][FAIL] mapping scoring is too high:"^(string_of_float score));
+              false
+            end
+          else
+            begin
+              debug ("[test-node-validity][PASS] mapping is plausible: "^(string_of_float score));
+              true
+            end
+        | None ->
+          debug "[test-node-validity][FAIL] mapping is invalid by construction.";
+          false
 
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
     let mint,_ = mkmenu v None in

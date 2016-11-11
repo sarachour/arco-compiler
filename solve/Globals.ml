@@ -21,6 +21,7 @@ let _ = MAP.put glbls "multi-num-global-solutions" (GlblPropInt 2)
 let _ = MAP.put glbls "multi-selector-branch" (GlblPropString "depth")
     
 
+let _ = MAP.put glbls "eqn-use-map-heuristic" (GlblPropBool true)
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)
 let _ = MAP.put glbls "eqn-selector-goal" (GlblPropString "uniform")
 let _ = MAP.put glbls "eqn-selector-branch" (GlblPropString "uniform")

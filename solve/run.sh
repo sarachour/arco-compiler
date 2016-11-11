@@ -5,6 +5,7 @@ CMD=$1
 HWSPEC=$2
 CFG=$3
 NAME=$4
+SUBDIR=$5
 
 SOLVER=./solver.debug
 
@@ -40,10 +41,10 @@ fi
 OUTDIR=output/$HWSPEC
 TMPDIR=tmp
 
-mkdir -p $OUTDIR/$NAME
+mkdir -p $OUTDIR/$NAME/$SUBDIR
 mkdir -p $TMPDIR
 
-mv ckt_* $OUTDIR/$NAME/
+mv ckt_* $OUTDIR/$NAME/$SUBDIR
 
 mv *.smt2 $TMPDIR/
 mv *.debug.txt $TMPDIR
