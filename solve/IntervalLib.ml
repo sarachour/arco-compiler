@@ -210,9 +210,12 @@ struct
             error "interval2numbounds" "mixed interval not expecting infinte bounds"
         ) (interval2numbounds (Interval h)) t
     | Quantize(h::t) ->
-      let fh = float_of_number h in 
-      (fh,fh)
-      error "interval2numbounds" "not expecting quantized interval"
+      List.fold_left (fun (cmin,cmax) f ->
+          let nmin = if f < cmin then f else cmin in
+          let nmax = if f > cmax then f else cmax in
+          (nmin,nmax)) (h,h) t
+    | Quantize([]) ->
+      error "interval2bounds" "unxpected empty mixed quantize interval"
     | MixedInterval(_) ->
       error "interval2bounds" "unxpected empty mixed interval interval"
     | IntervalUnknown(_) ->
