@@ -5,9 +5,9 @@
 type s
 type M
 
-local E : M
-local S : M
-local ES : M
+output E : M
+output S : M
+output ES : M
 output P : M
 
 param kf : 1/s = 3.154

@@ -977,6 +977,9 @@ struct
   let get_comp_from_lib namespace (name:hwcompname) =
     namespace^"/library/"^(HwLib.hwcompname2str name)
 
+  let has_mapping mappings wire =
+    MAP.has mappings wire
+
   let get_mapping mappings wire =
     if MAP.has mappings wire then
       MAP.get mappings wire
@@ -1040,10 +1043,15 @@ struct
                 | SIMBlock(templ_ns,integname),Some(value) ->
                   begin
                     let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],integname) in
-                    let mapping =
-                      get_mapping mappings (HwLib.port2wire ccomp.d.name ccomp.inst port.port)
+                    let wire = (HwLib.port2wire ccomp.d.name ccomp.inst port.port) in
+                    let new_value= if has_mapping mappings wire then
+                      let mapping  =
+                        get_mapping mappings wire 
+                      in
+                      mapping.scale*.value+.mapping.offset
+                    else
+                      value
                     in
-                    let new_value = mapping.scale*.value+.mapping.offset in
                     update_ic q newblock new_value
                   end
                 | _ -> ()
