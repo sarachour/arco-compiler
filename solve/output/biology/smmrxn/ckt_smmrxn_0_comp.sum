@@ -90,7 +90,7 @@ input X.D
 
 output O.V
 <analog>:0.15 / std=none 0
-<analog> [v]=[0.,5.] {v}->[v]=@
+<analog> [v]=[0.,3300.] {v}->[v]=@
 
 
 ==== input.V 0 ====
@@ -100,7 +100,7 @@ input X.D
 
 output O.V
 <analog>:0.11 / std=none 0
-<analog> [v]=[0.,5.] {v}->[v]=@
+<analog> [v]=[0.,3300.] {v}->[v]=@
 
 
 ==== input.V 1 ====
@@ -110,7 +110,7 @@ input X.D
 
 output O.V
 <analog>:0 / std=none 0
-<analog> [v]=[0.,5.] {v}->[v]=@
+<analog> [v]=[0.,3300.] {v}->[v]=@
 
 
 

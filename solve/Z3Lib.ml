@@ -310,7 +310,7 @@ struct
     flush_all ();
     begin
       if use_dreal then
-        Sys.command ("dReal --model --parallel  "^smtfile^" > "^resfile)
+        Sys.command ("dReal --model "^smtfile^" > "^resfile)
       else
         Sys.command ("z3 -smt2 "^smtfile^" > "^resfile)
     end;

@@ -20,7 +20,7 @@
 
 
 %token EOF EOL OBRAC CBRAC EQ COMMA COLON
-%token SOLUTION ENTIRE NEG_INFTY POS_INFTY
+%token SOLUTION ENTIRE NEG_INFTY POS_INFTY UNKNOWN
 
 %token <string> TOKEN
 %token <int> INTEGER
@@ -76,6 +76,9 @@ model_stmt:
 stmts:
   | SOLUTION COLON EOL {
     {sat=true;model=None}
+  }
+  | UNKNOWN EOL {
+    {sat=false;model=None}
   }
   | stmts lst(model_stmt) {
     let mdl = $2 and obj = $1 in

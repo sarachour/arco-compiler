@@ -987,7 +987,18 @@ struct
             | _ ->
               error "create_circuit" "expected sim block"
             ()
+          );
+        HwLib.comp_iter_params ccomp.d (fun (par:hwparam) ->
+            let par_loc = SIMBlockIn(circ_ns,HwLib.hwcompinst2str inst,par.name) in
+            let vl = ConcCompLib.get_param_config ccomp.cfg par.name in
+            match vl with
+            | Some(value) ->
+              let src_loc_out : simel = create_const q circ_ns (float_of_number value) in
+              q (add_route_line src_loc_out par_loc)
+            | None ->
+              error "comp_iter" "parameter must be specialized."
         )
+
       );
     SlnLib.iter_conns sln (fun (src:wireid) (dst:wireid) ->
         let src_loc = SIMBlockOut(circ_ns,(HwLib.hwcompinst2str src.comp),src.port) in
@@ -1032,8 +1043,6 @@ struct
             | false ->
               q (add_route_line src_loc_out dst_loc)
           end
-
-
       );
       SlnLib.iter_generates sln (fun (l:ulabel) routes -> match l with
           | MOutLabel(lbl) ->
