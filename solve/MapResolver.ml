@@ -247,7 +247,8 @@ struct
     in
     let z3minterms : z3expr list = MAP.map slackvars
         (fun svar weight ->
-           Z3Mult(absval(Z3Var(svar)),Z3Real(weight)))
+           absval(Z3Var(svar))
+        )
     in
     match z3minterms with
     | h::h2::t ->
