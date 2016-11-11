@@ -42,9 +42,9 @@ rel UTF = (Cu*a1)*((Km^beta)/((Km^beta) +(V^beta)))
 rel VTF = (((Cv*a2)*(Km^gamma))/((Km*gamma) + (umodif^gamma)))
 
 rel ddt U =  (UTF) - (Cu*kdeg*U) init 0.35
-def U mag = [0,1] mol
+def U mag = [0,15.6] mol
 def ddt U time 0.001 
 
 rel ddt V = VTF - (Cv*kdeg*V) init 0.5
-def V mag = [0,1] mol
+def V mag = [0,156.25] mol
 def ddt V time 0.001 
