@@ -1,7 +1,7 @@
 
 type us
 type mA
-type mV
+type vV
 type bits
 
 prop I : mA
@@ -48,11 +48,11 @@ digital input V
   input X {D:bits}
   output O {V:vV}
 
-  def V(O) mag = [0,5.] vV
+  def V(O) mag = [0,5.0] vV
 
   def D(X) sample = 0.00001 us
   def D(X) repr = SEEEMMMM
-  def D(X) mag = [0,5.] vV
+  def D(X) mag = [0,5.0] vV
 
   rel V(O) = D(X)
 end
@@ -60,11 +60,11 @@ end
 digital output V
   input X {V:vV}
   output O {D:bits}
-  def V(X) mag = [0.0001,5.] vV
+  def V(X) mag = [0.0001,5.0] vV
 
   def D(O) sample = 0.001 us
   def D(O) repr = SEEEMMMM 
-  def D(O) mag = [0,5.] vV
+  def D(O) mag = [0,5.0] vV
 
   rel D(O) = V(X)
   sim vout X O
@@ -84,16 +84,16 @@ end
 
 comp vgain
   input X {V:vV}
-  def V(X) mag = [0.000001,5.] vV
+  def V(X) mag = [0.000001,5.0] vV
 
   input Y {V:vV}
-  def V(Y) mag = [1,5.] vV
+  def V(Y) mag = [1,5.0] vV
   
   input Z {V:vV}
-  def V(Z) mag = [0.000001,5.] vV
+  def V(Z) mag = [0.000001,5.0] vV
   
   output P {V:vV}
-  def V(P) mag = [0.000001,5.] vV
+  def V(P) mag = [0.000001,5.0] vV
 
   rel V(P) = (V(X)/V(Y))*V(Z)*0.5
 
@@ -131,14 +131,14 @@ comp vadd
   param CSW : none = {0,1}
   param DSW : none = {0,1}
 
-  def V(A) mag = [0,5.] vV
-  def V(B) mag = [0,5.] vV 
-  def V(C) mag = [0,5.] vV 
-  def V(D) mag = [0,5.] vV
-  def V(OUT2_0) mag = [0,5.] vV
+  def V(A) mag = [0,5.0] vV
+  def V(B) mag = [0,5.0] vV 
+  def V(C) mag = [0,5.0] vV 
+  def V(D) mag = [0,5.0] vV
+  def V(OUT2_0) mag = [0,5.0] vV
 
   % only produces outputs in this range
-  %def I(OUT) mag = [0.000,5.] vV
+  %def I(OUT) mag = [0.000,5.0] vV
 
   rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   
@@ -155,8 +155,8 @@ comp vtoi
   output Y {I:mA}
 
   %def I(Y) mag = [0.000001,0.01] mA
-  def V(K) mag = [1,5.] vV
-  def V(X) mag = [1,5.] vV
+  def V(K) mag = [1,5.0] vV
+  def V(X) mag = [1,5.0] vV
 
   rel I(Y) = (1/V(K))*V(X)
   
@@ -169,7 +169,7 @@ comp itov
   input K {V:vV}
   output Y {V:vV}
   def I(X) mag = [0.000001,0.01] mA
-  def V(K) mag = [1,5.] vV
+  def V(K) mag = [1,5.0] vV
 
   rel V(Y) = (V(K))*I(X)
 
@@ -223,11 +223,11 @@ comp mm
   input kr {I:mA}
   input XY0 {V:vV}
 
-  def V(Xtot) mag = [0.001,5.] vV
-  def V(Ytot) mag = [0.001,5.] vV
+  def V(Xtot) mag = [0.001,5.0] vV
+  def V(Ytot) mag = [0.001,5.0] vV
   def I(kf) mag = [0.000001,0.01] mA
   def I(kr) mag = [0.000001,0.01] mA
-  def V(XY0) mag = [0.00,5.] vV
+  def V(XY0) mag = [0.00,5.0] vV
 
 
   output XY {V:vV}
@@ -237,7 +237,7 @@ comp mm
   rel V(X) = V(Xtot) - V(XY)
   rel V(Y) = V(Ytot) - V(XY)
   rel ddt V(XY) = I(kf)*V(X)*V(Y) - I(kr)*V(XY) init V(XY0)
-  def V(XY) mag = [0,1] vV
+  def V(XY) mag = [0,5] vV
   var ddt V(XY) = 0.05*V(XY) + 0.01 shape GAUSS
 
 end
@@ -251,7 +251,7 @@ comp switch
   def I(SUB) mag = [0.000001,0.01] mA
   def I(Vmax) mag = [0.000001,0.01] mA
   def V(n) mag = [0.1,3] vV
-  def I(Kmod) mag = [1,0.01] mA
+  def I(Kmod) mag = [0.0001,0.01] mA
 
   output PROD {I:mA}
 
@@ -264,14 +264,14 @@ end
 schematic
 
   inst input I : 50
-  inst output I : 0.01
-  inst copy I : 0.01
-  inst mm : 4
+  inst output I : 10 
+  inst copy I : 10
+  %inst mm : 4
   inst switch : 15
   
   inst input V : 125
   inst output V : 75
-  inst copy V : 0.01
+  inst copy V : 10
 
   inst vadd : 35
   inst vgain : 40

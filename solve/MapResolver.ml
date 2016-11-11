@@ -194,8 +194,11 @@ struct
       | [] -> Z3Comment("removed zero elem eq")
     in
     let stmt_to_z3prob s = match s with
-      | SVDeclMapVar(SVLinVar(x)) ->
-        enq (Z3ConstDecl(linearid2name tbl x,Z3Real))
+      | SVDeclMapVar(SVLinVar(SVScaleVar(x))) ->
+        enq (Z3ConstDecl(linearid2name tbl (SVScaleVar x),Z3Real));
+        enq (Z3Assert(Z3GT(Z3Var(linearid2name tbl (SVScaleVar x)),Z3Real(0.))))
+      | SVDeclMapVar(SVLinVar(SVOffsetVar(x))) ->
+        enq (Z3ConstDecl(linearid2name tbl (SVOffsetVar x),Z3Real))
       | SVDeclMapVar(SVSlackVar(dir,weight,x)) ->
         let svar_name = linearsmtid2name tbl (SVSlackVar(dir,weight,x)) in
         MAP.put slackvars svar_name weight;

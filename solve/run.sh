@@ -8,6 +8,13 @@ NAME=$4
 
 SOLVER=./solver.debug
 
+git pull
+
+./killall.sh dReal
+./killall.sh solver.debug 
+./killall.sh solver 
+./mkconfigs.sh
+
 if [ "$CMD" = "test-math" ]; then
   make && ${SOLVER} -hwspec test/math/empty.spec -formula test/math-parser/$NAME.math -interactive "tm-$NAME.ckt"
 fi
