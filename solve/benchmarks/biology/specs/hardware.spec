@@ -19,7 +19,6 @@ digital input I
   def D(X) mag = [0.0,10] uA
 
   rel I(O) = D(X)
-  var I(O) = I(O)*0.00001 shape UNIFORM
 end
 
 digital output I
@@ -41,7 +40,7 @@ comp copy I
   output Y {I:uA}
 
   rel I(Y) = I(X)
-  var I(Y) = I(Y)*0.00001 shape UNIFORM
+  var I(Y) = I(Y)*0.00001 + 0.0001 shape UNIFORM
 end
 
 digital input V
@@ -55,6 +54,7 @@ digital input V
   def D(X) mag = [0,3300] mV
 
   rel V(O) = D(X)
+
 end
 
 digital output V
@@ -96,6 +96,7 @@ comp vgain
   def V(P) mag = [0.0001,3300] mV
 
   rel V(P) = (V(X)/V(Y))*V(Z)*0.5
+  var ddt V(OUT) = 0.0001*V(P) + 0.01 shape GAUSS
 
   sim vgain X Y Z P
 
@@ -113,6 +114,7 @@ comp iadd
   def I(D) mag = [0.0,5] uA
   def I(OUT) mag = [0.0,10] uA
   rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
+  var ddt V(OUT) = 0.00001*V(OUT) + 0.001 shape GAUSS
 
 end
 
@@ -138,14 +140,12 @@ comp vadd
   def V(OUT2_0) mag = [0,3300] mV
 
   % only produces outputs in this range
-  %def I(OUT) mag = [0.000,3300] mV
-
   rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
-  
+  var ddt V(OUT) = 0.001*V(OUT) + 0.1 shape GAUSS
 
   rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2))*0.25  init V(OUT2_0)
-  def V(OUT2) mag = [0,5] mV
-  var ddt V(OUT2) = 0.1*V(OUT2) + 0.01 shape GAUSS
+  def V(OUT2) mag = [0,3300] mV
+  var ddt V(OUT2) = 0.001*V(OUT2) + 0.1 shape GAUSS
 
 end
 
@@ -159,7 +159,8 @@ comp vtoi
   def V(X) mag = [1,3300] mV
 
   rel I(Y) = (1/V(K))*V(X)
-  
+  var I(Y) = 0.001 shape GAUSS
+
   sim vtoi X K Y
 
 end
@@ -172,6 +173,7 @@ comp itov
   def V(K) mag = [1,330] mV
 
   rel V(Y) = (V(K))*I(X)
+  var I(Y) = 0.1 shape GAUSS
 
   sim itov X K Y
 end
@@ -238,7 +240,7 @@ comp mm
   rel V(Y) = V(Ytot) - V(XY)
   rel ddt V(XY) = I(kf)*V(X)*V(Y) - I(kr)*V(XY) init V(XY0)
   def V(XY) mag = [0,3300] mV
-  %var ddt V(XY) = 0.05*V(XY) + 0.01 shape GAUSS
+  var ddt V(XY) = 0.001*V(XY) + 0.1 shape GAUSS
 
 end
 
