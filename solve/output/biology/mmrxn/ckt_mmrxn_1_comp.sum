@@ -66,11 +66,41 @@ input Z.V
 <analog> [v]=[0.0001,3300.] {v}->[v]=@
 
 output P.V
-<analog>:((ES/0.049504950495)*1*0.5) / std=gauss ((0.0001*(10.1*ES))+0.01)
+<analog>:((S/0.0396322130628)*1*0.5) / std=gauss ((0.0001*(12.616*S))+0.01)
 <analog> [v]=[0.0001,3300.] {v}->[v]=@
 
 
+==== output.V 2 ====
+input X.V
+<input>
+<analog> [v]=[0.0001,3300.] {v}->[v]=@
+
+output O.D
+<analog>:E / std=none 0
+<digital>
+
+
 ==== output.V 0 ====
+input X.V
+<input>
+<analog> [v]=[0.0001,3300.] {v}->[v]=@
+
+output O.D
+<analog>:S / std=none 0
+<digital>
+
+
+==== output.V 3 ====
+input X.V
+<input>
+<analog> [v]=[0.0001,3300.] {v}->[v]=@
+
+output O.D
+<analog>:ES / std=none 0
+<digital>
+
+
+==== output.V 1 ====
 input X.V
 <input>
 <analog> [v]=[0.0001,3300.] {v}->[v]=@
@@ -139,7 +169,7 @@ input B.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 output OUT.V
-<analog>:(((0+(1*(10.1*ES)))-(1*0)-(1*(12.616*S)))*0.25) / std=gauss ((0.001*(12.616*S))+0.1)
+<analog>:(((0+(1*(10.1*ES)))-(1*0)-(1*(12.616*S)))*0.25) / std=gauss ((0.001*(10.1*ES))+0.1)
 <analog> [v]={[-1650.,1650.] [-825.,1650.] [-825.,1650.] [0.,1650.] [-1650.,825.] [-825.,825.] [-825.,825.] [0.,825.] } {v}->[v]=@
 
 output OUT2.V
@@ -222,7 +252,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:0.049504950495 / std=none 0
+<analog>:0.0539956803456 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -322,7 +352,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:12.616 / std=none 0
+<analog>:0.256 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -362,7 +392,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:0.256 / std=none 0
+<analog>:0.124 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -412,7 +442,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:0.0539956803456 / std=none 0
+<analog>:10.1 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -422,7 +452,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:0.124 / std=none 0
+<analog>:0.595238095238 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -432,7 +462,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:0.595238095238 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -452,7 +482,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:1 / std=none 0
+<analog>:0.0396322130628 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -466,7 +496,7 @@ input K.V
 <analog> [v]=[1.,330.] {v}->[v]=@
 
 output Y.V
-<analog>:(12.616*S) / std=gauss 0.1
+<analog>:(10.1*ES) / std=gauss 0.1
 <analog> [v]=[0.0001,3300.] {v}->[v]=@
 
 

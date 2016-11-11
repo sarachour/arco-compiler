@@ -157,12 +157,15 @@ struct
   noop (MAP.put basic_fxns "mfxn" "simulink/Math Operations/Math Function");;
   noop (MAP.put basic_fxns "comp" "simulink/Ports & Subsystems/Subsystem");;
 
+  type clamp_type =
+    | ClampFxn of simel
+    | ClampDeriv of simel*simel
   type symtbl = {
     (*fully qualified name*)
     paths: (string,simel) map;
     (*comp to block info*)
     blocks: (string,simblock) map;
-    clamps: (hwcompname,(string,simel) map) map;
+    clamps: (hwcompname,(string,clamp_type) map) map;
     integs: (hwcompname,(string,simel) map) map;
   }
 
@@ -834,12 +837,12 @@ struct
     );
     HwLib.comp_iter_outs comp (fun vr ->
         let int_out = SIMBlockIn(cmpns,"_"^vr.port,"I") in
+        let dflt_min,dflt_max = 0.,1. in
         match vr.bhvr,vr.defs with
         | HWBAnalog(bhvr),HWDAnalog(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
           (*compute handles*)
           let handle = expr2blockdiag q cmpns bhvr.rhs in
-          let min,max = 0.,1. in
           begin
             match model_noise(), model_ideal() with
             | true,true ->
@@ -854,9 +857,9 @@ struct
             | true,false ->
               let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
               let _,variance,noise_in,noise_out = create_noise q cmpns in 
-              let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
+              let clamp,clamp_in,clamp_out= create_clamp q cmpns dflt_min dflt_max in
               begin
-                declare_clamp comp.name vr.port clamp;
+                declare_clamp comp.name vr.port (ClampFxn clamp);
                 q (add_route_line handle clamp_in);
                 q (add_route_line clamp_out noise_in);
                 q (add_route_line var_handle variance);
@@ -869,8 +872,8 @@ struct
               ()
             | false,false ->
               begin
-                let clamp,clamp_in,clamp_out= create_clamp q cmpns min max in
-                declare_clamp comp.name vr.port clamp;
+                let clamp,clamp_in,clamp_out= create_clamp q cmpns dflt_min dflt_max in
+                declare_clamp comp.name vr.port (ClampFxn clamp);
                 q (add_route_line handle clamp_in);
                 q (add_route_line clamp_out int_out);
                 ()
@@ -881,7 +884,6 @@ struct
         | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
           (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
           let smin,smax = IntervalLib.interval2numbounds defs.stvar.ival in
-          let dmin,dmax =  0.,1. in
           let handle = expr2blockdiag q cmpns bhvr.rhs in
           let integ,integ_in,integ_out = create_integrator q cmpns in
           declare_integ comp.name vr.port integ;
@@ -902,9 +904,9 @@ struct
                 begin
                   let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
                   let _,variance,noise_in,noise_out = create_noise q cmpns in 
-                  let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
+                  let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dflt_min dflt_max in
                   let sclamp,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
-                  declare_clamp comp.name vr.port dcclamp;
+                  declare_clamp comp.name vr.port (ClampDeriv(sclamp,dcclamp));
                   q (add_route_line handle dclamp_in);
                   q (add_route_line dclamp_out noise_in);
                   q (add_route_line var_handle variance);
@@ -923,9 +925,9 @@ struct
 
               | false,false ->
                 begin
-                  let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dmin dmax in
-                  let _,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
-                  declare_clamp comp.name vr.port dcclamp;
+                  let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dflt_min dflt_max in
+                  let sclamp,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
+                  declare_clamp comp.name vr.port (ClampDeriv(sclamp,dcclamp));
                   q (add_route_line handle dclamp_in);
                   q (add_route_line dclamp_out integ_in);
                   q (add_route_line integ_out sclamp_in);
@@ -1005,14 +1007,34 @@ struct
         decl_copy refr loc;
         q (copy_route_block refr loc);
         (*specialize intervals*)
+        (*update clamping from config*)
         iter_clamps inst.name (fun portname cloc ->
-            let ival = IntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname in
-            let min,max = IntervalLib.interval2numbounds ival in 
             match cloc with
-            | SIMBlock(templ_ns,clampname) ->
-              let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],clampname) in
-              update_clamp q newblock min max
-            | _ ->
+              | ClampFxn(SIMBlock(templ_ns,clampname)) ->
+                begin
+                  let ival = IntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname in
+                  let min,max = IntervalLib.interval2numbounds ival in 
+                  let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],clampname) in
+                  update_clamp q newblock min max
+                end
+
+
+              | ClampDeriv(SIMBlock(stvar_ns,stvar_clampname),SIMBlock(deriv_ns,deriv_clampname)) ->
+                begin
+                  let ival =
+                    IntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
+                  in
+                  let deriv_ival =
+                    IntervalCompute.compute_deriv_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
+                  in
+                  let smin,smax = IntervalLib.interval2numbounds ival in
+                  let dmin,dmax = IntervalLib.interval2numbounds deriv_ival in
+                  let stvar_newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],stvar_clampname) in
+                  let deriv_newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],deriv_clampname) in
+                  update_clamp q stvar_newblock smin smax;
+                  update_clamp q deriv_newblock dmin dmax
+                end
+              | _ ->
               error "create_circuit" "expected sim block"
             ()
           );
