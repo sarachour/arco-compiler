@@ -48,7 +48,7 @@ def ddt clm time 0.001
 
 rel ddt TetRm = ((TRTetR)) - (kd_mrna*TetRm) init 0
 def TetRm mag = [0,0.5] M
-def ddt TetRr time 0.001 
+def ddt TetRm time 0.001 
 
 rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 0
 def LacLp mag = [0,2] M
