@@ -2,6 +2,7 @@
 
 BENCH=$1 
 
+source ../env.sh
 git pull
 make clean; make
 
