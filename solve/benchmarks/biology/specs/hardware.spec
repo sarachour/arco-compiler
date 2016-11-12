@@ -190,7 +190,7 @@ comp ihill
   def I(Vmax) mag = [0.0001,10] uA
   def I(S) mag = [1,10] uA
   def I(Km) mag = [1,10] uA
-  def V(n) mag = [1,5] uA
+  def V(n) mag = [1,5] mV
 
   output STIM {I:uA}
   output REP {I:uA}
@@ -266,7 +266,7 @@ end
 
 schematic
 
-  inst input I : 50
+  inst input I : 500
   inst output I : 10
   inst copy I : 10
   inst mm : 4
