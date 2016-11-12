@@ -25,11 +25,11 @@ param kdeg : (mol/s) = 0.001
 %param Km : (mol/s) = 1
 
 
-output U : unit
-output V : unit
-local umodif : unit
-local UTF : unit
-local VTF : unit
+output U : 1 
+output V : 1 
+local umodif : 1 
+local UTF : 1
+local VTF : 1
 
 input Km : mol
 def Km mag = [0.5,1] mol
@@ -42,11 +42,10 @@ def IPTG mag = [0,1] mol
 
 rel umodif = (U)/((1+IPTG/K)^nu)
 
-(*the compartment size*)
+%the compartment size
 rel UTF = (Cu*a1)*((Km^beta)/((Km^beta) +(V^beta)))
 rel VTF = (((Cv*a2)*(Km^gamma))/((Km^gamma) + (umodif^gamma)))
 
-(*U*)
 rel ddt U =  (UTF) - (Cu*kdeg*U) init 0.0
 def U mag = [0,0.0156] mol
 def ddt U time 0.001 

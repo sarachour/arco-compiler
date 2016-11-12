@@ -11,6 +11,7 @@ SOLVER=./solver.debug
 
 
 ./killall.sh dReal
+./killall.sh z3 
 ./killall.sh solver.debug 
 ./killall.sh solver 
 ./mkconfigs.sh
