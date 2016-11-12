@@ -1,71 +1,71 @@
 
 === Route ===
 
-val 50.464 -> input.I[0].X
 val 10.1 -> [input.V[0].X,input.V[1].X]
-val 9.26 -> input.V[2].X
-val 0 -> [input.V[3].X,input.V[14].X,input.V[13].X,input.V[12].X,input.V[11].X,input.V[10].X,input.V[9].X,input.V[8].X,input.V[7].X,input.V[6].X,input.V[5].X,input.V[4].X]
-val 12.616 -> [input.V[15].X,input.V[16].X]
-val 0.256 -> input.V[17].X
-val 0.124 -> input.V[18].X
-val 0.84 -> input.V[19].X
+val 9.26 -> input.I[0].X
+val 0 -> [input.V[2].X,input.V[12].X,input.V[11].X,input.V[10].X,input.V[9].X,input.V[8].X,input.V[7].X,input.V[6].X,input.V[5].X,input.V[4].X,input.V[3].X]
+val 12.616 -> [input.V[13].X,input.V[14].X]
+val 0.256 -> input.V[15].X
+val 0.124 -> input.V[16].X
+val 0.84 -> input.I[1].X
+val 1 -> input.V[17].X
+val 0.0396322130628 -> input.V[18].X
 
 
 === Generate ===
-lc S -> vadd[10].OUT2
-lc E -> vadd[1].OUT2
-lc ES -> vadd[4].OUT2
-out P -> [vadd[8].OUT2,output.V[0].O]
+out S -> [vadd[9].OUT2,output.V[0].O]
+out P -> [vadd[7].OUT2,output.V[1].O]
+out E -> [vadd[1].OUT2,output.V[2].O]
+out ES -> [vadd[4].OUT2,output.V[3].O]
 
-val 50.464 -> input.I[0].O
 val 10.1 -> [input.V[1].O,input.V[0].O]
-val 9.26 -> input.V[2].O
-val 0 -> [input.V[3].O,input.V[13].O,input.V[14].O,input.V[12].O,input.V[11].O,input.V[10].O,input.V[9].O,input.V[8].O,input.V[7].O,input.V[6].O,input.V[5].O,input.V[4].O]
-val 12.616 -> [input.V[16].O,input.V[15].O]
-val 0.256 -> input.V[17].O
-val 0.124 -> input.V[18].O
-val 0.84 -> input.V[19].O
+val 9.26 -> input.I[0].O
+val 0 -> [input.V[2].O,input.V[11].O,input.V[12].O,input.V[10].O,input.V[9].O,input.V[8].O,input.V[7].O,input.V[6].O,input.V[5].O,input.V[4].O,input.V[3].O]
+val 12.616 -> [input.V[14].O,input.V[13].O]
+val 0.256 -> input.V[15].O
+val 0.124 -> input.V[16].O
+val 0.84 -> input.I[1].O
+val 1 -> input.V[17].O
+val 0.0396322130628 -> input.V[18].O
 
-ast (12.616*E) -> [vadd[6].OUT,itov[11].Y,itov[11].Y]
 ast (12.616*S) -> [itov[2].Y,itov[2].Y]
-ast (50.464*E) -> [itov[3].Y,itov[3].Y]
-ast (0.84*ES) -> [itov[7].Y,itov[7].Y]
-ast (9.26*ES) -> [itov[9].Y,itov[9].Y]
 ast (10.1*ES) -> [itov[0].Y,itov[0].Y]
 ast (12.616*E*S) -> [itov[5].Y,itov[5].Y]
+ast (0.84*ES) -> [itov[6].Y,itov[6].Y]
+ast (12.616*E) -> [vgain[3].P,itov[10].Y,itov[10].Y]
+ast (9.26*ES) -> [itov[8].Y,itov[8].Y]
 
 === Connect ===
+vadd[7].OUT2 ->  output.V[1].X
 itov[2].Y ->  vadd[1].D
-input.V[17].O ->  vadd[10].OUT2_0
-vadd[4].OUT2 ->  itov[0].X itov[7].X itov[9].X
-vadd[1].OUT2 ->  itov[3].K itov[11].X
-input.I[0].O ->  itov[3].X
-input.V[9].O ->  vadd[8].OUT2_0
-itov[11].Y ->  vadd[10].D
-input.V[15].O ->  itov[11].K
-input.V[13].O ->  vadd[10].C
-input.V[14].O ->  vadd[10].A
-input.V[11].O ->  vadd[8].C
+vadd[4].OUT2 ->  itov[6].K itov[0].X itov[8].K output.V[3].X
+input.V[17].O ->  vgain[3].X
+vadd[1].OUT2 ->  vgain[3].Z itov[10].X output.V[2].X
+input.I[0].O ->  itov[8].X
+input.V[9].O ->  vadd[7].C
+input.V[15].O ->  vadd[9].OUT2_0
+input.V[13].O ->  itov[10].K
+input.V[14].O ->  itov[2].K
+input.V[11].O ->  vadd[9].C
 itov[5].Y ->  vadd[4].B
-input.V[8].O ->  vadd[6].B
-input.V[12].O ->  vadd[8].D
-input.V[2].O ->  itov[9].K
-input.V[3].O ->  vadd[1].C
-itov[7].Y ->  vadd[8].B
-input.V[19].O ->  itov[7].K
+itov[8].Y ->  vadd[9].B
+input.V[8].O ->  vadd[7].A
+input.V[12].O ->  vadd[9].A
+input.V[2].O ->  vadd[1].C
+input.V[3].O ->  vadd[1].A
+vgain[3].P ->  itov[5].K
 itov[0].Y ->  vadd[1].B
-vadd[6].OUT ->  itov[5].K
+input.I[1].O ->  itov[6].X
 input.V[1].O ->  itov[0].K
-vadd[10].OUT2 ->  itov[2].X itov[5].X
-input.V[7].O ->  vadd[4].C
-vadd[8].OUT2 ->  output.V[0].X
-itov[3].Y ->  vadd[6].A
-input.V[10].O ->  vadd[8].A
+input.V[7].O ->  vadd[7].OUT2_0
+vadd[9].OUT2 ->  itov[2].X itov[5].X output.V[0].X
+itov[6].Y ->  vadd[7].B
+input.V[10].O ->  vadd[7].D
 input.V[0].O ->  vadd[4].D
-input.V[18].O ->  vadd[1].OUT2_0
-input.V[16].O ->  itov[2].K
-itov[9].Y ->  vadd[10].B
-input.V[4].O ->  vadd[1].A
-input.V[5].O ->  vadd[4].OUT2_0
-input.V[6].O ->  vadd[4].A
+itov[10].Y ->  vadd[9].D
+input.V[16].O ->  vadd[1].OUT2_0
+input.V[18].O ->  vgain[3].Y
+input.V[5].O ->  vadd[4].A
+input.V[4].O ->  vadd[4].OUT2_0
+input.V[6].O ->  vadd[4].C
 
