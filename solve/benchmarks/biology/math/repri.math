@@ -10,7 +10,7 @@ type s
 local TRLacL : M
 local TRTetR : M
 local TRclp : M
-
+%
 output LacLp : M
 output TetRp : M
 output clp : M
@@ -34,11 +34,17 @@ time t : s
 %s
 input KMp : M
 %Set KMp to 40
-def KMp mag = [40,40] M
+def KMp mag = [1,40] M
+input Q : M
+def Q mag = [0,1] M
 
-rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
-rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
-rel TRclp =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
+rel TRLacL =(a_tr)*(1/( 1 + ((LacLp/KMp)^n)))
+rel TRTetR =(a_tr)*(1/( 1 + ((TetRp/KMp)^n)))
+rel TRclp =(a_tr)*(1/( 1 + ((clp/KMp)^n)))
+
+%rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
+%rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
+%rel TRclp =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
 
 rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm) init 0
 def LacLm mag = [0,0.5] M

@@ -255,7 +255,7 @@ comp switch
 
   def I(SUB) mag = [0.0001,10] uA
   def I(Vmax) mag = [0.0001,10] uA
-  def V(n) mag = [0.5,3300] mV
+  def V(n) mag = [500,3300] mV
   def I(Kmod) mag = [0.0001,10] uA
 
   output PROD {I:uA}
@@ -267,27 +267,27 @@ end
 
 
 schematic
-
+%
   inst input I : 500
   inst output I : 10
   inst copy I : 10
   inst mm : 4
   inst switch : 15
-  
+%  
   inst input V : 125
   inst output V : 75
   inst copy V : 10
-
+%
   inst vadd : 35
   inst vgain : 40
-
+%
   inst iadd : 30
   inst igenebind : 8
   inst ihill : 8
-
+%
   inst itov : 30
   inst vtoi : 30
-
+%
 
 
   % Transcription rate functions
