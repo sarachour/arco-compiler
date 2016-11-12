@@ -4,7 +4,7 @@
 val 5500 -> input.V[0].X
 val 0 -> input.V[1].X
 val 3200 -> input.V[2].X
-val 1 -> [input.I[0].X,input.I[1].X]
+val 0.01 -> [input.I[0].X,input.I[1].X]
 
 
 === Generate ===
@@ -15,7 +15,7 @@ out ES -> [mm[0].XY,output.V[2].O]
 val 5500 -> input.V[0].O
 val 0 -> input.V[1].O
 val 3200 -> input.V[2].O
-val 1 -> [input.I[1].O,input.I[0].O]
+val 0.01 -> [input.I[1].O,input.I[0].O]
 
 
 === Connect ===

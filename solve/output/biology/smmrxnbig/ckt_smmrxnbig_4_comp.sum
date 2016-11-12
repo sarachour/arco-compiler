@@ -4,7 +4,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0 / std=none 0
+<analog>:0.01 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -14,7 +14,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:5500 / std=none 0
+<analog>:0 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -24,7 +24,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:1 / std=none 0
+<analog>:5499 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -44,7 +44,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0 / std=none 0
+<analog>:0.01 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -104,7 +104,7 @@ output X.V
 <analog> [v]=[-3299.9999,3300.] {v}->[v]=@
 
 output XY.V
-<analog-st> ((1*E*S)-(1*ES)) ic=XY0.V / std=gauss ((0.001*ES)+0.1)
+<analog-st> ((0.01*E*S)-(0.01*ES)) ic=XY0.V / std=gauss ((0.001*ES)+0.1)
 <analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
 <analog-st> [v]=[0.,3300.] {v}->[v]=@ {v}->*[v]=@
 
@@ -161,7 +161,7 @@ input B.I
 <analog> [v]=[0.,5.] {v}->[v]=@
 
 output OUT.I
-<analog>:((0+5500)-0-ES) / std=gauss ((1e-05*E)+0.001)
+<analog>:((1+5499)-0-ES) / std=gauss ((1e-05*E)+0.001)
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 

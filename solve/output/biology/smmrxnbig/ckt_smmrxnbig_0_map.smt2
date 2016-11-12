@@ -13,17 +13,17 @@
 ; =  {of.input.I[0].O} {of.input.I[0].X}
 (assert (= of_1 of_0))
 ; 
-; >=  {((sc.input.I[0].X*1.)+of.input.I[0].X)} {10.}
-(assert (<= (+ (* sc_0 1.) of_0) 10.))
+; >=  {((sc.input.I[0].X*0.01)+of.input.I[0].X)} {10.}
+(assert (<= (+ (* sc_0 0.01) of_0) 10.))
 ; 
-; <=  {((sc.input.I[0].X*1.)+of.input.I[0].X)} {0.}
-(assert (>= (+ (* sc_0 1.) of_0) 0.))
+; <=  {((sc.input.I[0].X*0.01)+of.input.I[0].X)} {0.}
+(assert (>= (+ (* sc_0 0.01) of_0) 0.))
 ; 
-; >=  {((sc.input.I[0].O*1.)+of.input.I[0].O)} {10.}
-(assert (<= (+ (* sc_1 1.) of_1) 10.))
+; >=  {((sc.input.I[0].O*0.01)+of.input.I[0].O)} {10.}
+(assert (<= (+ (* sc_1 0.01) of_1) 10.))
 ; 
-; <=  {((sc.input.I[0].O*1.)+of.input.I[0].O)} {0.}
-(assert (>= (+ (* sc_1 1.) of_1) 0.))
+; <=  {((sc.input.I[0].O*0.01)+of.input.I[0].O)} {0.}
+(assert (>= (+ (* sc_1 0.01) of_1) 0.))
 (declare-fun sc_2 () Real)
 (assert (> sc_2 1e-08))
 (declare-fun of_2 () Real)
@@ -37,17 +37,17 @@
 ; =  {of.input.I[1].O} {of.input.I[1].X}
 (assert (= of_3 of_2))
 ; 
-; >=  {((sc.input.I[1].X*1.)+of.input.I[1].X)} {10.}
-(assert (<= (+ (* sc_2 1.) of_2) 10.))
+; >=  {((sc.input.I[1].X*0.01)+of.input.I[1].X)} {10.}
+(assert (<= (+ (* sc_2 0.01) of_2) 10.))
 ; 
-; <=  {((sc.input.I[1].X*1.)+of.input.I[1].X)} {0.}
-(assert (>= (+ (* sc_2 1.) of_2) 0.))
+; <=  {((sc.input.I[1].X*0.01)+of.input.I[1].X)} {0.}
+(assert (>= (+ (* sc_2 0.01) of_2) 0.))
 ; 
-; >=  {((sc.input.I[1].O*1.)+of.input.I[1].O)} {10.}
-(assert (<= (+ (* sc_3 1.) of_3) 10.))
+; >=  {((sc.input.I[1].O*0.01)+of.input.I[1].O)} {10.}
+(assert (<= (+ (* sc_3 0.01) of_3) 10.))
 ; 
-; <=  {((sc.input.I[1].O*1.)+of.input.I[1].O)} {0.}
-(assert (>= (+ (* sc_3 1.) of_3) 0.))
+; <=  {((sc.input.I[1].O*0.01)+of.input.I[1].O)} {0.}
+(assert (>= (+ (* sc_3 0.01) of_3) 0.))
 (declare-fun sc_4 () Real)
 (assert (> sc_4 1e-08))
 (declare-fun of_4 () Real)
@@ -203,11 +203,11 @@
 ; =  {of.mm[0].Y} {(of.mm[0].Ytot-of.mm[0].XY)}
 (assert (= of_17 (- of_12 of_16)))
 ; 
-; >=  {((sc.mm[0].kr*1.)+of.mm[0].kr)} {10.}
-(assert (<= (+ (* sc_10 1.) of_10) 10.))
+; >=  {((sc.mm[0].kr*0.01)+of.mm[0].kr)} {10.}
+(assert (<= (+ (* sc_10 0.01) of_10) 10.))
 ; 
-; <=  {((sc.mm[0].kr*1.)+of.mm[0].kr)} {0.0001}
-(assert (>= (+ (* sc_10 1.) of_10) 0.0001))
+; <=  {((sc.mm[0].kr*0.01)+of.mm[0].kr)} {0.0001}
+(assert (>= (+ (* sc_10 0.01) of_10) 0.0001))
 (declare-fun slbot_15 () Real)
 (declare-fun sltop_15 () Real)
 ; 
@@ -251,11 +251,11 @@
 ; <=  {((sc.mm[0].Xtot*5500.)+of.mm[0].Xtot)} {0.0001}
 (assert (>= (+ (* sc_14 5500.) of_14) 0.0001))
 ; 
-; >=  {((sc.mm[0].kf*1.)+of.mm[0].kf)} {10.}
-(assert (<= (+ (* sc_13 1.) of_13) 10.))
+; >=  {((sc.mm[0].kf*0.01)+of.mm[0].kf)} {10.}
+(assert (<= (+ (* sc_13 0.01) of_13) 10.))
 ; 
-; <=  {((sc.mm[0].kf*1.)+of.mm[0].kf)} {0.0001}
-(assert (>= (+ (* sc_13 1.) of_13) 0.0001))
+; <=  {((sc.mm[0].kf*0.01)+of.mm[0].kf)} {0.0001}
+(assert (>= (+ (* sc_13 0.01) of_13) 0.0001))
 (declare-fun sc_18 () Real)
 (assert (> sc_18 1e-08))
 (declare-fun of_18 () Real)
