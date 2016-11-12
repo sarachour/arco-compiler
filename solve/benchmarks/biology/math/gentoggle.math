@@ -20,8 +20,8 @@ param nu : unit = 2.0015
 param beta : unit = 2.5
 param gamma : unit = 1.0
 
-param Cv : unit = 0.001
-param Cu : 1/M  = 0.001
+param Cv : unit = 0.01
+param Cu : 1/M  = 0.01
 param kdeg : (M/s) = 1
 
 
