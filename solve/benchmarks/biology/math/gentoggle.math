@@ -5,6 +5,7 @@ name "genetic toggle switch with E.coli"
 
 
 type mol
+type kmol
 type s
 
 time t : s
@@ -13,7 +14,7 @@ param a2 : mol/s = 15.6
 param a1 : mol/s = 156.25
 
 
-param K : mol = 0.000029618
+param K : kmol = 0.029618
 
 param nu : unit = 2.0015
 param beta : unit = 2.5
@@ -35,7 +36,7 @@ input Km : mol
 def Km mag = [0.5,1] mol
 
 input IPTG : mol
-def IPTG mag = [0,1] mol
+def IPTG mag = [0,0.060] mol
 
 %this relation is solvable
 %individually, everything is solvable

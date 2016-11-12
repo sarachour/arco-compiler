@@ -254,11 +254,11 @@ comp switch
   def I(SUB) mag = [0.0001,10] uA
   def I(Vmax) mag = [0.0001,10] uA
   def V(n) mag = [0.5,3300] mV
-  def I(Kmod) mag = [1,10] uA
+  def I(Kmod) mag = [0.0001,10] uA
 
   output PROD {I:uA}
 
-  rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)))
+  rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)/500.0))
 end
 
 
