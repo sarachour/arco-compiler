@@ -13,8 +13,8 @@ output ES : mols
 
 param ETOT : mols = 5500
 param STOT : mols = 3200
-param kf : 1/s = 1
-param kr : 1/s = 1
+param kf : 1/s = 0.01
+param kr : 1/s = 0.01
 param kcat : 1/s = 0.01
 
 time t : s
