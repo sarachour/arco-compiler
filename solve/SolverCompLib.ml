@@ -366,8 +366,6 @@ struct
   let add_conc_comp (tbl:gltbl) (c:ucomp_conc) =
     let cmp_ctx : ucomp_ctx = MAP.get tbl.comp_ctx c.d.name in 
     if cmp_ctx.cnt <= c.inst then
-      cmp_ctx.cnt <- cmp_ctx.cnt + 1
-    else
       cmp_ctx.cnt <- c.inst + 1;
     if MAP.has cmp_ctx.insts c.inst = false then
       noop (MAP.put cmp_ctx.insts c.inst c)
