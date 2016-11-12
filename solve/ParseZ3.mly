@@ -184,4 +184,4 @@ stmts:
 
 env :
   | stmts EOF {Some $1}
-  | EOF       {None}
+  | EOF       {Some {sat=false;model=None}}

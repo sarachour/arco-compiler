@@ -11,21 +11,25 @@ time t : s
 
 param a2 : mol/s = 15.6
 param a1 : mol/s = 156.25
+
+
 param K : mol = 0.000029618
+
 param nu : none = 2.0015
 param beta : none = 2.5
 param gamma : none = 1.0
-param Cv : none = 1
-param Cu : 1/mol  = 1
+
+param Cv : none = 0.001
+param Cu : 1/mol  = 0.001
 param kdeg : (mol/s) = 0.001
 %param Km : (mol/s) = 1
 
 
-output U : mol
-output V : mol
-local umodif : mol
-local UTF : mol
-local VTF : mol
+output U : unit
+output V : unit
+local umodif : unit
+local UTF : unit
+local VTF : unit
 
 input Km : mol
 def Km mag = [0.5,1] mol
@@ -38,13 +42,15 @@ def IPTG mag = [0,1] mol
 
 rel umodif = (U)/((1+IPTG/K)^nu)
 
+(*the compartment size*)
 rel UTF = (Cu*a1)*((Km^beta)/((Km^beta) +(V^beta)))
-rel VTF = (((Cv*a2)*(Km^gamma))/((Km*gamma) + (umodif^gamma)))
+rel VTF = (((Cv*a2)*(Km^gamma))/((Km^gamma) + (umodif^gamma)))
 
-rel ddt U =  (UTF) - (Cu*kdeg*U) init 0.35
-def U mag = [0,15.6] mol
+(*U*)
+rel ddt U =  (UTF) - (Cu*kdeg*U) init 0.0
+def U mag = [0,0.0156] mol
 def ddt U time 0.001 
 
-rel ddt V = VTF - (Cv*kdeg*V) init 0.5
-def V mag = [0,156.25] mol
+rel ddt V = VTF - (Cv*kdeg*V) init 0.0
+def V mag = [0,0.15625] mol
 def ddt V time 0.001 
