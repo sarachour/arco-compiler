@@ -22,7 +22,7 @@ param gamma : unit = 1.0
 
 param Cv : unit = 0.001
 param Cu : 1/mol  = 0.001
-param kdeg : (1/s) = 1
+param kdeg : (mol/s) = 1
 %param Km : (mol/s) = 1
 
 
@@ -46,10 +46,10 @@ rel UTF = (Cu*a1)*((Km^beta)/((Km^beta) +(V^beta)))
 
 rel VTF = (((Cv*a2)*(Km^gamma))/((Km^gamma) + (umodif^gamma)))
 
-rel ddt U =  ((UTF)/Cu) - (Cu*kdeg*U) init 0.0
+rel ddt U =  (UTF) - (kdeg*U) init 0.0
 def U mag = [0,0.0156] unit 
 def ddt U time 0.001 
 
-rel ddt V = (VTF/Cv) - (Cv*kdeg*V) init 0.0
+rel ddt V = (VTF) - (kdeg*V) init 0.0
 def V mag = [0,0.15625] unit
 def ddt V time 0.001 
