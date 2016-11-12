@@ -379,8 +379,9 @@ struct
                       match ovar.defs with
                       | HWDDigital(dig) ->
                         let hw_sample,_ = dig.sample in
+                        (*scaling the variable*)
                         let hw_sample_expr = OpN(Mult,[
-                            Term(SVScaleVar(wire));
+                            Op2(Div,Decimal(1.),Term(SVScaleVar(wire)));
                             ASTLib.number2ast hw_sample
                           ]) in
                         q (SVLTE(hw_sample_expr,math_sample))
