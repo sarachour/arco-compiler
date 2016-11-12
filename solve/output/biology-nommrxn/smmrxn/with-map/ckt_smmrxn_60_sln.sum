@@ -1,0 +1,54 @@
+
+=== Route ===
+
+val 0.125 -> input.V[0].X
+val -0.11 -> input.I[0].X
+val 0 -> [input.I[1].X,input.V[3].X,input.V[2].X,input.V[1].X,input.I[4].X,input.I[3].X,input.I[2].X]
+val -500 -> input.V[4].X
+val -2 -> input.I[5].X
+val 0.15 -> input.I[6].X
+val 4 -> input.V[5].X
+val 1 -> [input.V[6].X,input.I[7].X]
+
+
+=== Generate ===
+out S -> [iadd[1].OUT,output.I[0].O]
+out E -> [iadd[2].OUT,output.I[1].O]
+out ES -> [vadd[4].OUT2,output.V[0].O]
+
+val 0.125 -> input.V[0].O
+val -0.11 -> input.I[0].O
+val 0 -> [input.I[1].O,input.V[2].O,input.V[3].O,input.V[1].O,input.I[4].O,input.I[3].O,input.I[2].O]
+val -500 -> input.V[4].O
+val -2 -> input.I[5].O
+val 0.15 -> input.I[6].O
+val 4 -> input.V[5].O
+val 1 -> [input.I[7].O,input.V[6].O]
+
+ast (-1*ES) -> [switch[0].PROD,switch[0].PROD]
+ast (4*E*S) -> [vgain[3].P,vgain[3].P]
+ast ES -> vtoi[0].Y
+
+=== Connect ===
+input.I[6].O ->  iadd[2].A
+vadd[4].OUT2 ->  output.V[0].X vtoi[0].X switch[0].Vmax
+input.I[0].O ->  iadd[1].D
+input.I[4].O ->  iadd[2].B
+input.I[3].O ->  iadd[2].C
+switch[0].PROD ->  iadd[1].B
+input.I[5].O ->  switch[0].SUB
+vtoi[0].Y ->  iadd[2].D
+input.I[2].O ->  iadd[1].C
+input.V[3].O ->  vadd[4].C
+input.V[2].O ->  vadd[4].A
+vgain[3].P ->  vadd[4].B
+input.I[1].O ->  iadd[1].A
+iadd[1].OUT ->  vgain[3].Z output.I[0].X
+input.I[7].O ->  switch[0].Kmod
+input.V[1].O ->  vadd[4].OUT2_0
+iadd[2].OUT ->  output.I[1].X vgain[3].X
+input.V[0].O ->  vgain[3].Y
+input.V[5].O ->  vadd[4].D
+input.V[4].O ->  switch[0].n
+input.V[6].O ->  vtoi[0].K
+

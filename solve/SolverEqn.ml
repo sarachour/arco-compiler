@@ -129,6 +129,7 @@ struct
 
 
   let test_node_map_cons tbl node =
+    let mint,musr= mkmenu tbl None in
     let use_heuristic = Globals.get_glbl_bool "eqn-use-map-heuristic" in
     if use_heuristic = false then
       true
@@ -138,6 +139,7 @@ struct
           then
             begin
               debug ("[test-node-validity][FAIL] mapping scoring is too high:"^(string_of_float score));
+              musr();
               false
             end
           else

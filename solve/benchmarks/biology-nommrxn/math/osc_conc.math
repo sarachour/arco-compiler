@@ -7,32 +7,32 @@
 
 
 
-param r1_gamma : none = 50
-param r2_delta : none = 1
-param r3_delta : none = 1
-param r4_delta : none = 0.2
-param r5_gamma : none = 1.0
-param r6_theta:none = 50.0
-param r7_alpha:none = 50
-param r8_alpha:none = 500
-param r9_delta : none = 10.0
-param r10_beta : none= 50.0
-param r11_gamma : none = 1.0
-param r12_theta : none = 100.0
-param r13_alpha : none = 0.01
-param r14_alpha : none = 50
-param r15_delta : none = 0.5
-param r16_beta : none = 5.0
+param r1_gamma : unit = 50
+param r2_delta : unit = 1
+param r3_delta : unit = 1
+param r4_delta : unit = 0.2
+param r5_gamma : unit = 1.0
+param r6_theta:unit = 50.0
+param r7_alpha:unit = 50
+param r8_alpha:unit = 500
+param r9_delta : unit = 10.0
+param r10_beta : unit= 50.0
+param r11_gamma : unit = 1.0
+param r12_theta : unit = 100.0
+param r13_alpha : unit = 0.01
+param r14_alpha : unit = 50
+param r15_delta : unit = 0.5
+param r16_beta : unit = 5.0
 
-local A : none %2
-local C : none %3
-local DA : none %4
-local DAp : none %5
-local DR : none%6
-local DRp : none %7
-local MA : none %8
-local MR : none %9
-local R : none %10
+local A : unit %2
+local C : unit %3
+local DA : unit %4
+local DAp : unit %5
+local DR : unit%6
+local DRp : unit %7
+local MA : unit %8
+local MR : unit %9
+local R : unit %10
 
 
 

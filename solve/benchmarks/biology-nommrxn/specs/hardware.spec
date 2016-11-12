@@ -160,7 +160,7 @@ comp vtoi
   def V(X) mag = [1,3300] mV
 
   rel I(Y) = (1/V(K))*V(X)
-  var I(Y) = 0.001 shape GAUSS
+  var I(Y) = 0.000001 shape GAUSS
 
   sim vtoi X K Y
 
@@ -190,14 +190,16 @@ comp ihill
   def I(Vmax) mag = [0.0001,10] uA
   def I(S) mag = [1,10] uA
   def I(Km) mag = [1,10] uA
-  def V(n) mag = [1,5] uA
+  def V(n) mag = [1,5] mV
 
+  param SWK : none = {0,1}
+  
   output STIM {I:uA}
   output REP {I:uA}
   
   % s^n/(s^n + k^n)
   rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
-  rel I(REP) = I(Vmax)*( (I(Km)^V(n))/( (I(S)^V(n)) + (I(Km)^V(n)) ) )
+  rel I(REP) = I(Vmax)*( (I(Km)^(V(n)*SWK))/( (I(S)^V(n)) + (I(Km)^(V(n)*SWK)) ) )
 
   sim ihill Vmax S n Km STM REP
 end
@@ -254,11 +256,11 @@ comp switch
   def I(SUB) mag = [0.0001,10] uA
   def I(Vmax) mag = [0.0001,10] uA
   def V(n) mag = [0.5,3300] mV
-  def I(Kmod) mag = [1,10] uA
+  def I(Kmod) mag = [0.0001,10] uA
 
   output PROD {I:uA}
 
-  rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)))
+  rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)/500.0))
 end
 
 
@@ -266,10 +268,9 @@ end
 
 schematic
 
-  inst input I : 50
+  inst input I : 500
   inst output I : 10
   inst copy I : 10
-  %inst mm : 4
   inst switch : 15
   
   inst input V : 125

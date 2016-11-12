@@ -167,6 +167,24 @@ struct
         let expr = _derive_scaling_factor expr in
         {scale=Op1(Neg,expr.scale);offset=Op1(Neg,expr.offset);term=node;}
 
+      | Op2(Power,Term(x),Integer(i)) ->
+        let exp = Integer(i) and base = Term(x) in
+        let exp = _derive_scaling_factor exp in
+        let base = _derive_scaling_factor base in
+        add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
+        add_cstrs ([SVNoScale(exp.scale)]);
+        {scale=Op2(Power,exp.scale,Integer(i));
+        offset=Decimal(0.);term=node;}
+
+      | Op2(Power,Term(x),Decimal(d)) ->
+        let exp = Decimal(d) and base = Term(x) in
+        let exp = _derive_scaling_factor exp in
+        let base = _derive_scaling_factor base in
+        add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
+        add_cstrs ([SVNoScale(exp.scale)]);
+        {scale=Op2(Power,exp.scale,Decimal(d));
+        offset=Decimal(0.);term=node;}
+
       | Op2(Power,base,exp) ->
         let exp = _derive_scaling_factor exp in
         let base = _derive_scaling_factor base in
