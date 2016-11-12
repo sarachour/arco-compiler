@@ -40,7 +40,12 @@ let m_menu = menu 1
 let m_print_inter = print_inter 1
 module MultiSearchTree =
 struct
-  let partid2str (id:part_id) = (id.mvr)^"#"^(string_of_int id.ident) 
+  let currtbl = REF.mk None
+
+
+  let upd_curr_tbl x = REF.upd currtbl (fun y -> x )
+
+  let partid2str (id:part_id) = (id.mvr)^"#"^(string_of_int id.ident)
   let glblid2str (id:glbl_id) = (id.mvr_seq)^"#"^(string_of_int id.ident) 
   let step2str x = match x with
     | MSSolveVar(id) -> "-var "^(id)
@@ -83,13 +88,52 @@ struct
     let state = 0. in
     let delta = 1. in
     SearchLib.mkscore state delta
- 
+
+  
+  let score_depth_and_ncomps (s:mustep list) =
+    let get_partial_app tbl id =
+      let tree = MAP.get tbl.state.partials id.mvr in
+      let node = SearchLib.id2node tree id.ident in
+      let path = SearchLib.get_path tree node in
+      path
+    in
+    let get_global_app tbl id =
+      let tree = MAP.get tbl.state.globals id.mvr_seq in
+      let node = SearchLib.id2node tree id.ident in
+      let path = SearchLib.get_path tree node in
+      path
+    in
+    let count_comps steps =
+      LIST.count steps (fun step -> match step with
+          | SModCompCtx(SCMakeConcComp(_)) -> true
+          | _ -> false
+        )
+    in
+    let cnt_comps s = match s,REF.dr currtbl with
+      | MSPartialApp(id),Some(tbl) ->
+        begin
+          let st : sstep list = get_partial_app tbl id in
+          let ncomps = count_comps st in
+          0. -. (float_of_int ncomps) /. 100.
+        end
+      | MSGlobalApp(id),Some(tbl) ->
+        let st : sstep list = get_global_app tbl id in
+        let ncomps = count_comps st in
+        0. -. (float_of_int ncomps) /. 100.
+
+      | MSSolveVar(_),_ -> 0.
+      | _,_ -> 0.
+    in
+    let state = List.fold_left (fun r st -> r +. (cnt_comps st)) 0. s in
+    let delta = 100. in
+    SearchLib.mkscore state delta
 
   let score_step () =
     let typ = get_glbl_string "multi-selector-branch" in
     match typ with
     | "depth" -> score_depth
-    | "uniform" -> score_uniform 
+    | "uniform" -> score_uniform
+    | "depth-and-ncomps" -> score_depth_and_ncomps
     | "_" ->   error "score_step" "unknown strategy for eqn-selector-branch"
 
 
@@ -821,6 +865,7 @@ struct
 
 
     let msolve sl (ms:musearch) (nslns:int): gltbl list option =
+      MultiSearchTree.upd_curr_tbl (Some ms);
       let mint,musr = mkmenu ms in
       let _msolve_new id =
           let nnewslns = get_glbl_int "multi-num-partial-solutions" in

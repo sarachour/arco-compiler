@@ -57,7 +57,7 @@ rule env = parse
   | "ddt"                   {DDT}
   | "init"                  {INIT}
   
-  | "none"                  {NONE}
+  | "unit"                  {NONE}
   | "?"                     {QMARK}
   | decimal as t            {let v = float_of_string t in DECIMAL(v)}
   | integer as t            {let v = int_of_string t in INTEGER(v)}

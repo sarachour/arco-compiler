@@ -144,8 +144,8 @@ struct
         if has_wire tbl dest = false then enq (decl_wire tbl dest);
         let src_id = wire2id tbl src in
         let dst_id = wire2id tbl dest in
-        debug (HwConnLib.env2str hwenv.conns);
-        debug ((HwLib.wireid2str src)^"->"^(HwLib.wireid2str dest)^"\n");
+        (*debug (HwConnLib.env2str hwenv.conns);*)
+        (*debug ((HwLib.wireid2str src)^"->"^(HwLib.wireid2str dest)^"\n");*)
         let instconns =
           HwConnLib.get_inst_conns hwenv src.comp.name src.port dest.comp.name dest.port
         in

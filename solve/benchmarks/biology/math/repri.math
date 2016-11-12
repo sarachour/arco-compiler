@@ -21,7 +21,7 @@ output clm : M
 
 
 param k_tl : 1/s = 3.01029995664
-param n : none = 2
+param n : unit = 2
 param kd_prot : 1/s = 0.03010299956
 param kd_mrna : 1/s = 0.15051499783
 param KMp : 1/s = 40
