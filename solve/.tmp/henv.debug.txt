@@ -1,0 +1,77 @@
+==== Units ====
+type bits
+type mA
+type us
+==== Props ====
+I :  mA
+D :  bits
+==== Time =====
+t :  us
+==== Components =====
+==> component imul (4 insts) 
+in X  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@*A1
+in Y  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@*A2
+in Z  bhv <input>
+in  def<analog> [v]=[0.5,1.] {v}->[v]=@*A3
+out W  bhv <analog>:((imul.I{X}:*imul.I{Y}:)/imul.I{Z}:) / std=gauss (imul.I{W}:*1e-06)
+out  def<analog> [v]=[0.,2.] {v}->[v]=@*((A1*A2)/A3)
+==> component output.I (10 insts) 
+in X  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@*A + B
+out O  bhv <analog>:output.I.I{X}: / std=none 0
+out  def<digital>
+==> component iadd (2 insts) 
+in X  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@*A + B1
+in Y  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@
+out Z  bhv <analog>:(0.5*(iadd.I{X}:+iadd.I{Y}:)) / std=gauss (iadd.I{Z}:*1e-05)
+out  def<analog> [v]=[0.,1.] {v}->[v]=@
+==> component input.I (50 insts) 
+in X  bhv <input>
+in  def<digital>
+out O  bhv <analog>:input.I.D{X}: / std=uniform (input.I.I{O}:*1e-05)
+out  def<analog> [v]=[0.,1.] {v}->[v]=@
+==> component deriv_iadd (1 insts) 
+in Z0  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@
+in XT  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@*A
+in P  bhv <input>
+in  def<analog> [v]=[0.,0.0001] {v}->[v]=@*(A*B)
+in YT  bhv <input>
+in  def<analog> [v]=[0.,1.] {v}->[v]=@*B
+out X  bhv <analog>:(deriv_iadd.I{XT}:-(deriv_iadd.K*deriv_iadd.I{Z}:)) / std=none 0
+out  def<analog> [v]={[-1.,1.] [0.,1.] } {v}->[v]=@
+out Y  bhv <analog>:(deriv_iadd.I{YT}:-(deriv_iadd.K*deriv_iadd.I{Z}:)) / std=none 0
+out  def<analog> [v]={[-1.,1.] [0.,1.] } {v}->[v]=@
+out Z  bhv <analog-st> ((deriv_iadd.EN_F*(deriv_iadd.I{X}:+deriv_iadd.I{Y}:))-(deriv_iadd.EN_B*deriv_iadd.I{P}:*deriv_iadd.I{Z}:)) ic=Z0.I / std=gauss (deriv_iadd.I{Z}:*1e-05)
+out  def<analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
+<analog-st> [v]=[0.,1.] {v}->[v]=@ {v}->*[v]=@
+==== Schematic =====
+
+deriv_iadd.Z->output.I.X : 0:1->0:10
+input.I.O->iadd.X : 0:50->0:2
+input.I.O->deriv_iadd.XT : 0:50->0:1
+input.I.O->imul.Y : 0:50->0:4
+input.I.O->imul.Z : 0:50->0:4
+input.I.O->imul.X : 0:50->0:4
+input.I.O->iadd.Y : 0:50->0:2
+input.I.O->deriv_iadd.P : 0:50->0:1
+input.I.O->deriv_iadd.YT : 0:50->0:1
+input.I.O->deriv_iadd.Z0 : 0:50->0:1
+imul.W->iadd.X : 0:4->0:2
+imul.W->deriv_iadd.XT : 0:4->0:1
+imul.W->iadd.Y : 0:4->0:2
+imul.W->deriv_iadd.P : 0:4->0:1
+imul.W->deriv_iadd.YT : 0:4->0:1
+imul.W->deriv_iadd.Z0 : 0:4->0:1
+deriv_iadd.Y->output.I.X : 0:1->0:10
+deriv_iadd.X->output.I.X : 0:1->0:10
+iadd.Z->deriv_iadd.XT : 0:2->0:1
+iadd.Z->output.I.X : 0:2->0:10
+iadd.Z->deriv_iadd.P : 0:2->0:1
+iadd.Z->deriv_iadd.YT : 0:2->0:1
+iadd.Z->deriv_iadd.Z0 : 0:2->0:1

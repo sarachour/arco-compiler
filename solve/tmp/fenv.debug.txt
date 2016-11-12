@@ -1,0 +1,7 @@
+type M
+type s
+type kmol
+IPTG: <input>
+[IPTG]=[0.,0.6]
+UTF: UTF=((Cu*a1)*(1/(1+(IPTG^beta)))) / std(UTF) = none 0
+[UTF]=[0.,156.25]

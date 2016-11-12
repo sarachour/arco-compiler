@@ -1,0 +1,115 @@
+
+=== Route ===
+in IPTG -> input.V[0].X
+
+val 2 -> input.V[1].X
+val 0.15625 -> input.I[0].X
+val 1250 -> input.V[2].X
+val 0.0156 -> input.I[1].X
+val 0 -> [input.I[20].X,input.V[6].X,input.V[5].X,input.V[4].X,input.V[3].X,input.I[12].X,input.I[11].X,input.I[10].X,input.I[9].X,input.I[8].X,input.I[7].X,input.I[6].X,input.I[5].X,input.I[4].X,input.I[3].X,input.I[2].X,input.I[22].X,input.I[21].X]
+val 0. -> [input.V[7].X,input.V[8].X]
+val 337.632520764 -> input.I[13].X
+val -1 -> input.V[9].X
+val 4000 -> input.I[14].X
+val 4 -> [input.V[10].X,input.V[11].X]
+val 1000.75 -> input.V[12].X
+val 0.000125 -> input.V[13].X
+val 1 -> [input.I[23].X,input.I[19].X,input.V[18].X,input.V[17].X,input.I[18].X,input.I[17].X,input.I[16].X,input.V[16].X,input.V[15].X,input.V[14].X,input.I[15].X]
+
+
+=== Generate ===
+in IPTG -> input.V[0].O
+lc umodif -> switch[10].PROD
+lc UTF -> igenebind[1].GE
+lc VTF -> igenebind[14].GE
+out V -> [vadd[13].OUT2,output.V[0].O]
+out U -> [vadd[16].OUT2,output.V[1].O]
+
+val 2 -> input.V[1].O
+val 0.15625 -> input.I[0].O
+val 1250 -> input.V[2].O
+val 0.0156 -> input.I[1].O
+val 0 -> [input.I[20].O,input.V[5].O,input.V[6].O,input.V[4].O,input.V[3].O,input.I[12].O,input.I[11].O,input.I[10].O,input.I[9].O,input.I[8].O,input.I[7].O,input.I[6].O,input.I[5].O,input.I[4].O,input.I[3].O,input.I[2].O,input.I[22].O,input.I[21].O]
+val 0. -> [input.V[8].O,input.V[7].O]
+val 337.632520764 -> input.I[13].O
+val -1 -> input.V[9].O
+val 4000 -> input.I[14].O
+val 4 -> [input.V[11].O,input.V[10].O]
+val 1000.75 -> input.V[12].O
+val 0.000125 -> input.V[13].O
+val 1 -> [input.I[23].O,input.V[18].O,input.I[19].O,input.V[17].O,input.I[18].O,input.I[17].O,input.I[16].O,input.V[16].O,input.V[15].O,input.V[14].O,input.I[15].O]
+
+ast (IPTG^-1) -> [vtoi[9].Y,iadd[11].OUT,iadd[11].OUT]
+ast (4000*UTF) -> [vgain[15].P,vgain[15].P]
+ast (V+-1) -> [iadd[8].OUT,iadd[8].OUT]
+ast (4000*VTF) -> [itov[12].Y,itov[12].Y]
+ast UTF -> itov[14].Y
+ast (-1*V) -> [vtoi[0].Y,vtoi[0].Y]
+ast (V^-2.5) -> [vgain[5].P,switch[7].PROD,switch[7].PROD,itov[6].Y]
+ast (V^2.5) -> [iadd[2].OUT,vtoi[4].Y,vtoi[4].Y,iadd[3].OUT]
+ast umodif -> iadd[12].OUT
+
+=== Connect ===
+itov[12].Y ->  vadd[13].B
+input.I[6].O ->  iadd[3].A
+input.V[17].O ->  vtoi[9].X
+vadd[13].OUT2 ->  output.V[0].X vtoi[0].X
+input.I[0].O ->  igenebind[1].Vmax
+input.V[9].O ->  vtoi[0].K
+switch[7].PROD ->  itov[6].X
+vgain[15].P ->  vadd[16].B
+input.I[22].O ->  iadd[12].D
+itov[14].Y ->  vgain[15].Z
+input.V[15].O ->  vgain[5].Y
+input.I[18].O ->  iadd[8].C
+input.I[9].O ->  iadd[8].B
+input.I[4].O ->  iadd[2].C
+input.I[3].O ->  iadd[2].A
+input.I[16].O ->  switch[7].Kmod
+input.V[13].O ->  vgain[15].Y
+input.I[5].O ->  iadd[3].D
+igenebind[14].GE ->  itov[12].K
+input.V[14].O ->  vtoi[4].X
+vtoi[0].Y ->  iadd[8].D
+iadd[12].OUT ->  igenebind[14].TF
+input.V[11].O ->  vadd[13].D
+input.I[14].O ->  itov[12].X
+input.I[2].O ->  iadd[2].D
+input.V[8].O ->  vadd[13].OUT2_0
+input.V[12].O ->  switch[10].n
+input.I[20].O ->  iadd[12].C
+input.V[3].O ->  vadd[13].A
+input.V[2].O ->  switch[7].n
+input.I[15].O ->  igenebind[1].K
+input.I[1].O ->  igenebind[14].Vmax
+input.I[10].O ->  iadd[11].D
+input.I[12].O ->  iadd[11].C
+vadd[16].OUT2 ->  output.V[1].X switch[10].Vmax
+iadd[11].OUT ->  switch[10].Kmod
+input.I[7].O ->  iadd[3].C
+input.I[13].O ->  switch[10].SUB
+input.V[1].O ->  vgain[5].X
+iadd[3].OUT ->  iadd[2].B
+input.V[7].O ->  vadd[16].OUT2_0
+input.I[17].O ->  switch[7].Vmax
+iadd[2].OUT ->  igenebind[1].TF
+igenebind[1].GE ->  itov[14].K
+input.I[8].O ->  iadd[8].A
+itov[6].Y ->  vgain[5].Z
+input.I[23].O ->  itov[14].X
+input.I[21].O ->  iadd[12].B
+input.V[0].O ->  vtoi[9].K
+input.V[10].O ->  vadd[16].D
+input.V[18].O ->  vgain[15].X
+input.V[16].O ->  itov[6].K
+iadd[8].OUT ->  switch[7].SUB
+switch[10].PROD ->  iadd[12].A
+input.I[19].O ->  igenebind[14].K
+input.V[4].O ->  vadd[13].C
+input.V[5].O ->  vadd[16].C
+vtoi[9].Y ->  iadd[11].B
+input.V[6].O ->  vadd[16].A
+vgain[5].P ->  vtoi[4].K
+input.I[11].O ->  iadd[11].A
+vtoi[4].Y ->  iadd[3].B
+
