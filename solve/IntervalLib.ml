@@ -605,7 +605,9 @@ struct
         match bound_is_zero base, bound_is_zero exp with
         | false,false -> BNDNum(basev**expv)
         | false,true -> BNDNum(1.)
-        | true,false -> BNDNum(0.)
+        | true,false ->
+          if expv < 0.
+          then BNDInf(QDPositive) else BNDNum(0.)
         | true,true -> BNDNum(1.)
       end
     | BNDNum(_),BNDInf(QDNegative) -> BNDNum(0.)
