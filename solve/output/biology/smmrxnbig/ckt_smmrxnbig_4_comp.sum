@@ -24,7 +24,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:5499 / std=none 0
+<analog>:0.01 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -34,7 +34,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:1 / std=none 0
+<analog>:6800 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -44,7 +44,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0.01 / std=none 0
+<analog>:0 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -100,7 +100,7 @@ input Xtot.V
 <analog> [v]=[0.0001,3300.] {v}->[v]=@
 
 output X.V
-<analog>:(5500-ES) / std=none 0
+<analog>:(6800-ES) / std=none 0
 <analog> [v]=[-3299.9999,3300.] {v}->[v]=@
 
 output XY.V
@@ -109,7 +109,7 @@ output XY.V
 <analog-st> [v]=[0.,3300.] {v}->[v]=@ {v}->*[v]=@
 
 output Y.V
-<analog>:(3200-ES) / std=none 0
+<analog>:(4400-ES) / std=none 0
 <analog> [v]=[-3299.9999,3300.] {v}->[v]=@
 
 
@@ -119,7 +119,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:3200 / std=none 0
+<analog>:6800 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -129,7 +129,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:5500 / std=none 0
+<analog>:4400 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -161,7 +161,7 @@ input B.I
 <analog> [v]=[0.,5.] {v}->[v]=@
 
 output OUT.I
-<analog>:((1+5499)-0-ES) / std=gauss ((1e-05*E)+0.001)
+<analog>:((6800+0)-0-ES) / std=gauss ((1e-05*E)+0.001)
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 

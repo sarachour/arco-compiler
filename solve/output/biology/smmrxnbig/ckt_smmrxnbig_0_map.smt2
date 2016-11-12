@@ -66,16 +66,16 @@
 ; =  {(((sc.output.V[2].X*0.)+of.output.V[2].X)+sl.min.output.V[2].X)} {0.0001}
 (assert (= (+ (+ (* sc_4 0.) of_4) slbot_4) 0.0001))
 ; 
-; =  {(((sc.output.V[2].X*3200.)+of.output.V[2].X)+sl.max.output.V[2].X)} {3300.}
-(assert (= (+ (+ (* sc_4 3200.) of_4) sltop_4) 3300.))
+; =  {(((sc.output.V[2].X*4400.)+of.output.V[2].X)+sl.max.output.V[2].X)} {3300.}
+(assert (= (+ (+ (* sc_4 4400.) of_4) sltop_4) 3300.))
 (declare-fun slbot_5 () Real)
 (declare-fun sltop_5 () Real)
 ; 
 ; =  {(((sc.output.V[2].O*0.)+of.output.V[2].O)+sl.min.output.V[2].O)} {0.0001}
 (assert (= (+ (+ (* sc_5 0.) of_5) slbot_5) 0.0001))
 ; 
-; =  {(((sc.output.V[2].O*3200.)+of.output.V[2].O)+sl.max.output.V[2].O)} {3300.}
-(assert (= (+ (+ (* sc_5 3200.) of_5) sltop_5) 3300.))
+; =  {(((sc.output.V[2].O*4400.)+of.output.V[2].O)+sl.max.output.V[2].O)} {3300.}
+(assert (= (+ (+ (* sc_5 4400.) of_5) sltop_5) 3300.))
 (declare-fun sc_6 () Real)
 (assert (> sc_6 1e-08))
 (declare-fun of_6 () Real)
@@ -94,16 +94,16 @@
 ; =  {(((sc.output.V[0].X*0.)+of.output.V[0].X)+sl.min.output.V[0].X)} {0.0001}
 (assert (= (+ (+ (* sc_6 0.) of_6) slbot_6) 0.0001))
 ; 
-; =  {(((sc.output.V[0].X*3200.)+of.output.V[0].X)+sl.max.output.V[0].X)} {3300.}
-(assert (= (+ (+ (* sc_6 3200.) of_6) sltop_6) 3300.))
+; =  {(((sc.output.V[0].X*4400.)+of.output.V[0].X)+sl.max.output.V[0].X)} {3300.}
+(assert (= (+ (+ (* sc_6 4400.) of_6) sltop_6) 3300.))
 (declare-fun slbot_7 () Real)
 (declare-fun sltop_7 () Real)
 ; 
 ; =  {(((sc.output.V[0].O*0.)+of.output.V[0].O)+sl.min.output.V[0].O)} {0.0001}
 (assert (= (+ (+ (* sc_7 0.) of_7) slbot_7) 0.0001))
 ; 
-; =  {(((sc.output.V[0].O*3200.)+of.output.V[0].O)+sl.max.output.V[0].O)} {3300.}
-(assert (= (+ (+ (* sc_7 3200.) of_7) sltop_7) 3300.))
+; =  {(((sc.output.V[0].O*4400.)+of.output.V[0].O)+sl.max.output.V[0].O)} {3300.}
+(assert (= (+ (+ (* sc_7 4400.) of_7) sltop_7) 3300.))
 (declare-fun sc_8 () Real)
 (assert (> sc_8 1e-08))
 (declare-fun of_8 () Real)
@@ -122,16 +122,16 @@
 ; =  {(((sc.output.V[1].X*0.)+of.output.V[1].X)+sl.min.output.V[1].X)} {0.0001}
 (assert (= (+ (+ (* sc_8 0.) of_8) slbot_8) 0.0001))
 ; 
-; =  {(((sc.output.V[1].X*5500.)+of.output.V[1].X)+sl.max.output.V[1].X)} {3300.}
-(assert (= (+ (+ (* sc_8 5500.) of_8) sltop_8) 3300.))
+; =  {(((sc.output.V[1].X*6800.)+of.output.V[1].X)+sl.max.output.V[1].X)} {3300.}
+(assert (= (+ (+ (* sc_8 6800.) of_8) sltop_8) 3300.))
 (declare-fun slbot_9 () Real)
 (declare-fun sltop_9 () Real)
 ; 
 ; =  {(((sc.output.V[1].O*0.)+of.output.V[1].O)+sl.min.output.V[1].O)} {0.0001}
 (assert (= (+ (+ (* sc_9 0.) of_9) slbot_9) 0.0001))
 ; 
-; =  {(((sc.output.V[1].O*5500.)+of.output.V[1].O)+sl.max.output.V[1].O)} {3300.}
-(assert (= (+ (+ (* sc_9 5500.) of_9) sltop_9) 3300.))
+; =  {(((sc.output.V[1].O*6800.)+of.output.V[1].O)+sl.max.output.V[1].O)} {3300.}
+(assert (= (+ (+ (* sc_9 6800.) of_9) sltop_9) 3300.))
 (declare-fun sc_10 () Real)
 (assert (> sc_10 1e-08))
 (declare-fun of_10 () Real)
@@ -214,24 +214,24 @@
 ; =  {(((sc.mm[0].X*0.)+of.mm[0].X)+sl.min.mm[0].X)} {-3299.9999}
 (assert (= (+ (+ (* sc_15 0.) of_15) slbot_15) -3299.9999))
 ; 
-; =  {(((sc.mm[0].X*5500.)+of.mm[0].X)+sl.max.mm[0].X)} {3300.}
-(assert (= (+ (+ (* sc_15 5500.) of_15) sltop_15) 3300.))
+; =  {(((sc.mm[0].X*6800.)+of.mm[0].X)+sl.max.mm[0].X)} {3300.}
+(assert (= (+ (+ (* sc_15 6800.) of_15) sltop_15) 3300.))
 (declare-fun slbot_16 () Real)
 (declare-fun sltop_16 () Real)
 ; 
 ; =  {(((sc.mm[0].XY*0.)+of.mm[0].XY)+sl.min.mm[0].XY)} {0.}
 (assert (= (+ (+ (* sc_16 0.) of_16) slbot_16) 0.))
 ; 
-; =  {(((sc.mm[0].XY*3200.)+of.mm[0].XY)+sl.max.mm[0].XY)} {3300.}
-(assert (= (+ (+ (* sc_16 3200.) of_16) sltop_16) 3300.))
+; =  {(((sc.mm[0].XY*4400.)+of.mm[0].XY)+sl.max.mm[0].XY)} {3300.}
+(assert (= (+ (+ (* sc_16 4400.) of_16) sltop_16) 3300.))
 (declare-fun slbot_17 () Real)
 (declare-fun sltop_17 () Real)
 ; 
 ; =  {(((sc.mm[0].Y*0.)+of.mm[0].Y)+sl.min.mm[0].Y)} {-3299.9999}
 (assert (= (+ (+ (* sc_17 0.) of_17) slbot_17) -3299.9999))
 ; 
-; =  {(((sc.mm[0].Y*3200.)+of.mm[0].Y)+sl.max.mm[0].Y)} {3300.}
-(assert (= (+ (+ (* sc_17 3200.) of_17) sltop_17) 3300.))
+; =  {(((sc.mm[0].Y*4400.)+of.mm[0].Y)+sl.max.mm[0].Y)} {3300.}
+(assert (= (+ (+ (* sc_17 4400.) of_17) sltop_17) 3300.))
 ; 
 ; >=  {((sc.mm[0].XY0*0.)+of.mm[0].XY0)} {3300.}
 (assert (<= (+ (* sc_11 0.) of_11) 3300.))
@@ -239,17 +239,17 @@
 ; <=  {((sc.mm[0].XY0*0.)+of.mm[0].XY0)} {0.}
 (assert (>= (+ (* sc_11 0.) of_11) 0.))
 ; 
-; >=  {((sc.mm[0].Ytot*3200.)+of.mm[0].Ytot)} {3300.}
-(assert (<= (+ (* sc_12 3200.) of_12) 3300.))
+; >=  {((sc.mm[0].Ytot*4400.)+of.mm[0].Ytot)} {3300.}
+(assert (<= (+ (* sc_12 4400.) of_12) 3300.))
 ; 
-; <=  {((sc.mm[0].Ytot*3200.)+of.mm[0].Ytot)} {0.0001}
-(assert (>= (+ (* sc_12 3200.) of_12) 0.0001))
+; <=  {((sc.mm[0].Ytot*4400.)+of.mm[0].Ytot)} {0.0001}
+(assert (>= (+ (* sc_12 4400.) of_12) 0.0001))
 ; 
-; >=  {((sc.mm[0].Xtot*5500.)+of.mm[0].Xtot)} {3300.}
-(assert (<= (+ (* sc_14 5500.) of_14) 3300.))
+; >=  {((sc.mm[0].Xtot*6800.)+of.mm[0].Xtot)} {3300.}
+(assert (<= (+ (* sc_14 6800.) of_14) 3300.))
 ; 
-; <=  {((sc.mm[0].Xtot*5500.)+of.mm[0].Xtot)} {0.0001}
-(assert (>= (+ (* sc_14 5500.) of_14) 0.0001))
+; <=  {((sc.mm[0].Xtot*6800.)+of.mm[0].Xtot)} {0.0001}
+(assert (>= (+ (* sc_14 6800.) of_14) 0.0001))
 ; 
 ; >=  {((sc.mm[0].kf*0.01)+of.mm[0].kf)} {10.}
 (assert (<= (+ (* sc_13 0.01) of_13) 10.))
@@ -269,17 +269,17 @@
 ; =  {of.input.V[2].O} {of.input.V[2].X}
 (assert (= of_19 of_18))
 ; 
-; >=  {((sc.input.V[2].X*3200.)+of.input.V[2].X)} {3300.}
-(assert (<= (+ (* sc_18 3200.) of_18) 3300.))
+; >=  {((sc.input.V[2].X*6800.)+of.input.V[2].X)} {3300.}
+(assert (<= (+ (* sc_18 6800.) of_18) 3300.))
 ; 
-; <=  {((sc.input.V[2].X*3200.)+of.input.V[2].X)} {0.}
-(assert (>= (+ (* sc_18 3200.) of_18) 0.))
+; <=  {((sc.input.V[2].X*6800.)+of.input.V[2].X)} {0.}
+(assert (>= (+ (* sc_18 6800.) of_18) 0.))
 ; 
-; >=  {((sc.input.V[2].O*3200.)+of.input.V[2].O)} {3300.}
-(assert (<= (+ (* sc_19 3200.) of_19) 3300.))
+; >=  {((sc.input.V[2].O*6800.)+of.input.V[2].O)} {3300.}
+(assert (<= (+ (* sc_19 6800.) of_19) 3300.))
 ; 
-; <=  {((sc.input.V[2].O*3200.)+of.input.V[2].O)} {0.}
-(assert (>= (+ (* sc_19 3200.) of_19) 0.))
+; <=  {((sc.input.V[2].O*6800.)+of.input.V[2].O)} {0.}
+(assert (>= (+ (* sc_19 6800.) of_19) 0.))
 (declare-fun sc_20 () Real)
 (assert (> sc_20 1e-08))
 (declare-fun of_20 () Real)
@@ -293,17 +293,17 @@
 ; =  {of.input.V[0].O} {of.input.V[0].X}
 (assert (= of_21 of_20))
 ; 
-; >=  {((sc.input.V[0].X*5500.)+of.input.V[0].X)} {3300.}
-(assert (<= (+ (* sc_20 5500.) of_20) 3300.))
+; >=  {((sc.input.V[0].X*4400.)+of.input.V[0].X)} {3300.}
+(assert (<= (+ (* sc_20 4400.) of_20) 3300.))
 ; 
-; <=  {((sc.input.V[0].X*5500.)+of.input.V[0].X)} {0.}
-(assert (>= (+ (* sc_20 5500.) of_20) 0.))
+; <=  {((sc.input.V[0].X*4400.)+of.input.V[0].X)} {0.}
+(assert (>= (+ (* sc_20 4400.) of_20) 0.))
 ; 
-; >=  {((sc.input.V[0].O*5500.)+of.input.V[0].O)} {3300.}
-(assert (<= (+ (* sc_21 5500.) of_21) 3300.))
+; >=  {((sc.input.V[0].O*4400.)+of.input.V[0].O)} {3300.}
+(assert (<= (+ (* sc_21 4400.) of_21) 3300.))
 ; 
-; <=  {((sc.input.V[0].O*5500.)+of.input.V[0].O)} {0.}
-(assert (>= (+ (* sc_21 5500.) of_21) 0.))
+; <=  {((sc.input.V[0].O*4400.)+of.input.V[0].O)} {0.}
+(assert (>= (+ (* sc_21 4400.) of_21) 0.))
 (declare-fun sc_22 () Real)
 (assert (> sc_22 1e-08))
 (declare-fun of_22 () Real)
@@ -347,11 +347,11 @@
 ; =  {of.mm[0].X} {of.output.V[1].X}
 (assert (= of_15 of_8))
 ; 
-; =  {sc.input.V[2].O} {sc.mm[0].Ytot}
-(assert (= sc_19 sc_12))
+; =  {sc.input.V[2].O} {sc.mm[0].Xtot}
+(assert (= sc_19 sc_14))
 ; 
-; =  {of.input.V[2].O} {of.mm[0].Ytot}
-(assert (= of_19 of_12))
+; =  {of.input.V[2].O} {of.mm[0].Xtot}
+(assert (= of_19 of_14))
 ; 
 ; =  {sc.input.I[1].O} {sc.mm[0].kf}
 (assert (= sc_3 sc_13))
@@ -371,11 +371,11 @@
 ; =  {of.mm[0].XY} {of.output.V[2].X}
 (assert (= of_16 of_4))
 ; 
-; =  {sc.input.V[0].O} {sc.mm[0].Xtot}
-(assert (= sc_21 sc_14))
+; =  {sc.input.V[0].O} {sc.mm[0].Ytot}
+(assert (= sc_21 sc_12))
 ; 
-; =  {of.input.V[0].O} {of.mm[0].Xtot}
-(assert (= of_21 of_14))
+; =  {of.input.V[0].O} {of.mm[0].Ytot}
+(assert (= of_21 of_12))
 (assert (<= (* (/ 1. sc_5) 0.001) 0.1))
 ; 
 ; =  {sc.mm[0].XY} {sc.output.V[2].O}

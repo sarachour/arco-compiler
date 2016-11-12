@@ -70,7 +70,7 @@ input Xtot.V
 <analog> [v]=[0.0001,3300.] {v}->[v]=@
 
 output X.V
-<analog>:(5500-ES) / std=none 0
+<analog>:(6800-ES) / std=none 0
 <analog> [v]=[-3299.9999,3300.] {v}->[v]=@
 
 output XY.V
@@ -79,7 +79,7 @@ output XY.V
 <analog-st> [v]=[0.,3300.] {v}->[v]=@ {v}->*[v]=@
 
 output Y.V
-<analog>:(3200-ES) / std=none 0
+<analog>:(4400-ES) / std=none 0
 <analog> [v]=[-3299.9999,3300.] {v}->[v]=@
 
 
@@ -89,7 +89,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:3200 / std=none 0
+<analog>:6800 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -99,7 +99,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:5500 / std=none 0
+<analog>:4400 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
