@@ -20,8 +20,8 @@ param nu : unit = 2.0015
 param beta : unit = 2.5
 param gamma : unit = 1.0
 
-param Cv : unit = 0.01
-param Cu : 1/M  = 0.01
+param Cv : unit = 1
+param Cu : 1/M  = 1
 param kdeg : (M/s) = 1
 
 
@@ -40,13 +40,12 @@ rel umodif = (U)/((1+IPTG/K)^nu)
 
 %the compartment size
 rel UTF = (Cu*a1)/(1 +(V^beta))
-
 rel VTF = (Cv*a2)/(1 + (umodif^gamma))
 
 rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
-def U mag = [0,0.0156] unit 
+def U mag = [0,15.6] unit 
 def ddt U time 0.001 
 
 rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
-def V mag = [0,0.15625] unit
+def V mag = [0,156.25] unit
 def ddt V time 0.001 
