@@ -1,2 +1,2 @@
 #!/bin/bash
-z3 -smt2 z3-tmp.wiring.smt2 > z3-res.wiring.res
+dReal --model z3-tmp.mapper.smt2 > z3-res.mapper.res
