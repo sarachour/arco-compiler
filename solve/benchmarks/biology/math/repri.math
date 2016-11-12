@@ -8,60 +8,58 @@ type s
 
 
 local TRLacL : M
-%local TRTetR : M
-%local TRclp : M
+local TRTetR : M
+local TRclp : M
 
-%output LacLp : M
-%output TetRp : M
-%output clp : M
+output LacLp : M
+output TetRp : M
+output clp : M
 
-%output LacLm : M
-%output TetRm : M
-%output clm : M
+output LacLm : M
+output TetRm : M
+output clm : M
 
 
 param k_tl : 1/s = 3.01029995664
 param n : unit = 2
 param kd_prot : 1/s = 0.03010299956
 param kd_mrna : 1/s = 0.15051499783
-param KMp : 1/s = 40
+%param KMp : 1/s = 40
 param a0_tr : 1/s = 0.0005
 param a_tr : 1/s = 0.4995
 
 
 time t : s
 
-
 %s
-input Q : M
+input KMp : M
+%Set KMp to 40
+def KMp mag = [40,40] M
 
-rel TRLacL = a0_tr + (a_tr)*(1/( 1 + ((Q/KMp)^n)))
-%rel TRLacL = a0_tr + (a_tr)*(1/( 1 + ((LacLp/KMp)^n)))
+rel TRLacL =a0_tr + (a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
+rel TRTetR =a0_tr + (a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
+rel TRclp =a0_tr + (a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
 
-%rel TRTetR = a0_tr + (a_tr)*(1/( ((TetRp/KMp)^n) + 1))
+rel ddt LacLm = (TRLacL) - (kd_mrna*LacLm) init 0
+def LacLm mag = [0,0.5] M
+def ddt LacLm time 0.001 
 
-%rel TRclp =  a0_tr + (a_tr)*(1/( 1 + ((clp/KMp)^n)))
+rel ddt clm = (TRclp) - (kd_mrna*clm) init 0
+def clm mag = [0,0.5] M
+def ddt clm time 0.001 
 
-%rel ddt LacLm = (TRLacL) - (kd_mrna*LacLm) init 0
-%def LacLm mag = [0,0.5] M
-%def ddt LacLm time 0.001 
+rel ddt TetRm = ((TRTetR)) - (kd_mrna*TetRm) init 0
+def TetRm mag = [0,0.5] M
+def ddt TetRm time 0.001 
 
-%rel ddt clm = (TRclp) - (kd_mrna*clm) init 0
-%def clm mag = [0,0.5] M
-%def ddt clm time 0.001 
+rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 0
+def LacLp mag = [0,2] M
+def ddt LacLp time 0.001 
 
-%rel ddt TetRm = ((TRTetR)) - (kd_mrna*TetRm) init 0
-%def TetRm mag = [0,0.5] M
-%def ddt TetRm time 0.001 
+rel ddt clp = (k_tl*clm)-(kd_prot*clp) init 0
+def clp mag = [0,2] M
+def ddt clp time 0.001 
 
-%rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 0
-%def LacLp mag = [0,2] M
-%def ddt LacLp time 0.001 
-
-%rel ddt clp = (k_tl*clm)-(kd_prot*clp) init 0
-%def clp mag = [0,2] M
-%def ddt clp time 0.001 
-
-%rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0
-%def TetRp mag = [0,2] M
-%def ddt TetRp time 0.001 
+rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0
+def TetRp mag = [0,2] M
+def ddt TetRp time 0.001 
