@@ -1,8 +1,0 @@
-
-input C: none
-input D: none
-input B: none
-
-output A: none
-
-rel A = B + C*D
