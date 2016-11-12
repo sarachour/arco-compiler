@@ -14,7 +14,7 @@ param a2 : mol/s = 15.6
 param a1 : mol/s = 156.25
 
 
-param K : kmol = 0.029618
+param K : kmol = 0.0029618
 
 param nu : unit = 2.0015
 param beta : unit = 2.5
@@ -22,7 +22,7 @@ param gamma : unit = 1.0
 
 param Cv : unit = 0.001
 param Cu : 1/mol  = 0.001
-param kdeg : (mol/s) = 0.001
+param kdeg : (1/s) = 1
 %param Km : (mol/s) = 1
 
 
@@ -38,8 +38,6 @@ def Km mag = [0.5,1] mol
 input IPTG : mol
 def IPTG mag = [0,0.060] mol
 
-%this relation is solvable
-%individually, everything is solvable
 
 rel umodif = (U)/((1+IPTG/K)^nu)
 
@@ -48,10 +46,10 @@ rel UTF = (Cu*a1)*((Km^beta)/((Km^beta) +(V^beta)))
 
 rel VTF = (((Cv*a2)*(Km^gamma))/((Km^gamma) + (umodif^gamma)))
 
-rel ddt U =  (UTF) - (Cu*kdeg*U) init 0.0
+rel ddt U =  ((UTF)/Cu) - (Cu*kdeg*U) init 0.0
 def U mag = [0,0.0156] unit 
 def ddt U time 0.001 
 
-rel ddt V = VTF - (Cv*kdeg*V) init 0.0
+rel ddt V = (VTF/Cv) - (Cv*kdeg*V) init 0.0
 def V mag = [0,0.15625] unit
 def ddt V time 0.001 
