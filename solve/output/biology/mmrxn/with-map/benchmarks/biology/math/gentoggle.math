@@ -4,26 +4,25 @@ name "genetic toggle switch with E.coli"
 % 3 diffeqs
 
 
-type mol
+type M
 type kmol
 type s
 
 time t : s
 
-param a2 : mol/s = 15.6
-param a1 : mol/s = 156.25
+param a2 : M/s = 15.6
+param a1 : M/s = 156.25
 
 
-param K : kmol = 0.029618
+param K : kmol = 0.0029618
 
 param nu : unit = 2.0015
 param beta : unit = 2.5
 param gamma : unit = 1.0
 
-param Cv : unit = 0.001
-param Cu : 1/mol  = 0.001
-param kdeg : (mol/s) = 0.001
-%param Km : (mol/s) = 1
+param Cv : unit = 1
+param Cu : 1/M  = 1
+param kdeg : (M/s) = 1
 
 
 output U : unit 
@@ -32,26 +31,21 @@ local umodif : unit
 local UTF : unit
 local VTF : unit
 
-input Km : mol
-def Km mag = [0.5,1] mol
 
-input IPTG : mol
-def IPTG mag = [0,0.060] mol
+input IPTG : kmol
+def IPTG mag = [0,0.60] kmol
 
-%this relation is solvable
-%individually, everything is solvable
 
 rel umodif = (U)/((1+IPTG/K)^nu)
 
 %the compartment size
-rel UTF = (Cu*a1)*((Km^beta)/((Km^beta) +(V^beta)))
+rel UTF = (Cu*a1)/(1 +(V^beta))
+rel VTF = (Cv*a2)/(1 + (umodif^gamma))
 
-rel VTF = (((Cv*a2)*(Km^gamma))/((Km^gamma) + (umodif^gamma)))
-
-rel ddt U =  (UTF) - (Cu*kdeg*U) init 0.0
-def U mag = [0,0.0156] unit 
+rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
+def U mag = [0,15.6] unit 
 def ddt U time 0.001 
 
-rel ddt V = VTF - (Cv*kdeg*V) init 0.0
-def V mag = [0,0.15625] unit
+rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
+def V mag = [0,156.25] unit
 def ddt V time 0.001 
