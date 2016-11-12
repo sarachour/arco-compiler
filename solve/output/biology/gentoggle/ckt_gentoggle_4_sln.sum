@@ -1,0 +1,102 @@
+
+=== Route ===
+in IPTG -> input.I[0].X
+
+val 156.25 -> input.I[1].X
+val 2.5 -> input.V[0].X
+val 0.125 -> input.V[1].X
+val 0 -> [input.I[30].X,input.V[5].X,input.V[4].X,input.V[3].X,input.V[2].X,input.I[9].X,input.I[8].X,input.I[7].X,input.I[6].X,input.I[5].X,input.I[4].X,input.I[3].X,input.I[2].X,input.I[32].X,input.I[31].X]
+val 0. -> [input.V[6].X,input.V[7].X]
+val -500 -> input.V[8].X
+val 337.632520764 -> input.I[10].X
+val 15.6 -> input.I[11].X
+val -2 -> input.I[12].X
+val 4 -> [input.V[9].X,input.I[13].X,input.V[10].X]
+val 1000.75 -> input.V[11].X
+val 1 -> [input.V[17].X,input.I[18].X,input.V[12].X,input.I[17].X,input.I[16].X,input.I[15].X,input.I[14].X,input.V[18].X]
+
+
+=== Generate ===
+in IPTG -> input.I[0].O
+lc umodif -> switch[3].PROD
+lc UTF -> ihill[0].REP
+lc VTF -> igenebind[1].GE
+out V -> [vadd[9].OUT2,output.V[0].O]
+out U -> [vadd[11].OUT2,output.V[1].O]
+
+val 156.25 -> input.I[1].O
+val 2.5 -> input.V[0].O
+val 0.125 -> input.V[1].O
+val 0 -> [input.I[30].O,input.V[4].O,input.V[5].O,input.V[3].O,input.V[2].O,input.I[9].O,input.I[8].O,input.I[7].O,input.I[6].O,input.I[5].O,input.I[4].O,input.I[3].O,input.I[2].O,input.I[32].O,input.I[31].O]
+val 0. -> [input.V[7].O,input.V[6].O]
+val -500 -> input.V[8].O
+val 337.632520764 -> input.I[10].O
+val 15.6 -> input.I[11].O
+val -2 -> input.I[12].O
+val 4 -> [input.V[9].O,input.V[10].O,input.I[13].O]
+val 1000.75 -> input.V[11].O
+val 1 -> [input.V[17].O,input.V[12].O,input.I[18].O,input.I[17].O,input.I[16].O,input.I[15].O,input.I[14].O,input.V[18].O]
+
+ast (-1*IPTG) -> [switch[2].PROD,switch[2].PROD]
+ast (IPTG^-1) -> [iadd[4].OUT,igenebind[6].GE,igenebind[6].GE,iadd[5].OUT]
+ast (IPTG+-1) -> [iadd[7].OUT,iadd[7].OUT]
+ast VTF -> itov[11].Y
+ast (4*VTF) -> [vgain[8].P,vgain[8].P]
+ast (4*UTF) -> [itov[10].Y,itov[10].Y]
+ast V -> vtoi[0].Y
+ast umodif -> iadd[8].OUT
+
+=== Connect ===
+input.V[17].O ->  itov[11].K
+input.I[6].O ->  iadd[5].A
+input.I[31].O ->  iadd[8].D
+vgain[8].P ->  vadd[9].B
+input.I[0].O ->  switch[2].Vmax
+itov[11].Y ->  vgain[8].Z
+input.V[9].O ->  vadd[9].D
+ihill[0].REP ->  itov[10].K
+input.I[32].O ->  iadd[8].C
+input.I[18].O ->  iadd[7].C
+input.I[9].O ->  iadd[7].B
+iadd[4].OUT ->  switch[3].Kmod
+input.I[3].O ->  iadd[4].A
+input.I[4].O ->  iadd[4].C
+input.I[16].O ->  igenebind[6].Vmax
+input.I[5].O ->  iadd[5].D
+vtoi[0].Y ->  ihill[0].S
+input.I[30].O ->  iadd[8].A
+input.V[11].O ->  switch[3].n
+input.I[14].O ->  igenebind[1].K
+switch[3].PROD ->  iadd[8].B
+input.V[8].O ->  switch[2].n
+input.I[2].O ->  iadd[4].D
+input.V[12].O ->  vgain[8].X
+input.V[2].O ->  vadd[9].A
+input.V[3].O ->  vadd[9].C
+iadd[5].OUT ->  iadd[4].B
+input.I[15].O ->  switch[2].Kmod
+input.I[10].O ->  switch[3].SUB
+input.I[1].O ->  ihill[0].Vmax
+input.I[12].O ->  switch[2].SUB
+igenebind[6].GE ->  iadd[5].B
+vadd[11].OUT2 ->  output.V[1].X switch[3].Vmax
+iadd[7].OUT ->  igenebind[6].TF
+input.I[13].O ->  itov[10].X
+input.V[1].O ->  vgain[8].Y
+input.I[7].O ->  iadd[5].C
+input.I[17].O ->  igenebind[6].K
+input.V[7].O ->  vadd[9].OUT2_0
+vadd[9].OUT2 ->  output.V[0].X vtoi[0].X
+igenebind[1].GE ->  itov[11].X
+input.I[8].O ->  iadd[7].A
+input.V[10].O ->  vadd[11].D
+input.V[0].O ->  ihill[0].n
+itov[10].Y ->  vadd[11].B
+input.V[18].O ->  vtoi[0].K
+iadd[8].OUT ->  igenebind[1].TF
+switch[2].PROD ->  iadd[7].D
+input.V[4].O ->  vadd[11].C
+input.V[5].O ->  vadd[11].A
+input.V[6].O ->  vadd[11].OUT2_0
+input.I[11].O ->  igenebind[1].Vmax
+

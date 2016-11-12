@@ -1,7 +1,15 @@
 type M
 type s
 type kmol
+umodif: umodif=(U/((1+(IPTG/K))^nu)) / std(umodif) = none 0
+[umodif]=[0.,15.6]
 IPTG: <input>
 [IPTG]=[0.,0.6]
-UTF: UTF=((Cu*a1)*(1/(1+(IPTG^beta)))) / std(UTF) = none 0
-[UTF]=[0.,156.25]
+V: ddt V=((VTF/Cv)-(kdeg*V)) ic=0. / std(ddt V) = none 0
+[ddt V]=[-155.310240964,15.6] / [V]=[0.,156.25] / ddt >= 0.001
+U: ddt U=((UTF/Cu)-(kdeg*U)) ic=0. / std(ddt U) = none 0
+[ddt U]=[-15.5994880017,156.25] / [U]=[0.,15.6] / ddt >= 0.001
+UTF: UTF=((Cu*a1)/(1+(V^beta))) / std(UTF) = none 0
+[UTF]=[0.000511998322284,156.25]
+VTF: VTF=((Cv*a2)/(1+(umodif^gamma))) / std(VTF) = none 0
+[VTF]=[0.939759036145,15.6]
