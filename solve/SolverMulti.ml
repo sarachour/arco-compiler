@@ -114,18 +114,18 @@ struct
         begin
           let st : sstep list = get_partial_app tbl id in
           let ncomps = count_comps st in
-          0. -. (float_of_int ncomps) /. 100.
+          0. -. (float_of_int ncomps) /. 3. -. (RAND.rand_norm())
         end
       | MSGlobalApp(id),Some(tbl) ->
         let st : sstep list = get_global_app tbl id in
         let ncomps = count_comps st in
-        0. -. (float_of_int ncomps) /. 100.
+        0. -. (float_of_int ncomps) /. 3. -. (RAND.rand_norm())
 
       | MSSolveVar(_),_ -> 0.
       | _,_ -> 0.
     in
     let state = List.fold_left (fun r st -> r +. (cnt_comps st)) 0. s in
-    let delta = 100. in
+    let delta = 10. in
     SearchLib.mkscore state delta
 
   let score_step () =
