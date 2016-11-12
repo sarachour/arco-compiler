@@ -1,0 +1,8 @@
+type M
+type s
+F: F=(A*B) / std(F) = none 0
+[F]=[0.,1.]
+A: <input>
+[A]=[0.,1.]
+B: <input>
+[B]=[0.,1.]

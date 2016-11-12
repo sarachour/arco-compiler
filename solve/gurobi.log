@@ -1,0 +1,599 @@
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:16:43 2016
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:21:43 2016
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:22:08 2016
+
+Read LP format model from file ilp-examples/test.lp
+Reading time = 0.00 seconds
+(null): 0 rows, 0 columns, 0 nonzeros
+Optimize a model with 0 rows, 0 columns and 0 nonzeros
+Coefficient statistics:
+  Matrix range    [0e+00, 0e+00]
+  Objective range [0e+00, 0e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [0e+00, 0e+00]
+Presolve time: 0.00s
+Presolve: All rows and columns removed
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0    0.0000000e+00   0.000000e+00   0.000000e+00      0s
+
+Solved in 0 iterations and 0.00 seconds
+Optimal objective  0.000000000e+00
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:23:54 2016
+
+Read LP format model from file ilp-examples/test.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 3 columns, 5 nonzeros
+Optimize a model with 2 rows, 3 columns and 5 nonzeros
+Model has 1 quadratic constraint
+Coefficient statistics:
+  Matrix range    [1e+00, 5e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [2e+00, 5e+00]
+  RHS range       [1e+00, 1e+01]
+Modified 1 Q diagonals
+Presolve removed 1 rows and 1 columns
+Presolve time: 0.00s
+Presolved: 1 rows, 2 columns, 2 nonzeros
+Variable types: 0 continuous, 2 integer (2 binary)
+
+Root relaxation: objective 5.000000e+00, 0 iterations, 0.00 seconds
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0       5.0000000    5.00000  0.00%     -    0s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 4 (of 4 available processors)
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 5.000000000000e+00, best bound 5.000000000000e+00, gap 0.0%
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:56:41 2016
+
+Error reading LP format file ilp-examples/addmul.lp at line 5
+Unrecognized constraint RHS or sense
+Neighboring tokens: " = min_W1 comp_slack_max: sc_A*max_A + os_A + "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:57:54 2016
+
+Error reading LP format file ilp-examples/addmul.lp at line 5
+Unrecognized constraint RHS or sense
+Neighboring tokens: " = min_W1 comp_slack_max: sc_A*max_A + os_A + "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:57:55 2016
+
+Error reading LP format file ilp-examples/addmul.lp at line 5
+Unrecognized constraint RHS or sense
+Neighboring tokens: " = min_W1 comp_slack_max: sc_A*max_A + os_A + "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:58:42 2016
+
+Error reading LP format file ilp-examples/addmul.lp at line 5
+Unrecognized constraint RHS or sense
+Neighboring tokens: " = minW1 csmax: scA*maxA + osA + smaxA = "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:58:53 2016
+
+Error reading LP format file ilp-examples/addmul.lp at line 9
+Unrecognized constraint RHS or sense
+Neighboring tokens: " = maxW1 Bounds sc_A free os_A free "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:59:24 2016
+
+Warning: unknown variable 'sc_A' in bounds section
+Warning: unknown variable 'os_A' in bounds section
+Warning: unknown variable 'max_A' in bounds section
+Warning: unknown variable 'min_A' in bounds section
+Warning: unknown variable 'scA' in integer section
+Warning: unknown variable 'maxA' in integer section
+Warning: unknown variable 'minA' in integer section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 14 columns, 6 nonzeros
+Optimize a model with 2 rows, 14 columns and 6 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [1e+00, 1e+00]
+  RHS range       [1e-04, 1e-02]
+Found heuristic solution: objective -2e+30
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is unbounded
+Best objective -2.000000000000e+30, best bound -, gap -
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 12:59:50 2016
+
+Warning: unknown variable 'scA' in bounds section
+Warning: unknown variable 'maxA' in bounds section
+Warning: unknown variable 'minA' in bounds section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 10 columns, 6 nonzeros
+Optimize a model with 2 rows, 10 columns and 6 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [1e+00, 1e+00]
+  RHS range       [1e-04, 1e-02]
+Found heuristic solution: objective 0
+Presolve removed 2 rows and 10 columns
+Presolve time: 0.00s
+Presolve: All rows and columns removed
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 0.000000000000e+00, best bound 0.000000000000e+00, gap 0.0%
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:00:06 2016
+
+Warning: unknown variable 'scA' in bounds section
+Warning: unknown variable 'maxA' in bounds section
+Warning: unknown variable 'minA' in bounds section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 8 columns, 6 nonzeros
+Optimize a model with 2 rows, 8 columns and 6 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [1e+00, 1e+00]
+  RHS range       [1e-04, 1e-02]
+Found heuristic solution: objective 0
+Presolve removed 0 rows and 5 columns
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is unbounded
+Best objective 0.000000000000e+00, best bound -, gap -
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:01:04 2016
+
+Warning: unknown variable 'scA' in bounds section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 6 columns, 6 nonzeros
+Optimize a model with 2 rows, 6 columns and 6 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Found heuristic solution: objective 0
+Presolve removed 0 rows and 3 columns
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is unbounded
+Best objective 0.000000000000e+00, best bound -, gap -
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:01:05 2016
+
+Warning: unknown variable 'scA' in bounds section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 6 columns, 6 nonzeros
+Optimize a model with 2 rows, 6 columns and 6 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Found heuristic solution: objective 0
+Presolve removed 0 rows and 3 columns
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is unbounded
+Best objective 0.000000000000e+00, best bound -, gap -
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:02:50 2016
+
+Warning: unknown variable 'sc_A' in bounds section
+Warning: unknown variable 'os_A' in bounds section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.01 seconds
+(null): 2 rows, 9 columns, 6 nonzeros
+Optimize a model with 2 rows, 9 columns and 6 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Found heuristic solution: objective 0
+Presolve removed 2 rows and 9 columns
+Presolve time: 0.00s
+Presolve: All rows and columns removed
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 0.000000000000e+00, best bound 0.000000000000e+00, gap 0.0%
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:02:51 2016
+
+Warning: unknown variable 'sc_A' in bounds section
+Warning: unknown variable 'os_A' in bounds section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 9 columns, 6 nonzeros
+Optimize a model with 2 rows, 9 columns and 6 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Found heuristic solution: objective 0
+Presolve removed 2 rows and 9 columns
+Presolve time: 0.00s
+Presolve: All rows and columns removed
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 0.000000000000e+00, best bound 0.000000000000e+00, gap 0.0%
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:04:19 2016
+
+Error reading LP format file ilp-examples/addmul.lp at line 5
+Malformed term in expression
+Neighboring tokens: " sc_A 0 + osA + slackmin_A = 0.0001 csmax: "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:04:41 2016
+
+Warning: unknown variable 'os_A' in bounds section
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 7 columns, 5 nonzeros
+Optimize a model with 2 rows, 7 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Presolve removed 1 rows and 6 columns
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is infeasible
+Best objective -, best bound -, gap -
+
+Computing Irreducible Inconsistent Subsystem (IIS)...
+
+      Constraints           Bounds       Runtime
+     Min       Max       Min      Max
+------------------------------------------------
+        0        2         0        3         0s
+        2        2         0        0         0s
+
+IIS computed: 2 constraints, 0 bounds
+IIS runtime: 0.00 seconds
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:05:24 2016
+
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 6 columns, 5 nonzeros
+Optimize a model with 2 rows, 6 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Presolve removed 0 rows and 3 columns
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is infeasible
+Best objective -, best bound -, gap -
+
+Computing Irreducible Inconsistent Subsystem (IIS)...
+
+      Constraints           Bounds       Runtime
+     Min       Max       Min      Max
+------------------------------------------------
+        0        2         0        2         0s
+        1        1         0        0         0s
+
+IIS computed: 1 constraints, 0 bounds
+IIS runtime: 0.00 seconds
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:05:39 2016
+
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 6 columns, 5 nonzeros
+Optimize a model with 2 rows, 6 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Presolve removed 0 rows and 3 columns
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is infeasible
+Best objective -, best bound -, gap -
+
+Computing Irreducible Inconsistent Subsystem (IIS)...
+
+      Constraints           Bounds       Runtime
+     Min       Max       Min      Max
+------------------------------------------------
+        0        2         0        2         0s
+        1        1         0        0         0s
+
+IIS computed: 1 constraints, 0 bounds
+IIS runtime: 0.00 seconds
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:05:41 2016
+
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 6 columns, 5 nonzeros
+Optimize a model with 2 rows, 6 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Presolve removed 0 rows and 3 columns
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is infeasible
+Best objective -, best bound -, gap -
+
+Computing Irreducible Inconsistent Subsystem (IIS)...
+
+      Constraints           Bounds       Runtime
+     Min       Max       Min      Max
+------------------------------------------------
+        0        2         0        2         0s
+        1        1         0        0         0s
+
+IIS computed: 1 constraints, 0 bounds
+IIS runtime: 0.00 seconds
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:06:19 2016
+
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 4 columns, 5 nonzeros
+Optimize a model with 2 rows, 4 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is infeasible or unbounded
+Best objective -, best bound -, gap -
+Changed value of parameter Presolve to 0
+   Prev: -1  Min: -1  Max: 2  Default: -1
+Optimize a model with 2 rows, 4 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Variable types: 0 continuous, 4 integer (0 binary)
+
+Root relaxation: unbounded, 2 iterations, 0.00 seconds
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  postponed    0               -          -      -     -    0s
+
+Explored 0 nodes (2 simplex iterations) in 0.00 seconds
+Thread count was 4 (of 4 available processors)
+
+Model is unbounded
+Best objective -, best bound -, gap -
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:06:45 2016
+
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 4 columns, 5 nonzeros
+Optimize a model with 2 rows, 4 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Model is infeasible or unbounded
+Best objective -, best bound -, gap -
+Changed value of parameter Presolve to 0
+   Prev: -1  Min: -1  Max: 2  Default: -1
+Optimize a model with 2 rows, 4 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Variable types: 0 continuous, 4 integer (0 binary)
+
+Root relaxation: unbounded, 2 iterations, 0.00 seconds
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  postponed    0               -          -      -     -    0s
+
+Explored 0 nodes (2 simplex iterations) in 0.00 seconds
+Thread count was 4 (of 4 available processors)
+
+Model is unbounded
+Best objective -, best bound -, gap -
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:07:03 2016
+
+Read LP format model from file ilp-examples/addmul.lp
+Reading time = 0.00 seconds
+(null): 2 rows, 4 columns, 5 nonzeros
+Optimize a model with 2 rows, 4 columns and 5 nonzeros
+Coefficient statistics:
+  Matrix range    [1e+00, 1e+00]
+  Objective range [1e+00, 1e+00]
+  Bounds range    [0e+00, 0e+00]
+  RHS range       [1e-04, 1e-02]
+Presolve removed 2 rows and 4 columns
+Presolve time: 0.00s
+Presolve: All rows and columns removed
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds
+Thread count was 1 (of 4 available processors)
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective -5.421010862428e-20, best bound -5.421010862428e-20, gap 0.0%
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:12:07 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 5
+Malformed term in expression
+Neighboring tokens: " + slackmin_B obj2: slackmax_C + slackmin_C Subject To "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:12:24 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 26
+Unrecognized variable bound
+Neighboring tokens: " sc_C = sc_A sc_B os_B = 0 os_A "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:12:40 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 16
+Unrecognized constraint RHS or sense
+Neighboring tokens: " = sc_A sc_B Bounds sc_A free os_A "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:12:53 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 17
+Malformed term in expression
+Neighboring tokens: " sc_A sc_B = sc_C Bounds sc_A free "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:13:04 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 16
+Malformed term in expression
+Neighboring tokens: " sc_A sc_B - sc_C = 0 Bounds sc_A "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:13:34 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 16
+Malformed term in expression
+Neighboring tokens: " sc_A * sc_B - sc_C = 0 Bounds "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:14:50 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 17
+Incomplete constraint
+Neighboring tokens: " - sc_C = 0 Bounds sc_A free "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:15:43 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 17
+Incomplete constraint
+Neighboring tokens: " - sc_C = 0 Bounds sc_A free "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:15:58 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 11
+Incomplete constraint
+Neighboring tokens: " - sc_C = 0 cmin: 1 sc_C + os_C "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:16:14 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 11
+Malformed quadratic term in expression
+Neighboring tokens: " sc_A*sc_B ] - sc_C = 0 cmin: 1 sc_C "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:16:40 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 11
+Malformed quadratic term in expression
+Neighboring tokens: " - sc_C ] = 0 cmin: 1 sc_C + "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:17:14 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 11
+Incomplete constraint
+Neighboring tokens: " - sc_C = 0 cmin: 1 sc_C + os_C "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:17:25 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 11
+Incomplete constraint
+Neighboring tokens: " - sc_C = 0 cmin: 1 sc_C + os_C "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:19:02 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 11
+Incomplete constraint
+Neighboring tokens: " - sc_C = 0 cmin: 1 sc_C + os_C "
+
+
+Gurobi 6.5.2 (linux64) logging started Tue Oct 25 13:19:03 2016
+
+Error reading LP format file ilp-examples/mul.lp at line 11
+Incomplete constraint
+Neighboring tokens: " - sc_C = 0 cmin: 1 sc_C + os_C "
+
