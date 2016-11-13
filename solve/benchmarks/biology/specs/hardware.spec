@@ -449,6 +449,7 @@ schematic
 
   conn vdadd -> output(V)
   conn vdadd -> vtoi
+  conn vdadd -> switch 
   conn vdadd -> vadd
   conn vdadd -> vdadd
 
