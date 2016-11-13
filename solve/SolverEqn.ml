@@ -201,6 +201,12 @@ struct
   let test_node_validity (tbl:gltbl) (node:sstep snode) (depth:int) : bool=
     begin
       let mint,musr = mkmenu tbl (None) in
+      if SearchLib.hasnode tbl.search node = false then
+        begin
+          SearchLib.deadend tbl.search node tbl;
+          false
+        end
+      else
       let old_cursor, old_depth = backup_and_move_cursor tbl node in 
       debug ("-> [valid?] testing node "^(string_of_int node.id));
       let is_valid : bool =

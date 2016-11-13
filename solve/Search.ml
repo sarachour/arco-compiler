@@ -416,28 +416,31 @@ struct
 
   let murder_branch (type a) (type b) (sr:(a,b) ssearch) (leaf:a snode) : unit =
     let rec _kill_branch n =
-      match TREE.parent sr.tree n with
-      | Some(par) ->
-        let siblings : a snode list = (TREE.children sr.tree par) in
-        let live_siblings = LIST.filter (fun node ->
-            is_visited sr node = false && is_deadend sr node = false && is_solution sr node = false
-          ) siblings in
-        (*the children are fully explored*)
-        if List.length live_siblings = 0 then
-          let sln_siblings = LIST.filter (fun node ->
-              is_visited sr node || is_solution sr node
+      if hasnode sr n = false then
+        ORDSET.rm sr.frontier (REF.mk n)
+      else
+        match TREE.parent sr.tree n with
+        | Some(par) ->
+          let siblings : a snode list = (TREE.children sr.tree par) in
+          let live_siblings = LIST.filter (fun node ->
+              is_visited sr node = false && is_deadend sr node = false && is_solution sr node = false
             ) siblings in
-          ORDSET.rm sr.frontier (REF.mk par);
-          begin
-            if List.length sln_siblings > 0 then
-              SStatLib.visited sr.st par
-            else
-              SStatLib.deadend sr.st par;
-          end;
-           _kill_branch par
-        else
-          ()
-      | None -> ()
+          (*the children are fully explored*)
+          if List.length live_siblings = 0 then
+            let sln_siblings = LIST.filter (fun node ->
+                is_visited sr node || is_solution sr node
+              ) siblings in
+            ORDSET.rm sr.frontier (REF.mk par);
+            begin
+              if List.length sln_siblings > 0 then
+                SStatLib.visited sr.st par
+              else
+                SStatLib.deadend sr.st par;
+            end;
+            _kill_branch par
+          else
+            ()
+        | None -> ()
     in
     _kill_branch leaf;
     ()

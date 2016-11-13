@@ -986,11 +986,13 @@ struct
               | true ->
                 q (add_route_line handle int_out)
               | false -> 
-                let _,sample_in,sample_out =
+                (*let _,sample_in,sample_out =
                   create_sample q cmpns (float_of_number sample)
                 in
                 q (add_route_line handle sample_in);
                 q (add_route_line sample_out int_out);
+                *)
+                q (add_route_line handle int_out);
                 ()
             end
         | _ -> error "iter outs" "unexpected"
@@ -1136,7 +1138,7 @@ struct
                   match get_sample ccomp.d.name port.port with
                   | Some(SIMBlock(templ_ns,samplename)) ->
                     let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],samplename) in
-                    let new_sample = 1. /. (REF.dr time_constant) in
+                    let new_sample = sample_rate /. (REF.dr time_constant) in
                     update_sample_rate q newblock new_sample
                   | _-> ()
               end
