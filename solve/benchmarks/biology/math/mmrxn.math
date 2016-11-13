@@ -32,7 +32,7 @@ rel ddt E = (-kf)*E*S + kr*ES + kcat*ES init 0.124
 def E mag = [0,0.124] M
 var ddt E = 0.04*E shape GAUSS
 
-rel ddt ES = kf*E*S - kr*ES - kcat*ES init 0
+rel ddt ES = kf*E*S - (kr + kcat)*ES init 0
 def ES mag = [0,0.124] M
 var ddt ES = 0.04*ES shape GAUSS
 
