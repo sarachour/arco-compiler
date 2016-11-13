@@ -185,6 +185,42 @@ struct
         {scale=Op2(Power,exp.scale,Decimal(d));
         offset=Decimal(0.);term=node;}
 
+      | Op2(Power,Term(x),Term(expn)) ->
+        let value = match expn with
+          | HNPort(HWKInput,_,name,_) ->
+              begin
+                match ConcCompLib.get_var_config cfg name with
+                    | Some(Integer(i)) -> Some(float_of_int i)
+                    | Some(Decimal(i)) -> Some(i)
+                    | _ -> None
+              end
+          | HNParam(_,name) ->
+              begin
+                match (ConcCompLib.get_param_config cfg name) with
+                | Some(i) -> Some(float_of_number i)
+                | _ -> None
+              end
+          | _ -> None
+        in
+          begin
+            match value with
+            |Some(v) ->
+                let exp = _derive_scaling_factor (Term x) in
+                let base = _derive_scaling_factor (Term expn) in
+                add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
+                {scale=Op2(Power,base.scale,Decimal(v)); offset=Decimal(0.);term=node;}
+
+            |None ->
+              begin
+                let exp = _derive_scaling_factor (Term x) in
+                let base = _derive_scaling_factor (Term expn) in
+                add_cstrs ([SVNoScale(base.scale);SVNoScale(exp.scale)]);
+                add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
+                {scale=Decimal(1.); offset=Decimal(0.);term=node;}
+              end
+          end
+
+
       | Op2(Power,base,exp) ->
         let exp = _derive_scaling_factor exp in
         let base = _derive_scaling_factor base in

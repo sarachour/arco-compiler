@@ -197,7 +197,47 @@ end
 
 % Dynamic Systems Biology Modelling
 % page 311
-comp ihill
+comp ihill_stim
+input Vmax {I:uA}
+input S {I:uA}
+input n {V:mV}
+input Km {I:uA}
+
+def I(Vmax) mag = [0.0,10] uA
+def I(S) mag = [0,10] uA
+def I(Km) mag = [0.25,10] uA
+def V(n) mag = [1,5] mV
+
+
+output STIM {I:uA}
+% s^n/(s^n + k^n)
+rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
+
+sim ihill Vmax S n Km STM REP
+end
+
+comp ihill_rep
+    input Vmax {I:uA}
+    input S {I:uA}
+    input n {V:mV}
+    input Km {I:uA}
+
+    def I(Vmax) mag = [0.0,10] uA
+    def I(S) mag = [0,10] uA
+    def I(Km) mag = [0.25,10] uA
+    def V(n) mag = [1,5] mV
+
+
+    output REP {I:uA}
+
+    % s^n/(s^n + k^n)
+    rel I(REP) = I(Vmax)*( (I(Km)^(V(n)))/( (I(Km)^(V(n))) + (I(S)^V(n)) ) )
+
+    sim ihill Vmax S n Km STM REP
+end
+
+
+comp ihill_rep2
   input Vmax {I:uA}
   input S {I:uA}
   input n {V:mV}
@@ -209,13 +249,9 @@ comp ihill
   def V(n) mag = [1,5] mV
 
   
-  output STIM {I:uA}
-  output REP {I:uA}
   output REP2 {I:uA}
   
   % s^n/(s^n + k^n)
-  rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
-  rel I(REP) = I(Vmax)*( (I(Km)^(V(n)))/( (I(S)^V(n)) + (I(Km)^(V(n))) ) )
   rel I(REP2) = I(Vmax)*(1/( (I(S)^V(n)) +1))
 
   sim ihill Vmax S n Km STM REP
@@ -301,7 +337,10 @@ schematic
 %
   inst iadd : 30
   inst igenebind : 8
-  inst ihill : 8
+  inst ihill_stim : 8
+  inst ihill_rep : 8
+  inst ihill_rep2 : 8
+  
 %
   inst itov : 30
   inst vtoi : 30
@@ -310,14 +349,18 @@ schematic
 
   % Transcription rate functions
   conn input(I) -> itov
-  conn input(I) -> ihill
+  conn input(I) -> ihill_stim
+  conn input(I) -> ihill_rep
+  conn input(I) -> ihill_rep2
   conn input(I) -> igenebind
   conn input(I) -> switch
   conn input(I) -> iadd
   conn input(I) -> vdadd
   conn input(I) -> mm
 
-  conn input(V) -> ihill
+  conn input(V) -> ihill_stim
+  conn input(V) -> ihill_rep
+  conn input(V) -> ihill_rep2
   conn input(V) -> vtoi
   conn input(V) -> itov
   conn input(V) -> vadd
@@ -340,15 +383,30 @@ schematic
   conn switch -> output(I)
   conn switch -> itov
 
-  conn ihill -> output(I)
-  conn ihill -> itov
-  conn ihill -> iadd
-  conn ihill -> vdadd
-  conn ihill -> igenebind
+  conn ihill_stim -> output(I)
+  conn ihill_stim -> itov
+  conn ihill_stim -> iadd
+  conn ihill_stim -> vdadd
+  conn ihill_stim -> igenebind
+
+  conn ihill_rep -> output(I)
+  conn ihill_rep -> itov
+  conn ihill_rep -> iadd
+  conn ihill_rep -> vdadd
+  conn ihill_rep -> igenebind
+
+  conn ihill_rep2 -> output(I)
+  conn ihill_rep2 -> itov
+  conn ihill_rep2 -> iadd
+  conn ihill_rep2 -> vdadd
+  conn ihill_rep2 -> igenebind
+
 
   conn igenebind -> output(I)
   conn igenebind -> itov
-  conn igenebind -> ihill
+  conn igenebind -> ihill_stim
+  conn igenebind -> ihill_rep
+  conn igenebind -> ihill_rep2
   conn igenebind -> iadd
   conn igenebind -> vdadd
 
@@ -359,7 +417,9 @@ schematic
   conn itov -> switch
 
   conn iadd -> output(I)
-  conn iadd -> ihill
+  conn iadd -> ihill_rep2
+  conn iadd -> ihill_rep
+  conn iadd -> ihill_stim
   conn iadd -> vgain 
   conn iadd -> switch
   conn iadd -> igenebind
@@ -369,7 +429,9 @@ schematic
   conn iadd -> iadd
 
   conn vtoi -> iadd
-  conn vtoi -> ihill
+  conn vtoi -> ihill_rep
+  conn vtoi -> ihill_rep2
+  conn vtoi -> ihill_stim
   conn vtoi -> switch
   conn vtoi -> output(I)
 
