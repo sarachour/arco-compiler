@@ -21,22 +21,24 @@ output clm : M
 
 
 param k_tl : 1/s = 3.01029995664
-param n : none = 2
+param n : unit = 2
 param kd_prot : 1/s = 0.03010299956
 param kd_mrna : 1/s = 0.15051499783
-param KMp : 1/s = 40
+%param KMp : 1/s = 40
 param a0_tr : 1/s = 0.0005
 param a_tr : 1/s = 0.4995
 
 
 time t : s
 
+%s
+input KMp : M
+%Set KMp to 40
+def KMp mag = [40,40] M
 
-rel TRLacL = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (LacLp^n)))
-
-rel TRTetR = a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (TetRp^n)))
-
-rel TRclp =  a0_tr + ((a_tr*(KMp^n))/( (KMp^n) + (clp^n)))
+rel TRLacL =a0_tr + (a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
+rel TRTetR =a0_tr + (a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
+rel TRclp =a0_tr + (a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
 
 rel ddt LacLm = (TRLacL) - (kd_mrna*LacLm) init 0
 def LacLm mag = [0,0.5] M

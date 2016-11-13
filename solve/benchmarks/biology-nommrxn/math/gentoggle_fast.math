@@ -40,13 +40,12 @@ rel umodif = (U)/((1+IPTG/K)^nu)
 
 %the compartment size
 rel UTF = (Cu*a1)/(1 +(V^beta))
-
 rel VTF = (Cv*a2)/(1 + (umodif^gamma))
 
 rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
-def U mag = [0,0.0156] unit 
+def U mag = [0,15.6] unit 
 def ddt U time 0.1 
 
 rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
-def V mag = [0,0.15625] unit
+def V mag = [0,156.25] unit
 def ddt V time 0.1 
