@@ -805,7 +805,7 @@ struct
                  (string_of_int (List.length slns))^"/"^(string_of_int nglbl));
           List.iter (fun sln -> add_glbl_sln partial_node sln) slns;
           SearchLib.try_visited ms.search partial_node;
-          ()
+          true
         | None ->
           debug ("  >> Found NO Solutions.");
           if SearchLib.hasnode ms.search partial_node then
@@ -813,7 +813,7 @@ struct
               debug "   xx let's kill this branch";
               noop (SearchLib.deadend ms.search partial_node ms.state);
             end;
-          ()
+          false
       in
       match slns with
       | Some(cslns) ->
@@ -823,7 +823,15 @@ struct
             add_lcl_sln curs sln
           ) cslns
         in
-        List.iter (fun x -> add_solution x) csln_nodes;
+        let nslns_per_partial = Globals.get_glbl_int "multi-num-global-solutions-per-partial" in
+        List.fold_left (fun nslns x ->
+            if nslns >= nslns_per_partial then nslns
+            else
+              if add_solution x then
+                nslns + 1
+              else
+                nslns
+        ) 0 csln_nodes;
         (*only mark the node visited if it still exists. This node might not exist.*)
         if SearchLib.hasnode ms.search curs then
           SearchLib.visited ms.search curs;

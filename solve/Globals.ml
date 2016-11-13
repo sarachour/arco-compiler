@@ -18,6 +18,7 @@ let _ = MAP.put glbls "uast-depth" (GlblPropInt 3)
 
 let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 8)
 let _ = MAP.put glbls "multi-num-global-solutions" (GlblPropInt 2)
+let _ = MAP.put glbls "multi-num-global-solutions-per-partial" (GlblPropInt 1)
 let _ = MAP.put glbls "multi-selector-branch" (GlblPropString "depth")
     
 
