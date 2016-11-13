@@ -187,19 +187,19 @@ comp ihill
   input n {V:mV}
   input Km {I:uA}
 
-  def V(Vmax) mag = [0.0001,1200] mV
+  def I(Vmax) mag = [0.0001,10] uA
   def I(S) mag = [1,10] uA
   def I(Km) mag = [1,10] uA
   def V(n) mag = [1,5] mV
 
   param SWK : none = {0,1}
   
-  output STIM {V:mV}
-  output REP {V:mV}
+  output STIM {I:uA}
+  output REP {I:uA}
   
   % s^n/(s^n + k^n)
-  rel V(STIM) = V(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
-  rel V(REP) = V(Vmax)*( (I(Km)^(V(n)*SWK))/( (I(S)^V(n)) + (I(Km)^(V(n)*SWK)) ) )
+  rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
+  rel I(REP) = I(Vmax)*( (I(Km)^(V(n)*SWK))/( (I(S)^V(n)) + (I(Km)^(V(n)*SWK)) ) )
 
   sim ihill Vmax S n Km STM REP
 end
@@ -207,15 +207,15 @@ end
 comp igenebind
   input TF {I:uA}
   input K {I:uA}
-  input Vmax {V:mV}
+  input Vmax {I:uA}
 
   def I(TF) mag = [0.0001,10] uA
   def I(K) mag = [0.0001,10] uA
-  def V(Vmax) mag = [0.0001,1200] uA
+  def I(Vmax) mag = [0.0001,10] uA
 
   output GE {I:uA}
 
-  rel V(GE) = V(Vmax)*(1/(1+ I(K)*I(TF)))
+  rel I(GE) = I(Vmax)*(1/(1+ I(K)*I(TF)))
   sim igenebind TF K Vmax GE
 end
 
@@ -254,13 +254,13 @@ comp switch
   input Kmod {I:uA}
 
   def I(SUB) mag = [0.0001,10] uA
-  def V(Vmax) mag = [0.0,3300] uA
+  def I(Vmax) mag = [0.0001,10] uA
   def V(n) mag = [500,3300] mV
   def I(Kmod) mag = [0.0001,10] uA
 
   output PROD {I:uA}
 
-  rel V(PROD) = V(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)/500.0))
+  rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)/500.0))
 end
 
 
