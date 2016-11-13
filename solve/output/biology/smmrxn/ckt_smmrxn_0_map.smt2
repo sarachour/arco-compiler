@@ -353,17 +353,17 @@
 ; =  {of.input.I[0].O} {of.mm[0].kr}
 (assert (= of_1 of_10))
 ; 
-; =  {sc.mm[0].X} {sc.output.V[1].X}
-(assert (= sc_15 sc_8))
-; 
-; =  {of.mm[0].X} {of.output.V[1].X}
-(assert (= of_15 of_8))
-; 
 ; =  {sc.mm[0].Y} {sc.output.V[0].X}
 (assert (= sc_17 sc_6))
 ; 
 ; =  {of.mm[0].Y} {of.output.V[0].X}
 (assert (= of_17 of_6))
+; 
+; =  {sc.mm[0].X} {sc.output.V[1].X}
+(assert (= sc_15 sc_8))
+; 
+; =  {of.mm[0].X} {of.output.V[1].X}
+(assert (= of_15 of_8))
 ; 
 ; =  {sc.input.V[2].O} {sc.mm[0].Xtot}
 (assert (= sc_19 sc_14))

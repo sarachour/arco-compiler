@@ -115,7 +115,9 @@ end
 comp vdadd
     input A {V:mV}
     input B {V:mV}
-    input D {V:mV}
+    input Ak {I:uA}
+    input Bk {I:uA}
+    input D {I:mV}
     input OUT_0 {V:mV}
 
     output OUT {V:mV}
@@ -127,11 +129,13 @@ comp vdadd
     def V(A) mag = [0,3300] mV
     def V(B) mag = [0,3300] mV 
     def I(D) mag = [0,10] uA
+    def I(Ak) mag = [0,1] uA
+    def I(Bk) mag = [0,1] uA
     def V(OUT_0) mag = [0,3300] mV
 
     % only produces outputs in this range
 
-    rel ddt V(OUT) = (V(A) + BSW*V(B)) - DSW*V(D)*V(OUT)  init V(OUT_0)
+    rel ddt V(OUT) = (I(Ak)*V(A) + BSW*I(Bk)*V(B)) - DSW*I(D)*V(OUT)  init V(OUT_0)
     def V(OUT) mag = [0,12000] mV
 
 
@@ -338,12 +342,14 @@ schematic
   conn ihill -> output(I)
   conn ihill -> itov
   conn ihill -> iadd
+  conn ihill -> vdadd
   conn ihill -> igenebind
 
   conn igenebind -> output(I)
   conn igenebind -> itov
   conn igenebind -> ihill
   conn igenebind -> iadd
+  conn igenebind -> vdadd
 
   conn itov -> output(V)
   conn itov -> vadd

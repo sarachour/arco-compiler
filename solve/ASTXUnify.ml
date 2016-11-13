@@ -189,7 +189,7 @@ struct
         ()
       in
       let decl_var (v:hwvid hwportvar) =
-        let vname = to_symvar s (HwId (HwLib.var2id v None)) in
+        let vname = to_symvar s (HwId (HwLib.var2id v hwstate.inst)) in
         begin
           match ConcCompLib.get_var_config hwstate.cfg v.port with
           | Some(conc_expr) -> use_vars_in_expr (to_symexpr s conc_expr)
@@ -204,6 +204,8 @@ struct
           if ConcCompLib.is_conc hwstate.cfg v.port = false then
             decl_wildcard v
           else
+            let vname : symvar = to_symvar s (HwId (HwLib.var2id v hwstate.inst)) in
+            decl_symvar vname;
             decl_var v
         );
       MathLib.iter_vars mstate.env (fun (v:mid mvar) ->
@@ -264,9 +266,10 @@ struct
       if_numeric_unify s hwexpr texpr
     in
     if unified_numeric then result else
+      let simpl_symhwexpr = SymCaml.simpl symenv.s symhwexpr in
       let maybe_assigns =
         try
-          SymCaml.pattern symenv.s symtexpr symhwexpr
+          SymCaml.pattern symenv.s symtexpr simpl_symhwexpr
         with
         | PyCamlWrapperException(_) ->
           begin
