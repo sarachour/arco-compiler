@@ -1136,7 +1136,7 @@ struct
                   match get_sample ccomp.d.name port.port with
                   | Some(SIMBlock(templ_ns,samplename)) ->
                     let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],samplename) in
-                    let new_sample = sample_rate /. (REF.dr time_constant) in
+                    let new_sample = 1. /. (REF.dr time_constant) in
                     update_sample_rate q newblock new_sample
                   | _-> ()
               end
