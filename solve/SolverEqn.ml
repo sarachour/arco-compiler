@@ -222,7 +222,7 @@ struct
           (*found all goals*)
           debug "[test-node-validity] found a valid solution";
           mark_if_solution tbl node;
-          false
+          true 
         end
       else
         true
