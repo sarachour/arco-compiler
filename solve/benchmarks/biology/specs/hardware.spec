@@ -215,6 +215,7 @@ comp ihill
   % s^n/(s^n + k^n)
   rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
   rel I(REP) = I(Vmax)*( (I(Km)^(V(n)))/( (I(S)^V(n)) + (I(Km)^(V(n))) ) )
+  rel I(REP) = I(Vmax)*( (I(Km)^(0)/( (I(S)^V(n)) + (I(Km)^(0) ) )
 
   sim ihill Vmax S n Km STM REP
 end
