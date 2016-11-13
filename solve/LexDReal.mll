@@ -26,8 +26,11 @@ rule env = parse
   | "ENTIRE"                {ENTIRE}
   | "-INFTY"                {NEG_INFTY}
   | "+INFTY"                 {POS_INFTY}
+  | "inf"                  {POS_INFTY}
+  | "-inf"                  {NEG_INFTY}
   | "Solution"              {SOLUTION}
   | "unknown"               {UNKNOWN}
+  | "sat"                   {SAT}
   | floatexp as i           { let str = i in
                               let args = STRING.split str "e" in
                               let base = float_of_string (List.nth args 0) in

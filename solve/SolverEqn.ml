@@ -128,6 +128,21 @@ struct
 
 
 
+  let test_node_map_full_cons tbl node =
+    let mint,musr= mkmenu tbl None in
+    if MapHeuristics.full_heuristic tbl then
+      begin
+        debug ("<<< SAT => VALID >>");
+        musr();
+        true
+      end
+    else
+      begin
+        debug "<< UNSAT => INVALID >>";
+        musr();
+        false
+      end
+
   let test_node_map_cons tbl node =
     let mint,musr= mkmenu tbl None in
     let use_heuristic = Globals.get_glbl_bool "eqn-use-map-heuristic" in
@@ -155,7 +170,7 @@ struct
     let mint,_ = mkmenu v None in
     debug "[mark-if-solution] testing if solution.";
     if GoalLib.num_active_goals v = 0 then
-      if HwConnRslvrLib.consistent v && test_node_map_cons v curr then
+      if HwConnRslvrLib.consistent v && test_node_map_cons v curr && test_node_map_full_cons v curr then
         begin
           debug "[mark-if-solution] found concrete hardware. marking as solution.";
           noop (SearchLib.solution v.search curr);
@@ -206,8 +221,10 @@ struct
       else
         true
       in
-      if test_node_map_cons tbl node then
-        is_valid
+      if is_valid = false then
+        false
+      else if test_node_map_cons tbl node && test_node_map_full_cons tbl node then
+        true
       else
         begin
           SearchLib.deadend tbl.search node tbl;

@@ -74,12 +74,12 @@ struct
   let linearsmtid2name symtbl x = match x with
     | SVLinVar(x) ->
       linearid2name symtbl x
-    | SVSlackVar(SVMin,_,w) ->
+    | SVSlackVar(SVMin,_,w,i) ->
       let id = wire2id symtbl w in
-      "slbot_"^(string_of_int id)
-    | SVSlackVar(SVMax,_,w) ->
+      "slbot_"^(string_of_int id)^"_"^(string_of_int i)
+    | SVSlackVar(SVMax,_,w,i) ->
       let id = wire2id symtbl w in
-      "sltop_"^(string_of_int id)
+      "sltop_"^(string_of_int id)^"_"^(string_of_int i)
 
   let name2linearsmtid symtbl x : linear_smt_id option=
     match STRING.split x "_" with
@@ -91,14 +91,14 @@ struct
       let id = int_of_string id in
       let w = id2wire symtbl id in 
       Some (SVLinVar(SVOffsetVar(w)))
-    | ["slbot";id] ->
+    | ["slbot";id;i] ->
       let id = int_of_string id in
       let w = id2wire symtbl id in 
-      Some (SVSlackVar(SVMin,-1.0,w))
-    | ["sltop";id] ->
+      Some (SVSlackVar(SVMin,-1.0,w,int_of_string i))
+    | ["sltop";id;i] ->
       let id = int_of_string id in
       let w = id2wire symtbl id in 
-      Some (SVSlackVar(SVMax,-1.0,w))
+      Some (SVSlackVar(SVMax,-1.0,w,int_of_string i))
     | h::t -> None 
     | [] -> error "name2linearsmtid" ("empty string ")
 
@@ -200,38 +200,53 @@ struct
 
       | SVDeclMapVar(SVLinVar(SVOffsetVar(x))) ->
         enq (Z3ConstDecl(linearid2name tbl (SVOffsetVar x),Z3Real))
-      | SVDeclMapVar(SVSlackVar(dir,weight,x)) ->
-        let svar_name = linearsmtid2name tbl (SVSlackVar(dir,weight,x)) in
+
+      | SVDeclMapVar(SVSlackVar(dir,weight,x,i)) ->
+        let svar_name = linearsmtid2name tbl (SVSlackVar(dir,weight,x,i)) in
         MAP.put slackvars svar_name weight;
-        enq (Z3ConstDecl(svar_name,Z3Real))
+        enq (Z3ConstDecl(svar_name,Z3Real));
+        begin
+          begin
+            match dir with
+            | SVMin -> enq (Z3Assert(Z3LTE(Z3Var(svar_name),Z3Real(0.00000001))))
+            | SVMax -> enq (Z3Assert(Z3GTE(Z3Var(svar_name),Z3Real(0.00000001))))
+          end
+        end
+
       | SVEquals(lst) ->
         let z3lst : z3expr list= List.map expr_to_z3prob lst in
         enq (Z3Comment "");
         enq (Z3Comment(MapUtil.linearstmt2str s));
         enq (mkeq (z3lst))
+
       | SVCoverGTE(lst) ->
         let z3lst : z3expr list= List.map smtexpr_to_z3prob lst in
         enq (Z3Comment "");
         enq (Z3Comment(MapUtil.linearstmt2str s));
         enq (Z3Assert(Z3Lib.fn_all z3lst (fun x y -> Z3GTE(x,y))))
+
       | SVCoverLTE(lst) ->
         let z3lst : z3expr list= List.map smtexpr_to_z3prob lst in
         enq (Z3Comment "");
         enq (Z3Comment(MapUtil.linearstmt2str s));
         enq (Z3Assert(Z3Lib.fn_all z3lst (fun x y -> Z3LTE(x,y))))
+
       | SVCoverEq(lst) ->
         let z3lst : z3expr list= List.map smtexpr_to_z3prob lst in
         enq (Z3Comment "");
         enq (Z3Comment(MapUtil.linearstmt2str s));
         enq (mkeq (z3lst))
+
       | SVLTE(a,b) ->
         let asmt = expr_to_z3prob a in
         let bsmt = expr_to_z3prob b in
         enq (Z3Assert(Z3LTE(asmt,bsmt)))
+
       | SVNoOffset(expr) ->
         let z3expr = expr_to_z3prob expr in 
         enq (Z3Comment "no offset");
         enq (Z3Assert(Z3Eq(z3expr,Z3Real(0.))))
+
       | SVNoScale(expr) ->
         let z3expr = expr_to_z3prob expr in 
         enq (Z3Comment "no scale");
@@ -258,6 +273,10 @@ struct
     | [] ->
      tbl,z3stmts,Z3Int(0)
 
+  let solvable (stmts:linear_stmt list) : bool =
+      let tbl,stmts,minexpr = to_z3prob stmts in
+      let sat= Z3Lib.sat "mapper" (stmts)  true in
+      sat
 
   let solve gltbl (stmts:linear_stmt list) : (wireid,hw_mapping) map option =
     (*helper function*)

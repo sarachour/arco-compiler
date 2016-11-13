@@ -20,7 +20,7 @@
 
 
 %token EOF EOL OBRAC CBRAC EQ COMMA COLON
-%token SOLUTION ENTIRE NEG_INFTY POS_INFTY UNKNOWN
+%token SOLUTION ENTIRE NEG_INFTY POS_INFTY UNKNOWN SAT
 
 %token <string> TOKEN
 %token <int> INTEGER
@@ -85,8 +85,12 @@ stmts:
     obj.model <- Some(mdl);
     obj
   }
- 
-
+  | SAT EOL {
+    {sat=true;model=None}
+  }
+  | stmts EOL {
+     $1
+  }
 env :
   | stmts EOF {Some $1}
   | EOF       {Some {sat=false;model=None}}

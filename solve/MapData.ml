@@ -17,7 +17,7 @@ type linear_id =
 
 type linear_smt_id =
   | SVLinVar of linear_id
-  | SVSlackVar of linear_slack_dir*float*wireid
+  | SVSlackVar of linear_slack_dir*float*wireid*int
 
 type linear_stmt =
   | SVNoOffset of linear_id ast

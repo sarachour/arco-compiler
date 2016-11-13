@@ -60,7 +60,7 @@ end
 digital output V
   input X {V:mV}
   output O {D:bits}
-  def V(X) mag = [0.0001,3300] mV
+  def V(X) mag = [0.0,3300] mV
 
   def D(O) sample = 0.001 us
   def D(O) repr = SEEEMMMM 
@@ -84,18 +84,19 @@ end
 
 comp vgain
   input X {V:mV}
-  def V(X) mag = [0.0001,3300] mV
+  def V(X) mag = [0.00,3300] mV
 
   input Y {V:mV}
-  def V(Y) mag = [1,3300] mV
+  def V(Y) mag = [0,3300] mV
   
   input Z {V:mV}
-  def V(Z) mag = [0.0001,3300] mV
+  def V(Z) mag = [0.00,3300] mV
   
   output P {V:mV}
-  def V(P) mag = [0.0001,3300] mV
+  def V(P) mag = [0.00,3300] mV
 
-  rel V(P) = (V(X)/V(Y))*V(Z)*0.5
+  %rel V(P) = (V(X)/V(Y))*V(Z)
+  rel V(P) = V(X)*V(Z)
   var V(P) = 0.0001*V(P) + 0.01 shape GAUSS
 
   sim vgain X Y Z P
@@ -142,7 +143,7 @@ comp vadd
   rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   var V(OUT) = 0.001*V(OUT) + 0.1 shape GAUSS
 
-  rel ddt V(OUT2) = ((V(A) + BSW*V(B))*0.5) - CSW*V(C) - DSW*V(D)*V(OUT2)  init V(OUT2_0)
+  rel ddt V(OUT2) = (V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2)  init V(OUT2_0)
   def V(OUT2) mag = [0,3300] mV
   var ddt V(OUT2) = 0.001*V(OUT2) + 0.1 shape GAUSS
   
@@ -154,9 +155,8 @@ comp vtoi
   input K {V:mV}
   output Y {I:uA}
 
-  %def I(Y) mag = [0.0001,10] uA
-  def V(K) mag = [1,3300] mV
-  def V(X) mag = [1,3300] mV
+  def V(K) mag = [0,3300] mV
+  def V(X) mag = [330,3300] mV
 
   rel I(Y) = (1/V(K))*V(X)
   var I(Y) = 0.000001 shape GAUSS
@@ -169,7 +169,7 @@ comp itov
   input X {I:uA}
   input K {V:mV}
   output Y {V:mV}
-  def I(X) mag = [0.0001,10] uA
+  def I(X) mag = [0.0,10] uA
   def V(K) mag = [1,330] mV
 
   rel V(Y) = (V(K))*I(X)
@@ -186,8 +186,8 @@ comp ihill
   input n {V:mV}
   input Km {I:uA}
 
-  def I(Vmax) mag = [0.0001,10] uA
-  def I(S) mag = [1,10] uA
+  def I(Vmax) mag = [0.0,10] uA
+  def I(S) mag = [0,10] uA
   def I(Km) mag = [1,10] uA
   def V(n) mag = [1,5] mV
 
@@ -240,7 +240,7 @@ comp mm
 
   rel V(X) = V(Xtot) - V(XY)
   rel V(Y) = V(Ytot) - V(XY)
-  rel ddt V(XY) = (I(kf)*V(X)*V(Y))/10.0 - I(kr)*V(XY) init V(XY0)
+  rel ddt V(XY) = I(kf)*V(X)*V(Y) - I(kr)*V(XY) init V(XY0)
   def V(XY) mag = [0,66000] mV
   var ddt V(XY) = 0.001*V(XY) + 0.1 shape GAUSS
 
@@ -252,8 +252,8 @@ comp switch
   input n {V:mV}
   input Kmod {I:uA}
 
-  def I(SUB) mag = [0.0001,10] uA
-  def I(Vmax) mag = [0.0001,10] uA
+  def I(SUB) mag = [0.000,10] uA
+  def I(Vmax) mag = [0.000,10] uA
   def V(n) mag = [500,3300] mV
   def I(Kmod) mag = [0.0001,10] uA
 

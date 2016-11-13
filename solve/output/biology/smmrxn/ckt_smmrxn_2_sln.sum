@@ -2,40 +2,38 @@
 === Route ===
 
 val 0.11 -> input.V[0].X
-val 0.125 -> input.V[1].X
-val 0 -> [input.V[2].X,input.V[4].X,input.V[3].X]
-val 0.15 -> input.V[5].X
-val 4 -> input.V[6].X
-val 1 -> [input.I[0].X,input.I[1].X]
+val 0 -> [input.V[1].X,input.V[3].X,input.V[2].X]
+val 0.15 -> input.V[4].X
+val 0.25 -> input.V[5].X
+val 1 -> [input.V[6].X,input.I[1].X,input.I[0].X]
 
 
 === Generate ===
-out S -> [mm[0].X,output.V[0].O]
-out E -> [mm[0].Y,output.V[1].O]
-out ES -> [output.V[2].O,mm[0].XY,vadd[2].OUT2,output.V[3].O]
+out S -> [mm[2].Y,output.V[0].O]
+out E -> [mm[2].X,output.V[1].O]
+out ES -> [output.V[2].O,vadd[1].OUT2,mm[2].XY,output.V[3].O]
 
 val 0.11 -> input.V[0].O
-val 0.125 -> input.V[1].O
-val 0 -> [input.V[2].O,input.V[3].O,input.V[4].O]
-val 0.15 -> input.V[5].O
-val 4 -> input.V[6].O
-val 1 -> [input.I[1].O,input.I[0].O]
+val 0 -> [input.V[1].O,input.V[2].O,input.V[3].O]
+val 0.15 -> input.V[4].O
+val 0.25 -> input.V[5].O
+val 1 -> [input.V[6].O,input.I[0].O,input.I[1].O]
 
-ast (4*E*S) -> [vgain[1].P,vgain[1].P]
+ast (2*E*S) -> [vgain[0].P,vgain[0].P]
 
 === Connect ===
-vadd[2].OUT2 ->  output.V[2].X
-input.I[0].O ->  mm[0].kr
-mm[0].X ->  output.V[0].X vgain[1].Z
-mm[0].Y ->  output.V[1].X vgain[1].X
-input.V[2].O ->  vadd[2].OUT2_0
-input.V[3].O ->  vadd[2].A
-input.I[1].O ->  mm[0].kf
-input.V[1].O ->  vgain[1].Y
-mm[0].XY ->  output.V[3].X
-vgain[1].P ->  vadd[2].B
-input.V[0].O ->  mm[0].Xtot
-input.V[4].O ->  vadd[2].C
-input.V[5].O ->  mm[0].Ytot
-input.V[6].O ->  vadd[2].D
+vadd[1].OUT2 ->  output.V[3].X
+input.I[0].O ->  mm[2].kr
+mm[2].XY ->  output.V[2].X
+input.V[3].O ->  vadd[1].A
+input.V[2].O ->  vadd[1].C
+input.I[1].O ->  mm[2].kf
+input.V[1].O ->  vadd[1].OUT2_0
+vgain[0].P ->  vadd[1].B
+input.V[0].O ->  mm[2].Ytot
+mm[2].Y ->  vgain[0].Z output.V[0].X
+input.V[5].O ->  vgain[0].Y
+input.V[4].O ->  mm[2].Xtot
+input.V[6].O ->  vadd[1].D
+mm[2].X ->  output.V[1].X vgain[0].X
 

@@ -292,6 +292,41 @@ struct
     sat^"\n\n"^mdl
 
     
+  let sat (root:string) (stmts:z3st list) use_dreal : bool =
+    let stmts =
+      if use_dreal then
+        (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT]
+      else
+        stmts @ [Z3SAT ]
+    in
+    let smtfile =  "z3-tmp."^root^".smt2" in
+    let resfile = "z3-res."^root^".res" in
+    let oc = open_out smtfile in
+    (*solve for fif mintues*)
+    let timeout = 60*10 in
+    (*let x = List.sort sortsts (LIST.uniq x) in*)
+    z3stmts2buf oc stmts;
+    close_out oc;
+    z3_print_debug "---> Executing SMT Solver\n";
+    flush_all ();
+    begin
+      if use_dreal then
+        Sys.command ("./timebomb.sh 'dReal --model "^smtfile^" > "^resfile^"' "^
+                    (string_of_int timeout))
+      else
+        Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
+                    (string_of_int timeout))
+    end;
+    z3_print_debug "---> Finished Search\n";
+    flush_all ();
+    begin
+      let z =
+        if use_dreal then ParserGenerator.file_to_drealsln resfile
+        else ParserGenerator.file_to_z3sln resfile
+      in
+      z.sat
+    end
+
 
   let exec (root:string) (stmts:z3st list) use_dreal : z3sln=
     let stmts =

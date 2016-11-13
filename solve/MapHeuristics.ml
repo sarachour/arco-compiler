@@ -29,11 +29,13 @@ open MapData
 open MapUtil
 open MapProblemGenerator
 
+open MapResolver
+
 exception MapHeuristicError of string
 
 let error n m = raise (MapHeuristicError (n^":"^m))
 
-let debug = print_debug 3 "map-heur"
+let debug = print_debug 4 "map-heur"
 
 module MapHeuristics =
 struct
@@ -278,7 +280,14 @@ struct
     | None ->
       None
 
-    
+
+  let full_heuristic (tbl:gltbl) =
+    match MapProblemGenerator.generate_problem tbl with
+    | Some(cstrs) ->
+      MapSMTResolver.solvable cstrs
+    | None ->
+      false
+
   let heuristic (tbl:gltbl) =
     (*go through and assemble mappings*)
     match derive_heuristics tbl with

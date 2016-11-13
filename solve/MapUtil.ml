@@ -48,8 +48,8 @@ module MapUtil = struct
 
   let linearsmtid2str (x:linear_smt_id) : string = match x with
     | SVLinVar(x) -> linearid2str x
-    | SVSlackVar(SVMin,_,w) -> "sl.min."^(SlnLib.wireid2str w)
-    | SVSlackVar(SVMax,_,w) -> "sl.max."^(SlnLib.wireid2str w)
+    | SVSlackVar(SVMin,_,w,i) -> "sl.min."^(SlnLib.wireid2str w)^"."^(string_of_int i)
+    | SVSlackVar(SVMax,_,w,i) -> "sl.max."^(SlnLib.wireid2str w)^"."^(string_of_int i)
 
   let linearexpr2str (x:linear_id ast) : string =
     ASTLib.ast2str x linearid2str

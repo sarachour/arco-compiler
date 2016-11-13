@@ -37,6 +37,6 @@ rel ddt ES = (kf*E*S) - kr*ES init 0
 % N(mu,t), white noise gaussian additive white noise for noise generator N(0,1)
 var ddt ES = ES*0.01 shape GAUSS
 def ES mag = [0,0.11] M 
-def ddt ES time 0.001 
+def ddt ES time 0.1 
 
 

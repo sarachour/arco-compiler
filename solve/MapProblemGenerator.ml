@@ -256,6 +256,70 @@ struct
       QUEUE.destroy stmtq;
       lst
 
+  let queue_interval_cover q wire hival mival idx (expr:unid ast) =
+    let enq xs = List.iter (fun x -> noop(QUEUE.enqueue q x)) xs in
+    let scale wire mval : linear_smt_id ast =
+      OpN(Add,[
+          OpN(Mult,[
+              Term(SVLinVar(SVScaleVar(wire)));
+                   Decimal(mval)
+            ]);
+          Term(SVLinVar(SVOffsetVar(wire)))
+        ])
+    in
+    let decl_slack wire =
+      enq [SVDeclMapVar(SVSlackVar(SVMin,1.0,wire,idx));
+           SVDeclMapVar(SVSlackVar(SVMax,1.0,wire,idx))]
+    in
+    let add_slack dir id expr =
+      OpN(Add,[expr;Term(SVSlackVar(dir,1.0,id,idx))])
+    in
+    let bound_to_number bnd = match bnd with
+      | BNDNum(x) -> x
+      | _ -> error "bound_to_number" ("expected a finite numerical bound:"^
+                                      (HwLib.wireid2str wire)^"/"^(uast2str expr))
+    in
+    let queue_quant v (h:interval_data) =  
+    if no_number_cstrs_DBG then
+            ()
+          else
+            enq [
+              SVCoverLTE([(scale wire v);Decimal(bound_to_number h.max)]);
+              SVCoverGTE([(scale wire v);Decimal(bound_to_number h.min)])
+            ]
+    in
+    match mival,hival with
+      | (Quantize([v]),Interval(h)) ->
+        queue_quant v h
+      | (Interval(m),Interval(h)) ->
+        begin
+          let mmin = bound_to_number m.min and mmax = bound_to_number m.max in
+          if mmin =mmax then
+            queue_quant mmin h
+          else
+            begin
+              decl_slack wire;
+              enq [
+                SVCoverEq([add_slack SVMin wire (scale wire (mmin));
+                      Decimal(bound_to_number h.min)]);
+                SVCoverEq([add_slack SVMax wire (scale wire (mmax));
+                      Decimal(bound_to_number h.max)])
+              ]
+            end
+        end
+      | (Quantize([v]),MixedInterval(_)) ->
+        error "compute_cover" "quantize-mixed-interval"
+      | (Interval(ival),MixedInterval(_)) ->
+        error "compute_cover" "interval-mixed-interval"
+      | (Quantize(_),Quantize(_)) ->
+        error "compute_cover" "quantize-quantize"
+      | (IntervalUnknown(_),_) ->
+        error "compute_cover" "unknown interval"
+      | (_,IntervalUnknown(_)) ->
+        error "compute_cover" "unknown interval"
+
+      | _ -> error "compute cover" "unsupported"
+
   (*derive scaling factors from the component*)
   let hwcomp_derive_scaling_factors tbl (comp:hwvid hwcomp) inst (cfg:hwcompcfg) = 
     let stmts = QUEUE.make () in
@@ -279,72 +343,43 @@ struct
         enq cstrlst;
         ()
       );
-    let scale wire mval : linear_smt_id ast =
-      OpN(Add,[
-          OpN(Mult,[
-              Term(SVLinVar(SVScaleVar(wire)));
-                   Decimal(mval)
-            ]);
-          Term(SVLinVar(SVOffsetVar(wire)))
-        ])
-    in
-    let decl_slack wire =
-      enq [SVDeclMapVar(SVSlackVar(SVMin,1.0,wire));
-           SVDeclMapVar(SVSlackVar(SVMax,1.0,wire))]
-    in
-    let add_slack dir id expr =
-      OpN(Add,[expr;Term(SVSlackVar(dir,1.0,id))])
-    in
-    let bound_to_number bnd = match bnd with
-      | BNDNum(x) -> x
-      | _ -> error "bound_to_number" "expected a finite numerical bound"
-    in
+    
     (*iterate for each math variable*)
     ConcCompLib.iter_var_cfg cfg
       (fun (port:string) (x:hwvarcfg) ->
-        let wire = SlnLib.mkwire comp.name inst port in
-        let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
-        let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-        let queue_quant v (h:interval_data) =
-          if no_number_cstrs_DBG then
-            ()
-          else
-            enq [
-              SVCoverLTE([(scale wire v);Decimal(bound_to_number h.max)]);
-              SVCoverGTE([(scale wire v);Decimal(bound_to_number h.min)])
-            ]
-        in
-        match mival,hival with
-        | (Quantize([v]),Interval(h)) ->
-          queue_quant v h
-        | (Interval(m),Interval(h)) ->
-          begin
-            let mmin = bound_to_number m.min and mmax = bound_to_number m.max in
-            if mmin =mmax then
-              queue_quant mmin h
-            else
-              begin
-                decl_slack wire;
-                enq [
-                  SVCoverEq([add_slack SVMin wire (scale wire (mmin));
-                        Decimal(bound_to_number h.min)]);
-                  SVCoverEq([add_slack SVMax wire (scale wire (mmax));
-                        Decimal(bound_to_number h.max)])
-                ]
-              end
-          end
-        | (Quantize([v]),MixedInterval(_)) ->
-          error "compute_cover" "quantize-mixed-interval"
-        | (Interval(ival),MixedInterval(_)) ->
-          error "compute_cover" "interval-mixed-interval"
-        | (Quantize(_),Quantize(_)) ->
-          error "compute_cover" "quantize-quantize"
-        | (IntervalUnknown(_),_) ->
-          error "compute_cover" "unknown interval"
-        | (_,IntervalUnknown(_)) ->
-          error "compute_cover" "unknown interval"
+         let hwport = HwLib.getvar tbl.env.hw comp.name port in 
+         let wire = SlnLib.mkwire comp.name inst port in
+         let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
+         let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
+         queue_interval_cover stmts wire hival mival 1 x.expr
+           
+         (*
+           begin
+           match hwport.bhvr with
+           | HWBAnalog(bhvr) ->
+             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
+             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
+             queue_interval_cover stmts wire hival mival 1
 
-        | _ -> error "compute cover" "unsupported"
+           | HWBAnalogState(bhvr) ->
+             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
+             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
+             let hivalderiv : interval = IntervalCompute.compute_deriv_hwport_interval tbl comp inst cfg port in
+             queue_interval_cover stmts wire hival mival 1;
+             queue_interval_cover stmts wire hivalderiv mival 2
+
+           | HWBDigital(_) ->
+             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
+             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
+             queue_interval_cover stmts wire hival mival 1
+
+           | HWBInput ->
+             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
+             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
+             queue_interval_cover stmts wire hival mival 1
+           | _ -> error "hwcomp_derive_scaling_factors" "?"
+         end
+        *)
       )
       (fun (param:string) (x:number) -> ());
     let cstrs = QUEUE.to_list stmts in
