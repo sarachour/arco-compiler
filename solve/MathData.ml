@@ -35,6 +35,7 @@ type mstvardef = {
   mutable stvar : mvardef;
   mutable deriv : mvardef;
   mutable sample: number;
+  mutable speed: number;
  
 }
 type 'a mbhv =

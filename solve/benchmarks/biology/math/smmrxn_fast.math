@@ -37,6 +37,11 @@ rel ddt ES = (kf*E*S) - kr*ES init 0
 % N(mu,t), white noise gaussian additive white noise for noise generator N(0,1)
 var ddt ES = ES*0.01 shape GAUSS
 def ES mag = [0,0.11] M 
-def ddt ES time 0.1 
+
+
+% sample every 0.1 seconds of simulation time
+def ddt ES sample 0.1 s
+% the speed (in wall clock time) should be one ms of real time at most
+def ddt ES speed 0.01 ms 
 
 

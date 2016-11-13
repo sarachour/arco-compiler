@@ -415,6 +415,11 @@ struct
           | MLocalLabel(v)->Some (v.wire,MathLib.getvar tbl.env.math v.var)
           | _ -> None
         in
+        let hwtime2simtime wire time =
+          OpN(Mult,[Op2(Div,Decimal(1.),Term(SVScaleVar(wire)));
+                            ASTLib.number2ast time
+                    ])
+        in
         match vr_maybe with
         | Some(wire,vr) ->
           begin
@@ -422,7 +427,10 @@ struct
             | MDefStVar(stvar) ->
               begin
                 qstvar(wire);
-                let math_sample = ASTLib.number2ast stvar.sample in 
+                (*sampling rate in simulation time*)
+                let math_sample = ASTLib.number2ast stvar.sample in
+                (*speed in hardware time*)
+                let hw_speed = ASTLib.number2ast stvar.speed in 
                 begin
                   match wire.comp.name with
                   | HWCmOutput(_) ->
@@ -432,12 +440,11 @@ struct
                       match ovar.defs with
                       | HWDDigital(dig) ->
                         let hw_sample,_ = dig.sample in
-                        (*scaling the variable*)
-                        let hw_sample_expr = OpN(Mult,[
-                            Op2(Div,Decimal(1.),Term(SVScaleVar(wire)));
-                            ASTLib.number2ast hw_sample
-                          ]) in
-                        q (SVLTE(hw_sample_expr,math_sample))
+                        (*the scaled realtime variable cannot exceed math sampling*)
+                        let hw_sample_expr = hwtime2simtime wire hw_sample in
+                        let hw_wallclock_time = hwtime2simtime wire (Integer 1)  in
+                        q (SVLTE(hw_sample_expr,math_sample));
+                        q (SVLTE(hw_wallclock_time,hw_speed))
                       | _ ->
                         error "hwconn_derive_speed_constraints" "cannot derive speed of analog port"
                     end

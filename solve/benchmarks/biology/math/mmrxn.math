@@ -27,19 +27,21 @@ def P mag = [0,1] M
 rel ddt S = (-kf)*E*S + kr*ES init 0.256
 def S mag = [0,0.256] M
 var ddt S = 0.04*S shape GAUSS
-def ddt S time 0.001 
 
 rel ddt E = (-kf)*E*S + kr*ES + kcat*ES init 0.124
 def E mag = [0,0.124] M
 var ddt E = 0.04*E shape GAUSS
-def ddt E time 0.001 
 
 rel ddt ES = kf*E*S - kr*ES - kcat*ES init 0
 def ES mag = [0,0.124] M
 var ddt ES = 0.04*ES shape GAUSS
-def ddt ES time 0.001 
 
 rel ddt P = kcat*ES init  0
 def P mag = [0,0.124] M
 var ddt P = 0.04*P shape GAUSS
-def ddt P time 0.001 
+
+% sample every 0.1 seconds of simulation time
+def ddt ES sample 0.1 s
+% the speed (in wall clock time) should be one ms of real time at most
+def ddt ES speed 1 ms 
+

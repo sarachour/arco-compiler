@@ -54,6 +54,8 @@ rule env = parse
 
   | "mag"                   {MAG}
   | "var"                   {VAR}
+  | "sample"                {SAMPLE}
+  | "speed"                 {SPEED}
   | "ddt"                   {DDT}
   | "init"                  {INIT}
   

@@ -24,7 +24,7 @@
 
 %token EOF EOL COLON QMARK EQ OBRAC CBRAC OPARAN CPARAN COMMA
 
-%token DEF IN MAG VAR
+%token DEF IN MAG VAR SAMPLE SPEED
 
 %token NAME TYPE LET NONE
 %token INPUT OUTPUT LOCAL PARAM TIME
@@ -176,10 +176,17 @@ st:
     else
        error "cstr mag" "bounds is more than two elements"
   }
-  | DEF DDT TOKEN TIME number {
+  | DEF DDT TOKEN SAMPLE number TOKEN {
     let name = $3 and step = $5 in
     MathLib.upd_def dat name (fun x -> match x with
        | MDefStVar(d) -> d.sample <- step; x
+       | _ -> error "def ddt time" "must be defined after relation"
+       );
+  }
+  | DEF DDT TOKEN SPEED number TOKEN {
+    let name = $3 and step = $5 in
+    MathLib.upd_def dat name (fun x -> match x with
+       | MDefStVar(d) -> d.speed <- step; x
        | _ -> error "def ddt time" "must be defined after relation"
        );
   }

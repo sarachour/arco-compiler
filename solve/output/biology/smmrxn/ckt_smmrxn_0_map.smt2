@@ -394,7 +394,8 @@
 ; 
 ; =  {of.input.V[0].O} {of.mm[0].Ytot}
 (assert (= of_21 of_12))
-(assert (<= (* (/ 1. sc_5) 0.001) 0.1))
+(assert (<= (* (/ 1. sc_5) 1) 0.1))
+(assert (<= (* (/ 1. sc_5) 1) 1.))
 ; 
 ; =  {sc.mm[0].XY} {sc.output.V[2].O}
 (assert (= sc_16 sc_5))

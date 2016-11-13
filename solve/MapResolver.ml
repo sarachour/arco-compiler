@@ -156,10 +156,24 @@ struct
             upd_map_result_of_id id (max)
             end
         | Z3Set(s,Z3QInterval(Z3QInfinite(dir))) -> 
-                warn "z3result2mapsln" "interval is infinite"
+          let id = name2linearsmtid symtbl s in
+          warn "z3result2mapsln" "interval is infinite";
+          upd_map_result_of_id id (infinity)
 
+        | Z3Set(s,Z3QInterval(Z3QLowerBound(el))) ->
+          let id = name2linearsmtid symtbl s in
+          warn "z3result2mapsln" "interval is lower bound";
+          upd_map_result_of_id id (el)
+
+        | Z3Set(s,Z3QInterval(Z3QUpperBound(el))) ->
+          let id = name2linearsmtid symtbl s in
+          warn "z3result2mapsln" "interval is lower bound";
+          upd_map_result_of_id id (el)
+
+                
         | Z3Set(s,Z3QInterval(_)) ->
           error "z3result2mapresult" "unhandled quantity:interval"
+
         | _ ->
           error "z3result2mapresult" "unhandled"
     ) asgns;

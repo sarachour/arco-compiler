@@ -15,7 +15,7 @@ digital input I
   output O {I:uA}
   def I(O) mag = [0.0,10] uA
   def D(X) repr = SEEEEMMM 
-  def D(X) sample = 0.00001 us
+  def D(X) sample = 0.1 us
   def D(X) mag = [0.0,10] uA
 
   rel I(O) = D(X)
@@ -27,7 +27,7 @@ digital output I
 
   output O {D:bits}
   def D(O) repr = SEEEEMMM
-  def D(O) sample = 0.001 us
+  def D(O) sample = 1 us
   def D(O) mag = [0.0,10] uA
 
   rel D(O) = I(X)
@@ -49,7 +49,7 @@ digital input V
 
   def V(O) mag = [0,3300] mV
 
-  def D(X) sample = 0.00001 us
+  def D(X) sample = 0.1 us
   def D(X) repr = SEEEMMMM
   def D(X) mag = [0,3300] mV
 
@@ -62,7 +62,7 @@ digital output V
   output O {D:bits}
   def V(X) mag = [0.0,3300] mV
 
-  def D(O) sample = 0.001 us
+  def D(O) sample = 1 us
   def D(O) repr = SEEEMMMM 
   def D(O) mag = [0,3300] mV
 

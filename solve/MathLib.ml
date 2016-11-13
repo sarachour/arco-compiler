@@ -234,6 +234,7 @@ struct
             deriv=mkmvardef();
             stvar=mkmvardef();
             sample = Integer(1);
+            speed = Integer(1);
           }  in
           dat.bhvr <- MBhvStateVar(bhv);
           dat.defs <- MDefStVar(def);
