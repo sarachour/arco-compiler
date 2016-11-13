@@ -947,8 +947,8 @@ struct
   let order_vars (vars:string queue) (env:mid menv) : unit =
     let tmpq : mid mvar prioqueue = PRIOQUEUE.make (fun x ->
         match x.bhvr with
-        | MBhvStateVar(eq) -> 1*(ASTLib.size eq.rhs)
-        | MBhvVar(eq) ->100*(ASTLib.size eq.rhs)
+        | MBhvStateVar(eq) -> 1./(float_of_int (ASTLib.score eq.rhs))
+        | MBhvVar(eq) ->1.5/(float_of_int (ASTLib.score eq.rhs))
         | _ -> 100000
       )
     in

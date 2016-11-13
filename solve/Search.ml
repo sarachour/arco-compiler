@@ -298,7 +298,7 @@ struct
 
   let upd_score (type a) (type b) (sr:(a,b) ssearch) (node:a snode) =
     if TREE.hasnode sr.tree node = false then 
-      error "upd_score" "node doesn't exist in tree"   
+      warn "upd_score" "node doesn't exist in tree"   
     else
     let score : sscore = sr.score node.s in
     let par : (a snode) option = TREE.parent sr.tree node in
