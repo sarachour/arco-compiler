@@ -205,17 +205,16 @@ comp ihill
 
   def I(Vmax) mag = [0.0,10] uA
   def I(S) mag = [0,10] uA
-  def I(Km) mag = [1,10] uA
+  def I(Km) mag = [0.25,10] uA
   def V(n) mag = [1,5] mV
 
-  param SWK : none = {0,1}
   
   output STIM {I:uA}
   output REP {I:uA}
   
   % s^n/(s^n + k^n)
   rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
-  rel I(REP) = I(Vmax)*( (I(Km)^(V(n)*SWK))/( (I(S)^V(n)) + (I(Km)^(V(n)*SWK)) ) )
+  rel I(REP) = I(Vmax)*( (I(Km)^(V(n)))/( (I(S)^V(n)) + (I(Km)^(V(n))) ) )
 
   sim ihill Vmax S n Km STM REP
 end
