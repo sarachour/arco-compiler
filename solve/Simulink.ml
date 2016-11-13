@@ -845,14 +845,27 @@ struct
               q (add_route_line clamp_out int_in);
           end
         | HWDDigital(defs) ->
-          let sample,_ = defs.sample in
-          let sample_cmp,sample_in,sample_out =
-            create_sample q cmpns (float_of_number sample)
-          in
-          declare_sample comp.name vr.port sample_cmp;
-          q (add_route_line ext_out sample_in);
-          q (add_route_line sample_out int_in);
-          ()
+          begin
+            match model_ideal() with
+            | true ->
+              begin
+                q (add_route_line ext_out int_in)
+              end
+
+            | false ->
+              begin
+                let sample,_ = defs.sample in
+                let sample_cmp,sample_in,sample_out =
+                  create_sample q cmpns (float_of_number sample)
+                in
+                declare_sample comp.name vr.port sample_cmp;
+                q (add_route_line ext_out sample_in);
+                q (add_route_line sample_out int_in);
+                ()
+              end
+          end
+
+
         | _ -> error "comp_iter_ins" "unexpected"
       );
     HwLib.comp_iter_outs comp (fun vr ->
