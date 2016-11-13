@@ -172,8 +172,8 @@ comp vtoi
   input K {V:mV}
   output Y {I:uA}
 
-  def V(K) mag = [0,3300] mV
-  def V(X) mag = [330,3300] mV
+  def V(X) mag = [0,3300] mV
+  def V(K) mag = [330,3300] mV
 
   rel I(Y) = (1/V(K))*V(X)
   var I(Y) = 0.000001 shape GAUSS

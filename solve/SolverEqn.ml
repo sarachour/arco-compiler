@@ -701,7 +701,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     let initialize (type a) () : ucomp_conc*sstep list=
       ucomp,[]
     in
-    __unify_goal_with_comp tbl ucomp.d ucomp.cfg None hwvar g initialize
+    __unify_goal_with_comp tbl ucomp.d ucomp.cfg (Some ucomp.inst) hwvar g initialize
 
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
 
