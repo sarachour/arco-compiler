@@ -84,20 +84,14 @@ end
 
 comp vgain
   input X {V:mV}
-  def V(X) mag = [0.00,3300] mV
+  def V(X) mag = [0.00,330] mV
 
-  input Y {V:mV}
-  def V(Y) mag = [0,3300] mV
-  
   input Z {V:mV}
-  def V(Z) mag = [0.00,3300] mV
+  def V(Z) mag = [0.00,330] mV
   
   output P {V:mV}
-  def V(P) mag = [0.00,3300] mV
 
-  %rel V(P) = (V(X)/V(Y))*V(Z)
   rel V(P) = V(X)*V(Z)
-  var V(P) = 0.0001*V(P) + 0.01 shape GAUSS
 
   sim vgain X Y Z P
 
@@ -118,15 +112,39 @@ comp iadd
 
 end
 
+comp vdadd
+    input A {V:mV}
+    input B {V:mV}
+    input D {V:mV}
+    input OUT_0 {V:mV}
+
+    output OUT {V:mV}
+
+    % does not take inputs outside of this range
+    param BSW : none = {0,1}
+    param DSW : none = {0,1}
+
+    def V(A) mag = [0,3300] mV
+    def V(B) mag = [0,3300] mV 
+    def I(D) mag = [0,10] uA
+    def V(OUT_0) mag = [0,3300] mV
+
+    % only produces outputs in this range
+
+    rel ddt V(OUT) = (V(A) + BSW*V(B)) - DSW*V(D)*V(OUT)  init V(OUT_0)
+    def V(OUT) mag = [0,12000] mV
+
+
+end
+
+
 comp vadd
   input A {V:mV}
   input B {V:mV}
   input C {V:mV}
   input D {V:mV}
-  input OUT2_0 {V:mV}
 
   output OUT {V:mV}
-  output OUT2 {V:mV}
 
   % does not take inputs outside of this range
   param BSW : none = {0,1}
@@ -137,16 +155,11 @@ comp vadd
   def V(B) mag = [0,3300] mV 
   def V(C) mag = [0,3300] mV 
   def V(D) mag = [0,3300] mV
-  def V(OUT2_0) mag = [0,3300] mV
 
   % only produces outputs in this range
   rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   var V(OUT) = 0.001*V(OUT) + 0.1 shape GAUSS
 
-  rel ddt V(OUT2) = (V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2)  init V(OUT2_0)
-  def V(OUT2) mag = [0,3300] mV
-  var ddt V(OUT2) = 0.001*V(OUT2) + 0.1 shape GAUSS
-  
 
 end
 
@@ -277,7 +290,8 @@ schematic
   inst output V : 75
   inst copy V : 10
 %
-  inst vadd : 35
+  inst vadd : 25
+  inst vdadd : 12
   inst vgain : 40
 %
   inst iadd : 30
@@ -295,19 +309,21 @@ schematic
   conn input(I) -> igenebind
   conn input(I) -> switch
   conn input(I) -> iadd
+  conn input(I) -> vdadd
   conn input(I) -> mm
 
   conn input(V) -> ihill
   conn input(V) -> vtoi
   conn input(V) -> itov
   conn input(V) -> vadd
+  conn input(V) -> vdadd
   conn input(V) -> vgain
   conn input(V) -> switch
   conn input(V) -> mm
 
   conn mm -> output(V)
-  conn mm -> itov
-  conn mm -> iadd
+  conn mm -> vadd
+  conn mm -> vdadd
   conn mm -> vgain
   %new
   conn mm -> mm
@@ -315,6 +331,7 @@ schematic
 
   conn switch -> itov
   conn switch -> iadd
+  conn switch -> vdadd
   conn switch -> output(I)
   conn switch -> itov
 
@@ -330,6 +347,7 @@ schematic
 
   conn itov -> output(V)
   conn itov -> vadd
+  conn itov -> vdadd
   conn itov -> vgain
   conn itov -> switch
 
@@ -349,17 +367,19 @@ schematic
   conn vtoi -> output(I)
 
   conn vgain -> output(V)
-  conn vgain -> vadd
+  conn vgain -> vdadd
   conn vgain -> vtoi
   conn vgain -> mm
-  conn vgain -> itov
   conn vgain -> vgain
 
   conn vadd -> output(V)
   conn vadd -> vtoi
-  conn vadd -> itov
   conn vadd -> vgain
+  conn vadd -> vdadd
   conn vadd -> vadd
-  conn vadd -> switch 
+
+  conn vdadd -> output(V)
+  conn vdadd -> vadd
+  conn vdadd -> vdadd
 
 end
