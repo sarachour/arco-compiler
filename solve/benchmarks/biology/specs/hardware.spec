@@ -112,7 +112,6 @@ comp iadd
   def I(B) mag = [0.0,5] uA 
   def I(C) mag = [0.0,5] uA 
   def I(D) mag = [0.0,5] uA
-  def I(OUT) mag = [0.0,10] uA
   rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
   var V(OUT) = 0.00001*V(OUT) + 0.001 shape GAUSS
 
@@ -143,7 +142,7 @@ comp vadd
   rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
   var V(OUT) = 0.001*V(OUT) + 0.1 shape GAUSS
 
-  rel ddt V(OUT2) = ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D)*V(OUT2))*0.25  init V(OUT2_0)
+  rel ddt V(OUT2) = ((V(A) + BSW*V(B))*0.5) - CSW*V(C) - DSW*V(D)*V(OUT2)  init V(OUT2_0)
   def V(OUT2) mag = [0,3300] mV
   var ddt V(OUT2) = 0.001*V(OUT2) + 0.1 shape GAUSS
   
@@ -241,8 +240,8 @@ comp mm
 
   rel V(X) = V(Xtot) - V(XY)
   rel V(Y) = V(Ytot) - V(XY)
-  rel ddt V(XY) = I(kf)*V(X)*V(Y) - I(kr)*V(XY) init V(XY0)
-  def V(XY) mag = [0,3300] mV
+  rel ddt V(XY) = (I(kf)*V(X)*V(Y))/10.0 - I(kr)*V(XY) init V(XY0)
+  def V(XY) mag = [0,66000] mV
   var ddt V(XY) = 0.001*V(XY) + 0.1 shape GAUSS
 
 end
