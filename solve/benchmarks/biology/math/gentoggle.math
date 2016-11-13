@@ -25,11 +25,11 @@ param Cu : 1/M  = 1
 param kdeg : (M/s) = 1
 
 %
-%output U : unit 
-input V : unit 
-%local umodif : unit 
+output U : unit 
+output V : unit 
+local umodif : unit 
 local UTF : unit
-%local VTF : unit
+local VTF : unit
 %
 
 input IPTG : kmol
@@ -40,17 +40,17 @@ def K mag = [0.0029618,0.006000] kmol
 input K2 : kmol
 def K2 mag = [0.9,1] kmol
 
-%rel umodif = (U)*(1/((1+(IPTG/K))^nu))
+rel umodif = (U)*(1/((1+(IPTG/K))^nu))
 
 rel UTF = (Cu*a1)*((K2^beta)/((K2^beta) +(V^beta)))
-%rel VTF = (Cv*a2)*((K2^gamma)/((K2^gamma) + (umodif^gamma)))
+rel VTF = (Cv*a2)*((K2^gamma)/((K2^gamma) + (umodif^gamma)))
 %
-%rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
-%def U mag = [0,15.6] unit 
+rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
+def U mag = [0,15.6] unit 
 %
-%rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
+rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
 def V mag = [0,156.25] unit
 
-%def ddt V sample 1000 s
+def ddt V sample 1000 s
 % the speed (in wall clock time) should be one ms of real time at most
-%def ddt V speed 1000 ms 
+def ddt V speed 1000 ms 
