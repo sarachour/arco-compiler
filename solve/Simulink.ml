@@ -167,6 +167,7 @@ struct
     blocks: (string,simblock) map;
     clamps: (hwcompname,(string,clamp_type) map) map;
     integs: (hwcompname,(string,simel) map) map;
+    samples: (hwcompname,(string,simel) map) map;
   }
 
   let symtbl = {
@@ -174,13 +175,15 @@ struct
     blocks = MAP.make();
     clamps = MAP.make();
     integs= MAP.make();
+    samples= MAP.make();
   }
 
   let clear_tbl () =
     MAP.clear symtbl.paths;
     MAP.clear symtbl.blocks;
     MAP.clear symtbl.integs;
-    MAP.clear symtbl.clamps
+    MAP.clear symtbl.clamps;
+    MAP.clear symtbl.samples
 
   let ns_to_str ns =
     match ns with
@@ -267,6 +270,12 @@ struct
     let cmp_integs = MAP.get symtbl.integs cmp in
     MAP.put cmp_integs port cmploc
 
+  let declare_sample cmp port cmploc =
+    if MAP.has symtbl.samples cmp = false then
+      noop (MAP.put symtbl.samples cmp (MAP.make()));
+    let cmp_samples = MAP.get symtbl.samples cmp in
+    MAP.put cmp_samples port cmploc
+
   let get_integ cmp port =
     if MAP.has symtbl.integs cmp = false then
       noop (MAP.put symtbl.integs cmp (MAP.make()));
@@ -276,6 +285,20 @@ struct
   let iter_clamps cmp fn =
     if MAP.has symtbl.clamps cmp then
       let mp = MAP.get symtbl.clamps cmp in
+      MAP.iter mp (fun v l -> fn v l)
+
+  let get_sample cmp port =
+    if MAP.has symtbl.samples cmp = false then
+      noop (MAP.put symtbl.samples cmp (MAP.make()));
+    let cmp_samples = MAP.get symtbl.samples cmp in
+    if MAP.has cmp_samples port then
+      Some (MAP.get cmp_samples port)
+    else
+      None
+
+  let iter_samples cmp fn =
+    if MAP.has symtbl.samples cmp then
+      let mp = MAP.get symtbl.samples cmp in
       MAP.iter mp (fun v l -> fn v l)
 
   let declare_var (k:simel)=
@@ -626,6 +649,11 @@ struct
     declare_vars [inp_loc;out_loc];
     loc,inp_loc,out_loc
 
+  let update_sample_rate q loc sample =
+    q (set_route_param
+         (loc) "QuantizationInterval"         
+         (MATLit(MATStr(string_of_float sample))))
+
   let create_sample q namespace sample =
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"smp_"^(string_of_int id)) in
@@ -821,6 +849,7 @@ struct
           let sample_cmp,sample_in,sample_out =
             create_sample q cmpns (float_of_number sample)
           in
+          declare_sample comp.name vr.port sample_cmp;
           q (add_route_line ext_out sample_in);
           q (add_route_line sample_out int_in);
           ()
@@ -834,7 +863,7 @@ struct
         let ext_in,int_in,int_out = create_in q cmpns par.name in
         q (add_route_line ext_in int_in);
         ()
-    );
+      );
     HwLib.comp_iter_outs comp (fun vr ->
         let int_out = SIMBlockIn(cmpns,"_"^vr.port,"I") in
         let dflt_min,dflt_max = 0.,1. in
@@ -1049,10 +1078,13 @@ struct
             | None ->
               error "comp_iter" "parameter must be specialized."
           );
+        let time_constant = REF.mk (1.) in
         HwLib.comp_iter_outs ccomp.d (fun (port:hwvid hwportvar) ->
+            let wire = (HwLib.port2wire ccomp.d.name ccomp.inst port.port) in
             match port.bhvr with
             | HWBAnalogState(bhvr) ->
               begin
+                
                 let integ = get_integ ccomp.d.name port.port in
                 let icport,icprop = bhvr.ic in
                 let value_maybe = match ConcCompLib.get_var_config ccomp.cfg icport with
@@ -1061,24 +1093,40 @@ struct
                   | Some(q) -> error "create_circuit" ("expected numerical initial cond:"^(uast2str q))
                   | None -> None
                 in
+                (*update the integrator*)
                 match integ,value_maybe with
                 | SIMBlock(templ_ns,integname),Some(value) ->
                   begin
                     let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],integname) in
-                    let wire = (HwLib.port2wire ccomp.d.name ccomp.inst port.port) in
-                    let new_value= if has_mapping mappings wire then
-                      let mapping  =
-                        get_mapping mappings wire 
-                      in
-                      mapping.scale*.value+.mapping.offset
-                    else
-                      value
+                    let new_value=
+                      if has_mapping mappings wire then
+                        let mapping  =  get_mapping mappings wire in
+                        REF.upd time_constant (fun x -> mapping.scale);
+                        (*update time constant*)
+                        mapping.scale*.value+.mapping.offset
+                      else value
                     in
                     update_ic q newblock new_value
                   end
                 | _ -> ()
               end
 
+            | _ -> ()
+          );
+          HwLib.comp_iter_vars ccomp.d (fun (port:hwvid hwportvar) ->
+            let wire = (HwLib.port2wire ccomp.d.name ccomp.inst port.port) in
+            match port.defs with
+            | HWDDigital(defs) ->
+              let sample_rate_num, _= defs.sample in
+              let sample_rate = float_of_number sample_rate_num in
+              begin
+                  match get_sample ccomp.d.name port.port with
+                  | Some(SIMBlock(templ_ns,samplename)) ->
+                    let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],samplename) in
+                    let new_sample = sample_rate /. (REF.dr time_constant) in
+                    update_sample_rate q newblock new_sample
+                  | _-> ()
+              end
             | _ -> ()
           )
 

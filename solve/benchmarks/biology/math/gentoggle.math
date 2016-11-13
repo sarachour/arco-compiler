@@ -49,4 +49,8 @@ def ddt U time 0.001
 %
 rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
 def V mag = [0,156.25] unit
-def ddt V time 0.001 
+def ddt V time 0.001
+
+def ddt ES sample 1000 s
+% the speed (in wall clock time) should be one ms of real time at most
+def ddt ES speed 1000 ms 
