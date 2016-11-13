@@ -1094,7 +1094,8 @@ struct
         | MLocalLabel(_) ->
           error "create_circuit" "there should not be any local-> in routes"
         | MInLabel(lbl) ->
-          let dst_loc :simel = SIMBlockIn(circ_ns,(HwLib.hwcompinst2str lbl.wire.comp),lbl.wire.port) in
+          let dst_loc :simel =
+            SIMBlockIn(circ_ns,(HwLib.hwcompinst2str lbl.wire.comp),lbl.wire.port) in
           let src_out_ext,src_in_int,src_out_int =
             create_in q circ_ns ((HwLib.hwcompinst2str lbl.wire.comp)^"_in")
           in
