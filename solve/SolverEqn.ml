@@ -222,7 +222,7 @@ struct
           (*found all goals*)
           debug "[test-node-validity] found a valid solution";
           mark_if_solution tbl node;
-          true 
+          false 
         end
       else
         true
@@ -884,7 +884,18 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
               begin
                 match get_best_valid_node tbl None depth with
                 | Some(next_node) ->
-                    rec_solve_subtree next_node
+                  let currslns = SearchLib.num_solutions tbl.search (Some root) in 
+                  begin
+                    if currslns >= nslns then
+                      begin
+                        debug "[search_tree] Found enough solutions";
+                        musr ();
+                        ()
+                      end
+                    else
+                      rec_solve_subtree next_node
+                  end
+
                 | None ->
                   debug ("[TERMINATE] found "^(string_of_int currslns)^" / "^(string_of_int nslns));
                   debug "[TERMINATE] could not find another node";
