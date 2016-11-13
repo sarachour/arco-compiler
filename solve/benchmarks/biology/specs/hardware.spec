@@ -84,10 +84,10 @@ end
 
 comp vgain
   input X {V:mV}
-  def V(X) mag = [0.00,330] mV
+  def V(X) mag = [0.00,500] mV
 
   input Z {V:mV}
-  def V(Z) mag = [0.00,330] mV
+  def V(Z) mag = [0.00,10] mV
   
   output P {V:mV}
 
