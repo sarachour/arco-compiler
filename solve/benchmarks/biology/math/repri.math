@@ -35,28 +35,23 @@ time t : s
 input KMp : M
 %Set KMp to 20
 def KMp mag = [20,20] M
-input Q : M
-def Q mag = [0,1] M
 
-%rel TRLacL =(a_tr)*(1/( 1 + ((LacLp/KMp)^n)))
-%rel TRTetR =(a_tr)*(1/( 1 + ((TetRp/KMp)^n)))
-%rel TRclp =(a_tr)*(1/( 1 + ((clp/KMp)^n)))
 
 rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
 rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
 rel TRclp =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
 
-rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm)  init 15
+rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm)  init 0.5
 def LacLm mag = [0,30] M
 def ddt LacLm sample 100 s
 def ddt LacLm speed 100 ms 
 
-rel ddt clm = (a0_tr +(TRclp)) - (kd_mrna*clm)  init 25
+rel ddt clm = (a0_tr +(TRclp)) - (kd_mrna*clm)  init 0.25
 def clm mag = [0,30] M
 def ddt clm sample 100 s
 def ddt clm speed 100 ms 
 
-rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm)  init 5
+rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm)  init 0.12
 def TetRm mag = [0,30] M
 def ddt TetRm sample 100 s
 def ddt TetRm speed 100 ms 
