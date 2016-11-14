@@ -87,12 +87,11 @@ comp vgain
   def V(X) mag = [0.00,500] mV
 
   input Z {I:uA}
-  def I(Z) mag = [0.0001,10] uA
+  def I(Z) mag = [0.000,10] uA
 
-  param SW : none = {0,1}
   output P {V:mV}
 
-  rel V(P) = V(X)*I(Z)*SW
+  rel V(P) = V(X)*I(Z)
 
   sim vgain X Y Z P
 
@@ -444,6 +443,7 @@ schematic
 
   conn vdadd -> output(V)
   conn vdadd -> vtoi
+  conn vdadd -> vgain
   conn vdadd -> switch 
   conn vdadd -> vadd
   conn vdadd -> vdadd
