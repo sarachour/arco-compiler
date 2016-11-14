@@ -34,7 +34,7 @@ time t : s
 %s
 input KMp : M
 %Set KMp to 40
-def KMp mag = [1,40] M
+def KMp mag = [39.9,40] M
 input Q : M
 def Q mag = [0,1] M
 
