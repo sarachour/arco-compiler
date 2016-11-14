@@ -1,0 +1,50 @@
+
+=== Route ===
+in KMp -> input.I[0].X
+
+val 2 -> input.V[0].X
+val 0 -> [input.V[1].X,input.V[3].X,input.V[2].X]
+val 0.4995 -> input.I[1].X
+val 0.15051499783 -> input.I[2].X
+val 0.0005 -> input.V[4].X
+val 3.01029995664 -> input.V[5].X
+val 1 -> input.V[6].X
+val 0.03010299956 -> input.I[3].X
+
+
+=== Generate ===
+in KMp -> input.I[0].O
+lc TRTetR -> ihill_rep[0].REP
+out TetRm -> [vdadd[3].OUT,output.V[0].O]
+out TetRp -> [vdadd[2].OUT,output.V[1].O]
+
+val 2 -> input.V[0].O
+val 0 -> [input.V[1].O,input.V[2].O,input.V[3].O]
+val 0.4995 -> input.I[1].O
+val 0.15051499783 -> input.I[2].O
+val 0.0005 -> input.V[4].O
+val 3.01029995664 -> input.V[5].O
+val 1 -> input.V[6].O
+val 0.03010299956 -> input.I[3].O
+
+ast TetRp -> vtoi[0].Y
+ast (3.01029995664*TetRm) -> [itov[1].Y,itov[1].Y]
+
+=== Connect ===
+vdadd[3].OUT ->  output.V[0].X itov[1].X
+input.I[0].O ->  ihill_rep[0].Km
+itov[1].Y ->  vdadd[2].A
+input.I[3].O ->  vdadd[2].D
+vtoi[0].Y ->  ihill_rep[0].S
+input.I[2].O ->  vdadd[3].D
+input.V[3].O ->  vdadd[2].B
+input.V[2].O ->  vdadd[3].OUT_0
+input.I[1].O ->  ihill_rep[0].Vmax
+vdadd[2].OUT ->  output.V[1].X vtoi[0].X
+input.V[1].O ->  vdadd[2].OUT_0
+ihill_rep[0].REP ->  vdadd[3].A
+input.V[0].O ->  ihill_rep[0].n
+input.V[5].O ->  itov[1].K
+input.V[4].O ->  vdadd[3].B
+input.V[6].O ->  vtoi[0].K
+
