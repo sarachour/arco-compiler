@@ -224,7 +224,7 @@ comp ihill_rep
 
     def I(Vmax) mag = [0.0,10] uA
     def I(S) mag = [0,10] uA
-    def I(Km) mag = [0.25,10] uA
+    def I(Km) mag = [0.0001,10] uA
     def V(n) mag = [1,5] mV
 
 
