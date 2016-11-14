@@ -52,7 +52,7 @@ rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
 def U mag = [0,15.6] unit 
 %
 rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
-def V mag = [0,156.25] unit
+def V mag = [0,56.25] unit
 
 def ddt V sample 1000 s
 % the speed (in wall clock time) should be one ms of real time at most
