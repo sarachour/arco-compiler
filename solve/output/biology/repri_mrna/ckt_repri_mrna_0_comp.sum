@@ -130,20 +130,6 @@ output O.D
 <digital>
 
 
-==== vtoi 0 ====
-input X.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-input K.V
-<input>
-<analog> [v]=[330.,3300.] {v}->[v]=@
-
-output Y.I
-<analog>:((1/1)*TetRp) / std=gauss 1e-06
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
 ==== input.V 2 ====
 input X.D
 <input>
@@ -161,16 +147,6 @@ input X.D
 
 output O.V
 <analog>:2 / std=none 0
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-
-==== input.V 6 ====
-input X.D
-<input>
-<digital>
-
-output O.V
-<analog>:1 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
