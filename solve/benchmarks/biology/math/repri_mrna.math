@@ -28,17 +28,17 @@ time t : s
 %s
 input KMp : M
 %Set KMp to 40
-def KMp mag = [39.9,40] M
+def KMp mag = [40,40] M
 
 
 rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
 
 rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm) init 0
-def TetRm mag = [0,0.5] M
+def TetRm mag = [0,40] M
 
 
 rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0
-def TetRp mag = [0,1.5] M
+def TetRp mag = [0,120] M
 
 def ddt TetRp sample 100 s
 

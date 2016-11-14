@@ -39,16 +39,19 @@ local R : unit %10
 type s
 time t : s
 
-rel ddt A =  (( r6_theta*DAp) + ( MA*r10_beta) + ( A*DR*r11_gamma) + ( DRp*r12_theta))- (( A*R*r1_gamma) + ( A*r2_delta) + ( A*DA*r5_gamma)) init 0
+rel ddt A =  ( r6_theta*DAp +  MA*r10_beta +  DRp*r12_theta)- ((R*r1_gamma + r2_delta +  DA*r5_gamma)-DR*r11_gamma)*A init 0
+%rel ddt A =  ((( r6_theta*DAp) + ( MA*r10_beta) + ( A*DR*r11_gamma) + ( DRp*r12_theta))- (( A*R*r1_gamma) + ( A*r2_delta) + ( A*DA*r5_gamma))) init 0
 def A mag = [0,1] A 
 
-rel ddt C = ( A*R*r1_gamma) - ( C*r3_delta) init 0
-def C mag = [0,1] A 
+rel ddt C = (( A*R*r1_gamma) - ( C*r3_delta)) init 0
+def C mag = [0,1] A  
 
-rel ddt DA = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) init 0
+%rel ddt DA = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) init 0
+rel ddt DA = ((r6_theta*DAp)-(((A*r5_gamma + r7_alpha) - r7_alpha)*DA)) init 0
 def DA mag = [0,1] A 
 
-rel ddt DAp = (( A*DA*r5_gamma)+( r8_alpha*DAp))-(( r6_theta*DAp)+( r8_alpha*DAp)) init 0
+%rel ddt DAp = (( A*DA*r5_gamma)+( r8_alpha*DAp))-(( r6_theta*DAp)+( r8_alpha*DAp)) init 0
+rel ddt DAp = A*DA*r5_gamma-((r6_theta+ r8_alpha)-r8_alpha)*DAp init 0
 def DAp mag = [0,1] A 
 
 rel ddt DR = (( DRp*r12_theta)+( r13_alpha*DR))-(( A*DR*r11_gamma)+( r13_alpha*DR)) init 0
