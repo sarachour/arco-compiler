@@ -87,11 +87,12 @@ comp vgain
   def V(X) mag = [0.00,500] mV
 
   input Z {V:mV}
-  def I(Z) mag = [0.00,10] uA
-  
+  def I(Z) mag = [0.0001,10] uA
+
+  param SW : none = {0,1}
   output P {V:mV}
 
-  rel V(P) = V(X)*I(Z)
+  rel V(P) = V(X)*I(Z)*SW
 
   sim vgain X Y Z P
 
