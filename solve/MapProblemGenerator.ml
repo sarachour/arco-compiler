@@ -190,14 +190,15 @@ struct
           | HNPort(HWKInput,_,name,_) ->
               begin
                 match ConcCompLib.get_var_config cfg name with
-                    | Some(Integer(i)) -> Some(float_of_int i)
-                    | Some(Decimal(i)) -> Some(i)
+                    | Some(Integer(i)) -> Some(Integer(i))
+                                            
+                    | Some(Decimal(i)) -> Some(Decimal(i))
                     | _ -> None
               end
           | HNParam(_,name) ->
               begin
                 match (ConcCompLib.get_param_config cfg name) with
-                | Some(i) -> Some(float_of_number i)
+                | Some(i) -> Some(ASTLib.number2ast i)
                 | _ -> None
               end
           | _ -> None
@@ -208,7 +209,7 @@ struct
                 let exp = _derive_scaling_factor (Term x) in
                 let base = _derive_scaling_factor (Term expn) in
                 add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
-                {scale=Op2(Power,base.scale,Decimal(v)); offset=Decimal(0.);term=node;}
+                {scale=Op2(Power,base.scale,v); offset=Decimal(0.);term=node;}
 
             |None ->
               begin
