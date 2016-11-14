@@ -10,8 +10,11 @@ type s
 
 time t : s
 
+%param a2 : M/s = 15.6
+%param a1 : M/s = 156.25
+
 param a2 : M/s = 15.6
-param a1 : M/s = 156.25
+param a1 : M/s = 56.25
 
 
 %param K : kmol = 0.0029618
