@@ -206,8 +206,8 @@ struct
           begin
             match value with
             |Some(v) ->
-                let exp = _derive_scaling_factor (Term x) in
-                let base = _derive_scaling_factor (Term expn) in
+                let exp = _derive_scaling_factor (Term expn) in
+                let base = _derive_scaling_factor (Term x) in
                 add_cstrs ([SVNoOffset(base.offset);SVNoOffset(exp.offset)]);
                 {scale=Op2(Power,base.scale,v); offset=Decimal(0.);term=node;}
 
