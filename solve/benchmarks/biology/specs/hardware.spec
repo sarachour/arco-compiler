@@ -87,11 +87,11 @@ comp vgain
   def V(X) mag = [0.00,500] mV
 
   input Z {V:mV}
-  def V(Z) mag = [0.00,10] mV
+  def I(Z) mag = [0.00,10] uA
   
   output P {V:mV}
 
-  rel V(P) = V(X)*V(Z)
+  rel V(P) = V(X)*I(Z)
 
   sim vgain X Y Z P
 
@@ -198,22 +198,22 @@ end
 % Dynamic Systems Biology Modelling
 % page 311
 comp ihill_stim
-input Vmax {I:uA}
-input S {I:uA}
-input n {V:mV}
-input Km {I:uA}
+    input Vmax {I:uA}
+    input S {I:uA}
+    input n {V:mV}
+    input Km {I:uA}
 
-def I(Vmax) mag = [0.0,10] uA
-def I(S) mag = [0,10] uA
-def I(Km) mag = [1,10] uA
-def V(n) mag = [1,5] mV
+    def I(Vmax) mag = [0.0,10] uA
+    def I(S) mag = [0,10] uA
+    def I(Km) mag = [1,10] uA
+    def V(n) mag = [1,5] mV
 
 
-output STIM {I:uA}
-% s^n/(s^n + k^n)
-rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
+    output STIM {I:uA}
+    % s^n/(s^n + k^n)
+    rel I(STIM) = I(Vmax)*(  ( (I(S)/I(Km))^V(n) ) / ( ( (I(S)/I(Km))^V(n) ) + 1 ) )
 
-sim ihill Vmax S n Km STM REP
+    sim ihill Vmax S n Km STM REP
 end
 
 comp ihill_rep
