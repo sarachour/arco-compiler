@@ -20,7 +20,8 @@ param a2 : M/s = 56.25
 %param K : kmol = 0.0029618
 
 param nu : unit = 2.0015
-param beta : unit = 2.5
+%param beta : unit = 2.5
+param beta : unit = 1.0
 param gamma : unit = 1.0
 
 param Cv : unit = 1
@@ -41,11 +42,12 @@ def IPTG mag = [0,0.60] kmol
 input K : kmol
 def K mag = [0.29618,0.6000] kmol 
 input K2 : kmol
-def K2 mag = [9.999,10] kmol
+def K2 mag = [5,5] kmol
 
 rel umodif = (U)*(1/((1+(IPTG/K))^nu))
 
 rel UTF = (Cu*a1)*((K2^beta)/((K2^beta) +(V^beta)))
+
 rel VTF = (Cv*a2)*((K2^gamma)/((K2^gamma) + (umodif^gamma)))
 %
 rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0

@@ -374,6 +374,9 @@ schematic
   conn switch -> itov
   conn switch -> iadd
   conn switch -> vdadd
+  conn switch -> ihill_rep 
+  conn switch -> ihill_stim 
+  conn switch -> ihill_rep2 
   conn switch -> output(I)
   conn switch -> itov
 
