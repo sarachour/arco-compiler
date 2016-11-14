@@ -443,6 +443,7 @@ schematic
 
   conn vdadd -> output(V)
   conn vdadd -> vtoi
+  conn vdadd -> itov
   conn vdadd -> vgain
   conn vdadd -> switch 
   conn vdadd -> vadd
