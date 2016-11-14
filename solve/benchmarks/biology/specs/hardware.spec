@@ -447,6 +447,8 @@ schematic
   conn vdadd -> output(V)
   conn vdadd -> vtoi
   conn vdadd -> itov
+  conn vdadd -> ihill_rep 
+  conn vdadd -> ihill_stim 
   conn vdadd -> vgain
   conn vdadd -> switch 
   conn vdadd -> vadd

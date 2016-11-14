@@ -39,21 +39,23 @@ def KMp mag = [40,40] M
 rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
 rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
 
+
 rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm) init 0
 def LacLm mag = [0,40] M
-
+def ddt LacLm sample 100 s
+def ddt LacLm speed 100 ms 
 
 rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm) init 0
 def TetRm mag = [0,40] M
+def ddt TetRm sample 100 s
+def ddt TetRm speed 100 ms 
 
 rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 0
 def LacLp mag = [0,120] M
-
+def ddt LacLp sample 100 s
+def ddt LacLp speed 100 ms 
 
 rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0
 def TetRp mag = [0,120] M
-
 def ddt TetRp sample 100 s
-
-% the speed (in wall clock time) should be one ms of real time at most
 def ddt TetRp speed 100 ms 

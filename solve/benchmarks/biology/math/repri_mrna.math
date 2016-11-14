@@ -28,19 +28,18 @@ time t : s
 %s
 input KMp : M
 %Set KMp to 40
-def KMp mag = [40,40] M
+def KMp mag = [39.9999,40] M
 
 
 rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
 
-rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm) init 0
+rel ddt TetRm = (0+(a0_tr +(TRTetR))) - (kd_mrna*TetRm) init 0
 def TetRm mag = [0,40] M
+def ddt TetRm sample 100 s
+def ddt TetRm speed 100 ms 
 
-
-rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0
+rel ddt TetRp = (0+(k_tl*TetRm))-(kd_prot*TetRp) init 0
 def TetRp mag = [0,120] M
 
 def ddt TetRp sample 100 s
-
-% the speed (in wall clock time) should be one ms of real time at most
 def ddt TetRp speed 100 ms 
