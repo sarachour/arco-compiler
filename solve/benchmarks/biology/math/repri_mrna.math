@@ -1,0 +1,46 @@
+
+% tetr reaction
+% https://www.ebi.ac.uk/biomodels-main/BIOMD00000.12
+% six diffeqs
+
+type M
+type s
+
+
+local TRTetR : M
+%
+output TetRp : M
+
+output TetRm : M
+
+
+param k_tl : 1/s = 3.01029995664
+param n : unit = 2
+param kd_prot : 1/s = 0.03010299956
+param kd_mrna : 1/s = 0.15051499783
+%param KMp : 1/s = 40
+param a0_tr : 1/s = 0.0005
+param a_tr : 1/s = 0.4995
+
+
+time t : s
+
+%s
+input KMp : M
+%Set KMp to 40
+def KMp mag = [39.9,40] M
+
+
+rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
+
+rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm) init 0
+def TetRm mag = [0,0.5] M
+
+
+rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0
+def TetRp mag = [0,1.5] M
+
+def ddt TetRp sample 100 s
+
+% the speed (in wall clock time) should be one ms of real time at most
+def ddt TetRp speed 100 ms 
