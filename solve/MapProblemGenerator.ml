@@ -453,9 +453,12 @@ struct
           | _ -> None
         in
         let hwtime2simtime wire time =
-          OpN(Mult,[Op2(Div,Decimal(1.),Term(SVScaleVar(wire)));
+          OpN(Mult,[Term(SVScaleVar(wire));
                             ASTLib.number2ast time
                     ])
+        in
+        let sampletime2simtime wire time =
+          Op2(Div, ASTLib.number2ast time, Term(SVScaleVar(wire)))
         in
         match vr_maybe with
         | Some(wire,vr) ->
@@ -485,7 +488,7 @@ struct
                       | HWDDigital(dig) ->
                         let hw_sample,_ = dig.sample in
                         (*the scaled realtime variable cannot exceed math sampling*)
-                        let hw_sample_expr = hwtime2simtime wire hw_sample in
+                        let hw_sample_expr = sampletime2simtime wire hw_sample in
                         let hw_wallclock_time = hwtime2simtime wire (Integer 1)  in
                         q (SVLTE(hw_sample_expr,math_sample));
                         q (SVLTE(hw_wallclock_time,hw_speed));

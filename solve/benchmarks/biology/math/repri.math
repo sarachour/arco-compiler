@@ -42,9 +42,9 @@ def Q mag = [0,1] M
 %rel TRTetR =(a_tr)*(1/( 1 + ((TetRp/KMp)^n)))
 %rel TRclp =(a_tr)*(1/( 1 + ((clp/KMp)^n)))
 
-rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
-rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
-rel TRclp =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
+rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
+rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
+rel TRclp =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
 
 rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm)  init 15
 def LacLm mag = [0,30] M
