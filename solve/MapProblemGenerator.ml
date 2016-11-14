@@ -461,6 +461,13 @@ struct
         | Some(wire,vr) ->
           begin
             match vr.defs with
+            | MDefVar(vr) ->
+              begin
+                q (SVNeq(
+                      Decimal(1.),Term(SVScaleVar(wire))
+                ))
+
+              end
             | MDefStVar(stvar) ->
               begin
                 qstvar(wire);
@@ -481,7 +488,10 @@ struct
                         let hw_sample_expr = hwtime2simtime wire hw_sample in
                         let hw_wallclock_time = hwtime2simtime wire (Integer 1)  in
                         q (SVLTE(hw_sample_expr,math_sample));
-                        q (SVLTE(hw_wallclock_time,hw_speed))
+                        q (SVLTE(hw_wallclock_time,hw_speed));
+                        q (SVNeq(
+                            Decimal(1.),Term(SVScaleVar(wire))
+                          ))
                       | _ ->
                         error "hwconn_derive_speed_constraints" "cannot derive speed of analog port"
                     end

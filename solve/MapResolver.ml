@@ -251,6 +251,13 @@ struct
         enq (Z3Comment(MapUtil.linearstmt2str s));
         enq (mkeq (z3lst))
 
+
+      | SVNeq(a,b) ->
+        let asmt = expr_to_z3prob a in
+        let bsmt = expr_to_z3prob b in
+        enq (Z3Assert(Z3Not(Z3Eq(asmt,bsmt))))
+
+
       | SVLTE(a,b) ->
         let asmt = expr_to_z3prob a in
         let bsmt = expr_to_z3prob b in

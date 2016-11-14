@@ -22,6 +22,7 @@ type linear_smt_id =
 type linear_stmt =
   | SVNoOffset of linear_id ast
   | SVNoScale of linear_id ast
+  | SVNeq of (linear_id ast)*linear_id ast
   | SVEquals of (linear_id ast) list
   | SVCoverEq of (linear_smt_id ast) list
   | SVCoverLTE of (linear_smt_id ast) list
