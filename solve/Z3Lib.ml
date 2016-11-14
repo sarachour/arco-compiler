@@ -313,7 +313,7 @@ struct
     let resfile = "z3-res."^root^".res" in
     let oc = open_out smtfile in
     (*solve for fif mintues*)
-    let timeout = 60*10 in
+    let timeout = 60*30 in
     (*let x = List.sort sortsts (LIST.uniq x) in*)
     z3stmts2buf oc stmts;
     close_out oc;
@@ -349,7 +349,7 @@ struct
     let resfile = "z3-res."^root^".res" in
     let oc = open_out smtfile in
     (*solve for fif mintues*)
-    let timeout = 60*10 in
+    let timeout = 60*30 in
     (*let x = List.sort sortsts (LIST.uniq x) in*)
     z3stmts2buf oc stmts;
     close_out oc;
