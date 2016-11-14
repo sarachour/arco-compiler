@@ -301,7 +301,8 @@ struct
     in
     sat^"\n\n"^mdl
 
-    
+  let timeout = 60*5
+  
   let sat (root:string) (stmts:z3st list) use_dreal : bool =
     let stmts =
       if use_dreal then
@@ -313,7 +314,6 @@ struct
     let resfile = "z3-res."^root^".res" in
     let oc = open_out smtfile in
     (*solve for fif mintues*)
-    let timeout = 60*30 in
     (*let x = List.sort sortsts (LIST.uniq x) in*)
     z3stmts2buf oc stmts;
     close_out oc;
@@ -349,7 +349,6 @@ struct
     let resfile = "z3-res."^root^".res" in
     let oc = open_out smtfile in
     (*solve for fif mintues*)
-    let timeout = 60*30 in
     (*let x = List.sort sortsts (LIST.uniq x) in*)
     z3stmts2buf oc stmts;
     close_out oc;
