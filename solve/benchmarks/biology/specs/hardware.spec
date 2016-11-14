@@ -86,7 +86,7 @@ comp vgain
   input X {V:mV}
   def V(X) mag = [0.00,500] mV
 
-  input Z {V:mV}
+  input Z {I:uA}
   def I(Z) mag = [0.0001,10] uA
 
   param SW : none = {0,1}
