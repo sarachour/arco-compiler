@@ -42,7 +42,7 @@ def IPTG mag = [0,0.60] kmol
 input K : kmol
 def K mag = [0.29618,0.6000] kmol 
 input K2 : kmol
-def K2 mag = [5,5] kmol
+def K2 mag = [8,8] kmol
 
 rel umodif = (U)*(1/((1+(IPTG/K))^nu))
 
