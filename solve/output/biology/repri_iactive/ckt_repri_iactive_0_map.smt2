@@ -355,6 +355,16 @@
 ; 
 ; =  {(((sc.vdadd[8].OUT*10.)+of.vdadd[8].OUT)+sl.max.vdadd[8].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_22 10.) of_22) sltop_22_1) 12000.))
+(declare-fun slbot_22_2 () Real)
+(assert (<= slbot_22_2 1e-08))
+(declare-fun sltop_22_2 () Real)
+(assert (>= sltop_22_2 1e-08))
+; 
+; =  {(((sc.vdadd[8].OUT*-1.48543843984)+of.vdadd[8].OUT)+sl.min.vdadd[8].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_22 -1.48543843984) of_22) slbot_22_2) -120000.))
+; 
+; =  {(((sc.vdadd[8].OUT*0.5)+of.vdadd[8].OUT)+sl.max.vdadd[8].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_22 0.5) of_22) sltop_22_2) 6600.))
 ; 
 ; >=  {((sc.vdadd[8].OUT_0*0.)+of.vdadd[8].OUT_0)} {3300.}
 (assert (<= (+ (* sc_19 0.) of_19) 3300.))
@@ -387,6 +397,16 @@
 ; 
 ; =  {(((sc.vdadd[8].OUT*10.)+of.vdadd[8].OUT)+sl.max.vdadd[8].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_22 10.) of_22) sltop_22_1) 12000.))
+(declare-fun slbot_22_2 () Real)
+(assert (<= slbot_22_2 1e-08))
+(declare-fun sltop_22_2 () Real)
+(assert (>= sltop_22_2 1e-08))
+; 
+; =  {(((sc.vdadd[8].OUT*-1.48543843984)+of.vdadd[8].OUT)+sl.min.vdadd[8].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_22 -1.48543843984) of_22) slbot_22_2) -120000.))
+; 
+; =  {(((sc.vdadd[8].OUT*0.5)+of.vdadd[8].OUT)+sl.max.vdadd[8].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_22 0.5) of_22) sltop_22_2) 6600.))
 (declare-fun sc_23 () Real)
 (assert (> sc_23 1e-08))
 (declare-fun of_23 () Real)
@@ -451,6 +471,16 @@
 ; 
 ; =  {(((sc.vdadd[7].OUT*10.)+of.vdadd[7].OUT)+sl.max.vdadd[7].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_27 10.) of_27) sltop_27_1) 12000.))
+(declare-fun slbot_27_2 () Real)
+(assert (<= slbot_27_2 1e-08))
+(declare-fun sltop_27_2 () Real)
+(assert (>= sltop_27_2 1e-08))
+; 
+; =  {(((sc.vdadd[7].OUT*-1.48543843984)+of.vdadd[7].OUT)+sl.min.vdadd[7].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_27 -1.48543843984) of_27) slbot_27_2) -120000.))
+; 
+; =  {(((sc.vdadd[7].OUT*0.5)+of.vdadd[7].OUT)+sl.max.vdadd[7].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_27 0.5) of_27) sltop_27_2) 6600.))
 ; 
 ; >=  {((sc.vdadd[7].OUT_0*0.)+of.vdadd[7].OUT_0)} {3300.}
 (assert (<= (+ (* sc_24 0.) of_24) 3300.))
@@ -483,6 +513,16 @@
 ; 
 ; =  {(((sc.vdadd[7].OUT*10.)+of.vdadd[7].OUT)+sl.max.vdadd[7].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_27 10.) of_27) sltop_27_1) 12000.))
+(declare-fun slbot_27_2 () Real)
+(assert (<= slbot_27_2 1e-08))
+(declare-fun sltop_27_2 () Real)
+(assert (>= sltop_27_2 1e-08))
+; 
+; =  {(((sc.vdadd[7].OUT*-1.48543843984)+of.vdadd[7].OUT)+sl.min.vdadd[7].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_27 -1.48543843984) of_27) slbot_27_2) -120000.))
+; 
+; =  {(((sc.vdadd[7].OUT*0.5)+of.vdadd[7].OUT)+sl.max.vdadd[7].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_27 0.5) of_27) sltop_27_2) 6600.))
 (declare-fun sc_28 () Real)
 (assert (> sc_28 1e-08))
 (declare-fun of_28 () Real)
@@ -547,6 +587,16 @@
 ; 
 ; =  {(((sc.vdadd[11].OUT*100.)+of.vdadd[11].OUT)+sl.max.vdadd[11].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_32 100.) of_32) sltop_32_1) 12000.))
+(declare-fun slbot_32_2 () Real)
+(assert (<= slbot_32_2 1e-08))
+(declare-fun sltop_32_2 () Real)
+(assert (>= sltop_32_2 1e-08))
+; 
+; =  {(((sc.vdadd[11].OUT*-3.010299956)+of.vdadd[11].OUT)+sl.min.vdadd[11].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_32 -3.010299956) of_32) slbot_32_2) -120000.))
+; 
+; =  {(((sc.vdadd[11].OUT*30.2029995664)+of.vdadd[11].OUT)+sl.max.vdadd[11].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_32 30.2029995664) of_32) sltop_32_2) 6600.))
 ; 
 ; >=  {((sc.vdadd[11].OUT_0*0.)+of.vdadd[11].OUT_0)} {3300.}
 (assert (<= (+ (* sc_29 0.) of_29) 3300.))
@@ -583,6 +633,16 @@
 ; 
 ; =  {(((sc.vdadd[11].OUT*100.)+of.vdadd[11].OUT)+sl.max.vdadd[11].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_32 100.) of_32) sltop_32_1) 12000.))
+(declare-fun slbot_32_2 () Real)
+(assert (<= slbot_32_2 1e-08))
+(declare-fun sltop_32_2 () Real)
+(assert (>= sltop_32_2 1e-08))
+; 
+; =  {(((sc.vdadd[11].OUT*-3.010299956)+of.vdadd[11].OUT)+sl.min.vdadd[11].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_32 -3.010299956) of_32) slbot_32_2) -120000.))
+; 
+; =  {(((sc.vdadd[11].OUT*30.2029995664)+of.vdadd[11].OUT)+sl.max.vdadd[11].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_32 30.2029995664) of_32) sltop_32_2) 6600.))
 (declare-fun sc_33 () Real)
 (assert (> sc_33 1e-08))
 (declare-fun of_33 () Real)
@@ -647,6 +707,16 @@
 ; 
 ; =  {(((sc.vdadd[4].OUT*100.)+of.vdadd[4].OUT)+sl.max.vdadd[4].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_37 100.) of_37) sltop_37_1) 12000.))
+(declare-fun slbot_37_2 () Real)
+(assert (<= slbot_37_2 1e-08))
+(declare-fun sltop_37_2 () Real)
+(assert (>= sltop_37_2 1e-08))
+; 
+; =  {(((sc.vdadd[4].OUT*-3.010299956)+of.vdadd[4].OUT)+sl.min.vdadd[4].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_37 -3.010299956) of_37) slbot_37_2) -120000.))
+; 
+; =  {(((sc.vdadd[4].OUT*30.1029995664)+of.vdadd[4].OUT)+sl.max.vdadd[4].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_37 30.1029995664) of_37) sltop_37_2) 6600.))
 ; 
 ; >=  {((sc.vdadd[4].OUT_0*0.)+of.vdadd[4].OUT_0)} {3300.}
 (assert (<= (+ (* sc_34 0.) of_34) 3300.))
@@ -679,6 +749,16 @@
 ; 
 ; =  {(((sc.vdadd[4].OUT*100.)+of.vdadd[4].OUT)+sl.max.vdadd[4].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_37 100.) of_37) sltop_37_1) 12000.))
+(declare-fun slbot_37_2 () Real)
+(assert (<= slbot_37_2 1e-08))
+(declare-fun sltop_37_2 () Real)
+(assert (>= sltop_37_2 1e-08))
+; 
+; =  {(((sc.vdadd[4].OUT*-3.010299956)+of.vdadd[4].OUT)+sl.min.vdadd[4].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_37 -3.010299956) of_37) slbot_37_2) -120000.))
+; 
+; =  {(((sc.vdadd[4].OUT*30.1029995664)+of.vdadd[4].OUT)+sl.max.vdadd[4].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_37 30.1029995664) of_37) sltop_37_2) 6600.))
 (declare-fun sc_38 () Real)
 (assert (> sc_38 1e-08))
 (declare-fun of_38 () Real)
@@ -743,6 +823,16 @@
 ; 
 ; =  {(((sc.vdadd[5].OUT*10.)+of.vdadd[5].OUT)+sl.max.vdadd[5].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_42 10.) of_42) sltop_42_1) 12000.))
+(declare-fun slbot_42_2 () Real)
+(assert (<= slbot_42_2 1e-08))
+(declare-fun sltop_42_2 () Real)
+(assert (>= sltop_42_2 1e-08))
+; 
+; =  {(((sc.vdadd[5].OUT*-1.48543843984)+of.vdadd[5].OUT)+sl.min.vdadd[5].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_42 -1.48543843984) of_42) slbot_42_2) -120000.))
+; 
+; =  {(((sc.vdadd[5].OUT*0.5)+of.vdadd[5].OUT)+sl.max.vdadd[5].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_42 0.5) of_42) sltop_42_2) 6600.))
 ; 
 ; >=  {((sc.vdadd[5].OUT_0*0.)+of.vdadd[5].OUT_0)} {3300.}
 (assert (<= (+ (* sc_39 0.) of_39) 3300.))
@@ -775,6 +865,16 @@
 ; 
 ; =  {(((sc.vdadd[5].OUT*10.)+of.vdadd[5].OUT)+sl.max.vdadd[5].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_42 10.) of_42) sltop_42_1) 12000.))
+(declare-fun slbot_42_2 () Real)
+(assert (<= slbot_42_2 1e-08))
+(declare-fun sltop_42_2 () Real)
+(assert (>= sltop_42_2 1e-08))
+; 
+; =  {(((sc.vdadd[5].OUT*-1.48543843984)+of.vdadd[5].OUT)+sl.min.vdadd[5].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_42 -1.48543843984) of_42) slbot_42_2) -120000.))
+; 
+; =  {(((sc.vdadd[5].OUT*0.5)+of.vdadd[5].OUT)+sl.max.vdadd[5].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_42 0.5) of_42) sltop_42_2) 6600.))
 (declare-fun sc_43 () Real)
 (assert (> sc_43 1e-08))
 (declare-fun of_43 () Real)
@@ -839,6 +939,16 @@
 ; 
 ; =  {(((sc.vdadd[1].OUT*100.)+of.vdadd[1].OUT)+sl.max.vdadd[1].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_47 100.) of_47) sltop_47_1) 12000.))
+(declare-fun slbot_47_2 () Real)
+(assert (<= slbot_47_2 1e-08))
+(declare-fun sltop_47_2 () Real)
+(assert (>= sltop_47_2 1e-08))
+; 
+; =  {(((sc.vdadd[1].OUT*-3.010299956)+of.vdadd[1].OUT)+sl.min.vdadd[1].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_47 -3.010299956) of_47) slbot_47_2) -120000.))
+; 
+; =  {(((sc.vdadd[1].OUT*30.1029995664)+of.vdadd[1].OUT)+sl.max.vdadd[1].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_47 30.1029995664) of_47) sltop_47_2) 6600.))
 ; 
 ; >=  {((sc.vdadd[1].OUT_0*0.)+of.vdadd[1].OUT_0)} {3300.}
 (assert (<= (+ (* sc_44 0.) of_44) 3300.))
@@ -871,6 +981,16 @@
 ; 
 ; =  {(((sc.vdadd[1].OUT*100.)+of.vdadd[1].OUT)+sl.max.vdadd[1].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_47 100.) of_47) sltop_47_1) 12000.))
+(declare-fun slbot_47_2 () Real)
+(assert (<= slbot_47_2 1e-08))
+(declare-fun sltop_47_2 () Real)
+(assert (>= sltop_47_2 1e-08))
+; 
+; =  {(((sc.vdadd[1].OUT*-3.010299956)+of.vdadd[1].OUT)+sl.min.vdadd[1].OUT.2)} {-120000.}
+(assert (= (+ (+ (* sc_47 -3.010299956) of_47) slbot_47_2) -120000.))
+; 
+; =  {(((sc.vdadd[1].OUT*30.1029995664)+of.vdadd[1].OUT)+sl.max.vdadd[1].OUT.2)} {6600.}
+(assert (= (+ (+ (* sc_47 30.1029995664) of_47) sltop_47_2) 6600.))
 (declare-fun sc_48 () Real)
 (assert (> sc_48 1e-08))
 (declare-fun of_48 () Real)
@@ -2366,5 +2486,5 @@
 ; 
 ; =  {sc.vdadd[5].OUT} {sc.output.V[0].O} {sc.vdadd[11].OUT} {sc.output.V[1].O} {sc.vdadd[8].OUT} {sc.output.V[2].O} {sc.vdadd[7].OUT} {sc.output.V[3].O} {sc.vdadd[1].OUT} {sc.output.V[4].O} {sc.vdadd[4].OUT} {sc.output.V[5].O}
 (assert (and (and (and (and (and (and (and (and (and (and (= sc_42 sc_83) (= sc_42 sc_32)) (= sc_42 sc_91)) (= sc_42 sc_22)) (= sc_42 sc_81)) (= sc_42 sc_27)) (= sc_42 sc_85)) (= sc_42 sc_47)) (= sc_42 sc_87)) (= sc_42 sc_37)) (= sc_42 sc_89)))
-(assert (= __minima__ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (ite (>= slbot_91_1 0.) slbot_91_1 (- slbot_91_1)) (ite (>= sltop_17_1 0.) sltop_17_1 (- sltop_17_1))) (ite (>= slbot_27_1 0.) slbot_27_1 (- slbot_27_1))) (ite (>= slbot_7_1 0.) slbot_7_1 (- slbot_7_1))) (ite (>= slbot_84_1 0.) slbot_84_1 (- slbot_84_1))) (ite (>= slbot_37_1 0.) slbot_37_1 (- slbot_37_1))) (ite (>= sltop_37_1 0.) sltop_37_1 (- sltop_37_1))) (ite (>= sltop_88_1 0.) sltop_88_1 (- sltop_88_1))) (ite (>= slbot_22_1 0.) slbot_22_1 (- slbot_22_1))) (ite (>= sltop_45_1 0.) sltop_45_1 (- sltop_45_1))) (ite (>= slbot_35_1 0.) slbot_35_1 (- slbot_35_1))) (ite (>= sltop_87_1 0.) sltop_87_1 (- sltop_87_1))) (ite (>= slbot_2_1 0.) slbot_2_1 (- slbot_2_1))) (ite (>= slbot_4_1 0.) slbot_4_1 (- slbot_4_1))) (ite (>= slbot_14_1 0.) slbot_14_1 (- slbot_14_1))) (ite (>= sltop_40_1 0.) sltop_40_1 (- sltop_40_1))) (ite (>= sltop_126_1 0.) sltop_126_1 (- sltop_126_1))) (ite (>= slbot_126_1 0.) slbot_126_1 (- slbot_126_1))) (ite (>= slbot_104_1 0.) slbot_104_1 (- slbot_104_1))) (ite (>= slbot_9_1 0.) slbot_9_1 (- slbot_9_1))) (ite (>= sltop_80_1 0.) sltop_80_1 (- sltop_80_1))) (ite (>= sltop_84_1 0.) sltop_84_1 (- sltop_84_1))) (ite (>= sltop_7_1 0.) sltop_7_1 (- sltop_7_1))) (ite (>= slbot_47_1 0.) slbot_47_1 (- slbot_47_1))) (ite (>= sltop_104_1 0.) sltop_104_1 (- sltop_104_1))) (ite (>= slbot_0_1 0.) slbot_0_1 (- slbot_0_1))) (ite (>= sltop_9_1 0.) sltop_9_1 (- sltop_9_1))) (ite (>= sltop_85_1 0.) sltop_85_1 (- sltop_85_1))) (ite (>= sltop_26_1 0.) sltop_26_1 (- sltop_26_1))) (ite (>= sltop_35_1 0.) sltop_35_1 (- sltop_35_1))) (ite (>= sltop_83_1 0.) sltop_83_1 (- sltop_83_1))) (ite (>= slbot_90_1 0.) slbot_90_1 (- slbot_90_1))) (ite (>= sltop_32_1 0.) sltop_32_1 (- sltop_32_1))) (ite (>= sltop_81_1 0.) sltop_81_1 (- sltop_81_1))) (ite (>= sltop_86_1 0.) sltop_86_1 (- sltop_86_1))) (ite (>= sltop_47_1 0.) sltop_47_1 (- sltop_47_1))) (ite (>= slbot_89_1 0.) slbot_89_1 (- slbot_89_1))) (ite (>= slbot_20_1 0.) slbot_20_1 (- slbot_20_1))) (ite (>= sltop_31_1 0.) sltop_31_1 (- sltop_31_1))) (ite (>= slbot_40_1 0.) slbot_40_1 (- slbot_40_1))) (ite (>= slbot_17_1 0.) slbot_17_1 (- slbot_17_1))) (ite (>= slbot_45_1 0.) slbot_45_1 (- slbot_45_1))) (ite (>= slbot_32_1 0.) slbot_32_1 (- slbot_32_1))) (ite (>= slbot_87_1 0.) slbot_87_1 (- slbot_87_1))) (ite (>= slbot_88_1 0.) slbot_88_1 (- slbot_88_1))) (ite (>= slbot_128_1 0.) slbot_128_1 (- slbot_128_1))) (ite (>= slbot_85_1 0.) slbot_85_1 (- slbot_85_1))) (ite (>= slbot_80_1 0.) slbot_80_1 (- slbot_80_1))) (ite (>= slbot_86_1 0.) slbot_86_1 (- slbot_86_1))) (ite (>= sltop_12_1 0.) sltop_12_1 (- sltop_12_1))) (ite (>= slbot_42_1 0.) slbot_42_1 (- slbot_42_1))) (ite (>= sltop_90_1 0.) sltop_90_1 (- sltop_90_1))) (ite (>= sltop_30_1 0.) sltop_30_1 (- sltop_30_1))) (ite (>= slbot_131_1 0.) slbot_131_1 (- slbot_131_1))) (ite (>= sltop_2_1 0.) sltop_2_1 (- sltop_2_1))) (ite (>= sltop_22_1 0.) sltop_22_1 (- sltop_22_1))) (ite (>= sltop_4_1 0.) sltop_4_1 (- sltop_4_1))) (ite (>= sltop_14_1 0.) sltop_14_1 (- sltop_14_1))) (ite (>= sltop_91_1 0.) sltop_91_1 (- sltop_91_1))) (ite (>= sltop_27_1 0.) sltop_27_1 (- sltop_27_1))) (ite (>= sltop_131_1 0.) sltop_131_1 (- sltop_131_1))) (ite (>= sltop_89_1 0.) sltop_89_1 (- sltop_89_1))) (ite (>= slbot_129_1 0.) slbot_129_1 (- slbot_129_1))) (ite (>= sltop_20_1 0.) sltop_20_1 (- sltop_20_1))) (ite (>= slbot_105_1 0.) slbot_105_1 (- slbot_105_1))) (ite (>= sltop_105_1 0.) sltop_105_1 (- sltop_105_1))) (ite (>= slbot_12_1 0.) slbot_12_1 (- slbot_12_1))) (ite (>= slbot_26_1 0.) slbot_26_1 (- slbot_26_1))) (ite (>= slbot_31_1 0.) slbot_31_1 (- slbot_31_1))) (ite (>= slbot_30_1 0.) slbot_30_1 (- slbot_30_1))) (ite (>= sltop_42_1 0.) sltop_42_1 (- sltop_42_1))) (ite (>= slbot_83_1 0.) slbot_83_1 (- slbot_83_1))) (ite (>= sltop_129_1 0.) sltop_129_1 (- sltop_129_1))) (ite (>= sltop_82_1 0.) sltop_82_1 (- sltop_82_1))) (ite (>= slbot_82_1 0.) slbot_82_1 (- slbot_82_1))) (ite (>= sltop_128_1 0.) sltop_128_1 (- sltop_128_1))) (ite (>= sltop_0_1 0.) sltop_0_1 (- sltop_0_1))) (ite (>= slbot_81_1 0.) slbot_81_1 (- slbot_81_1)))))
+(assert (= __minima__ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (ite (>= slbot_42_2 0.) slbot_42_2 (- slbot_42_2)) (ite (>= slbot_91_1 0.) slbot_91_1 (- slbot_91_1))) (ite (>= sltop_17_1 0.) sltop_17_1 (- sltop_17_1))) (ite (>= slbot_27_1 0.) slbot_27_1 (- slbot_27_1))) (ite (>= slbot_7_1 0.) slbot_7_1 (- slbot_7_1))) (ite (>= slbot_84_1 0.) slbot_84_1 (- slbot_84_1))) (ite (>= slbot_37_1 0.) slbot_37_1 (- slbot_37_1))) (ite (>= sltop_37_1 0.) sltop_37_1 (- sltop_37_1))) (ite (>= sltop_88_1 0.) sltop_88_1 (- sltop_88_1))) (ite (>= slbot_22_1 0.) slbot_22_1 (- slbot_22_1))) (ite (>= sltop_45_1 0.) sltop_45_1 (- sltop_45_1))) (ite (>= slbot_35_1 0.) slbot_35_1 (- slbot_35_1))) (ite (>= sltop_87_1 0.) sltop_87_1 (- sltop_87_1))) (ite (>= slbot_2_1 0.) slbot_2_1 (- slbot_2_1))) (ite (>= slbot_4_1 0.) slbot_4_1 (- slbot_4_1))) (ite (>= slbot_37_2 0.) slbot_37_2 (- slbot_37_2))) (ite (>= sltop_42_2 0.) sltop_42_2 (- sltop_42_2))) (ite (>= slbot_14_1 0.) slbot_14_1 (- slbot_14_1))) (ite (>= sltop_40_1 0.) sltop_40_1 (- sltop_40_1))) (ite (>= sltop_126_1 0.) sltop_126_1 (- sltop_126_1))) (ite (>= slbot_126_1 0.) slbot_126_1 (- slbot_126_1))) (ite (>= slbot_104_1 0.) slbot_104_1 (- slbot_104_1))) (ite (>= slbot_9_1 0.) slbot_9_1 (- slbot_9_1))) (ite (>= sltop_80_1 0.) sltop_80_1 (- sltop_80_1))) (ite (>= slbot_32_2 0.) slbot_32_2 (- slbot_32_2))) (ite (>= sltop_84_1 0.) sltop_84_1 (- sltop_84_1))) (ite (>= sltop_7_1 0.) sltop_7_1 (- sltop_7_1))) (ite (>= slbot_47_1 0.) slbot_47_1 (- slbot_47_1))) (ite (>= sltop_104_1 0.) sltop_104_1 (- sltop_104_1))) (ite (>= slbot_0_1 0.) slbot_0_1 (- slbot_0_1))) (ite (>= sltop_9_1 0.) sltop_9_1 (- sltop_9_1))) (ite (>= sltop_85_1 0.) sltop_85_1 (- sltop_85_1))) (ite (>= sltop_26_1 0.) sltop_26_1 (- sltop_26_1))) (ite (>= sltop_35_1 0.) sltop_35_1 (- sltop_35_1))) (ite (>= sltop_83_1 0.) sltop_83_1 (- sltop_83_1))) (ite (>= slbot_90_1 0.) slbot_90_1 (- slbot_90_1))) (ite (>= sltop_32_1 0.) sltop_32_1 (- sltop_32_1))) (ite (>= sltop_81_1 0.) sltop_81_1 (- sltop_81_1))) (ite (>= sltop_86_1 0.) sltop_86_1 (- sltop_86_1))) (ite (>= sltop_37_2 0.) sltop_37_2 (- sltop_37_2))) (ite (>= sltop_47_1 0.) sltop_47_1 (- sltop_47_1))) (ite (>= sltop_22_2 0.) sltop_22_2 (- sltop_22_2))) (ite (>= slbot_89_1 0.) slbot_89_1 (- slbot_89_1))) (ite (>= slbot_20_1 0.) slbot_20_1 (- slbot_20_1))) (ite (>= sltop_47_2 0.) sltop_47_2 (- sltop_47_2))) (ite (>= sltop_31_1 0.) sltop_31_1 (- sltop_31_1))) (ite (>= slbot_40_1 0.) slbot_40_1 (- slbot_40_1))) (ite (>= slbot_17_1 0.) slbot_17_1 (- slbot_17_1))) (ite (>= sltop_27_2 0.) sltop_27_2 (- sltop_27_2))) (ite (>= slbot_45_1 0.) slbot_45_1 (- slbot_45_1))) (ite (>= slbot_32_1 0.) slbot_32_1 (- slbot_32_1))) (ite (>= slbot_87_1 0.) slbot_87_1 (- slbot_87_1))) (ite (>= slbot_88_1 0.) slbot_88_1 (- slbot_88_1))) (ite (>= slbot_128_1 0.) slbot_128_1 (- slbot_128_1))) (ite (>= sltop_32_2 0.) sltop_32_2 (- sltop_32_2))) (ite (>= slbot_85_1 0.) slbot_85_1 (- slbot_85_1))) (ite (>= slbot_80_1 0.) slbot_80_1 (- slbot_80_1))) (ite (>= slbot_86_1 0.) slbot_86_1 (- slbot_86_1))) (ite (>= sltop_12_1 0.) sltop_12_1 (- sltop_12_1))) (ite (>= slbot_42_1 0.) slbot_42_1 (- slbot_42_1))) (ite (>= sltop_90_1 0.) sltop_90_1 (- sltop_90_1))) (ite (>= sltop_30_1 0.) sltop_30_1 (- sltop_30_1))) (ite (>= slbot_131_1 0.) slbot_131_1 (- slbot_131_1))) (ite (>= sltop_2_1 0.) sltop_2_1 (- sltop_2_1))) (ite (>= sltop_22_1 0.) sltop_22_1 (- sltop_22_1))) (ite (>= sltop_4_1 0.) sltop_4_1 (- sltop_4_1))) (ite (>= sltop_14_1 0.) sltop_14_1 (- sltop_14_1))) (ite (>= slbot_22_2 0.) slbot_22_2 (- slbot_22_2))) (ite (>= sltop_91_1 0.) sltop_91_1 (- sltop_91_1))) (ite (>= sltop_27_1 0.) sltop_27_1 (- sltop_27_1))) (ite (>= sltop_131_1 0.) sltop_131_1 (- sltop_131_1))) (ite (>= slbot_47_2 0.) slbot_47_2 (- slbot_47_2))) (ite (>= sltop_89_1 0.) sltop_89_1 (- sltop_89_1))) (ite (>= slbot_129_1 0.) slbot_129_1 (- slbot_129_1))) (ite (>= sltop_20_1 0.) sltop_20_1 (- sltop_20_1))) (ite (>= slbot_105_1 0.) slbot_105_1 (- slbot_105_1))) (ite (>= sltop_105_1 0.) sltop_105_1 (- sltop_105_1))) (ite (>= slbot_12_1 0.) slbot_12_1 (- slbot_12_1))) (ite (>= slbot_26_1 0.) slbot_26_1 (- slbot_26_1))) (ite (>= slbot_31_1 0.) slbot_31_1 (- slbot_31_1))) (ite (>= slbot_27_2 0.) slbot_27_2 (- slbot_27_2))) (ite (>= slbot_30_1 0.) slbot_30_1 (- slbot_30_1))) (ite (>= sltop_42_1 0.) sltop_42_1 (- sltop_42_1))) (ite (>= slbot_83_1 0.) slbot_83_1 (- slbot_83_1))) (ite (>= sltop_129_1 0.) sltop_129_1 (- sltop_129_1))) (ite (>= sltop_82_1 0.) sltop_82_1 (- sltop_82_1))) (ite (>= slbot_82_1 0.) slbot_82_1 (- slbot_82_1))) (ite (>= sltop_128_1 0.) sltop_128_1 (- sltop_128_1))) (ite (>= sltop_0_1 0.) sltop_0_1 (- sltop_0_1))) (ite (>= slbot_81_1 0.) slbot_81_1 (- slbot_81_1)))))
 (check-sat)
