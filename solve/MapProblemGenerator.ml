@@ -386,37 +386,37 @@ struct
       (fun (port:string) (x:hwvarcfg) ->
          let hwport = HwLib.getvar tbl.env.hw comp.name port in 
          let wire = SlnLib.mkwire comp.name inst port in
+         (*
          let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
          let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
          queue_interval_cover stmts wire hival mival 1 x.expr
-           
-         (*
+           *)
            begin
            match hwport.bhvr with
            | HWBAnalog(bhvr) ->
              let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
              let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-             queue_interval_cover stmts wire hival mival 1
+             queue_interval_cover stmts wire hival mival 1 x.expr
 
            | HWBAnalogState(bhvr) ->
-             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
-             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
+             let mival : interval = IntervalCompute.compute_mexpr_interval_stvar tbl (uast2mast x.expr) in
+             let mivalderiv : interval = IntervalCompute.compute_mexpr_interval_deriv tbl (uast2mast x.expr) in
+             let hival : interval = IntervalCompute.compute_stvar_hwport_interval tbl comp inst cfg port in
              let hivalderiv : interval = IntervalCompute.compute_deriv_hwport_interval tbl comp inst cfg port in
-             queue_interval_cover stmts wire hival mival 1;
-             queue_interval_cover stmts wire hivalderiv mival 2
+             queue_interval_cover stmts wire hival mival 1 x.expr;
+             queue_interval_cover stmts wire hivalderiv mivalderiv 2 x.expr 
 
            | HWBDigital(_) ->
              let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
              let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-             queue_interval_cover stmts wire hival mival 1
+             queue_interval_cover stmts wire hival mival 1 x.expr
 
            | HWBInput ->
              let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
              let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-             queue_interval_cover stmts wire hival mival 1
+             queue_interval_cover stmts wire hival mival 1 x.expr
            | _ -> error "hwcomp_derive_scaling_factors" "?"
          end
-        *)
       )
       (fun (param:string) (x:number) -> ());
     let cstrs = QUEUE.to_list stmts in
