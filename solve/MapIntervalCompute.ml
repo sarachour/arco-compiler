@@ -80,6 +80,45 @@ struct
     in
     math_interval
 
+  let compute_mexpr_interval_stvar (tbl:gltbl) (uast:mid ast) : interval =
+    match uast with
+    | Term(MNVar(MOutput,v)) ->
+      let vr = MathLib.getvar tbl.env.math v in
+      begin
+        match vr.defs with
+        | MDefStVar(defs) -> defs.stvar.ival
+        | _ -> error "compute_mexpr_interval_deriv" "must be state variable"
+      end
+    | Term(MNVar(MLocal,v)) ->
+      let vr = MathLib.getvar tbl.env.math v in
+      begin
+        match vr.defs with
+        | MDefStVar(defs) -> defs.stvar.ival
+        | _ -> error "compute_mexpr_interval_deriv" "must be state variable"
+      end
+    | Term(_) -> error "compute_mexpr_interval_deriv" "cannot be input or parameter"
+    | (_) -> error "compute_mexpr_interval_deriv" "cannot be expression"
+
+
+  let compute_mexpr_interval_deriv (tbl:gltbl) (uast:mid ast) : interval =
+    match uast with
+    | Term(MNVar(MOutput,v)) ->
+      let vr = MathLib.getvar tbl.env.math v in
+      begin
+        match vr.defs with
+        | MDefStVar(defs) -> defs.deriv.ival
+        | _ -> error "compute_mexpr_interval_deriv" "must be state variable"
+      end
+    | Term(MNVar(MLocal,v)) ->
+      let vr = MathLib.getvar tbl.env.math v in
+      begin
+        match vr.defs with
+        | MDefStVar(defs) -> defs.deriv.ival
+        | _ -> error "compute_mexpr_interval_deriv" "must be state variable"
+      end
+    | Term(_) -> error "compute_mexpr_interval_deriv" "cannot be input or parameter"
+    | (_) -> error "compute_mexpr_interval_deriv" "cannot be expression"
+
   let compute_hwid_interval comp (x:hwvid) : interval=
       match x with
         |HNParam(cmp,x) ->
@@ -125,6 +164,13 @@ struct
     | _ -> error "compute_hw_interval" "unexpected bhvr/defs match"
       
       (*declare equivalence classes for a mapping*)
+
+  let compute_stvar_hwport_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
+    let vr = HwLib.comp_getvar comp port in
+    match vr.bhvr,vr.defs with
+    | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
+      defs.stvar.ival
+    | _ -> error "compute_deriv_hw_interval" "unexpected bhvr/defs match"
 
   let compute_deriv_hwport_interval (tbl:gltbl) (comp:hwvid hwcomp) inst (cfg:hwcompcfg) (port:string) =
     let vr = HwLib.comp_getvar comp port in
