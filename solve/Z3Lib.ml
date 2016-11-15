@@ -301,7 +301,7 @@ struct
     in
     sat^"\n\n"^mdl
 
-  let timeout = 60*5
+  let timeout = 60*30
   
   let sat (root:string) (stmts:z3st list) use_dreal : bool =
     let stmts =
