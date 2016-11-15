@@ -405,8 +405,6 @@ struct
              let hivalderiv : interval = IntervalCompute.compute_deriv_hwport_interval tbl comp inst cfg port in
              let icport,_ = bhvr.ic in
              let icwire = SlnLib.mkwire comp.name inst icport  in
-             q (SVEquals([Term(SVOffsetVar(icwire));Term(SVOffsetVar(wire))]));
-             q (SVEquals([Term(SVScaleVar(icwire));Term(SVScaleVar(wire))]));
              queue_interval_cover stmts wire hival mival 1 x.expr;
              queue_interval_cover stmts wire hivalderiv mivalderiv 2 x.expr 
 
