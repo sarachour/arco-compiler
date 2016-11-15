@@ -403,6 +403,8 @@ struct
              let mivalderiv : interval = IntervalCompute.compute_mexpr_interval_deriv tbl (uast2mast x.expr) in
              let hival : interval = IntervalCompute.compute_stvar_hwport_interval tbl comp inst cfg port in
              let hivalderiv : interval = IntervalCompute.compute_deriv_hwport_interval tbl comp inst cfg port in
+             let icport,_ = bhvr.ic in
+             let icwire = SlnLib.mkwire comp.name inst icport  in
              queue_interval_cover stmts wire hival mival 1 x.expr;
              queue_interval_cover stmts wire hivalderiv mivalderiv 2 x.expr 
 
