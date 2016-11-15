@@ -62,5 +62,5 @@ def ddt U speed 5 ms
 rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
 def V mag = [0,13.32] unit 
 
-def ddt V sample 5 s
-def ddt V speed 5 ms 
+def ddt V sample 0.1 s
+def ddt V speed 100 us 

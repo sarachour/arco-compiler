@@ -1,0 +1,75 @@
+
+% tetr reaction
+% https://www.ebi.ac.uk/biomodels-main/BIOMD00000.12
+% six diffeqs
+
+type M
+type s
+
+
+local TRLacL : M
+local TRTetR : M
+local TRclp : M
+%
+output LacLp : M
+output TetRp : M
+output clp : M
+
+output LacLm : M
+output TetRm : M
+output clm : M
+
+
+param k_tl : 1/s = 3.01029995664
+param n : unit = 2
+param kd_prot : 1/s = 0.03010299956
+param kd_mrna : 1/s = 0.15051499783
+%param KMp : 1/s = 40
+param a0_tr : 1/s = 0.0005
+param a_tr : 1/s = 0.4995
+
+
+time t : s
+
+%s
+input LacLpExt : M
+input KMp : M
+%Set KMp to 20
+
+def LacLpExt mag = [0,0.1] M
+def KMp mag = [20,20] M
+
+
+rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
+rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
+rel TRclp =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
+
+rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm)  init 0.0
+def LacLm mag = [0,10] M
+def ddt LacLm sample 1000 s
+def ddt LacLm speed 1000 ms 
+
+rel ddt clm = (a0_tr +(TRclp)) - (kd_mrna*clm)  init 0.0
+def clm mag = [0,10] M
+def ddt clm sample 1000 s
+def ddt clm speed 1000 ms 
+
+rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm)  init 0.0
+def TetRm mag = [0,10] M
+def ddt TetRm sample 1000 s
+def ddt TetRm speed 1000 ms 
+
+rel ddt LacLp = (k_tl*LacLm + LacLpExt)-(kd_prot*LacLp) init 0.0
+def LacLp mag = [0,100] M
+def ddt LacLp sample 1000 s
+def ddt LacLp speed 1000 ms 
+
+rel ddt clp = (k_tl*clm)-(kd_prot*clp) init 0.0
+def clp mag = [0,100] M
+def ddt clp sample 1000 s
+def ddt clp speed 1000 ms 
+
+rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 0.0
+def TetRp mag = [0,100] M
+def ddt TetRp sample 1000 s
+def ddt TetRp speed 1000 ms 
