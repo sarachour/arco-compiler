@@ -14,37 +14,37 @@
 ; no offset
 (assert (= of_1 0.))
 ; 
-; =  {sc.vgain[4].P} {(sc.vgain[4].X*sc.vgain[4].Z)}
+; =  {sc.vgain[2].P} {(sc.vgain[2].X*sc.vgain[2].Z)}
 (assert (= sc_2 (* sc_0 sc_1)))
 ; 
-; =  {of.vgain[4].P} {0.}
+; =  {of.vgain[2].P} {0.}
 (assert (= of_2 0.))
-(declare-fun slbot_0_1 () Real)
-(assert (<= slbot_0_1 1e-08))
-(declare-fun sltop_0_1 () Real)
-(assert (>= sltop_0_1 1e-08))
 ; 
-; =  {(((sc.vgain[4].X*0.)+of.vgain[4].X)+sl.min.vgain[4].X.1)} {0.}
-(assert (= (+ (+ (* sc_0 0.) of_0) slbot_0_1) 0.))
+; >=  {((sc.vgain[2].X*3.01029995664)+of.vgain[2].X)} {500.}
+(assert (<= (+ (* sc_0 3.01029995664) of_0) 500.))
 ; 
-; =  {(((sc.vgain[4].X*30.)+of.vgain[4].X)+sl.max.vgain[4].X.1)} {500.}
-(assert (= (+ (+ (* sc_0 30.) of_0) sltop_0_1) 500.))
+; <=  {((sc.vgain[2].X*3.01029995664)+of.vgain[2].X)} {0.}
+(assert (>= (+ (* sc_0 3.01029995664) of_0) 0.))
 (declare-fun slbot_2_1 () Real)
 (assert (<= slbot_2_1 1e-08))
 (declare-fun sltop_2_1 () Real)
 (assert (>= sltop_2_1 1e-08))
 ; 
-; =  {(((sc.vgain[4].P*0.)+of.vgain[4].P)+sl.min.vgain[4].P.1)} {0.}
+; =  {(((sc.vgain[2].P*0.)+of.vgain[2].P)+sl.min.vgain[2].P.1)} {0.}
 (assert (= (+ (+ (* sc_2 0.) of_2) slbot_2_1) 0.))
 ; 
-; =  {(((sc.vgain[4].P*90.3089986992)+of.vgain[4].P)+sl.max.vgain[4].P.1)} {5000.}
+; =  {(((sc.vgain[2].P*90.3089986992)+of.vgain[2].P)+sl.max.vgain[2].P.1)} {5000.}
 (assert (= (+ (+ (* sc_2 90.3089986992) of_2) sltop_2_1) 5000.))
+(declare-fun slbot_1_1 () Real)
+(assert (<= slbot_1_1 1e-08))
+(declare-fun sltop_1_1 () Real)
+(assert (>= sltop_1_1 1e-08))
 ; 
-; >=  {((sc.vgain[4].Z*3.01029995664)+of.vgain[4].Z)} {10.}
-(assert (<= (+ (* sc_1 3.01029995664) of_1) 10.))
+; =  {(((sc.vgain[2].Z*0.)+of.vgain[2].Z)+sl.min.vgain[2].Z.1)} {0.}
+(assert (= (+ (+ (* sc_1 0.) of_1) slbot_1_1) 0.))
 ; 
-; <=  {((sc.vgain[4].Z*3.01029995664)+of.vgain[4].Z)} {0.}
-(assert (>= (+ (* sc_1 3.01029995664) of_1) 0.))
+; =  {(((sc.vgain[2].Z*30.)+of.vgain[2].Z)+sl.max.vgain[2].Z.1)} {10.}
+(assert (= (+ (+ (* sc_1 30.) of_1) sltop_1_1) 10.))
 (declare-fun sc_3 () Real)
 (assert (> sc_3 1e-08))
 (declare-fun of_3 () Real)
@@ -73,7 +73,7 @@
 ; no offset
 (assert (= of_3 0.))
 ; 
-; =  {(sc.ihill_rep[0].Km^2)} {(sc.ihill_rep[0].S^2)}
+; =  {(sc.ihill_rep[7].Km^2)} {(sc.ihill_rep[7].S^2)}
 (assert (= (^ sc_5 2) (^ sc_4 2)))
 ; no offset
 (assert (= 0. 0.))
@@ -84,48 +84,48 @@
 ; no offset
 (assert (= 0. 0.))
 ; 
-; =  {sc.ihill_rep[0].REP} {(sc.ihill_rep[0].Vmax*((sc.ihill_rep[0].Km^2)/(sc.ihill_rep[0].Km^2)))}
+; =  {sc.ihill_rep[7].REP} {(sc.ihill_rep[7].Vmax*((sc.ihill_rep[7].Km^2)/(sc.ihill_rep[7].Km^2)))}
 (assert (= sc_7 (* sc_6 (/ (^ sc_5 2) (^ sc_5 2)))))
 ; 
-; =  {of.ihill_rep[0].REP} {0.}
+; =  {of.ihill_rep[7].REP} {0.}
 (assert (= of_7 0.))
 ; 
-; >=  {((sc.ihill_rep[0].n*2.)+of.ihill_rep[0].n)} {5.}
+; >=  {((sc.ihill_rep[7].n*2.)+of.ihill_rep[7].n)} {5.}
 (assert (<= (+ (* sc_3 2.) of_3) 5.))
 ; 
-; <=  {((sc.ihill_rep[0].n*2.)+of.ihill_rep[0].n)} {1.}
+; <=  {((sc.ihill_rep[7].n*2.)+of.ihill_rep[7].n)} {1.}
 (assert (>= (+ (* sc_3 2.) of_3) 1.))
 (declare-fun slbot_4_1 () Real)
 (assert (<= slbot_4_1 1e-08))
 (declare-fun sltop_4_1 () Real)
 (assert (>= sltop_4_1 1e-08))
 ; 
-; =  {(((sc.ihill_rep[0].S*0.)+of.ihill_rep[0].S)+sl.min.ihill_rep[0].S.1)} {0.}
+; =  {(((sc.ihill_rep[7].S*0.)+of.ihill_rep[7].S)+sl.min.ihill_rep[7].S.1)} {0.}
 (assert (= (+ (+ (* sc_4 0.) of_4) slbot_4_1) 0.))
 ; 
-; =  {(((sc.ihill_rep[0].S*100.)+of.ihill_rep[0].S)+sl.max.ihill_rep[0].S.1)} {10.}
+; =  {(((sc.ihill_rep[7].S*100.)+of.ihill_rep[7].S)+sl.max.ihill_rep[7].S.1)} {10.}
 (assert (= (+ (+ (* sc_4 100.) of_4) sltop_4_1) 10.))
 (declare-fun slbot_7_1 () Real)
 (assert (<= slbot_7_1 1e-08))
 (declare-fun sltop_7_1 () Real)
 (assert (>= sltop_7_1 1e-08))
 ; 
-; =  {(((sc.ihill_rep[0].REP*0.0192115384615)+of.ihill_rep[0].REP)+sl.min.ihill_rep[0].REP.1)} {0.}
-(assert (= (+ (+ (* sc_7 0.0192115384615) of_7) slbot_7_1) 0.))
+; =  {(((sc.ihill_rep[7].REP*0.0688965517241)+of.ihill_rep[7].REP)+sl.min.ihill_rep[7].REP.1)} {0.}
+(assert (= (+ (+ (* sc_7 0.0688965517241) of_7) slbot_7_1) 0.))
 ; 
-; =  {(((sc.ihill_rep[0].REP*0.4995)+of.ihill_rep[0].REP)+sl.max.ihill_rep[0].REP.1)} {1000000.}
+; =  {(((sc.ihill_rep[7].REP*0.4995)+of.ihill_rep[7].REP)+sl.max.ihill_rep[7].REP.1)} {1000000.}
 (assert (= (+ (+ (* sc_7 0.4995) of_7) sltop_7_1) 1000000.))
 ; 
-; >=  {((sc.ihill_rep[0].Km*20.)+of.ihill_rep[0].Km)} {10.}
-(assert (<= (+ (* sc_5 20.) of_5) 10.))
+; >=  {((sc.ihill_rep[7].Km*40.)+of.ihill_rep[7].Km)} {10.}
+(assert (<= (+ (* sc_5 40.) of_5) 10.))
 ; 
-; <=  {((sc.ihill_rep[0].Km*20.)+of.ihill_rep[0].Km)} {1.}
-(assert (>= (+ (* sc_5 20.) of_5) 1.))
+; <=  {((sc.ihill_rep[7].Km*40.)+of.ihill_rep[7].Km)} {1.}
+(assert (>= (+ (* sc_5 40.) of_5) 1.))
 ; 
-; >=  {((sc.ihill_rep[0].Vmax*0.4995)+of.ihill_rep[0].Vmax)} {10.}
+; >=  {((sc.ihill_rep[7].Vmax*0.4995)+of.ihill_rep[7].Vmax)} {10.}
 (assert (<= (+ (* sc_6 0.4995) of_6) 10.))
 ; 
-; <=  {((sc.ihill_rep[0].Vmax*0.4995)+of.ihill_rep[0].Vmax)} {0.}
+; <=  {((sc.ihill_rep[7].Vmax*0.4995)+of.ihill_rep[7].Vmax)} {0.}
 (assert (>= (+ (* sc_6 0.4995) of_6) 0.))
 (declare-fun sc_8 () Real)
 (assert (> sc_8 1e-08))
@@ -192,17 +192,17 @@
 (declare-fun sltop_12_1 () Real)
 (assert (>= sltop_12_1 1e-08))
 ; 
-; =  {(((sc.ihill_rep[11].REP*0.0192115384615)+of.ihill_rep[11].REP)+sl.min.ihill_rep[11].REP.1)} {0.}
-(assert (= (+ (+ (* sc_12 0.0192115384615) of_12) slbot_12_1) 0.))
+; =  {(((sc.ihill_rep[11].REP*0.0688965517241)+of.ihill_rep[11].REP)+sl.min.ihill_rep[11].REP.1)} {0.}
+(assert (= (+ (+ (* sc_12 0.0688965517241) of_12) slbot_12_1) 0.))
 ; 
 ; =  {(((sc.ihill_rep[11].REP*0.4995)+of.ihill_rep[11].REP)+sl.max.ihill_rep[11].REP.1)} {1000000.}
 (assert (= (+ (+ (* sc_12 0.4995) of_12) sltop_12_1) 1000000.))
 ; 
-; >=  {((sc.ihill_rep[11].Km*20.)+of.ihill_rep[11].Km)} {10.}
-(assert (<= (+ (* sc_10 20.) of_10) 10.))
+; >=  {((sc.ihill_rep[11].Km*40.)+of.ihill_rep[11].Km)} {10.}
+(assert (<= (+ (* sc_10 40.) of_10) 10.))
 ; 
-; <=  {((sc.ihill_rep[11].Km*20.)+of.ihill_rep[11].Km)} {1.}
-(assert (>= (+ (* sc_10 20.) of_10) 1.))
+; <=  {((sc.ihill_rep[11].Km*40.)+of.ihill_rep[11].Km)} {1.}
+(assert (>= (+ (* sc_10 40.) of_10) 1.))
 ; 
 ; >=  {((sc.ihill_rep[11].Vmax*0.4995)+of.ihill_rep[11].Vmax)} {10.}
 (assert (<= (+ (* sc_11 0.4995) of_11) 10.))
@@ -237,7 +237,7 @@
 ; no offset
 (assert (= of_13 0.))
 ; 
-; =  {(sc.ihill_rep[6].Km^2)} {(sc.ihill_rep[6].S^2)}
+; =  {(sc.ihill_rep[1].Km^2)} {(sc.ihill_rep[1].S^2)}
 (assert (= (^ sc_15 2) (^ sc_14 2)))
 ; no offset
 (assert (= 0. 0.))
@@ -248,48 +248,48 @@
 ; no offset
 (assert (= 0. 0.))
 ; 
-; =  {sc.ihill_rep[6].REP} {(sc.ihill_rep[6].Vmax*((sc.ihill_rep[6].Km^2)/(sc.ihill_rep[6].Km^2)))}
+; =  {sc.ihill_rep[1].REP} {(sc.ihill_rep[1].Vmax*((sc.ihill_rep[1].Km^2)/(sc.ihill_rep[1].Km^2)))}
 (assert (= sc_17 (* sc_16 (/ (^ sc_15 2) (^ sc_15 2)))))
 ; 
-; =  {of.ihill_rep[6].REP} {0.}
+; =  {of.ihill_rep[1].REP} {0.}
 (assert (= of_17 0.))
 ; 
-; >=  {((sc.ihill_rep[6].n*2.)+of.ihill_rep[6].n)} {5.}
+; >=  {((sc.ihill_rep[1].n*2.)+of.ihill_rep[1].n)} {5.}
 (assert (<= (+ (* sc_13 2.) of_13) 5.))
 ; 
-; <=  {((sc.ihill_rep[6].n*2.)+of.ihill_rep[6].n)} {1.}
+; <=  {((sc.ihill_rep[1].n*2.)+of.ihill_rep[1].n)} {1.}
 (assert (>= (+ (* sc_13 2.) of_13) 1.))
 (declare-fun slbot_14_1 () Real)
 (assert (<= slbot_14_1 1e-08))
 (declare-fun sltop_14_1 () Real)
 (assert (>= sltop_14_1 1e-08))
 ; 
-; =  {(((sc.ihill_rep[6].S*0.)+of.ihill_rep[6].S)+sl.min.ihill_rep[6].S.1)} {0.}
+; =  {(((sc.ihill_rep[1].S*0.)+of.ihill_rep[1].S)+sl.min.ihill_rep[1].S.1)} {0.}
 (assert (= (+ (+ (* sc_14 0.) of_14) slbot_14_1) 0.))
 ; 
-; =  {(((sc.ihill_rep[6].S*100.)+of.ihill_rep[6].S)+sl.max.ihill_rep[6].S.1)} {10.}
+; =  {(((sc.ihill_rep[1].S*100.)+of.ihill_rep[1].S)+sl.max.ihill_rep[1].S.1)} {10.}
 (assert (= (+ (+ (* sc_14 100.) of_14) sltop_14_1) 10.))
 (declare-fun slbot_17_1 () Real)
 (assert (<= slbot_17_1 1e-08))
 (declare-fun sltop_17_1 () Real)
 (assert (>= sltop_17_1 1e-08))
 ; 
-; =  {(((sc.ihill_rep[6].REP*0.0192115384615)+of.ihill_rep[6].REP)+sl.min.ihill_rep[6].REP.1)} {0.}
-(assert (= (+ (+ (* sc_17 0.0192115384615) of_17) slbot_17_1) 0.))
+; =  {(((sc.ihill_rep[1].REP*0.0688965517241)+of.ihill_rep[1].REP)+sl.min.ihill_rep[1].REP.1)} {0.}
+(assert (= (+ (+ (* sc_17 0.0688965517241) of_17) slbot_17_1) 0.))
 ; 
-; =  {(((sc.ihill_rep[6].REP*0.4995)+of.ihill_rep[6].REP)+sl.max.ihill_rep[6].REP.1)} {1000000.}
+; =  {(((sc.ihill_rep[1].REP*0.4995)+of.ihill_rep[1].REP)+sl.max.ihill_rep[1].REP.1)} {1000000.}
 (assert (= (+ (+ (* sc_17 0.4995) of_17) sltop_17_1) 1000000.))
 ; 
-; >=  {((sc.ihill_rep[6].Km*20.)+of.ihill_rep[6].Km)} {10.}
-(assert (<= (+ (* sc_15 20.) of_15) 10.))
+; >=  {((sc.ihill_rep[1].Km*40.)+of.ihill_rep[1].Km)} {10.}
+(assert (<= (+ (* sc_15 40.) of_15) 10.))
 ; 
-; <=  {((sc.ihill_rep[6].Km*20.)+of.ihill_rep[6].Km)} {1.}
-(assert (>= (+ (* sc_15 20.) of_15) 1.))
+; <=  {((sc.ihill_rep[1].Km*40.)+of.ihill_rep[1].Km)} {1.}
+(assert (>= (+ (* sc_15 40.) of_15) 1.))
 ; 
-; >=  {((sc.ihill_rep[6].Vmax*0.4995)+of.ihill_rep[6].Vmax)} {10.}
+; >=  {((sc.ihill_rep[1].Vmax*0.4995)+of.ihill_rep[1].Vmax)} {10.}
 (assert (<= (+ (* sc_16 0.4995) of_16) 10.))
 ; 
-; <=  {((sc.ihill_rep[6].Vmax*0.4995)+of.ihill_rep[6].Vmax)} {0.}
+; <=  {((sc.ihill_rep[1].Vmax*0.4995)+of.ihill_rep[1].Vmax)} {0.}
 (assert (>= (+ (* sc_16 0.4995) of_16) 0.))
 (declare-fun sc_18 () Real)
 (assert (> sc_18 1e-08))
@@ -321,72 +321,72 @@
 ; no offset
 (assert (= of_21 0.))
 ; 
-; =  {sc.vdadd[2].A} {(1.*sc.vdadd[2].B)}
+; =  {sc.vdadd[8].A} {(1.*sc.vdadd[8].B)}
 (assert (= sc_20 (* 1. sc_21)))
 ; 
-; =  {sc.vdadd[2].A} {(1.*sc.vdadd[2].D*sc.vdadd[2].OUT)}
+; =  {sc.vdadd[8].A} {(1.*sc.vdadd[8].D*sc.vdadd[8].OUT)}
 (assert (= sc_20 (* (* 1. sc_18) sc_22)))
 ; 
-; =  {sc.vdadd[2].OUT} {sc.vdadd[2].A}
+; =  {sc.vdadd[8].OUT} {sc.vdadd[8].A}
 (assert (= sc_22 sc_20))
 ; no offset
 (assert (= of_22 0.))
 ; no offset
 (assert (= (- (+ of_20 0.) 0.) 0.))
 ; 
-; =  {sc.vdadd[2].OUT_0} {sc.vdadd[2].A}
+; =  {sc.vdadd[8].OUT_0} {sc.vdadd[8].A}
 (assert (= sc_19 sc_20))
 ; 
-; =  {of.vdadd[2].OUT_0} {((of.vdadd[2].A+0.)-0.)}
+; =  {of.vdadd[8].OUT_0} {((of.vdadd[8].A+0.)-0.)}
 (assert (= of_19 (- (+ of_20 0.) 0.)))
 ; 
-; >=  {((sc.vdadd[2].D*0.03010299956)+of.vdadd[2].D)} {10.}
-(assert (<= (+ (* sc_18 0.03010299956) of_18) 10.))
+; >=  {((sc.vdadd[8].D*0.15051499783)+of.vdadd[8].D)} {10.}
+(assert (<= (+ (* sc_18 0.15051499783) of_18) 10.))
 ; 
-; <=  {((sc.vdadd[2].D*0.03010299956)+of.vdadd[2].D)} {0.}
-(assert (>= (+ (* sc_18 0.03010299956) of_18) 0.))
+; <=  {((sc.vdadd[8].D*0.15051499783)+of.vdadd[8].D)} {0.}
+(assert (>= (+ (* sc_18 0.15051499783) of_18) 0.))
 (declare-fun slbot_22_1 () Real)
 (assert (<= slbot_22_1 1e-08))
 (declare-fun sltop_22_1 () Real)
 (assert (>= sltop_22_1 1e-08))
 ; 
-; =  {(((sc.vdadd[2].OUT*0.)+of.vdadd[2].OUT)+sl.min.vdadd[2].OUT.1)} {0.}
+; =  {(((sc.vdadd[8].OUT*0.)+of.vdadd[8].OUT)+sl.min.vdadd[8].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_22 0.) of_22) slbot_22_1) 0.))
 ; 
-; =  {(((sc.vdadd[2].OUT*100.)+of.vdadd[2].OUT)+sl.max.vdadd[2].OUT.1)} {12000.}
-(assert (= (+ (+ (* sc_22 100.) of_22) sltop_22_1) 12000.))
+; =  {(((sc.vdadd[8].OUT*30.)+of.vdadd[8].OUT)+sl.max.vdadd[8].OUT.1)} {12000.}
+(assert (= (+ (+ (* sc_22 30.) of_22) sltop_22_1) 12000.))
 ; 
-; >=  {((sc.vdadd[2].OUT_0*40.)+of.vdadd[2].OUT_0)} {3300.}
-(assert (<= (+ (* sc_19 40.) of_19) 3300.))
+; >=  {((sc.vdadd[8].OUT_0*0.)+of.vdadd[8].OUT_0)} {3300.}
+(assert (<= (+ (* sc_19 0.) of_19) 3300.))
 ; 
-; <=  {((sc.vdadd[2].OUT_0*40.)+of.vdadd[2].OUT_0)} {0.}
-(assert (>= (+ (* sc_19 40.) of_19) 0.))
+; <=  {((sc.vdadd[8].OUT_0*0.)+of.vdadd[8].OUT_0)} {0.}
+(assert (>= (+ (* sc_19 0.) of_19) 0.))
 (declare-fun slbot_20_1 () Real)
 (assert (<= slbot_20_1 1e-08))
 (declare-fun sltop_20_1 () Real)
 (assert (>= sltop_20_1 1e-08))
 ; 
-; =  {(((sc.vdadd[2].A*0.)+of.vdadd[2].A)+sl.min.vdadd[2].A.1)} {0.}
-(assert (= (+ (+ (* sc_20 0.) of_20) slbot_20_1) 0.))
+; =  {(((sc.vdadd[8].A*0.0688965517241)+of.vdadd[8].A)+sl.min.vdadd[8].A.1)} {0.}
+(assert (= (+ (+ (* sc_20 0.0688965517241) of_20) slbot_20_1) 0.))
 ; 
-; =  {(((sc.vdadd[2].A*90.3089986992)+of.vdadd[2].A)+sl.max.vdadd[2].A.1)} {3300.}
-(assert (= (+ (+ (* sc_20 90.3089986992) of_20) sltop_20_1) 3300.))
+; =  {(((sc.vdadd[8].A*0.4995)+of.vdadd[8].A)+sl.max.vdadd[8].A.1)} {3300.}
+(assert (= (+ (+ (* sc_20 0.4995) of_20) sltop_20_1) 3300.))
 ; 
-; >=  {((sc.vdadd[2].B*0.)+of.vdadd[2].B)} {3300.}
-(assert (<= (+ (* sc_21 0.) of_21) 3300.))
+; >=  {((sc.vdadd[8].B*0.0005)+of.vdadd[8].B)} {3300.}
+(assert (<= (+ (* sc_21 0.0005) of_21) 3300.))
 ; 
-; <=  {((sc.vdadd[2].B*0.)+of.vdadd[2].B)} {0.}
-(assert (>= (+ (* sc_21 0.) of_21) 0.))
+; <=  {((sc.vdadd[8].B*0.0005)+of.vdadd[8].B)} {0.}
+(assert (>= (+ (* sc_21 0.0005) of_21) 0.))
 (declare-fun slbot_22_1 () Real)
 (assert (<= slbot_22_1 1e-08))
 (declare-fun sltop_22_1 () Real)
 (assert (>= sltop_22_1 1e-08))
 ; 
-; =  {(((sc.vdadd[2].OUT*0.)+of.vdadd[2].OUT)+sl.min.vdadd[2].OUT.1)} {0.}
+; =  {(((sc.vdadd[8].OUT*0.)+of.vdadd[8].OUT)+sl.min.vdadd[8].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_22 0.) of_22) slbot_22_1) 0.))
 ; 
-; =  {(((sc.vdadd[2].OUT*100.)+of.vdadd[2].OUT)+sl.max.vdadd[2].OUT.1)} {12000.}
-(assert (= (+ (+ (* sc_22 100.) of_22) sltop_22_1) 12000.))
+; =  {(((sc.vdadd[8].OUT*30.)+of.vdadd[8].OUT)+sl.max.vdadd[8].OUT.1)} {12000.}
+(assert (= (+ (+ (* sc_22 30.) of_22) sltop_22_1) 12000.))
 (declare-fun sc_23 () Real)
 (assert (> sc_23 1e-08))
 (declare-fun of_23 () Real)
@@ -417,71 +417,71 @@
 ; no offset
 (assert (= of_26 0.))
 ; 
-; =  {sc.vdadd[7].A} {(1.*sc.vdadd[7].B)}
+; =  {sc.vdadd[0].A} {(1.*sc.vdadd[0].B)}
 (assert (= sc_25 (* 1. sc_26)))
 ; 
-; =  {sc.vdadd[7].A} {(1.*sc.vdadd[7].D*sc.vdadd[7].OUT)}
+; =  {sc.vdadd[0].A} {(1.*sc.vdadd[0].D*sc.vdadd[0].OUT)}
 (assert (= sc_25 (* (* 1. sc_23) sc_27)))
 ; 
-; =  {sc.vdadd[7].OUT} {sc.vdadd[7].A}
+; =  {sc.vdadd[0].OUT} {sc.vdadd[0].A}
 (assert (= sc_27 sc_25))
 ; no offset
 (assert (= of_27 0.))
 ; no offset
 (assert (= (- (+ of_25 0.) 0.) 0.))
 ; 
-; =  {sc.vdadd[7].OUT_0} {sc.vdadd[7].A}
+; =  {sc.vdadd[0].OUT_0} {sc.vdadd[0].A}
 (assert (= sc_24 sc_25))
 ; 
-; =  {of.vdadd[7].OUT_0} {((of.vdadd[7].A+0.)-0.)}
+; =  {of.vdadd[0].OUT_0} {((of.vdadd[0].A+0.)-0.)}
 (assert (= of_24 (- (+ of_25 0.) 0.)))
 ; 
-; >=  {((sc.vdadd[7].D*0.15051499783)+of.vdadd[7].D)} {10.}
+; >=  {((sc.vdadd[0].D*0.15051499783)+of.vdadd[0].D)} {10.}
 (assert (<= (+ (* sc_23 0.15051499783) of_23) 10.))
 ; 
-; <=  {((sc.vdadd[7].D*0.15051499783)+of.vdadd[7].D)} {0.}
+; <=  {((sc.vdadd[0].D*0.15051499783)+of.vdadd[0].D)} {0.}
 (assert (>= (+ (* sc_23 0.15051499783) of_23) 0.))
 (declare-fun slbot_27_1 () Real)
 (assert (<= slbot_27_1 1e-08))
 (declare-fun sltop_27_1 () Real)
 (assert (>= sltop_27_1 1e-08))
 ; 
-; =  {(((sc.vdadd[7].OUT*0.)+of.vdadd[7].OUT)+sl.min.vdadd[7].OUT.1)} {0.}
+; =  {(((sc.vdadd[0].OUT*0.)+of.vdadd[0].OUT)+sl.min.vdadd[0].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_27 0.) of_27) slbot_27_1) 0.))
 ; 
-; =  {(((sc.vdadd[7].OUT*30.)+of.vdadd[7].OUT)+sl.max.vdadd[7].OUT.1)} {12000.}
+; =  {(((sc.vdadd[0].OUT*30.)+of.vdadd[0].OUT)+sl.max.vdadd[0].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_27 30.) of_27) sltop_27_1) 12000.))
 ; 
-; >=  {((sc.vdadd[7].OUT_0*1.75)+of.vdadd[7].OUT_0)} {3300.}
-(assert (<= (+ (* sc_24 1.75) of_24) 3300.))
+; >=  {((sc.vdadd[0].OUT_0*0.)+of.vdadd[0].OUT_0)} {3300.}
+(assert (<= (+ (* sc_24 0.) of_24) 3300.))
 ; 
-; <=  {((sc.vdadd[7].OUT_0*1.75)+of.vdadd[7].OUT_0)} {0.}
-(assert (>= (+ (* sc_24 1.75) of_24) 0.))
-(declare-fun slbot_25_1 () Real)
-(assert (<= slbot_25_1 1e-08))
-(declare-fun sltop_25_1 () Real)
-(assert (>= sltop_25_1 1e-08))
+; <=  {((sc.vdadd[0].OUT_0*0.)+of.vdadd[0].OUT_0)} {0.}
+(assert (>= (+ (* sc_24 0.) of_24) 0.))
 ; 
-; =  {(((sc.vdadd[7].A*0.0192115384615)+of.vdadd[7].A)+sl.min.vdadd[7].A.1)} {0.}
-(assert (= (+ (+ (* sc_25 0.0192115384615) of_25) slbot_25_1) 0.))
+; >=  {((sc.vdadd[0].A*0.0005)+of.vdadd[0].A)} {3300.}
+(assert (<= (+ (* sc_25 0.0005) of_25) 3300.))
 ; 
-; =  {(((sc.vdadd[7].A*0.4995)+of.vdadd[7].A)+sl.max.vdadd[7].A.1)} {3300.}
-(assert (= (+ (+ (* sc_25 0.4995) of_25) sltop_25_1) 3300.))
+; <=  {((sc.vdadd[0].A*0.0005)+of.vdadd[0].A)} {0.}
+(assert (>= (+ (* sc_25 0.0005) of_25) 0.))
+(declare-fun slbot_26_1 () Real)
+(assert (<= slbot_26_1 1e-08))
+(declare-fun sltop_26_1 () Real)
+(assert (>= sltop_26_1 1e-08))
 ; 
-; >=  {((sc.vdadd[7].B*0.0005)+of.vdadd[7].B)} {3300.}
-(assert (<= (+ (* sc_26 0.0005) of_26) 3300.))
+; =  {(((sc.vdadd[0].B*0.0688965517241)+of.vdadd[0].B)+sl.min.vdadd[0].B.1)} {0.}
+(assert (= (+ (+ (* sc_26 0.0688965517241) of_26) slbot_26_1) 0.))
 ; 
-; <=  {((sc.vdadd[7].B*0.0005)+of.vdadd[7].B)} {0.}
-(assert (>= (+ (* sc_26 0.0005) of_26) 0.))
+; =  {(((sc.vdadd[0].B*0.4995)+of.vdadd[0].B)+sl.max.vdadd[0].B.1)} {3300.}
+(assert (= (+ (+ (* sc_26 0.4995) of_26) sltop_26_1) 3300.))
 (declare-fun slbot_27_1 () Real)
 (assert (<= slbot_27_1 1e-08))
 (declare-fun sltop_27_1 () Real)
 (assert (>= sltop_27_1 1e-08))
 ; 
-; =  {(((sc.vdadd[7].OUT*0.)+of.vdadd[7].OUT)+sl.min.vdadd[7].OUT.1)} {0.}
+; =  {(((sc.vdadd[0].OUT*0.)+of.vdadd[0].OUT)+sl.min.vdadd[0].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_27 0.) of_27) slbot_27_1) 0.))
 ; 
-; =  {(((sc.vdadd[7].OUT*30.)+of.vdadd[7].OUT)+sl.max.vdadd[7].OUT.1)} {12000.}
+; =  {(((sc.vdadd[0].OUT*30.)+of.vdadd[0].OUT)+sl.max.vdadd[0].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_27 30.) of_27) sltop_27_1) 12000.))
 (declare-fun sc_28 () Real)
 (assert (> sc_28 1e-08))
@@ -513,71 +513,71 @@
 ; no offset
 (assert (= of_31 0.))
 ; 
-; =  {sc.vdadd[9].A} {(1.*sc.vdadd[9].B)}
+; =  {sc.vdadd[10].A} {(1.*sc.vdadd[10].B)}
 (assert (= sc_30 (* 1. sc_31)))
 ; 
-; =  {sc.vdadd[9].A} {(1.*sc.vdadd[9].D*sc.vdadd[9].OUT)}
+; =  {sc.vdadd[10].A} {(1.*sc.vdadd[10].D*sc.vdadd[10].OUT)}
 (assert (= sc_30 (* (* 1. sc_28) sc_32)))
 ; 
-; =  {sc.vdadd[9].OUT} {sc.vdadd[9].A}
+; =  {sc.vdadd[10].OUT} {sc.vdadd[10].A}
 (assert (= sc_32 sc_30))
 ; no offset
 (assert (= of_32 0.))
 ; no offset
 (assert (= (- (+ of_30 0.) 0.) 0.))
 ; 
-; =  {sc.vdadd[9].OUT_0} {sc.vdadd[9].A}
+; =  {sc.vdadd[10].OUT_0} {sc.vdadd[10].A}
 (assert (= sc_29 sc_30))
 ; 
-; =  {of.vdadd[9].OUT_0} {((of.vdadd[9].A+0.)-0.)}
+; =  {of.vdadd[10].OUT_0} {((of.vdadd[10].A+0.)-0.)}
 (assert (= of_29 (- (+ of_30 0.) 0.)))
 ; 
-; >=  {((sc.vdadd[9].D*0.03010299956)+of.vdadd[9].D)} {10.}
+; >=  {((sc.vdadd[10].D*0.03010299956)+of.vdadd[10].D)} {10.}
 (assert (<= (+ (* sc_28 0.03010299956) of_28) 10.))
 ; 
-; <=  {((sc.vdadd[9].D*0.03010299956)+of.vdadd[9].D)} {0.}
+; <=  {((sc.vdadd[10].D*0.03010299956)+of.vdadd[10].D)} {0.}
 (assert (>= (+ (* sc_28 0.03010299956) of_28) 0.))
 (declare-fun slbot_32_1 () Real)
 (assert (<= slbot_32_1 1e-08))
 (declare-fun sltop_32_1 () Real)
 (assert (>= sltop_32_1 1e-08))
 ; 
-; =  {(((sc.vdadd[9].OUT*0.)+of.vdadd[9].OUT)+sl.min.vdadd[9].OUT.1)} {0.}
+; =  {(((sc.vdadd[10].OUT*0.)+of.vdadd[10].OUT)+sl.min.vdadd[10].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_32 0.) of_32) slbot_32_1) 0.))
 ; 
-; =  {(((sc.vdadd[9].OUT*100.)+of.vdadd[9].OUT)+sl.max.vdadd[9].OUT.1)} {12000.}
+; =  {(((sc.vdadd[10].OUT*100.)+of.vdadd[10].OUT)+sl.max.vdadd[10].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_32 100.) of_32) sltop_32_1) 12000.))
 ; 
-; >=  {((sc.vdadd[9].OUT_0*20.)+of.vdadd[9].OUT_0)} {3300.}
-(assert (<= (+ (* sc_29 20.) of_29) 3300.))
+; >=  {((sc.vdadd[10].OUT_0*0.)+of.vdadd[10].OUT_0)} {3300.}
+(assert (<= (+ (* sc_29 0.) of_29) 3300.))
 ; 
-; <=  {((sc.vdadd[9].OUT_0*20.)+of.vdadd[9].OUT_0)} {0.}
-(assert (>= (+ (* sc_29 20.) of_29) 0.))
+; <=  {((sc.vdadd[10].OUT_0*0.)+of.vdadd[10].OUT_0)} {0.}
+(assert (>= (+ (* sc_29 0.) of_29) 0.))
 (declare-fun slbot_30_1 () Real)
 (assert (<= slbot_30_1 1e-08))
 (declare-fun sltop_30_1 () Real)
 (assert (>= sltop_30_1 1e-08))
 ; 
-; =  {(((sc.vdadd[9].A*0.)+of.vdadd[9].A)+sl.min.vdadd[9].A.1)} {0.}
+; =  {(((sc.vdadd[10].A*0.)+of.vdadd[10].A)+sl.min.vdadd[10].A.1)} {0.}
 (assert (= (+ (+ (* sc_30 0.) of_30) slbot_30_1) 0.))
 ; 
-; =  {(((sc.vdadd[9].A*90.3089986992)+of.vdadd[9].A)+sl.max.vdadd[9].A.1)} {3300.}
+; =  {(((sc.vdadd[10].A*90.3089986992)+of.vdadd[10].A)+sl.max.vdadd[10].A.1)} {3300.}
 (assert (= (+ (+ (* sc_30 90.3089986992) of_30) sltop_30_1) 3300.))
 ; 
-; >=  {((sc.vdadd[9].B*0.)+of.vdadd[9].B)} {3300.}
+; >=  {((sc.vdadd[10].B*0.)+of.vdadd[10].B)} {3300.}
 (assert (<= (+ (* sc_31 0.) of_31) 3300.))
 ; 
-; <=  {((sc.vdadd[9].B*0.)+of.vdadd[9].B)} {0.}
+; <=  {((sc.vdadd[10].B*0.)+of.vdadd[10].B)} {0.}
 (assert (>= (+ (* sc_31 0.) of_31) 0.))
 (declare-fun slbot_32_1 () Real)
 (assert (<= slbot_32_1 1e-08))
 (declare-fun sltop_32_1 () Real)
 (assert (>= sltop_32_1 1e-08))
 ; 
-; =  {(((sc.vdadd[9].OUT*0.)+of.vdadd[9].OUT)+sl.min.vdadd[9].OUT.1)} {0.}
+; =  {(((sc.vdadd[10].OUT*0.)+of.vdadd[10].OUT)+sl.min.vdadd[10].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_32 0.) of_32) slbot_32_1) 0.))
 ; 
-; =  {(((sc.vdadd[9].OUT*100.)+of.vdadd[9].OUT)+sl.max.vdadd[9].OUT.1)} {12000.}
+; =  {(((sc.vdadd[10].OUT*100.)+of.vdadd[10].OUT)+sl.max.vdadd[10].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_32 100.) of_32) sltop_32_1) 12000.))
 (declare-fun sc_33 () Real)
 (assert (> sc_33 1e-08))
@@ -609,71 +609,71 @@
 ; no offset
 (assert (= of_36 0.))
 ; 
-; =  {sc.vdadd[10].A} {(1.*sc.vdadd[10].B)}
+; =  {sc.vdadd[6].A} {(1.*sc.vdadd[6].B)}
 (assert (= sc_35 (* 1. sc_36)))
 ; 
-; =  {sc.vdadd[10].A} {(1.*sc.vdadd[10].D*sc.vdadd[10].OUT)}
+; =  {sc.vdadd[6].A} {(1.*sc.vdadd[6].D*sc.vdadd[6].OUT)}
 (assert (= sc_35 (* (* 1. sc_33) sc_37)))
 ; 
-; =  {sc.vdadd[10].OUT} {sc.vdadd[10].A}
+; =  {sc.vdadd[6].OUT} {sc.vdadd[6].A}
 (assert (= sc_37 sc_35))
 ; no offset
 (assert (= of_37 0.))
 ; no offset
 (assert (= (- (+ of_35 0.) 0.) 0.))
 ; 
-; =  {sc.vdadd[10].OUT_0} {sc.vdadd[10].A}
+; =  {sc.vdadd[6].OUT_0} {sc.vdadd[6].A}
 (assert (= sc_34 sc_35))
 ; 
-; =  {of.vdadd[10].OUT_0} {((of.vdadd[10].A+0.)-0.)}
+; =  {of.vdadd[6].OUT_0} {((of.vdadd[6].A+0.)-0.)}
 (assert (= of_34 (- (+ of_35 0.) 0.)))
 ; 
-; >=  {((sc.vdadd[10].D*0.15051499783)+of.vdadd[10].D)} {10.}
+; >=  {((sc.vdadd[6].D*0.15051499783)+of.vdadd[6].D)} {10.}
 (assert (<= (+ (* sc_33 0.15051499783) of_33) 10.))
 ; 
-; <=  {((sc.vdadd[10].D*0.15051499783)+of.vdadd[10].D)} {0.}
+; <=  {((sc.vdadd[6].D*0.15051499783)+of.vdadd[6].D)} {0.}
 (assert (>= (+ (* sc_33 0.15051499783) of_33) 0.))
 (declare-fun slbot_37_1 () Real)
 (assert (<= slbot_37_1 1e-08))
 (declare-fun sltop_37_1 () Real)
 (assert (>= sltop_37_1 1e-08))
 ; 
-; =  {(((sc.vdadd[10].OUT*0.)+of.vdadd[10].OUT)+sl.min.vdadd[10].OUT.1)} {0.}
+; =  {(((sc.vdadd[6].OUT*0.)+of.vdadd[6].OUT)+sl.min.vdadd[6].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_37 0.) of_37) slbot_37_1) 0.))
 ; 
-; =  {(((sc.vdadd[10].OUT*30.)+of.vdadd[10].OUT)+sl.max.vdadd[10].OUT.1)} {12000.}
+; =  {(((sc.vdadd[6].OUT*30.)+of.vdadd[6].OUT)+sl.max.vdadd[6].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_37 30.) of_37) sltop_37_1) 12000.))
 ; 
-; >=  {((sc.vdadd[10].OUT_0*1.5)+of.vdadd[10].OUT_0)} {3300.}
-(assert (<= (+ (* sc_34 1.5) of_34) 3300.))
+; >=  {((sc.vdadd[6].OUT_0*0.)+of.vdadd[6].OUT_0)} {3300.}
+(assert (<= (+ (* sc_34 0.) of_34) 3300.))
 ; 
-; <=  {((sc.vdadd[10].OUT_0*1.5)+of.vdadd[10].OUT_0)} {0.}
-(assert (>= (+ (* sc_34 1.5) of_34) 0.))
+; <=  {((sc.vdadd[6].OUT_0*0.)+of.vdadd[6].OUT_0)} {0.}
+(assert (>= (+ (* sc_34 0.) of_34) 0.))
 (declare-fun slbot_35_1 () Real)
 (assert (<= slbot_35_1 1e-08))
 (declare-fun sltop_35_1 () Real)
 (assert (>= sltop_35_1 1e-08))
 ; 
-; =  {(((sc.vdadd[10].A*0.0192115384615)+of.vdadd[10].A)+sl.min.vdadd[10].A.1)} {0.}
-(assert (= (+ (+ (* sc_35 0.0192115384615) of_35) slbot_35_1) 0.))
+; =  {(((sc.vdadd[6].A*0.0688965517241)+of.vdadd[6].A)+sl.min.vdadd[6].A.1)} {0.}
+(assert (= (+ (+ (* sc_35 0.0688965517241) of_35) slbot_35_1) 0.))
 ; 
-; =  {(((sc.vdadd[10].A*0.4995)+of.vdadd[10].A)+sl.max.vdadd[10].A.1)} {3300.}
+; =  {(((sc.vdadd[6].A*0.4995)+of.vdadd[6].A)+sl.max.vdadd[6].A.1)} {3300.}
 (assert (= (+ (+ (* sc_35 0.4995) of_35) sltop_35_1) 3300.))
 ; 
-; >=  {((sc.vdadd[10].B*0.0005)+of.vdadd[10].B)} {3300.}
+; >=  {((sc.vdadd[6].B*0.0005)+of.vdadd[6].B)} {3300.}
 (assert (<= (+ (* sc_36 0.0005) of_36) 3300.))
 ; 
-; <=  {((sc.vdadd[10].B*0.0005)+of.vdadd[10].B)} {0.}
+; <=  {((sc.vdadd[6].B*0.0005)+of.vdadd[6].B)} {0.}
 (assert (>= (+ (* sc_36 0.0005) of_36) 0.))
 (declare-fun slbot_37_1 () Real)
 (assert (<= slbot_37_1 1e-08))
 (declare-fun sltop_37_1 () Real)
 (assert (>= sltop_37_1 1e-08))
 ; 
-; =  {(((sc.vdadd[10].OUT*0.)+of.vdadd[10].OUT)+sl.min.vdadd[10].OUT.1)} {0.}
+; =  {(((sc.vdadd[6].OUT*0.)+of.vdadd[6].OUT)+sl.min.vdadd[6].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_37 0.) of_37) slbot_37_1) 0.))
 ; 
-; =  {(((sc.vdadd[10].OUT*30.)+of.vdadd[10].OUT)+sl.max.vdadd[10].OUT.1)} {12000.}
+; =  {(((sc.vdadd[6].OUT*30.)+of.vdadd[6].OUT)+sl.max.vdadd[6].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_37 30.) of_37) sltop_37_1) 12000.))
 (declare-fun sc_38 () Real)
 (assert (> sc_38 1e-08))
@@ -724,11 +724,11 @@
 ; =  {of.vdadd[3].OUT_0} {((of.vdadd[3].A+0.)-0.)}
 (assert (= of_39 (- (+ of_40 0.) 0.)))
 ; 
-; >=  {((sc.vdadd[3].D*0.15051499783)+of.vdadd[3].D)} {10.}
-(assert (<= (+ (* sc_38 0.15051499783) of_38) 10.))
+; >=  {((sc.vdadd[3].D*0.03010299956)+of.vdadd[3].D)} {10.}
+(assert (<= (+ (* sc_38 0.03010299956) of_38) 10.))
 ; 
-; <=  {((sc.vdadd[3].D*0.15051499783)+of.vdadd[3].D)} {0.}
-(assert (>= (+ (* sc_38 0.15051499783) of_38) 0.))
+; <=  {((sc.vdadd[3].D*0.03010299956)+of.vdadd[3].D)} {0.}
+(assert (>= (+ (* sc_38 0.03010299956) of_38) 0.))
 (declare-fun slbot_42_1 () Real)
 (assert (<= slbot_42_1 1e-08))
 (declare-fun sltop_42_1 () Real)
@@ -737,30 +737,30 @@
 ; =  {(((sc.vdadd[3].OUT*0.)+of.vdadd[3].OUT)+sl.min.vdadd[3].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_42 0.) of_42) slbot_42_1) 0.))
 ; 
-; =  {(((sc.vdadd[3].OUT*30.)+of.vdadd[3].OUT)+sl.max.vdadd[3].OUT.1)} {12000.}
-(assert (= (+ (+ (* sc_42 30.) of_42) sltop_42_1) 12000.))
+; =  {(((sc.vdadd[3].OUT*100.)+of.vdadd[3].OUT)+sl.max.vdadd[3].OUT.1)} {12000.}
+(assert (= (+ (+ (* sc_42 100.) of_42) sltop_42_1) 12000.))
 ; 
-; >=  {((sc.vdadd[3].OUT_0*1.)+of.vdadd[3].OUT_0)} {3300.}
-(assert (<= (+ (* sc_39 1.) of_39) 3300.))
+; >=  {((sc.vdadd[3].OUT_0*0.)+of.vdadd[3].OUT_0)} {3300.}
+(assert (<= (+ (* sc_39 0.) of_39) 3300.))
 ; 
-; <=  {((sc.vdadd[3].OUT_0*1.)+of.vdadd[3].OUT_0)} {0.}
-(assert (>= (+ (* sc_39 1.) of_39) 0.))
+; <=  {((sc.vdadd[3].OUT_0*0.)+of.vdadd[3].OUT_0)} {0.}
+(assert (>= (+ (* sc_39 0.) of_39) 0.))
 (declare-fun slbot_40_1 () Real)
 (assert (<= slbot_40_1 1e-08))
 (declare-fun sltop_40_1 () Real)
 (assert (>= sltop_40_1 1e-08))
 ; 
-; =  {(((sc.vdadd[3].A*0.0192115384615)+of.vdadd[3].A)+sl.min.vdadd[3].A.1)} {0.}
-(assert (= (+ (+ (* sc_40 0.0192115384615) of_40) slbot_40_1) 0.))
+; =  {(((sc.vdadd[3].A*0.)+of.vdadd[3].A)+sl.min.vdadd[3].A.1)} {0.}
+(assert (= (+ (+ (* sc_40 0.) of_40) slbot_40_1) 0.))
 ; 
-; =  {(((sc.vdadd[3].A*0.4995)+of.vdadd[3].A)+sl.max.vdadd[3].A.1)} {3300.}
-(assert (= (+ (+ (* sc_40 0.4995) of_40) sltop_40_1) 3300.))
+; =  {(((sc.vdadd[3].A*90.3089986992)+of.vdadd[3].A)+sl.max.vdadd[3].A.1)} {3300.}
+(assert (= (+ (+ (* sc_40 90.3089986992) of_40) sltop_40_1) 3300.))
 ; 
-; >=  {((sc.vdadd[3].B*0.0005)+of.vdadd[3].B)} {3300.}
-(assert (<= (+ (* sc_41 0.0005) of_41) 3300.))
+; >=  {((sc.vdadd[3].B*0.)+of.vdadd[3].B)} {3300.}
+(assert (<= (+ (* sc_41 0.) of_41) 3300.))
 ; 
-; <=  {((sc.vdadd[3].B*0.0005)+of.vdadd[3].B)} {0.}
-(assert (>= (+ (* sc_41 0.0005) of_41) 0.))
+; <=  {((sc.vdadd[3].B*0.)+of.vdadd[3].B)} {0.}
+(assert (>= (+ (* sc_41 0.) of_41) 0.))
 (declare-fun slbot_42_1 () Real)
 (assert (<= slbot_42_1 1e-08))
 (declare-fun sltop_42_1 () Real)
@@ -769,8 +769,8 @@
 ; =  {(((sc.vdadd[3].OUT*0.)+of.vdadd[3].OUT)+sl.min.vdadd[3].OUT.1)} {0.}
 (assert (= (+ (+ (* sc_42 0.) of_42) slbot_42_1) 0.))
 ; 
-; =  {(((sc.vdadd[3].OUT*30.)+of.vdadd[3].OUT)+sl.max.vdadd[3].OUT.1)} {12000.}
-(assert (= (+ (+ (* sc_42 30.) of_42) sltop_42_1) 12000.))
+; =  {(((sc.vdadd[3].OUT*100.)+of.vdadd[3].OUT)+sl.max.vdadd[3].OUT.1)} {12000.}
+(assert (= (+ (+ (* sc_42 100.) of_42) sltop_42_1) 12000.))
 (declare-fun sc_43 () Real)
 (assert (> sc_43 1e-08))
 (declare-fun of_43 () Real)
@@ -836,11 +836,11 @@
 ; =  {(((sc.vdadd[5].OUT*100.)+of.vdadd[5].OUT)+sl.max.vdadd[5].OUT.1)} {12000.}
 (assert (= (+ (+ (* sc_47 100.) of_47) sltop_47_1) 12000.))
 ; 
-; >=  {((sc.vdadd[5].OUT_0*60.)+of.vdadd[5].OUT_0)} {3300.}
-(assert (<= (+ (* sc_44 60.) of_44) 3300.))
+; >=  {((sc.vdadd[5].OUT_0*0.)+of.vdadd[5].OUT_0)} {3300.}
+(assert (<= (+ (* sc_44 0.) of_44) 3300.))
 ; 
-; <=  {((sc.vdadd[5].OUT_0*60.)+of.vdadd[5].OUT_0)} {0.}
-(assert (>= (+ (* sc_44 60.) of_44) 0.))
+; <=  {((sc.vdadd[5].OUT_0*0.)+of.vdadd[5].OUT_0)} {0.}
+(assert (>= (+ (* sc_44 0.) of_44) 0.))
 (declare-fun slbot_45_1 () Real)
 (assert (<= slbot_45_1 1e-08))
 (declare-fun sltop_45_1 () Real)
@@ -880,17 +880,17 @@
 ; =  {of.input.I[2].O} {of.input.I[2].X}
 (assert (= of_49 of_48))
 ; 
-; >=  {((sc.input.I[2].X*20.)+of.input.I[2].X)} {10.}
-(assert (<= (+ (* sc_48 20.) of_48) 10.))
+; >=  {((sc.input.I[2].X*40.)+of.input.I[2].X)} {10.}
+(assert (<= (+ (* sc_48 40.) of_48) 10.))
 ; 
-; <=  {((sc.input.I[2].X*20.)+of.input.I[2].X)} {0.}
-(assert (>= (+ (* sc_48 20.) of_48) 0.))
+; <=  {((sc.input.I[2].X*40.)+of.input.I[2].X)} {0.}
+(assert (>= (+ (* sc_48 40.) of_48) 0.))
 ; 
-; >=  {((sc.input.I[2].O*20.)+of.input.I[2].O)} {10.}
-(assert (<= (+ (* sc_49 20.) of_49) 10.))
+; >=  {((sc.input.I[2].O*40.)+of.input.I[2].O)} {10.}
+(assert (<= (+ (* sc_49 40.) of_49) 10.))
 ; 
-; <=  {((sc.input.I[2].O*20.)+of.input.I[2].O)} {0.}
-(assert (>= (+ (* sc_49 20.) of_49) 0.))
+; <=  {((sc.input.I[2].O*40.)+of.input.I[2].O)} {0.}
+(assert (>= (+ (* sc_49 40.) of_49) 0.))
 (declare-fun sc_50 () Real)
 (assert (> sc_50 1e-08))
 (declare-fun of_50 () Real)
@@ -946,22 +946,22 @@
 (assert (> sc_55 1e-08))
 (declare-fun of_55 () Real)
 ; 
-; =  {sc.input.I[12].O} {sc.input.I[12].X}
+; =  {sc.input.I[9].O} {sc.input.I[9].X}
 (assert (= sc_55 sc_54))
 ; 
-; =  {of.input.I[12].O} {of.input.I[12].X}
+; =  {of.input.I[9].O} {of.input.I[9].X}
 (assert (= of_55 of_54))
 ; 
-; >=  {((sc.input.I[12].X*0.03010299956)+of.input.I[12].X)} {10.}
+; >=  {((sc.input.I[9].X*0.03010299956)+of.input.I[9].X)} {10.}
 (assert (<= (+ (* sc_54 0.03010299956) of_54) 10.))
 ; 
-; <=  {((sc.input.I[12].X*0.03010299956)+of.input.I[12].X)} {0.}
+; <=  {((sc.input.I[9].X*0.03010299956)+of.input.I[9].X)} {0.}
 (assert (>= (+ (* sc_54 0.03010299956) of_54) 0.))
 ; 
-; >=  {((sc.input.I[12].O*0.03010299956)+of.input.I[12].O)} {10.}
+; >=  {((sc.input.I[9].O*0.03010299956)+of.input.I[9].O)} {10.}
 (assert (<= (+ (* sc_55 0.03010299956) of_55) 10.))
 ; 
-; <=  {((sc.input.I[12].O*0.03010299956)+of.input.I[12].O)} {0.}
+; <=  {((sc.input.I[9].O*0.03010299956)+of.input.I[9].O)} {0.}
 (assert (>= (+ (* sc_55 0.03010299956) of_55) 0.))
 (declare-fun sc_56 () Real)
 (assert (> sc_56 1e-08))
@@ -970,23 +970,23 @@
 (assert (> sc_57 1e-08))
 (declare-fun of_57 () Real)
 ; 
-; =  {sc.input.I[9].O} {sc.input.I[9].X}
+; =  {sc.input.I[0].O} {sc.input.I[0].X}
 (assert (= sc_57 sc_56))
 ; 
-; =  {of.input.I[9].O} {of.input.I[9].X}
+; =  {of.input.I[0].O} {of.input.I[0].X}
 (assert (= of_57 of_56))
 ; 
-; >=  {((sc.input.I[9].X*3.01029995664)+of.input.I[9].X)} {10.}
-(assert (<= (+ (* sc_56 3.01029995664) of_56) 10.))
+; >=  {((sc.input.I[0].X*40.)+of.input.I[0].X)} {10.}
+(assert (<= (+ (* sc_56 40.) of_56) 10.))
 ; 
-; <=  {((sc.input.I[9].X*3.01029995664)+of.input.I[9].X)} {0.}
-(assert (>= (+ (* sc_56 3.01029995664) of_56) 0.))
+; <=  {((sc.input.I[0].X*40.)+of.input.I[0].X)} {0.}
+(assert (>= (+ (* sc_56 40.) of_56) 0.))
 ; 
-; >=  {((sc.input.I[9].O*3.01029995664)+of.input.I[9].O)} {10.}
-(assert (<= (+ (* sc_57 3.01029995664) of_57) 10.))
+; >=  {((sc.input.I[0].O*40.)+of.input.I[0].O)} {10.}
+(assert (<= (+ (* sc_57 40.) of_57) 10.))
 ; 
-; <=  {((sc.input.I[9].O*3.01029995664)+of.input.I[9].O)} {0.}
-(assert (>= (+ (* sc_57 3.01029995664) of_57) 0.))
+; <=  {((sc.input.I[0].O*40.)+of.input.I[0].O)} {0.}
+(assert (>= (+ (* sc_57 40.) of_57) 0.))
 (declare-fun sc_58 () Real)
 (assert (> sc_58 1e-08))
 (declare-fun of_58 () Real)
@@ -994,23 +994,23 @@
 (assert (> sc_59 1e-08))
 (declare-fun of_59 () Real)
 ; 
-; =  {sc.input.I[0].O} {sc.input.I[0].X}
+; =  {sc.input.I[11].O} {sc.input.I[11].X}
 (assert (= sc_59 sc_58))
 ; 
-; =  {of.input.I[0].O} {of.input.I[0].X}
+; =  {of.input.I[11].O} {of.input.I[11].X}
 (assert (= of_59 of_58))
 ; 
-; >=  {((sc.input.I[0].X*20.)+of.input.I[0].X)} {10.}
-(assert (<= (+ (* sc_58 20.) of_58) 10.))
+; >=  {((sc.input.I[11].X*0.03010299956)+of.input.I[11].X)} {10.}
+(assert (<= (+ (* sc_58 0.03010299956) of_58) 10.))
 ; 
-; <=  {((sc.input.I[0].X*20.)+of.input.I[0].X)} {0.}
-(assert (>= (+ (* sc_58 20.) of_58) 0.))
+; <=  {((sc.input.I[11].X*0.03010299956)+of.input.I[11].X)} {0.}
+(assert (>= (+ (* sc_58 0.03010299956) of_58) 0.))
 ; 
-; >=  {((sc.input.I[0].O*20.)+of.input.I[0].O)} {10.}
-(assert (<= (+ (* sc_59 20.) of_59) 10.))
+; >=  {((sc.input.I[11].O*0.03010299956)+of.input.I[11].O)} {10.}
+(assert (<= (+ (* sc_59 0.03010299956) of_59) 10.))
 ; 
-; <=  {((sc.input.I[0].O*20.)+of.input.I[0].O)} {0.}
-(assert (>= (+ (* sc_59 20.) of_59) 0.))
+; <=  {((sc.input.I[11].O*0.03010299956)+of.input.I[11].O)} {0.}
+(assert (>= (+ (* sc_59 0.03010299956) of_59) 0.))
 (declare-fun sc_60 () Real)
 (assert (> sc_60 1e-08))
 (declare-fun of_60 () Real)
@@ -1018,22 +1018,22 @@
 (assert (> sc_61 1e-08))
 (declare-fun of_61 () Real)
 ; 
-; =  {sc.input.I[11].O} {sc.input.I[11].X}
+; =  {sc.input.I[10].O} {sc.input.I[10].X}
 (assert (= sc_61 sc_60))
 ; 
-; =  {of.input.I[11].O} {of.input.I[11].X}
+; =  {of.input.I[10].O} {of.input.I[10].X}
 (assert (= of_61 of_60))
 ; 
-; >=  {((sc.input.I[11].X*0.03010299956)+of.input.I[11].X)} {10.}
+; >=  {((sc.input.I[10].X*0.03010299956)+of.input.I[10].X)} {10.}
 (assert (<= (+ (* sc_60 0.03010299956) of_60) 10.))
 ; 
-; <=  {((sc.input.I[11].X*0.03010299956)+of.input.I[11].X)} {0.}
+; <=  {((sc.input.I[10].X*0.03010299956)+of.input.I[10].X)} {0.}
 (assert (>= (+ (* sc_60 0.03010299956) of_60) 0.))
 ; 
-; >=  {((sc.input.I[11].O*0.03010299956)+of.input.I[11].O)} {10.}
+; >=  {((sc.input.I[10].O*0.03010299956)+of.input.I[10].O)} {10.}
 (assert (<= (+ (* sc_61 0.03010299956) of_61) 10.))
 ; 
-; <=  {((sc.input.I[11].O*0.03010299956)+of.input.I[11].O)} {0.}
+; <=  {((sc.input.I[10].O*0.03010299956)+of.input.I[10].O)} {0.}
 (assert (>= (+ (* sc_61 0.03010299956) of_61) 0.))
 (declare-fun sc_62 () Real)
 (assert (> sc_62 1e-08))
@@ -1042,23 +1042,23 @@
 (assert (> sc_63 1e-08))
 (declare-fun of_63 () Real)
 ; 
-; =  {sc.input.I[10].O} {sc.input.I[10].X}
+; =  {sc.input.I[6].O} {sc.input.I[6].X}
 (assert (= sc_63 sc_62))
 ; 
-; =  {of.input.I[10].O} {of.input.I[10].X}
+; =  {of.input.I[6].O} {of.input.I[6].X}
 (assert (= of_63 of_62))
 ; 
-; >=  {((sc.input.I[10].X*0.03010299956)+of.input.I[10].X)} {10.}
-(assert (<= (+ (* sc_62 0.03010299956) of_62) 10.))
+; >=  {((sc.input.I[6].X*0.15051499783)+of.input.I[6].X)} {10.}
+(assert (<= (+ (* sc_62 0.15051499783) of_62) 10.))
 ; 
-; <=  {((sc.input.I[10].X*0.03010299956)+of.input.I[10].X)} {0.}
-(assert (>= (+ (* sc_62 0.03010299956) of_62) 0.))
+; <=  {((sc.input.I[6].X*0.15051499783)+of.input.I[6].X)} {0.}
+(assert (>= (+ (* sc_62 0.15051499783) of_62) 0.))
 ; 
-; >=  {((sc.input.I[10].O*0.03010299956)+of.input.I[10].O)} {10.}
-(assert (<= (+ (* sc_63 0.03010299956) of_63) 10.))
+; >=  {((sc.input.I[6].O*0.15051499783)+of.input.I[6].O)} {10.}
+(assert (<= (+ (* sc_63 0.15051499783) of_63) 10.))
 ; 
-; <=  {((sc.input.I[10].O*0.03010299956)+of.input.I[10].O)} {0.}
-(assert (>= (+ (* sc_63 0.03010299956) of_63) 0.))
+; <=  {((sc.input.I[6].O*0.15051499783)+of.input.I[6].O)} {0.}
+(assert (>= (+ (* sc_63 0.15051499783) of_63) 0.))
 (declare-fun sc_64 () Real)
 (assert (> sc_64 1e-08))
 (declare-fun of_64 () Real)
@@ -1066,23 +1066,23 @@
 (assert (> sc_65 1e-08))
 (declare-fun of_65 () Real)
 ; 
-; =  {sc.input.I[6].O} {sc.input.I[6].X}
+; =  {sc.input.I[3].O} {sc.input.I[3].X}
 (assert (= sc_65 sc_64))
 ; 
-; =  {of.input.I[6].O} {of.input.I[6].X}
+; =  {of.input.I[3].O} {of.input.I[3].X}
 (assert (= of_65 of_64))
 ; 
-; >=  {((sc.input.I[6].X*0.15051499783)+of.input.I[6].X)} {10.}
-(assert (<= (+ (* sc_64 0.15051499783) of_64) 10.))
+; >=  {((sc.input.I[3].X*0.4995)+of.input.I[3].X)} {10.}
+(assert (<= (+ (* sc_64 0.4995) of_64) 10.))
 ; 
-; <=  {((sc.input.I[6].X*0.15051499783)+of.input.I[6].X)} {0.}
-(assert (>= (+ (* sc_64 0.15051499783) of_64) 0.))
+; <=  {((sc.input.I[3].X*0.4995)+of.input.I[3].X)} {0.}
+(assert (>= (+ (* sc_64 0.4995) of_64) 0.))
 ; 
-; >=  {((sc.input.I[6].O*0.15051499783)+of.input.I[6].O)} {10.}
-(assert (<= (+ (* sc_65 0.15051499783) of_65) 10.))
+; >=  {((sc.input.I[3].O*0.4995)+of.input.I[3].O)} {10.}
+(assert (<= (+ (* sc_65 0.4995) of_65) 10.))
 ; 
-; <=  {((sc.input.I[6].O*0.15051499783)+of.input.I[6].O)} {0.}
-(assert (>= (+ (* sc_65 0.15051499783) of_65) 0.))
+; <=  {((sc.input.I[3].O*0.4995)+of.input.I[3].O)} {0.}
+(assert (>= (+ (* sc_65 0.4995) of_65) 0.))
 (declare-fun sc_66 () Real)
 (assert (> sc_66 1e-08))
 (declare-fun of_66 () Real)
@@ -1090,23 +1090,23 @@
 (assert (> sc_67 1e-08))
 (declare-fun of_67 () Real)
 ; 
-; =  {sc.input.I[16].O} {sc.input.I[16].X}
+; =  {sc.input.I[4].O} {sc.input.I[4].X}
 (assert (= sc_67 sc_66))
 ; 
-; =  {of.input.I[16].O} {of.input.I[16].X}
+; =  {of.input.I[4].O} {of.input.I[4].X}
 (assert (= of_67 of_66))
 ; 
-; >=  {((sc.input.I[16].X*0.)+of.input.I[16].X)} {10.}
-(assert (<= (+ (* sc_66 0.) of_66) 10.))
+; >=  {((sc.input.I[4].X*0.4995)+of.input.I[4].X)} {10.}
+(assert (<= (+ (* sc_66 0.4995) of_66) 10.))
 ; 
-; <=  {((sc.input.I[16].X*0.)+of.input.I[16].X)} {0.}
-(assert (>= (+ (* sc_66 0.) of_66) 0.))
+; <=  {((sc.input.I[4].X*0.4995)+of.input.I[4].X)} {0.}
+(assert (>= (+ (* sc_66 0.4995) of_66) 0.))
 ; 
-; >=  {((sc.input.I[16].O*0.)+of.input.I[16].O)} {10.}
-(assert (<= (+ (* sc_67 0.) of_67) 10.))
+; >=  {((sc.input.I[4].O*0.4995)+of.input.I[4].O)} {10.}
+(assert (<= (+ (* sc_67 0.4995) of_67) 10.))
 ; 
-; <=  {((sc.input.I[16].O*0.)+of.input.I[16].O)} {0.}
-(assert (>= (+ (* sc_67 0.) of_67) 0.))
+; <=  {((sc.input.I[4].O*0.4995)+of.input.I[4].O)} {0.}
+(assert (>= (+ (* sc_67 0.4995) of_67) 0.))
 (declare-fun sc_68 () Real)
 (assert (> sc_68 1e-08))
 (declare-fun of_68 () Real)
@@ -1114,22 +1114,22 @@
 (assert (> sc_69 1e-08))
 (declare-fun of_69 () Real)
 ; 
-; =  {sc.input.I[3].O} {sc.input.I[3].X}
+; =  {sc.input.I[5].O} {sc.input.I[5].X}
 (assert (= sc_69 sc_68))
 ; 
-; =  {of.input.I[3].O} {of.input.I[3].X}
+; =  {of.input.I[5].O} {of.input.I[5].X}
 (assert (= of_69 of_68))
 ; 
-; >=  {((sc.input.I[3].X*0.4995)+of.input.I[3].X)} {10.}
+; >=  {((sc.input.I[5].X*0.4995)+of.input.I[5].X)} {10.}
 (assert (<= (+ (* sc_68 0.4995) of_68) 10.))
 ; 
-; <=  {((sc.input.I[3].X*0.4995)+of.input.I[3].X)} {0.}
+; <=  {((sc.input.I[5].X*0.4995)+of.input.I[5].X)} {0.}
 (assert (>= (+ (* sc_68 0.4995) of_68) 0.))
 ; 
-; >=  {((sc.input.I[3].O*0.4995)+of.input.I[3].O)} {10.}
+; >=  {((sc.input.I[5].O*0.4995)+of.input.I[5].O)} {10.}
 (assert (<= (+ (* sc_69 0.4995) of_69) 10.))
 ; 
-; <=  {((sc.input.I[3].O*0.4995)+of.input.I[3].O)} {0.}
+; <=  {((sc.input.I[5].O*0.4995)+of.input.I[5].O)} {0.}
 (assert (>= (+ (* sc_69 0.4995) of_69) 0.))
 (declare-fun sc_70 () Real)
 (assert (> sc_70 1e-08))
@@ -1138,23 +1138,23 @@
 (assert (> sc_71 1e-08))
 (declare-fun of_71 () Real)
 ; 
-; =  {sc.input.I[4].O} {sc.input.I[4].X}
+; =  {sc.input.I[1].O} {sc.input.I[1].X}
 (assert (= sc_71 sc_70))
 ; 
-; =  {of.input.I[4].O} {of.input.I[4].X}
+; =  {of.input.I[1].O} {of.input.I[1].X}
 (assert (= of_71 of_70))
 ; 
-; >=  {((sc.input.I[4].X*0.4995)+of.input.I[4].X)} {10.}
-(assert (<= (+ (* sc_70 0.4995) of_70) 10.))
+; >=  {((sc.input.I[1].X*40.)+of.input.I[1].X)} {10.}
+(assert (<= (+ (* sc_70 40.) of_70) 10.))
 ; 
-; <=  {((sc.input.I[4].X*0.4995)+of.input.I[4].X)} {0.}
-(assert (>= (+ (* sc_70 0.4995) of_70) 0.))
+; <=  {((sc.input.I[1].X*40.)+of.input.I[1].X)} {0.}
+(assert (>= (+ (* sc_70 40.) of_70) 0.))
 ; 
-; >=  {((sc.input.I[4].O*0.4995)+of.input.I[4].O)} {10.}
-(assert (<= (+ (* sc_71 0.4995) of_71) 10.))
+; >=  {((sc.input.I[1].O*40.)+of.input.I[1].O)} {10.}
+(assert (<= (+ (* sc_71 40.) of_71) 10.))
 ; 
-; <=  {((sc.input.I[4].O*0.4995)+of.input.I[4].O)} {0.}
-(assert (>= (+ (* sc_71 0.4995) of_71) 0.))
+; <=  {((sc.input.I[1].O*40.)+of.input.I[1].O)} {0.}
+(assert (>= (+ (* sc_71 40.) of_71) 0.))
 (declare-fun sc_72 () Real)
 (assert (> sc_72 1e-08))
 (declare-fun of_72 () Real)
@@ -1162,23 +1162,31 @@
 (assert (> sc_73 1e-08))
 (declare-fun of_73 () Real)
 ; 
-; =  {sc.input.I[5].O} {sc.input.I[5].X}
+; =  {sc.output.V[2].O} {sc.output.V[2].X}
 (assert (= sc_73 sc_72))
 ; 
-; =  {of.input.I[5].O} {of.input.I[5].X}
+; =  {of.output.V[2].O} {of.output.V[2].X}
 (assert (= of_73 of_72))
+(declare-fun slbot_72_1 () Real)
+(assert (<= slbot_72_1 1e-08))
+(declare-fun sltop_72_1 () Real)
+(assert (>= sltop_72_1 1e-08))
 ; 
-; >=  {((sc.input.I[5].X*0.4995)+of.input.I[5].X)} {10.}
-(assert (<= (+ (* sc_72 0.4995) of_72) 10.))
+; =  {(((sc.output.V[2].X*0.)+of.output.V[2].X)+sl.min.output.V[2].X.1)} {0.}
+(assert (= (+ (+ (* sc_72 0.) of_72) slbot_72_1) 0.))
 ; 
-; <=  {((sc.input.I[5].X*0.4995)+of.input.I[5].X)} {0.}
-(assert (>= (+ (* sc_72 0.4995) of_72) 0.))
+; =  {(((sc.output.V[2].X*30.)+of.output.V[2].X)+sl.max.output.V[2].X.1)} {3300.}
+(assert (= (+ (+ (* sc_72 30.) of_72) sltop_72_1) 3300.))
+(declare-fun slbot_73_1 () Real)
+(assert (<= slbot_73_1 1e-08))
+(declare-fun sltop_73_1 () Real)
+(assert (>= sltop_73_1 1e-08))
 ; 
-; >=  {((sc.input.I[5].O*0.4995)+of.input.I[5].O)} {10.}
-(assert (<= (+ (* sc_73 0.4995) of_73) 10.))
+; =  {(((sc.output.V[2].O*0.)+of.output.V[2].O)+sl.min.output.V[2].O.1)} {0.}
+(assert (= (+ (+ (* sc_73 0.) of_73) slbot_73_1) 0.))
 ; 
-; <=  {((sc.input.I[5].O*0.4995)+of.input.I[5].O)} {0.}
-(assert (>= (+ (* sc_73 0.4995) of_73) 0.))
+; =  {(((sc.output.V[2].O*30.)+of.output.V[2].O)+sl.max.output.V[2].O.1)} {3300.}
+(assert (= (+ (+ (* sc_73 30.) of_73) sltop_73_1) 3300.))
 (declare-fun sc_74 () Real)
 (assert (> sc_74 1e-08))
 (declare-fun of_74 () Real)
@@ -1186,23 +1194,31 @@
 (assert (> sc_75 1e-08))
 (declare-fun of_75 () Real)
 ; 
-; =  {sc.input.I[1].O} {sc.input.I[1].X}
+; =  {sc.output.V[0].O} {sc.output.V[0].X}
 (assert (= sc_75 sc_74))
 ; 
-; =  {of.input.I[1].O} {of.input.I[1].X}
+; =  {of.output.V[0].O} {of.output.V[0].X}
 (assert (= of_75 of_74))
+(declare-fun slbot_74_1 () Real)
+(assert (<= slbot_74_1 1e-08))
+(declare-fun sltop_74_1 () Real)
+(assert (>= sltop_74_1 1e-08))
 ; 
-; >=  {((sc.input.I[1].X*20.)+of.input.I[1].X)} {10.}
-(assert (<= (+ (* sc_74 20.) of_74) 10.))
+; =  {(((sc.output.V[0].X*0.)+of.output.V[0].X)+sl.min.output.V[0].X.1)} {0.}
+(assert (= (+ (+ (* sc_74 0.) of_74) slbot_74_1) 0.))
 ; 
-; <=  {((sc.input.I[1].X*20.)+of.input.I[1].X)} {0.}
-(assert (>= (+ (* sc_74 20.) of_74) 0.))
+; =  {(((sc.output.V[0].X*30.)+of.output.V[0].X)+sl.max.output.V[0].X.1)} {3300.}
+(assert (= (+ (+ (* sc_74 30.) of_74) sltop_74_1) 3300.))
+(declare-fun slbot_75_1 () Real)
+(assert (<= slbot_75_1 1e-08))
+(declare-fun sltop_75_1 () Real)
+(assert (>= sltop_75_1 1e-08))
 ; 
-; >=  {((sc.input.I[1].O*20.)+of.input.I[1].O)} {10.}
-(assert (<= (+ (* sc_75 20.) of_75) 10.))
+; =  {(((sc.output.V[0].O*0.)+of.output.V[0].O)+sl.min.output.V[0].O.1)} {0.}
+(assert (= (+ (+ (* sc_75 0.) of_75) slbot_75_1) 0.))
 ; 
-; <=  {((sc.input.I[1].O*20.)+of.input.I[1].O)} {0.}
-(assert (>= (+ (* sc_75 20.) of_75) 0.))
+; =  {(((sc.output.V[0].O*30.)+of.output.V[0].O)+sl.max.output.V[0].O.1)} {3300.}
+(assert (= (+ (+ (* sc_75 30.) of_75) sltop_75_1) 3300.))
 (declare-fun sc_76 () Real)
 (assert (> sc_76 1e-08))
 (declare-fun of_76 () Real)
@@ -1210,23 +1226,31 @@
 (assert (> sc_77 1e-08))
 (declare-fun of_77 () Real)
 ; 
-; =  {sc.input.I[17].O} {sc.input.I[17].X}
+; =  {sc.output.V[3].O} {sc.output.V[3].X}
 (assert (= sc_77 sc_76))
 ; 
-; =  {of.input.I[17].O} {of.input.I[17].X}
+; =  {of.output.V[3].O} {of.output.V[3].X}
 (assert (= of_77 of_76))
+(declare-fun slbot_76_1 () Real)
+(assert (<= slbot_76_1 1e-08))
+(declare-fun sltop_76_1 () Real)
+(assert (>= sltop_76_1 1e-08))
 ; 
-; >=  {((sc.input.I[17].X*0.)+of.input.I[17].X)} {10.}
-(assert (<= (+ (* sc_76 0.) of_76) 10.))
+; =  {(((sc.output.V[3].X*0.)+of.output.V[3].X)+sl.min.output.V[3].X.1)} {0.}
+(assert (= (+ (+ (* sc_76 0.) of_76) slbot_76_1) 0.))
 ; 
-; <=  {((sc.input.I[17].X*0.)+of.input.I[17].X)} {0.}
-(assert (>= (+ (* sc_76 0.) of_76) 0.))
+; =  {(((sc.output.V[3].X*30.)+of.output.V[3].X)+sl.max.output.V[3].X.1)} {3300.}
+(assert (= (+ (+ (* sc_76 30.) of_76) sltop_76_1) 3300.))
+(declare-fun slbot_77_1 () Real)
+(assert (<= slbot_77_1 1e-08))
+(declare-fun sltop_77_1 () Real)
+(assert (>= sltop_77_1 1e-08))
 ; 
-; >=  {((sc.input.I[17].O*0.)+of.input.I[17].O)} {10.}
-(assert (<= (+ (* sc_77 0.) of_77) 10.))
+; =  {(((sc.output.V[3].O*0.)+of.output.V[3].O)+sl.min.output.V[3].O.1)} {0.}
+(assert (= (+ (+ (* sc_77 0.) of_77) slbot_77_1) 0.))
 ; 
-; <=  {((sc.input.I[17].O*0.)+of.input.I[17].O)} {0.}
-(assert (>= (+ (* sc_77 0.) of_77) 0.))
+; =  {(((sc.output.V[3].O*30.)+of.output.V[3].O)+sl.max.output.V[3].O.1)} {3300.}
+(assert (= (+ (+ (* sc_77 30.) of_77) sltop_77_1) 3300.))
 (declare-fun sc_78 () Real)
 (assert (> sc_78 1e-08))
 (declare-fun of_78 () Real)
@@ -1234,23 +1258,31 @@
 (assert (> sc_79 1e-08))
 (declare-fun of_79 () Real)
 ; 
-; =  {sc.input.I[18].O} {sc.input.I[18].X}
+; =  {sc.output.V[4].O} {sc.output.V[4].X}
 (assert (= sc_79 sc_78))
 ; 
-; =  {of.input.I[18].O} {of.input.I[18].X}
+; =  {of.output.V[4].O} {of.output.V[4].X}
 (assert (= of_79 of_78))
+(declare-fun slbot_78_1 () Real)
+(assert (<= slbot_78_1 1e-08))
+(declare-fun sltop_78_1 () Real)
+(assert (>= sltop_78_1 1e-08))
 ; 
-; >=  {((sc.input.I[18].X*0.)+of.input.I[18].X)} {10.}
-(assert (<= (+ (* sc_78 0.) of_78) 10.))
+; =  {(((sc.output.V[4].X*0.)+of.output.V[4].X)+sl.min.output.V[4].X.1)} {0.}
+(assert (= (+ (+ (* sc_78 0.) of_78) slbot_78_1) 0.))
 ; 
-; <=  {((sc.input.I[18].X*0.)+of.input.I[18].X)} {0.}
-(assert (>= (+ (* sc_78 0.) of_78) 0.))
+; =  {(((sc.output.V[4].X*100.)+of.output.V[4].X)+sl.max.output.V[4].X.1)} {3300.}
+(assert (= (+ (+ (* sc_78 100.) of_78) sltop_78_1) 3300.))
+(declare-fun slbot_79_1 () Real)
+(assert (<= slbot_79_1 1e-08))
+(declare-fun sltop_79_1 () Real)
+(assert (>= sltop_79_1 1e-08))
 ; 
-; >=  {((sc.input.I[18].O*0.)+of.input.I[18].O)} {10.}
-(assert (<= (+ (* sc_79 0.) of_79) 10.))
+; =  {(((sc.output.V[4].O*0.)+of.output.V[4].O)+sl.min.output.V[4].O.1)} {0.}
+(assert (= (+ (+ (* sc_79 0.) of_79) slbot_79_1) 0.))
 ; 
-; <=  {((sc.input.I[18].O*0.)+of.input.I[18].O)} {0.}
-(assert (>= (+ (* sc_79 0.) of_79) 0.))
+; =  {(((sc.output.V[4].O*100.)+of.output.V[4].O)+sl.max.output.V[4].O.1)} {3300.}
+(assert (= (+ (+ (* sc_79 100.) of_79) sltop_79_1) 3300.))
 (declare-fun sc_80 () Real)
 (assert (> sc_80 1e-08))
 (declare-fun of_80 () Real)
@@ -1258,31 +1290,31 @@
 (assert (> sc_81 1e-08))
 (declare-fun of_81 () Real)
 ; 
-; =  {sc.output.V[2].O} {sc.output.V[2].X}
+; =  {sc.output.V[5].O} {sc.output.V[5].X}
 (assert (= sc_81 sc_80))
 ; 
-; =  {of.output.V[2].O} {of.output.V[2].X}
+; =  {of.output.V[5].O} {of.output.V[5].X}
 (assert (= of_81 of_80))
 (declare-fun slbot_80_1 () Real)
 (assert (<= slbot_80_1 1e-08))
 (declare-fun sltop_80_1 () Real)
 (assert (>= sltop_80_1 1e-08))
 ; 
-; =  {(((sc.output.V[2].X*0.)+of.output.V[2].X)+sl.min.output.V[2].X.1)} {0.}
+; =  {(((sc.output.V[5].X*0.)+of.output.V[5].X)+sl.min.output.V[5].X.1)} {0.}
 (assert (= (+ (+ (* sc_80 0.) of_80) slbot_80_1) 0.))
 ; 
-; =  {(((sc.output.V[2].X*30.)+of.output.V[2].X)+sl.max.output.V[2].X.1)} {3300.}
-(assert (= (+ (+ (* sc_80 30.) of_80) sltop_80_1) 3300.))
+; =  {(((sc.output.V[5].X*100.)+of.output.V[5].X)+sl.max.output.V[5].X.1)} {3300.}
+(assert (= (+ (+ (* sc_80 100.) of_80) sltop_80_1) 3300.))
 (declare-fun slbot_81_1 () Real)
 (assert (<= slbot_81_1 1e-08))
 (declare-fun sltop_81_1 () Real)
 (assert (>= sltop_81_1 1e-08))
 ; 
-; =  {(((sc.output.V[2].O*0.)+of.output.V[2].O)+sl.min.output.V[2].O.1)} {0.}
+; =  {(((sc.output.V[5].O*0.)+of.output.V[5].O)+sl.min.output.V[5].O.1)} {0.}
 (assert (= (+ (+ (* sc_81 0.) of_81) slbot_81_1) 0.))
 ; 
-; =  {(((sc.output.V[2].O*30.)+of.output.V[2].O)+sl.max.output.V[2].O.1)} {3300.}
-(assert (= (+ (+ (* sc_81 30.) of_81) sltop_81_1) 3300.))
+; =  {(((sc.output.V[5].O*100.)+of.output.V[5].O)+sl.max.output.V[5].O.1)} {3300.}
+(assert (= (+ (+ (* sc_81 100.) of_81) sltop_81_1) 3300.))
 (declare-fun sc_82 () Real)
 (assert (> sc_82 1e-08))
 (declare-fun of_82 () Real)
@@ -1290,31 +1322,31 @@
 (assert (> sc_83 1e-08))
 (declare-fun of_83 () Real)
 ; 
-; =  {sc.output.V[0].O} {sc.output.V[0].X}
+; =  {sc.output.V[1].O} {sc.output.V[1].X}
 (assert (= sc_83 sc_82))
 ; 
-; =  {of.output.V[0].O} {of.output.V[0].X}
+; =  {of.output.V[1].O} {of.output.V[1].X}
 (assert (= of_83 of_82))
 (declare-fun slbot_82_1 () Real)
 (assert (<= slbot_82_1 1e-08))
 (declare-fun sltop_82_1 () Real)
 (assert (>= sltop_82_1 1e-08))
 ; 
-; =  {(((sc.output.V[0].X*0.)+of.output.V[0].X)+sl.min.output.V[0].X.1)} {0.}
+; =  {(((sc.output.V[1].X*0.)+of.output.V[1].X)+sl.min.output.V[1].X.1)} {0.}
 (assert (= (+ (+ (* sc_82 0.) of_82) slbot_82_1) 0.))
 ; 
-; =  {(((sc.output.V[0].X*30.)+of.output.V[0].X)+sl.max.output.V[0].X.1)} {3300.}
-(assert (= (+ (+ (* sc_82 30.) of_82) sltop_82_1) 3300.))
+; =  {(((sc.output.V[1].X*100.)+of.output.V[1].X)+sl.max.output.V[1].X.1)} {3300.}
+(assert (= (+ (+ (* sc_82 100.) of_82) sltop_82_1) 3300.))
 (declare-fun slbot_83_1 () Real)
 (assert (<= slbot_83_1 1e-08))
 (declare-fun sltop_83_1 () Real)
 (assert (>= sltop_83_1 1e-08))
 ; 
-; =  {(((sc.output.V[0].O*0.)+of.output.V[0].O)+sl.min.output.V[0].O.1)} {0.}
+; =  {(((sc.output.V[1].O*0.)+of.output.V[1].O)+sl.min.output.V[1].O.1)} {0.}
 (assert (= (+ (+ (* sc_83 0.) of_83) slbot_83_1) 0.))
 ; 
-; =  {(((sc.output.V[0].O*30.)+of.output.V[0].O)+sl.max.output.V[0].O.1)} {3300.}
-(assert (= (+ (+ (* sc_83 30.) of_83) sltop_83_1) 3300.))
+; =  {(((sc.output.V[1].O*100.)+of.output.V[1].O)+sl.max.output.V[1].O.1)} {3300.}
+(assert (= (+ (+ (* sc_83 100.) of_83) sltop_83_1) 3300.))
 (declare-fun sc_84 () Real)
 (assert (> sc_84 1e-08))
 (declare-fun of_84 () Real)
@@ -1322,31 +1354,23 @@
 (assert (> sc_85 1e-08))
 (declare-fun of_85 () Real)
 ; 
-; =  {sc.output.V[3].O} {sc.output.V[3].X}
+; =  {sc.input.V[2].O} {sc.input.V[2].X}
 (assert (= sc_85 sc_84))
 ; 
-; =  {of.output.V[3].O} {of.output.V[3].X}
+; =  {of.input.V[2].O} {of.input.V[2].X}
 (assert (= of_85 of_84))
-(declare-fun slbot_84_1 () Real)
-(assert (<= slbot_84_1 1e-08))
-(declare-fun sltop_84_1 () Real)
-(assert (>= sltop_84_1 1e-08))
 ; 
-; =  {(((sc.output.V[3].X*0.)+of.output.V[3].X)+sl.min.output.V[3].X.1)} {0.}
-(assert (= (+ (+ (* sc_84 0.) of_84) slbot_84_1) 0.))
+; >=  {((sc.input.V[2].X*2.)+of.input.V[2].X)} {3300.}
+(assert (<= (+ (* sc_84 2.) of_84) 3300.))
 ; 
-; =  {(((sc.output.V[3].X*30.)+of.output.V[3].X)+sl.max.output.V[3].X.1)} {3300.}
-(assert (= (+ (+ (* sc_84 30.) of_84) sltop_84_1) 3300.))
-(declare-fun slbot_85_1 () Real)
-(assert (<= slbot_85_1 1e-08))
-(declare-fun sltop_85_1 () Real)
-(assert (>= sltop_85_1 1e-08))
+; <=  {((sc.input.V[2].X*2.)+of.input.V[2].X)} {0.}
+(assert (>= (+ (* sc_84 2.) of_84) 0.))
 ; 
-; =  {(((sc.output.V[3].O*0.)+of.output.V[3].O)+sl.min.output.V[3].O.1)} {0.}
-(assert (= (+ (+ (* sc_85 0.) of_85) slbot_85_1) 0.))
+; >=  {((sc.input.V[2].O*2.)+of.input.V[2].O)} {3300.}
+(assert (<= (+ (* sc_85 2.) of_85) 3300.))
 ; 
-; =  {(((sc.output.V[3].O*30.)+of.output.V[3].O)+sl.max.output.V[3].O.1)} {3300.}
-(assert (= (+ (+ (* sc_85 30.) of_85) sltop_85_1) 3300.))
+; <=  {((sc.input.V[2].O*2.)+of.input.V[2].O)} {0.}
+(assert (>= (+ (* sc_85 2.) of_85) 0.))
 (declare-fun sc_86 () Real)
 (assert (> sc_86 1e-08))
 (declare-fun of_86 () Real)
@@ -1354,31 +1378,23 @@
 (assert (> sc_87 1e-08))
 (declare-fun of_87 () Real)
 ; 
-; =  {sc.output.V[4].O} {sc.output.V[4].X}
+; =  {sc.input.V[8].O} {sc.input.V[8].X}
 (assert (= sc_87 sc_86))
 ; 
-; =  {of.output.V[4].O} {of.output.V[4].X}
+; =  {of.input.V[8].O} {of.input.V[8].X}
 (assert (= of_87 of_86))
-(declare-fun slbot_86_1 () Real)
-(assert (<= slbot_86_1 1e-08))
-(declare-fun sltop_86_1 () Real)
-(assert (>= sltop_86_1 1e-08))
 ; 
-; =  {(((sc.output.V[4].X*0.)+of.output.V[4].X)+sl.min.output.V[4].X.1)} {0.}
-(assert (= (+ (+ (* sc_86 0.) of_86) slbot_86_1) 0.))
+; >=  {((sc.input.V[8].X*0.)+of.input.V[8].X)} {3300.}
+(assert (<= (+ (* sc_86 0.) of_86) 3300.))
 ; 
-; =  {(((sc.output.V[4].X*100.)+of.output.V[4].X)+sl.max.output.V[4].X.1)} {3300.}
-(assert (= (+ (+ (* sc_86 100.) of_86) sltop_86_1) 3300.))
-(declare-fun slbot_87_1 () Real)
-(assert (<= slbot_87_1 1e-08))
-(declare-fun sltop_87_1 () Real)
-(assert (>= sltop_87_1 1e-08))
+; <=  {((sc.input.V[8].X*0.)+of.input.V[8].X)} {0.}
+(assert (>= (+ (* sc_86 0.) of_86) 0.))
 ; 
-; =  {(((sc.output.V[4].O*0.)+of.output.V[4].O)+sl.min.output.V[4].O.1)} {0.}
-(assert (= (+ (+ (* sc_87 0.) of_87) slbot_87_1) 0.))
+; >=  {((sc.input.V[8].O*0.)+of.input.V[8].O)} {3300.}
+(assert (<= (+ (* sc_87 0.) of_87) 3300.))
 ; 
-; =  {(((sc.output.V[4].O*100.)+of.output.V[4].O)+sl.max.output.V[4].O.1)} {3300.}
-(assert (= (+ (+ (* sc_87 100.) of_87) sltop_87_1) 3300.))
+; <=  {((sc.input.V[8].O*0.)+of.input.V[8].O)} {0.}
+(assert (>= (+ (* sc_87 0.) of_87) 0.))
 (declare-fun sc_88 () Real)
 (assert (> sc_88 1e-08))
 (declare-fun of_88 () Real)
@@ -1386,31 +1402,23 @@
 (assert (> sc_89 1e-08))
 (declare-fun of_89 () Real)
 ; 
-; =  {sc.output.V[5].O} {sc.output.V[5].X}
+; =  {sc.input.V[7].O} {sc.input.V[7].X}
 (assert (= sc_89 sc_88))
 ; 
-; =  {of.output.V[5].O} {of.output.V[5].X}
+; =  {of.input.V[7].O} {of.input.V[7].X}
 (assert (= of_89 of_88))
-(declare-fun slbot_88_1 () Real)
-(assert (<= slbot_88_1 1e-08))
-(declare-fun sltop_88_1 () Real)
-(assert (>= sltop_88_1 1e-08))
 ; 
-; =  {(((sc.output.V[5].X*0.)+of.output.V[5].X)+sl.min.output.V[5].X.1)} {0.}
-(assert (= (+ (+ (* sc_88 0.) of_88) slbot_88_1) 0.))
+; >=  {((sc.input.V[7].X*0.)+of.input.V[7].X)} {3300.}
+(assert (<= (+ (* sc_88 0.) of_88) 3300.))
 ; 
-; =  {(((sc.output.V[5].X*100.)+of.output.V[5].X)+sl.max.output.V[5].X.1)} {3300.}
-(assert (= (+ (+ (* sc_88 100.) of_88) sltop_88_1) 3300.))
-(declare-fun slbot_89_1 () Real)
-(assert (<= slbot_89_1 1e-08))
-(declare-fun sltop_89_1 () Real)
-(assert (>= sltop_89_1 1e-08))
+; <=  {((sc.input.V[7].X*0.)+of.input.V[7].X)} {0.}
+(assert (>= (+ (* sc_88 0.) of_88) 0.))
 ; 
-; =  {(((sc.output.V[5].O*0.)+of.output.V[5].O)+sl.min.output.V[5].O.1)} {0.}
-(assert (= (+ (+ (* sc_89 0.) of_89) slbot_89_1) 0.))
+; >=  {((sc.input.V[7].O*0.)+of.input.V[7].O)} {3300.}
+(assert (<= (+ (* sc_89 0.) of_89) 3300.))
 ; 
-; =  {(((sc.output.V[5].O*100.)+of.output.V[5].O)+sl.max.output.V[5].O.1)} {3300.}
-(assert (= (+ (+ (* sc_89 100.) of_89) sltop_89_1) 3300.))
+; <=  {((sc.input.V[7].O*0.)+of.input.V[7].O)} {0.}
+(assert (>= (+ (* sc_89 0.) of_89) 0.))
 (declare-fun sc_90 () Real)
 (assert (> sc_90 1e-08))
 (declare-fun of_90 () Real)
@@ -1418,31 +1426,23 @@
 (assert (> sc_91 1e-08))
 (declare-fun of_91 () Real)
 ; 
-; =  {sc.output.V[1].O} {sc.output.V[1].X}
+; =  {sc.input.V[13].O} {sc.input.V[13].X}
 (assert (= sc_91 sc_90))
 ; 
-; =  {of.output.V[1].O} {of.output.V[1].X}
+; =  {of.input.V[13].O} {of.input.V[13].X}
 (assert (= of_91 of_90))
-(declare-fun slbot_90_1 () Real)
-(assert (<= slbot_90_1 1e-08))
-(declare-fun sltop_90_1 () Real)
-(assert (>= sltop_90_1 1e-08))
 ; 
-; =  {(((sc.output.V[1].X*0.)+of.output.V[1].X)+sl.min.output.V[1].X.1)} {0.}
-(assert (= (+ (+ (* sc_90 0.) of_90) slbot_90_1) 0.))
+; >=  {((sc.input.V[13].X*0.0005)+of.input.V[13].X)} {3300.}
+(assert (<= (+ (* sc_90 0.0005) of_90) 3300.))
 ; 
-; =  {(((sc.output.V[1].X*100.)+of.output.V[1].X)+sl.max.output.V[1].X.1)} {3300.}
-(assert (= (+ (+ (* sc_90 100.) of_90) sltop_90_1) 3300.))
-(declare-fun slbot_91_1 () Real)
-(assert (<= slbot_91_1 1e-08))
-(declare-fun sltop_91_1 () Real)
-(assert (>= sltop_91_1 1e-08))
+; <=  {((sc.input.V[13].X*0.0005)+of.input.V[13].X)} {0.}
+(assert (>= (+ (* sc_90 0.0005) of_90) 0.))
 ; 
-; =  {(((sc.output.V[1].O*0.)+of.output.V[1].O)+sl.min.output.V[1].O.1)} {0.}
-(assert (= (+ (+ (* sc_91 0.) of_91) slbot_91_1) 0.))
+; >=  {((sc.input.V[13].O*0.0005)+of.input.V[13].O)} {3300.}
+(assert (<= (+ (* sc_91 0.0005) of_91) 3300.))
 ; 
-; =  {(((sc.output.V[1].O*100.)+of.output.V[1].O)+sl.max.output.V[1].O.1)} {3300.}
-(assert (= (+ (+ (* sc_91 100.) of_91) sltop_91_1) 3300.))
+; <=  {((sc.input.V[13].O*0.0005)+of.input.V[13].O)} {0.}
+(assert (>= (+ (* sc_91 0.0005) of_91) 0.))
 (declare-fun sc_92 () Real)
 (assert (> sc_92 1e-08))
 (declare-fun of_92 () Real)
@@ -1450,23 +1450,23 @@
 (assert (> sc_93 1e-08))
 (declare-fun of_93 () Real)
 ; 
-; =  {sc.input.V[2].O} {sc.input.V[2].X}
+; =  {sc.input.V[12].O} {sc.input.V[12].X}
 (assert (= sc_93 sc_92))
 ; 
-; =  {of.input.V[2].O} {of.input.V[2].X}
+; =  {of.input.V[12].O} {of.input.V[12].X}
 (assert (= of_93 of_92))
 ; 
-; >=  {((sc.input.V[2].X*2.)+of.input.V[2].X)} {3300.}
-(assert (<= (+ (* sc_92 2.) of_92) 3300.))
+; >=  {((sc.input.V[12].X*0.0005)+of.input.V[12].X)} {3300.}
+(assert (<= (+ (* sc_92 0.0005) of_92) 3300.))
 ; 
-; <=  {((sc.input.V[2].X*2.)+of.input.V[2].X)} {0.}
-(assert (>= (+ (* sc_92 2.) of_92) 0.))
+; <=  {((sc.input.V[12].X*0.0005)+of.input.V[12].X)} {0.}
+(assert (>= (+ (* sc_92 0.0005) of_92) 0.))
 ; 
-; >=  {((sc.input.V[2].O*2.)+of.input.V[2].O)} {3300.}
-(assert (<= (+ (* sc_93 2.) of_93) 3300.))
+; >=  {((sc.input.V[12].O*0.0005)+of.input.V[12].O)} {3300.}
+(assert (<= (+ (* sc_93 0.0005) of_93) 3300.))
 ; 
-; <=  {((sc.input.V[2].O*2.)+of.input.V[2].O)} {0.}
-(assert (>= (+ (* sc_93 2.) of_93) 0.))
+; <=  {((sc.input.V[12].O*0.0005)+of.input.V[12].O)} {0.}
+(assert (>= (+ (* sc_93 0.0005) of_93) 0.))
 (declare-fun sc_94 () Real)
 (assert (> sc_94 1e-08))
 (declare-fun of_94 () Real)
@@ -1474,23 +1474,23 @@
 (assert (> sc_95 1e-08))
 (declare-fun of_95 () Real)
 ; 
-; =  {sc.input.V[8].O} {sc.input.V[8].X}
+; =  {sc.input.V[9].O} {sc.input.V[9].X}
 (assert (= sc_95 sc_94))
 ; 
-; =  {of.input.V[8].O} {of.input.V[8].X}
+; =  {of.input.V[9].O} {of.input.V[9].X}
 (assert (= of_95 of_94))
 ; 
-; >=  {((sc.input.V[8].X*1.)+of.input.V[8].X)} {3300.}
-(assert (<= (+ (* sc_94 1.) of_94) 3300.))
+; >=  {((sc.input.V[9].X*0.)+of.input.V[9].X)} {3300.}
+(assert (<= (+ (* sc_94 0.) of_94) 3300.))
 ; 
-; <=  {((sc.input.V[8].X*1.)+of.input.V[8].X)} {0.}
-(assert (>= (+ (* sc_94 1.) of_94) 0.))
+; <=  {((sc.input.V[9].X*0.)+of.input.V[9].X)} {0.}
+(assert (>= (+ (* sc_94 0.) of_94) 0.))
 ; 
-; >=  {((sc.input.V[8].O*1.)+of.input.V[8].O)} {3300.}
-(assert (<= (+ (* sc_95 1.) of_95) 3300.))
+; >=  {((sc.input.V[9].O*0.)+of.input.V[9].O)} {3300.}
+(assert (<= (+ (* sc_95 0.) of_95) 3300.))
 ; 
-; <=  {((sc.input.V[8].O*1.)+of.input.V[8].O)} {0.}
-(assert (>= (+ (* sc_95 1.) of_95) 0.))
+; <=  {((sc.input.V[9].O*0.)+of.input.V[9].O)} {0.}
+(assert (>= (+ (* sc_95 0.) of_95) 0.))
 (declare-fun sc_96 () Real)
 (assert (> sc_96 1e-08))
 (declare-fun of_96 () Real)
@@ -1498,23 +1498,23 @@
 (assert (> sc_97 1e-08))
 (declare-fun of_97 () Real)
 ; 
-; =  {sc.input.V[7].O} {sc.input.V[7].X}
+; =  {sc.input.V[0].O} {sc.input.V[0].X}
 (assert (= sc_97 sc_96))
 ; 
-; =  {of.input.V[7].O} {of.input.V[7].X}
+; =  {of.input.V[0].O} {of.input.V[0].X}
 (assert (= of_97 of_96))
 ; 
-; >=  {((sc.input.V[7].X*0.)+of.input.V[7].X)} {3300.}
-(assert (<= (+ (* sc_96 0.) of_96) 3300.))
+; >=  {((sc.input.V[0].X*2.)+of.input.V[0].X)} {3300.}
+(assert (<= (+ (* sc_96 2.) of_96) 3300.))
 ; 
-; <=  {((sc.input.V[7].X*0.)+of.input.V[7].X)} {0.}
-(assert (>= (+ (* sc_96 0.) of_96) 0.))
+; <=  {((sc.input.V[0].X*2.)+of.input.V[0].X)} {0.}
+(assert (>= (+ (* sc_96 2.) of_96) 0.))
 ; 
-; >=  {((sc.input.V[7].O*0.)+of.input.V[7].O)} {3300.}
-(assert (<= (+ (* sc_97 0.) of_97) 3300.))
+; >=  {((sc.input.V[0].O*2.)+of.input.V[0].O)} {3300.}
+(assert (<= (+ (* sc_97 2.) of_97) 3300.))
 ; 
-; <=  {((sc.input.V[7].O*0.)+of.input.V[7].O)} {0.}
-(assert (>= (+ (* sc_97 0.) of_97) 0.))
+; <=  {((sc.input.V[0].O*2.)+of.input.V[0].O)} {0.}
+(assert (>= (+ (* sc_97 2.) of_97) 0.))
 (declare-fun sc_98 () Real)
 (assert (> sc_98 1e-08))
 (declare-fun of_98 () Real)
@@ -1522,23 +1522,23 @@
 (assert (> sc_99 1e-08))
 (declare-fun of_99 () Real)
 ; 
-; =  {sc.input.V[13].O} {sc.input.V[13].X}
+; =  {sc.input.V[11].O} {sc.input.V[11].X}
 (assert (= sc_99 sc_98))
 ; 
-; =  {of.input.V[13].O} {of.input.V[13].X}
+; =  {of.input.V[11].O} {of.input.V[11].X}
 (assert (= of_99 of_98))
 ; 
-; >=  {((sc.input.V[13].X*40.)+of.input.V[13].X)} {3300.}
-(assert (<= (+ (* sc_98 40.) of_98) 3300.))
+; >=  {((sc.input.V[11].X*0.)+of.input.V[11].X)} {3300.}
+(assert (<= (+ (* sc_98 0.) of_98) 3300.))
 ; 
-; <=  {((sc.input.V[13].X*40.)+of.input.V[13].X)} {0.}
-(assert (>= (+ (* sc_98 40.) of_98) 0.))
+; <=  {((sc.input.V[11].X*0.)+of.input.V[11].X)} {0.}
+(assert (>= (+ (* sc_98 0.) of_98) 0.))
 ; 
-; >=  {((sc.input.V[13].O*40.)+of.input.V[13].O)} {3300.}
-(assert (<= (+ (* sc_99 40.) of_99) 3300.))
+; >=  {((sc.input.V[11].O*0.)+of.input.V[11].O)} {3300.}
+(assert (<= (+ (* sc_99 0.) of_99) 3300.))
 ; 
-; <=  {((sc.input.V[13].O*40.)+of.input.V[13].O)} {0.}
-(assert (>= (+ (* sc_99 40.) of_99) 0.))
+; <=  {((sc.input.V[11].O*0.)+of.input.V[11].O)} {0.}
+(assert (>= (+ (* sc_99 0.) of_99) 0.))
 (declare-fun sc_100 () Real)
 (assert (> sc_100 1e-08))
 (declare-fun of_100 () Real)
@@ -1546,23 +1546,23 @@
 (assert (> sc_101 1e-08))
 (declare-fun of_101 () Real)
 ; 
-; =  {sc.input.V[12].O} {sc.input.V[12].X}
+; =  {sc.input.V[10].O} {sc.input.V[10].X}
 (assert (= sc_101 sc_100))
 ; 
-; =  {of.input.V[12].O} {of.input.V[12].X}
+; =  {of.input.V[10].O} {of.input.V[10].X}
 (assert (= of_101 of_100))
 ; 
-; >=  {((sc.input.V[12].X*0.0005)+of.input.V[12].X)} {3300.}
-(assert (<= (+ (* sc_100 0.0005) of_100) 3300.))
+; >=  {((sc.input.V[10].X*0.)+of.input.V[10].X)} {3300.}
+(assert (<= (+ (* sc_100 0.) of_100) 3300.))
 ; 
-; <=  {((sc.input.V[12].X*0.0005)+of.input.V[12].X)} {0.}
-(assert (>= (+ (* sc_100 0.0005) of_100) 0.))
+; <=  {((sc.input.V[10].X*0.)+of.input.V[10].X)} {0.}
+(assert (>= (+ (* sc_100 0.) of_100) 0.))
 ; 
-; >=  {((sc.input.V[12].O*0.0005)+of.input.V[12].O)} {3300.}
-(assert (<= (+ (* sc_101 0.0005) of_101) 3300.))
+; >=  {((sc.input.V[10].O*0.)+of.input.V[10].O)} {3300.}
+(assert (<= (+ (* sc_101 0.) of_101) 3300.))
 ; 
-; <=  {((sc.input.V[12].O*0.0005)+of.input.V[12].O)} {0.}
-(assert (>= (+ (* sc_101 0.0005) of_101) 0.))
+; <=  {((sc.input.V[10].O*0.)+of.input.V[10].O)} {0.}
+(assert (>= (+ (* sc_101 0.) of_101) 0.))
 (declare-fun sc_102 () Real)
 (assert (> sc_102 1e-08))
 (declare-fun of_102 () Real)
@@ -1570,23 +1570,23 @@
 (assert (> sc_103 1e-08))
 (declare-fun of_103 () Real)
 ; 
-; =  {sc.input.V[9].O} {sc.input.V[9].X}
+; =  {sc.input.V[15].O} {sc.input.V[15].X}
 (assert (= sc_103 sc_102))
 ; 
-; =  {of.input.V[9].O} {of.input.V[9].X}
+; =  {of.input.V[15].O} {of.input.V[15].X}
 (assert (= of_103 of_102))
 ; 
-; >=  {((sc.input.V[9].X*1.75)+of.input.V[9].X)} {3300.}
-(assert (<= (+ (* sc_102 1.75) of_102) 3300.))
+; >=  {((sc.input.V[15].X*3.01029995664)+of.input.V[15].X)} {3300.}
+(assert (<= (+ (* sc_102 3.01029995664) of_102) 3300.))
 ; 
-; <=  {((sc.input.V[9].X*1.75)+of.input.V[9].X)} {0.}
-(assert (>= (+ (* sc_102 1.75) of_102) 0.))
+; <=  {((sc.input.V[15].X*3.01029995664)+of.input.V[15].X)} {0.}
+(assert (>= (+ (* sc_102 3.01029995664) of_102) 0.))
 ; 
-; >=  {((sc.input.V[9].O*1.75)+of.input.V[9].O)} {3300.}
-(assert (<= (+ (* sc_103 1.75) of_103) 3300.))
+; >=  {((sc.input.V[15].O*3.01029995664)+of.input.V[15].O)} {3300.}
+(assert (<= (+ (* sc_103 3.01029995664) of_103) 3300.))
 ; 
-; <=  {((sc.input.V[9].O*1.75)+of.input.V[9].O)} {0.}
-(assert (>= (+ (* sc_103 1.75) of_103) 0.))
+; <=  {((sc.input.V[15].O*3.01029995664)+of.input.V[15].O)} {0.}
+(assert (>= (+ (* sc_103 3.01029995664) of_103) 0.))
 (declare-fun sc_104 () Real)
 (assert (> sc_104 1e-08))
 (declare-fun of_104 () Real)
@@ -1594,23 +1594,23 @@
 (assert (> sc_105 1e-08))
 (declare-fun of_105 () Real)
 ; 
-; =  {sc.input.V[0].O} {sc.input.V[0].X}
+; =  {sc.input.V[6].O} {sc.input.V[6].X}
 (assert (= sc_105 sc_104))
 ; 
-; =  {of.input.V[0].O} {of.input.V[0].X}
+; =  {of.input.V[6].O} {of.input.V[6].X}
 (assert (= of_105 of_104))
 ; 
-; >=  {((sc.input.V[0].X*2.)+of.input.V[0].X)} {3300.}
-(assert (<= (+ (* sc_104 2.) of_104) 3300.))
+; >=  {((sc.input.V[6].X*0.)+of.input.V[6].X)} {3300.}
+(assert (<= (+ (* sc_104 0.) of_104) 3300.))
 ; 
-; <=  {((sc.input.V[0].X*2.)+of.input.V[0].X)} {0.}
-(assert (>= (+ (* sc_104 2.) of_104) 0.))
+; <=  {((sc.input.V[6].X*0.)+of.input.V[6].X)} {0.}
+(assert (>= (+ (* sc_104 0.) of_104) 0.))
 ; 
-; >=  {((sc.input.V[0].O*2.)+of.input.V[0].O)} {3300.}
-(assert (<= (+ (* sc_105 2.) of_105) 3300.))
+; >=  {((sc.input.V[6].O*0.)+of.input.V[6].O)} {3300.}
+(assert (<= (+ (* sc_105 0.) of_105) 3300.))
 ; 
-; <=  {((sc.input.V[0].O*2.)+of.input.V[0].O)} {0.}
-(assert (>= (+ (* sc_105 2.) of_105) 0.))
+; <=  {((sc.input.V[6].O*0.)+of.input.V[6].O)} {0.}
+(assert (>= (+ (* sc_105 0.) of_105) 0.))
 (declare-fun sc_106 () Real)
 (assert (> sc_106 1e-08))
 (declare-fun of_106 () Real)
@@ -1618,22 +1618,22 @@
 (assert (> sc_107 1e-08))
 (declare-fun of_107 () Real)
 ; 
-; =  {sc.input.V[11].O} {sc.input.V[11].X}
+; =  {sc.input.V[14].O} {sc.input.V[14].X}
 (assert (= sc_107 sc_106))
 ; 
-; =  {of.input.V[11].O} {of.input.V[11].X}
+; =  {of.input.V[14].O} {of.input.V[14].X}
 (assert (= of_107 of_106))
 ; 
-; >=  {((sc.input.V[11].X*0.0005)+of.input.V[11].X)} {3300.}
+; >=  {((sc.input.V[14].X*0.0005)+of.input.V[14].X)} {3300.}
 (assert (<= (+ (* sc_106 0.0005) of_106) 3300.))
 ; 
-; <=  {((sc.input.V[11].X*0.0005)+of.input.V[11].X)} {0.}
+; <=  {((sc.input.V[14].X*0.0005)+of.input.V[14].X)} {0.}
 (assert (>= (+ (* sc_106 0.0005) of_106) 0.))
 ; 
-; >=  {((sc.input.V[11].O*0.0005)+of.input.V[11].O)} {3300.}
+; >=  {((sc.input.V[14].O*0.0005)+of.input.V[14].O)} {3300.}
 (assert (<= (+ (* sc_107 0.0005) of_107) 3300.))
 ; 
-; <=  {((sc.input.V[11].O*0.0005)+of.input.V[11].O)} {0.}
+; <=  {((sc.input.V[14].O*0.0005)+of.input.V[14].O)} {0.}
 (assert (>= (+ (* sc_107 0.0005) of_107) 0.))
 (declare-fun sc_108 () Real)
 (assert (> sc_108 1e-08))
@@ -1642,23 +1642,23 @@
 (assert (> sc_109 1e-08))
 (declare-fun of_109 () Real)
 ; 
-; =  {sc.input.V[10].O} {sc.input.V[10].X}
+; =  {sc.input.V[16].O} {sc.input.V[16].X}
 (assert (= sc_109 sc_108))
 ; 
-; =  {of.input.V[10].O} {of.input.V[10].X}
+; =  {of.input.V[16].O} {of.input.V[16].X}
 (assert (= of_109 of_108))
 ; 
-; >=  {((sc.input.V[10].X*0.0005)+of.input.V[10].X)} {3300.}
-(assert (<= (+ (* sc_108 0.0005) of_108) 3300.))
+; >=  {((sc.input.V[16].X*3.01029995664)+of.input.V[16].X)} {3300.}
+(assert (<= (+ (* sc_108 3.01029995664) of_108) 3300.))
 ; 
-; <=  {((sc.input.V[10].X*0.0005)+of.input.V[10].X)} {0.}
-(assert (>= (+ (* sc_108 0.0005) of_108) 0.))
+; <=  {((sc.input.V[16].X*3.01029995664)+of.input.V[16].X)} {0.}
+(assert (>= (+ (* sc_108 3.01029995664) of_108) 0.))
 ; 
-; >=  {((sc.input.V[10].O*0.0005)+of.input.V[10].O)} {3300.}
-(assert (<= (+ (* sc_109 0.0005) of_109) 3300.))
+; >=  {((sc.input.V[16].O*3.01029995664)+of.input.V[16].O)} {3300.}
+(assert (<= (+ (* sc_109 3.01029995664) of_109) 3300.))
 ; 
-; <=  {((sc.input.V[10].O*0.0005)+of.input.V[10].O)} {0.}
-(assert (>= (+ (* sc_109 0.0005) of_109) 0.))
+; <=  {((sc.input.V[16].O*3.01029995664)+of.input.V[16].O)} {0.}
+(assert (>= (+ (* sc_109 3.01029995664) of_109) 0.))
 (declare-fun sc_110 () Real)
 (assert (> sc_110 1e-08))
 (declare-fun of_110 () Real)
@@ -1666,23 +1666,23 @@
 (assert (> sc_111 1e-08))
 (declare-fun of_111 () Real)
 ; 
-; =  {sc.input.V[15].O} {sc.input.V[15].X}
+; =  {sc.input.V[3].O} {sc.input.V[3].X}
 (assert (= sc_111 sc_110))
 ; 
-; =  {of.input.V[15].O} {of.input.V[15].X}
+; =  {of.input.V[3].O} {of.input.V[3].X}
 (assert (= of_111 of_110))
 ; 
-; >=  {((sc.input.V[15].X*3.01029995664)+of.input.V[15].X)} {3300.}
-(assert (<= (+ (* sc_110 3.01029995664) of_110) 3300.))
+; >=  {((sc.input.V[3].X*0.)+of.input.V[3].X)} {3300.}
+(assert (<= (+ (* sc_110 0.) of_110) 3300.))
 ; 
-; <=  {((sc.input.V[15].X*3.01029995664)+of.input.V[15].X)} {0.}
-(assert (>= (+ (* sc_110 3.01029995664) of_110) 0.))
+; <=  {((sc.input.V[3].X*0.)+of.input.V[3].X)} {0.}
+(assert (>= (+ (* sc_110 0.) of_110) 0.))
 ; 
-; >=  {((sc.input.V[15].O*3.01029995664)+of.input.V[15].O)} {3300.}
-(assert (<= (+ (* sc_111 3.01029995664) of_111) 3300.))
+; >=  {((sc.input.V[3].O*0.)+of.input.V[3].O)} {3300.}
+(assert (<= (+ (* sc_111 0.) of_111) 3300.))
 ; 
-; <=  {((sc.input.V[15].O*3.01029995664)+of.input.V[15].O)} {0.}
-(assert (>= (+ (* sc_111 3.01029995664) of_111) 0.))
+; <=  {((sc.input.V[3].O*0.)+of.input.V[3].O)} {0.}
+(assert (>= (+ (* sc_111 0.) of_111) 0.))
 (declare-fun sc_112 () Real)
 (assert (> sc_112 1e-08))
 (declare-fun of_112 () Real)
@@ -1690,22 +1690,22 @@
 (assert (> sc_113 1e-08))
 (declare-fun of_113 () Real)
 ; 
-; =  {sc.input.V[6].O} {sc.input.V[6].X}
+; =  {sc.input.V[4].O} {sc.input.V[4].X}
 (assert (= sc_113 sc_112))
 ; 
-; =  {of.input.V[6].O} {of.input.V[6].X}
+; =  {of.input.V[4].O} {of.input.V[4].X}
 (assert (= of_113 of_112))
 ; 
-; >=  {((sc.input.V[6].X*0.)+of.input.V[6].X)} {3300.}
+; >=  {((sc.input.V[4].X*0.)+of.input.V[4].X)} {3300.}
 (assert (<= (+ (* sc_112 0.) of_112) 3300.))
 ; 
-; <=  {((sc.input.V[6].X*0.)+of.input.V[6].X)} {0.}
+; <=  {((sc.input.V[4].X*0.)+of.input.V[4].X)} {0.}
 (assert (>= (+ (* sc_112 0.) of_112) 0.))
 ; 
-; >=  {((sc.input.V[6].O*0.)+of.input.V[6].O)} {3300.}
+; >=  {((sc.input.V[4].O*0.)+of.input.V[4].O)} {3300.}
 (assert (<= (+ (* sc_113 0.) of_113) 3300.))
 ; 
-; <=  {((sc.input.V[6].O*0.)+of.input.V[6].O)} {0.}
+; <=  {((sc.input.V[4].O*0.)+of.input.V[4].O)} {0.}
 (assert (>= (+ (* sc_113 0.) of_113) 0.))
 (declare-fun sc_114 () Real)
 (assert (> sc_114 1e-08))
@@ -1714,23 +1714,23 @@
 (assert (> sc_115 1e-08))
 (declare-fun of_115 () Real)
 ; 
-; =  {sc.input.V[14].O} {sc.input.V[14].X}
+; =  {sc.input.V[5].O} {sc.input.V[5].X}
 (assert (= sc_115 sc_114))
 ; 
-; =  {of.input.V[14].O} {of.input.V[14].X}
+; =  {of.input.V[5].O} {of.input.V[5].X}
 (assert (= of_115 of_114))
 ; 
-; >=  {((sc.input.V[14].X*3.01029995664)+of.input.V[14].X)} {3300.}
-(assert (<= (+ (* sc_114 3.01029995664) of_114) 3300.))
+; >=  {((sc.input.V[5].X*0.)+of.input.V[5].X)} {3300.}
+(assert (<= (+ (* sc_114 0.) of_114) 3300.))
 ; 
-; <=  {((sc.input.V[14].X*3.01029995664)+of.input.V[14].X)} {0.}
-(assert (>= (+ (* sc_114 3.01029995664) of_114) 0.))
+; <=  {((sc.input.V[5].X*0.)+of.input.V[5].X)} {0.}
+(assert (>= (+ (* sc_114 0.) of_114) 0.))
 ; 
-; >=  {((sc.input.V[14].O*3.01029995664)+of.input.V[14].O)} {3300.}
-(assert (<= (+ (* sc_115 3.01029995664) of_115) 3300.))
+; >=  {((sc.input.V[5].O*0.)+of.input.V[5].O)} {3300.}
+(assert (<= (+ (* sc_115 0.) of_115) 3300.))
 ; 
-; <=  {((sc.input.V[14].O*3.01029995664)+of.input.V[14].O)} {0.}
-(assert (>= (+ (* sc_115 3.01029995664) of_115) 0.))
+; <=  {((sc.input.V[5].O*0.)+of.input.V[5].O)} {0.}
+(assert (>= (+ (* sc_115 0.) of_115) 0.))
 (declare-fun sc_116 () Real)
 (assert (> sc_116 1e-08))
 (declare-fun of_116 () Real)
@@ -1738,23 +1738,23 @@
 (assert (> sc_117 1e-08))
 (declare-fun of_117 () Real)
 ; 
-; =  {sc.input.V[16].O} {sc.input.V[16].X}
+; =  {sc.input.V[1].O} {sc.input.V[1].X}
 (assert (= sc_117 sc_116))
 ; 
-; =  {of.input.V[16].O} {of.input.V[16].X}
+; =  {of.input.V[1].O} {of.input.V[1].X}
 (assert (= of_117 of_116))
 ; 
-; >=  {((sc.input.V[16].X*20.)+of.input.V[16].X)} {3300.}
-(assert (<= (+ (* sc_116 20.) of_116) 3300.))
+; >=  {((sc.input.V[1].X*2.)+of.input.V[1].X)} {3300.}
+(assert (<= (+ (* sc_116 2.) of_116) 3300.))
 ; 
-; <=  {((sc.input.V[16].X*20.)+of.input.V[16].X)} {0.}
-(assert (>= (+ (* sc_116 20.) of_116) 0.))
+; <=  {((sc.input.V[1].X*2.)+of.input.V[1].X)} {0.}
+(assert (>= (+ (* sc_116 2.) of_116) 0.))
 ; 
-; >=  {((sc.input.V[16].O*20.)+of.input.V[16].O)} {3300.}
-(assert (<= (+ (* sc_117 20.) of_117) 3300.))
+; >=  {((sc.input.V[1].O*2.)+of.input.V[1].O)} {3300.}
+(assert (<= (+ (* sc_117 2.) of_117) 3300.))
 ; 
-; <=  {((sc.input.V[16].O*20.)+of.input.V[16].O)} {0.}
-(assert (>= (+ (* sc_117 20.) of_117) 0.))
+; <=  {((sc.input.V[1].O*2.)+of.input.V[1].O)} {0.}
+(assert (>= (+ (* sc_117 2.) of_117) 0.))
 (declare-fun sc_118 () Real)
 (assert (> sc_118 1e-08))
 (declare-fun of_118 () Real)
@@ -1762,597 +1762,444 @@
 (assert (> sc_119 1e-08))
 (declare-fun of_119 () Real)
 ; 
-; =  {sc.input.V[3].O} {sc.input.V[3].X}
+; =  {sc.input.V[17].O} {sc.input.V[17].X}
 (assert (= sc_119 sc_118))
 ; 
-; =  {of.input.V[3].O} {of.input.V[3].X}
+; =  {of.input.V[17].O} {of.input.V[17].X}
 (assert (= of_119 of_118))
 ; 
-; >=  {((sc.input.V[3].X*60.)+of.input.V[3].X)} {3300.}
-(assert (<= (+ (* sc_118 60.) of_118) 3300.))
+; >=  {((sc.input.V[17].X*3.01029995664)+of.input.V[17].X)} {3300.}
+(assert (<= (+ (* sc_118 3.01029995664) of_118) 3300.))
 ; 
-; <=  {((sc.input.V[3].X*60.)+of.input.V[3].X)} {0.}
-(assert (>= (+ (* sc_118 60.) of_118) 0.))
+; <=  {((sc.input.V[17].X*3.01029995664)+of.input.V[17].X)} {0.}
+(assert (>= (+ (* sc_118 3.01029995664) of_118) 0.))
 ; 
-; >=  {((sc.input.V[3].O*60.)+of.input.V[3].O)} {3300.}
-(assert (<= (+ (* sc_119 60.) of_119) 3300.))
+; >=  {((sc.input.V[17].O*3.01029995664)+of.input.V[17].O)} {3300.}
+(assert (<= (+ (* sc_119 3.01029995664) of_119) 3300.))
 ; 
-; <=  {((sc.input.V[3].O*60.)+of.input.V[3].O)} {0.}
-(assert (>= (+ (* sc_119 60.) of_119) 0.))
+; <=  {((sc.input.V[17].O*3.01029995664)+of.input.V[17].O)} {0.}
+(assert (>= (+ (* sc_119 3.01029995664) of_119) 0.))
 (declare-fun sc_120 () Real)
 (assert (> sc_120 1e-08))
 (declare-fun of_120 () Real)
 (declare-fun sc_121 () Real)
 (assert (> sc_121 1e-08))
 (declare-fun of_121 () Real)
-; 
-; =  {sc.input.V[4].O} {sc.input.V[4].X}
-(assert (= sc_121 sc_120))
-; 
-; =  {of.input.V[4].O} {of.input.V[4].X}
-(assert (= of_121 of_120))
-; 
-; >=  {((sc.input.V[4].X*1.5)+of.input.V[4].X)} {3300.}
-(assert (<= (+ (* sc_120 1.5) of_120) 3300.))
-; 
-; <=  {((sc.input.V[4].X*1.5)+of.input.V[4].X)} {0.}
-(assert (>= (+ (* sc_120 1.5) of_120) 0.))
-; 
-; >=  {((sc.input.V[4].O*1.5)+of.input.V[4].O)} {3300.}
-(assert (<= (+ (* sc_121 1.5) of_121) 3300.))
-; 
-; <=  {((sc.input.V[4].O*1.5)+of.input.V[4].O)} {0.}
-(assert (>= (+ (* sc_121 1.5) of_121) 0.))
 (declare-fun sc_122 () Real)
 (assert (> sc_122 1e-08))
 (declare-fun of_122 () Real)
+; no offset
+(assert (= of_121 0.))
+; no offset
+(assert (= of_120 0.))
+; 
+; =  {sc.itov[9].Y} {(sc.itov[9].K*sc.itov[9].X)}
+(assert (= sc_122 (* sc_121 sc_120)))
+; 
+; =  {of.itov[9].Y} {0.}
+(assert (= of_122 0.))
+(declare-fun slbot_120_1 () Real)
+(assert (<= slbot_120_1 1e-08))
+(declare-fun sltop_120_1 () Real)
+(assert (>= sltop_120_1 1e-08))
+; 
+; =  {(((sc.itov[9].X*0.)+of.itov[9].X)+sl.min.itov[9].X.1)} {0.}
+(assert (= (+ (+ (* sc_120 0.) of_120) slbot_120_1) 0.))
+; 
+; =  {(((sc.itov[9].X*30.)+of.itov[9].X)+sl.max.itov[9].X.1)} {10.}
+(assert (= (+ (+ (* sc_120 30.) of_120) sltop_120_1) 10.))
+(declare-fun slbot_122_1 () Real)
+(assert (<= slbot_122_1 1e-08))
+(declare-fun sltop_122_1 () Real)
+(assert (>= sltop_122_1 1e-08))
+; 
+; =  {(((sc.itov[9].Y*0.)+of.itov[9].Y)+sl.min.itov[9].Y.1)} {0.}
+(assert (= (+ (+ (* sc_122 0.) of_122) slbot_122_1) 0.))
+; 
+; =  {(((sc.itov[9].Y*90.3089986992)+of.itov[9].Y)+sl.max.itov[9].Y.1)} {3300.}
+(assert (= (+ (+ (* sc_122 90.3089986992) of_122) sltop_122_1) 3300.))
+; 
+; >=  {((sc.itov[9].K*3.01029995664)+of.itov[9].K)} {330.}
+(assert (<= (+ (* sc_121 3.01029995664) of_121) 330.))
+; 
+; <=  {((sc.itov[9].K*3.01029995664)+of.itov[9].K)} {1.}
+(assert (>= (+ (* sc_121 3.01029995664) of_121) 1.))
+(declare-fun slbot_122_1 () Real)
+(assert (<= slbot_122_1 1e-08))
+(declare-fun sltop_122_1 () Real)
+(assert (>= sltop_122_1 1e-08))
+; 
+; =  {(((sc.itov[9].Y*0.)+of.itov[9].Y)+sl.min.itov[9].Y.1)} {0.}
+(assert (= (+ (+ (* sc_122 0.) of_122) slbot_122_1) 0.))
+; 
+; =  {(((sc.itov[9].Y*90.3089986992)+of.itov[9].Y)+sl.max.itov[9].Y.1)} {3300.}
+(assert (= (+ (+ (* sc_122 90.3089986992) of_122) sltop_122_1) 3300.))
 (declare-fun sc_123 () Real)
 (assert (> sc_123 1e-08))
 (declare-fun of_123 () Real)
-; 
-; =  {sc.input.V[5].O} {sc.input.V[5].X}
-(assert (= sc_123 sc_122))
-; 
-; =  {of.input.V[5].O} {of.input.V[5].X}
-(assert (= of_123 of_122))
-; 
-; >=  {((sc.input.V[5].X*0.)+of.input.V[5].X)} {3300.}
-(assert (<= (+ (* sc_122 0.) of_122) 3300.))
-; 
-; <=  {((sc.input.V[5].X*0.)+of.input.V[5].X)} {0.}
-(assert (>= (+ (* sc_122 0.) of_122) 0.))
-; 
-; >=  {((sc.input.V[5].O*0.)+of.input.V[5].O)} {3300.}
-(assert (<= (+ (* sc_123 0.) of_123) 3300.))
-; 
-; <=  {((sc.input.V[5].O*0.)+of.input.V[5].O)} {0.}
-(assert (>= (+ (* sc_123 0.) of_123) 0.))
 (declare-fun sc_124 () Real)
 (assert (> sc_124 1e-08))
 (declare-fun of_124 () Real)
 (declare-fun sc_125 () Real)
 (assert (> sc_125 1e-08))
 (declare-fun of_125 () Real)
-; 
-; =  {sc.input.V[1].O} {sc.input.V[1].X}
-(assert (= sc_125 sc_124))
-; 
-; =  {of.input.V[1].O} {of.input.V[1].X}
-(assert (= of_125 of_124))
-; 
-; >=  {((sc.input.V[1].X*2.)+of.input.V[1].X)} {3300.}
-(assert (<= (+ (* sc_124 2.) of_124) 3300.))
-; 
-; <=  {((sc.input.V[1].X*2.)+of.input.V[1].X)} {0.}
-(assert (>= (+ (* sc_124 2.) of_124) 0.))
-; 
-; >=  {((sc.input.V[1].O*2.)+of.input.V[1].O)} {3300.}
-(assert (<= (+ (* sc_125 2.) of_125) 3300.))
-; 
-; <=  {((sc.input.V[1].O*2.)+of.input.V[1].O)} {0.}
-(assert (>= (+ (* sc_125 2.) of_125) 0.))
-(declare-fun sc_126 () Real)
-(assert (> sc_126 1e-08))
-(declare-fun of_126 () Real)
-(declare-fun sc_127 () Real)
-(assert (> sc_127 1e-08))
-(declare-fun of_127 () Real)
-(declare-fun sc_128 () Real)
-(assert (> sc_128 1e-08))
-(declare-fun of_128 () Real)
 ; no offset
-(assert (= of_127 0.))
+(assert (= of_124 0.))
 ; no offset
-(assert (= of_126 0.))
+(assert (= of_123 0.))
 ; 
-; =  {sc.itov[8].Y} {(sc.itov[8].K*sc.itov[8].X)}
-(assert (= sc_128 (* sc_127 sc_126)))
+; =  {sc.itov[4].Y} {(sc.itov[4].K*sc.itov[4].X)}
+(assert (= sc_125 (* sc_124 sc_123)))
 ; 
-; =  {of.itov[8].Y} {0.}
-(assert (= of_128 0.))
-(declare-fun slbot_126_1 () Real)
-(assert (<= slbot_126_1 1e-08))
-(declare-fun sltop_126_1 () Real)
-(assert (>= sltop_126_1 1e-08))
+; =  {of.itov[4].Y} {0.}
+(assert (= of_125 0.))
+(declare-fun slbot_123_1 () Real)
+(assert (<= slbot_123_1 1e-08))
+(declare-fun sltop_123_1 () Real)
+(assert (>= sltop_123_1 1e-08))
 ; 
-; =  {(((sc.itov[8].X*0.)+of.itov[8].X)+sl.min.itov[8].X.1)} {0.}
-(assert (= (+ (+ (* sc_126 0.) of_126) slbot_126_1) 0.))
+; =  {(((sc.itov[4].X*0.)+of.itov[4].X)+sl.min.itov[4].X.1)} {0.}
+(assert (= (+ (+ (* sc_123 0.) of_123) slbot_123_1) 0.))
 ; 
-; =  {(((sc.itov[8].X*30.)+of.itov[8].X)+sl.max.itov[8].X.1)} {10.}
-(assert (= (+ (+ (* sc_126 30.) of_126) sltop_126_1) 10.))
-(declare-fun slbot_128_1 () Real)
-(assert (<= slbot_128_1 1e-08))
-(declare-fun sltop_128_1 () Real)
-(assert (>= sltop_128_1 1e-08))
+; =  {(((sc.itov[4].X*30.)+of.itov[4].X)+sl.max.itov[4].X.1)} {10.}
+(assert (= (+ (+ (* sc_123 30.) of_123) sltop_123_1) 10.))
+(declare-fun slbot_125_1 () Real)
+(assert (<= slbot_125_1 1e-08))
+(declare-fun sltop_125_1 () Real)
+(assert (>= sltop_125_1 1e-08))
 ; 
-; =  {(((sc.itov[8].Y*0.)+of.itov[8].Y)+sl.min.itov[8].Y.1)} {0.}
-(assert (= (+ (+ (* sc_128 0.) of_128) slbot_128_1) 0.))
+; =  {(((sc.itov[4].Y*0.)+of.itov[4].Y)+sl.min.itov[4].Y.1)} {0.}
+(assert (= (+ (+ (* sc_125 0.) of_125) slbot_125_1) 0.))
 ; 
-; =  {(((sc.itov[8].Y*90.3089986992)+of.itov[8].Y)+sl.max.itov[8].Y.1)} {3300.}
-(assert (= (+ (+ (* sc_128 90.3089986992) of_128) sltop_128_1) 3300.))
+; =  {(((sc.itov[4].Y*90.3089986992)+of.itov[4].Y)+sl.max.itov[4].Y.1)} {3300.}
+(assert (= (+ (+ (* sc_125 90.3089986992) of_125) sltop_125_1) 3300.))
 ; 
-; >=  {((sc.itov[8].K*3.01029995664)+of.itov[8].K)} {330.}
-(assert (<= (+ (* sc_127 3.01029995664) of_127) 330.))
+; >=  {((sc.itov[4].K*3.01029995664)+of.itov[4].K)} {330.}
+(assert (<= (+ (* sc_124 3.01029995664) of_124) 330.))
 ; 
-; <=  {((sc.itov[8].K*3.01029995664)+of.itov[8].K)} {1.}
-(assert (>= (+ (* sc_127 3.01029995664) of_127) 1.))
-(declare-fun slbot_128_1 () Real)
-(assert (<= slbot_128_1 1e-08))
-(declare-fun sltop_128_1 () Real)
-(assert (>= sltop_128_1 1e-08))
+; <=  {((sc.itov[4].K*3.01029995664)+of.itov[4].K)} {1.}
+(assert (>= (+ (* sc_124 3.01029995664) of_124) 1.))
+(declare-fun slbot_125_1 () Real)
+(assert (<= slbot_125_1 1e-08))
+(declare-fun sltop_125_1 () Real)
+(assert (>= sltop_125_1 1e-08))
 ; 
-; =  {(((sc.itov[8].Y*0.)+of.itov[8].Y)+sl.min.itov[8].Y.1)} {0.}
-(assert (= (+ (+ (* sc_128 0.) of_128) slbot_128_1) 0.))
+; =  {(((sc.itov[4].Y*0.)+of.itov[4].Y)+sl.min.itov[4].Y.1)} {0.}
+(assert (= (+ (+ (* sc_125 0.) of_125) slbot_125_1) 0.))
 ; 
-; =  {(((sc.itov[8].Y*90.3089986992)+of.itov[8].Y)+sl.max.itov[8].Y.1)} {3300.}
-(assert (= (+ (+ (* sc_128 90.3089986992) of_128) sltop_128_1) 3300.))
-(declare-fun sc_129 () Real)
-(assert (> sc_129 1e-08))
-(declare-fun of_129 () Real)
-(declare-fun sc_130 () Real)
-(assert (> sc_130 1e-08))
-(declare-fun of_130 () Real)
-(declare-fun sc_131 () Real)
-(assert (> sc_131 1e-08))
-(declare-fun of_131 () Real)
-; no offset
-(assert (= of_130 0.))
-; no offset
-(assert (= of_129 0.))
+; =  {(((sc.itov[4].Y*90.3089986992)+of.itov[4].Y)+sl.max.itov[4].Y.1)} {3300.}
+(assert (= (+ (+ (* sc_125 90.3089986992) of_125) sltop_125_1) 3300.))
 ; 
-; =  {sc.itov[1].Y} {(sc.itov[1].K*sc.itov[1].X)}
-(assert (= sc_131 (* sc_130 sc_129)))
+; =  {sc.vdadd[3].OUT} {sc.ihill_rep[1].S}
+(assert (= sc_42 sc_14))
 ; 
-; =  {of.itov[1].Y} {0.}
-(assert (= of_131 0.))
-(declare-fun slbot_129_1 () Real)
-(assert (<= slbot_129_1 1e-08))
-(declare-fun sltop_129_1 () Real)
-(assert (>= sltop_129_1 1e-08))
+; =  {of.vdadd[3].OUT} {of.ihill_rep[1].S}
+(assert (= of_42 of_14))
 ; 
-; =  {(((sc.itov[1].X*0.)+of.itov[1].X)+sl.min.itov[1].X.1)} {0.}
-(assert (= (+ (+ (* sc_129 0.) of_129) slbot_129_1) 0.))
-; 
-; =  {(((sc.itov[1].X*30.)+of.itov[1].X)+sl.max.itov[1].X.1)} {10.}
-(assert (= (+ (+ (* sc_129 30.) of_129) sltop_129_1) 10.))
-(declare-fun slbot_131_1 () Real)
-(assert (<= slbot_131_1 1e-08))
-(declare-fun sltop_131_1 () Real)
-(assert (>= sltop_131_1 1e-08))
-; 
-; =  {(((sc.itov[1].Y*0.)+of.itov[1].Y)+sl.min.itov[1].Y.1)} {0.}
-(assert (= (+ (+ (* sc_131 0.) of_131) slbot_131_1) 0.))
-; 
-; =  {(((sc.itov[1].Y*90.3089986992)+of.itov[1].Y)+sl.max.itov[1].Y.1)} {3300.}
-(assert (= (+ (+ (* sc_131 90.3089986992) of_131) sltop_131_1) 3300.))
-; 
-; >=  {((sc.itov[1].K*3.01029995664)+of.itov[1].K)} {330.}
-(assert (<= (+ (* sc_130 3.01029995664) of_130) 330.))
-; 
-; <=  {((sc.itov[1].K*3.01029995664)+of.itov[1].K)} {1.}
-(assert (>= (+ (* sc_130 3.01029995664) of_130) 1.))
-(declare-fun slbot_131_1 () Real)
-(assert (<= slbot_131_1 1e-08))
-(declare-fun sltop_131_1 () Real)
-(assert (>= sltop_131_1 1e-08))
-; 
-; =  {(((sc.itov[1].Y*0.)+of.itov[1].Y)+sl.min.itov[1].Y.1)} {0.}
-(assert (= (+ (+ (* sc_131 0.) of_131) slbot_131_1) 0.))
-; 
-; =  {(((sc.itov[1].Y*90.3089986992)+of.itov[1].Y)+sl.max.itov[1].Y.1)} {3300.}
-(assert (= (+ (+ (* sc_131 90.3089986992) of_131) sltop_131_1) 3300.))
-(declare-fun sc_132 () Real)
-(assert (> sc_132 1e-08))
-(declare-fun of_132 () Real)
-(declare-fun sc_133 () Real)
-(assert (> sc_133 1e-08))
-(declare-fun of_133 () Real)
-(declare-fun sc_134 () Real)
-(assert (> sc_134 1e-08))
-(declare-fun of_134 () Real)
-(declare-fun sc_135 () Real)
-(assert (> sc_135 1e-08))
-(declare-fun of_135 () Real)
-(declare-fun sc_136 () Real)
-(assert (> sc_136 1e-08))
-(declare-fun of_136 () Real)
-; 
-; =  {sc.iadd[0].A} {sc.iadd[0].B}
-(assert (= sc_134 sc_135))
-; 
-; =  {sc.iadd[0].A} {sc.iadd[0].C} {sc.iadd[0].D}
-(assert (and (= sc_134 sc_133) (= sc_134 sc_132)))
-; 
-; =  {sc.iadd[0].OUT} {sc.iadd[0].A}
-(assert (= sc_136 sc_134))
-; 
-; =  {of.iadd[0].OUT} {((of.iadd[0].A+of.iadd[0].B)-of.iadd[0].C-of.iadd[0].D)}
-(assert (= of_136 (- (+ of_134 of_135) (+ of_133 of_132))))
-; 
-; >=  {((sc.iadd[0].D*0.)+of.iadd[0].D)} {5.}
-(assert (<= (+ (* sc_132 0.) of_132) 5.))
-; 
-; <=  {((sc.iadd[0].D*0.)+of.iadd[0].D)} {0.}
-(assert (>= (+ (* sc_132 0.) of_132) 0.))
-; 
-; >=  {((sc.iadd[0].C*0.)+of.iadd[0].C)} {5.}
-(assert (<= (+ (* sc_133 0.) of_133) 5.))
-; 
-; <=  {((sc.iadd[0].C*0.)+of.iadd[0].C)} {0.}
-(assert (>= (+ (* sc_133 0.) of_133) 0.))
-; 
-; >=  {((sc.iadd[0].A*3.01029995664)+of.iadd[0].A)} {5.}
-(assert (<= (+ (* sc_134 3.01029995664) of_134) 5.))
-; 
-; <=  {((sc.iadd[0].A*3.01029995664)+of.iadd[0].A)} {0.}
-(assert (>= (+ (* sc_134 3.01029995664) of_134) 0.))
-; 
-; >=  {((sc.iadd[0].B*0.)+of.iadd[0].B)} {5.}
-(assert (<= (+ (* sc_135 0.) of_135) 5.))
-; 
-; <=  {((sc.iadd[0].B*0.)+of.iadd[0].B)} {0.}
-(assert (>= (+ (* sc_135 0.) of_135) 0.))
-; 
-; >=  {((sc.iadd[0].OUT*3.01029995664)+of.iadd[0].OUT)} {10.}
-(assert (<= (+ (* sc_136 3.01029995664) of_136) 10.))
-; 
-; <=  {((sc.iadd[0].OUT*3.01029995664)+of.iadd[0].OUT)} {-10.}
-(assert (>= (+ (* sc_136 3.01029995664) of_136) -10.))
-; 
-; =  {sc.vdadd[3].OUT} {sc.output.V[0].X}
+; =  {sc.vdadd[3].OUT} {sc.output.V[1].X}
 (assert (= sc_42 sc_82))
 ; 
-; =  {of.vdadd[3].OUT} {of.output.V[0].X}
+; =  {of.vdadd[3].OUT} {of.output.V[1].X}
 (assert (= of_42 of_82))
 ; 
-; =  {sc.vdadd[3].OUT} {sc.itov[1].X}
-(assert (= sc_42 sc_129))
+; =  {sc.input.I[6].O} {sc.vdadd[0].D}
+(assert (= sc_63 sc_23))
 ; 
-; =  {of.vdadd[3].OUT} {of.itov[1].X}
-(assert (= of_42 of_129))
+; =  {of.input.I[6].O} {of.vdadd[0].D}
+(assert (= of_63 of_23))
 ; 
-; =  {sc.input.I[6].O} {sc.vdadd[3].D}
-(assert (= sc_65 sc_38))
+; =  {sc.input.V[17].O} {sc.itov[4].K}
+(assert (= sc_119 sc_124))
 ; 
-; =  {of.input.I[6].O} {of.vdadd[3].D}
-(assert (= of_65 of_38))
+; =  {of.input.V[17].O} {of.itov[4].K}
+(assert (= of_119 of_124))
 ; 
-; =  {sc.vdadd[5].OUT} {sc.output.V[1].X}
-(assert (= sc_47 sc_90))
-; 
-; =  {of.vdadd[5].OUT} {of.output.V[1].X}
-(assert (= of_47 of_90))
-; 
-; =  {sc.vdadd[5].OUT} {sc.ihill_rep[0].S}
+; =  {sc.vdadd[5].OUT} {sc.ihill_rep[7].S}
 (assert (= sc_47 sc_4))
 ; 
-; =  {of.vdadd[5].OUT} {of.ihill_rep[0].S}
+; =  {of.vdadd[5].OUT} {of.ihill_rep[7].S}
 (assert (= of_47 of_4))
 ; 
-; =  {sc.input.I[0].O} {sc.ihill_rep[0].Km}
-(assert (= sc_59 sc_5))
+; =  {sc.vdadd[5].OUT} {sc.output.V[5].X}
+(assert (= sc_47 sc_80))
 ; 
-; =  {of.input.I[0].O} {of.ihill_rep[0].Km}
-(assert (= of_59 of_5))
+; =  {of.vdadd[5].OUT} {of.output.V[5].X}
+(assert (= of_47 of_80))
 ; 
-; =  {sc.vdadd[7].OUT} {sc.itov[8].X}
-(assert (= sc_27 sc_126))
+; =  {sc.input.I[0].O} {sc.ihill_rep[1].Km}
+(assert (= sc_57 sc_15))
 ; 
-; =  {of.vdadd[7].OUT} {of.itov[8].X}
-(assert (= of_27 of_126))
+; =  {of.input.I[0].O} {of.ihill_rep[1].Km}
+(assert (= of_57 of_15))
 ; 
-; =  {sc.vdadd[7].OUT} {sc.output.V[3].X}
-(assert (= sc_27 sc_84))
+; =  {sc.input.V[9].O} {sc.vdadd[6].OUT_0}
+(assert (= sc_95 sc_34))
 ; 
-; =  {of.vdadd[7].OUT} {of.output.V[3].X}
-(assert (= of_27 of_84))
+; =  {of.input.V[9].O} {of.vdadd[6].OUT_0}
+(assert (= of_95 of_34))
 ; 
-; =  {sc.input.V[9].O} {sc.vdadd[7].OUT_0}
-(assert (= sc_103 sc_24))
+; =  {sc.input.V[15].O} {sc.vgain[2].X}
+(assert (= sc_103 sc_0))
 ; 
-; =  {of.input.V[9].O} {of.vdadd[7].OUT_0}
-(assert (= of_103 of_24))
+; =  {of.input.V[15].O} {of.vgain[2].X}
+(assert (= of_103 of_0))
 ; 
-; =  {sc.itov[1].Y} {sc.vdadd[2].A}
-(assert (= sc_131 sc_20))
+; =  {sc.vdadd[10].OUT} {sc.output.V[4].X}
+(assert (= sc_32 sc_78))
 ; 
-; =  {of.itov[1].Y} {of.vdadd[2].A}
-(assert (= of_131 of_20))
+; =  {of.vdadd[10].OUT} {of.output.V[4].X}
+(assert (= of_32 of_78))
 ; 
-; =  {sc.input.V[15].O} {sc.itov[8].K}
-(assert (= sc_111 sc_127))
-; 
-; =  {of.input.V[15].O} {of.itov[8].K}
-(assert (= of_111 of_127))
-; 
-; =  {sc.input.I[18].O} {sc.iadd[0].D}
-(assert (= sc_79 sc_132))
-; 
-; =  {of.input.I[18].O} {of.iadd[0].D}
-(assert (= of_79 of_132))
-; 
-; =  {sc.vdadd[10].OUT} {sc.vgain[4].X}
-(assert (= sc_37 sc_0))
-; 
-; =  {of.vdadd[10].OUT} {of.vgain[4].X}
-(assert (= of_37 of_0))
-; 
-; =  {sc.vdadd[10].OUT} {sc.output.V[2].X}
-(assert (= sc_37 sc_80))
-; 
-; =  {of.vdadd[10].OUT} {of.output.V[2].X}
-(assert (= of_37 of_80))
-; 
-; =  {sc.input.I[9].O} {sc.iadd[0].A}
-(assert (= sc_57 sc_134))
-; 
-; =  {of.input.I[9].O} {of.iadd[0].A}
-(assert (= of_57 of_134))
-; 
-; =  {sc.input.I[16].O} {sc.iadd[0].C}
-(assert (= sc_67 sc_133))
-; 
-; =  {of.input.I[16].O} {of.iadd[0].C}
-(assert (= of_67 of_133))
-; 
-; =  {sc.input.V[13].O} {sc.vdadd[2].OUT_0}
-(assert (= sc_99 sc_19))
-; 
-; =  {of.input.V[13].O} {of.vdadd[2].OUT_0}
-(assert (= of_99 of_19))
-; 
-; =  {sc.input.I[3].O} {sc.ihill_rep[0].Vmax}
-(assert (= sc_69 sc_6))
-; 
-; =  {of.input.I[3].O} {of.ihill_rep[0].Vmax}
-(assert (= of_69 of_6))
-; 
-; =  {sc.input.I[4].O} {sc.ihill_rep[11].Vmax}
-(assert (= sc_71 sc_11))
-; 
-; =  {of.input.I[4].O} {of.ihill_rep[11].Vmax}
-(assert (= of_71 of_11))
-; 
-; =  {sc.ihill_rep[11].REP} {sc.vdadd[10].A}
-(assert (= sc_12 sc_35))
-; 
-; =  {of.ihill_rep[11].REP} {of.vdadd[10].A}
-(assert (= of_12 of_35))
-; 
-; =  {sc.input.I[5].O} {sc.ihill_rep[6].Vmax}
-(assert (= sc_73 sc_16))
-; 
-; =  {of.input.I[5].O} {of.ihill_rep[6].Vmax}
-(assert (= of_73 of_16))
-; 
-; =  {sc.input.V[14].O} {sc.itov[1].K}
-(assert (= sc_115 sc_130))
-; 
-; =  {of.input.V[14].O} {of.itov[1].K}
-(assert (= of_115 of_130))
-; 
-; =  {sc.input.V[11].O} {sc.vdadd[10].B}
-(assert (= sc_107 sc_36))
-; 
-; =  {of.input.V[11].O} {of.vdadd[10].B}
-(assert (= of_107 of_36))
-; 
-; =  {sc.itov[8].Y} {sc.vdadd[9].A}
-(assert (= sc_128 sc_30))
-; 
-; =  {of.itov[8].Y} {of.vdadd[9].A}
-(assert (= of_128 of_30))
-; 
-; =  {sc.input.V[12].O} {sc.vdadd[7].B}
-(assert (= sc_101 sc_26))
-; 
-; =  {of.input.V[12].O} {of.vdadd[7].B}
-(assert (= of_101 of_26))
-; 
-; =  {sc.input.V[8].O} {sc.vdadd[3].OUT_0}
-(assert (= sc_95 sc_39))
-; 
-; =  {of.input.V[8].O} {of.vdadd[3].OUT_0}
-(assert (= of_95 of_39))
-; 
-; =  {sc.input.I[2].O} {sc.ihill_rep[6].Km}
-(assert (= sc_49 sc_15))
-; 
-; =  {of.input.I[2].O} {of.ihill_rep[6].Km}
-(assert (= of_49 of_15))
-; 
-; =  {sc.input.V[3].O} {sc.vdadd[5].OUT_0}
-(assert (= sc_119 sc_44))
-; 
-; =  {of.input.V[3].O} {of.vdadd[5].OUT_0}
-(assert (= of_119 of_44))
-; 
-; =  {sc.input.V[2].O} {sc.ihill_rep[6].n}
-(assert (= sc_93 sc_13))
-; 
-; =  {of.input.V[2].O} {of.ihill_rep[6].n}
-(assert (= of_93 of_13))
-; 
-; =  {sc.iadd[0].OUT} {sc.vgain[4].Z}
-(assert (= sc_136 sc_1))
-; 
-; =  {of.iadd[0].OUT} {of.vgain[4].Z}
-(assert (= of_136 of_1))
-; 
-; =  {sc.vdadd[9].OUT} {sc.output.V[4].X}
-(assert (= sc_32 sc_86))
-; 
-; =  {of.vdadd[9].OUT} {of.output.V[4].X}
-(assert (= of_32 of_86))
-; 
-; =  {sc.vdadd[9].OUT} {sc.ihill_rep[11].S}
+; =  {sc.vdadd[10].OUT} {sc.ihill_rep[11].S}
 (assert (= sc_32 sc_9))
 ; 
-; =  {of.vdadd[9].OUT} {of.ihill_rep[11].S}
+; =  {of.vdadd[10].OUT} {of.ihill_rep[11].S}
 (assert (= of_32 of_9))
 ; 
-; =  {sc.input.I[12].O} {sc.vdadd[5].D}
-(assert (= sc_55 sc_43))
+; =  {sc.input.I[9].O} {sc.vdadd[3].D}
+(assert (= sc_55 sc_38))
 ; 
-; =  {of.input.I[12].O} {of.vdadd[5].D}
-(assert (= of_55 of_43))
+; =  {of.input.I[9].O} {of.vdadd[3].D}
+(assert (= of_55 of_38))
 ; 
-; =  {sc.input.I[10].O} {sc.vdadd[2].D}
-(assert (= sc_63 sc_18))
+; =  {sc.ihill_rep[11].REP} {sc.vdadd[0].B}
+(assert (= sc_12 sc_26))
 ; 
-; =  {of.input.I[10].O} {of.vdadd[2].D}
-(assert (= of_63 of_18))
+; =  {of.ihill_rep[11].REP} {of.vdadd[0].B}
+(assert (= of_12 of_26))
 ; 
-; =  {sc.vdadd[2].OUT} {sc.ihill_rep[6].S}
-(assert (= sc_22 sc_14))
+; =  {sc.input.I[3].O} {sc.ihill_rep[1].Vmax}
+(assert (= sc_65 sc_16))
 ; 
-; =  {of.vdadd[2].OUT} {of.ihill_rep[6].S}
-(assert (= of_22 of_14))
+; =  {of.input.I[3].O} {of.ihill_rep[1].Vmax}
+(assert (= of_65 of_16))
 ; 
-; =  {sc.vdadd[2].OUT} {sc.output.V[5].X}
-(assert (= sc_22 sc_88))
+; =  {sc.input.I[4].O} {sc.ihill_rep[11].Vmax}
+(assert (= sc_67 sc_11))
 ; 
-; =  {of.vdadd[2].OUT} {of.output.V[5].X}
-(assert (= of_22 of_88))
+; =  {of.input.I[4].O} {of.ihill_rep[11].Vmax}
+(assert (= of_67 of_11))
+; 
+; =  {sc.vdadd[6].OUT} {sc.output.V[0].X}
+(assert (= sc_37 sc_74))
+; 
+; =  {of.vdadd[6].OUT} {of.output.V[0].X}
+(assert (= of_37 of_74))
+; 
+; =  {sc.vdadd[6].OUT} {sc.itov[4].X}
+(assert (= sc_37 sc_123))
+; 
+; =  {of.vdadd[6].OUT} {of.itov[4].X}
+(assert (= of_37 of_123))
+; 
+; =  {sc.input.V[13].O} {sc.vdadd[8].B}
+(assert (= sc_91 sc_21))
+; 
+; =  {of.input.V[13].O} {of.vdadd[8].B}
+(assert (= of_91 of_21))
+; 
+; =  {sc.input.I[5].O} {sc.ihill_rep[7].Vmax}
+(assert (= sc_69 sc_6))
+; 
+; =  {of.input.I[5].O} {of.ihill_rep[7].Vmax}
+(assert (= of_69 of_6))
+; 
+; =  {sc.input.V[14].O} {sc.vdadd[6].B}
+(assert (= sc_107 sc_36))
+; 
+; =  {of.input.V[14].O} {of.vdadd[6].B}
+(assert (= of_107 of_36))
+; 
+; =  {sc.vdadd[0].OUT} {sc.output.V[2].X}
+(assert (= sc_27 sc_72))
+; 
+; =  {of.vdadd[0].OUT} {of.output.V[2].X}
+(assert (= of_27 of_72))
+; 
+; =  {sc.vdadd[0].OUT} {sc.vgain[2].Z}
+(assert (= sc_27 sc_1))
+; 
+; =  {of.vdadd[0].OUT} {of.vgain[2].Z}
+(assert (= of_27 of_1))
+; 
+; =  {sc.input.V[11].O} {sc.vdadd[8].OUT_0}
+(assert (= sc_99 sc_19))
+; 
+; =  {of.input.V[11].O} {of.vdadd[8].OUT_0}
+(assert (= of_99 of_19))
+; 
+; =  {sc.input.V[8].O} {sc.vdadd[5].OUT_0}
+(assert (= sc_87 sc_44))
+; 
+; =  {of.input.V[8].O} {of.vdadd[5].OUT_0}
+(assert (= of_87 of_44))
+; 
+; =  {sc.input.I[2].O} {sc.ihill_rep[7].Km}
+(assert (= sc_49 sc_5))
+; 
+; =  {of.input.I[2].O} {of.ihill_rep[7].Km}
+(assert (= of_49 of_5))
+; 
+; =  {sc.input.V[12].O} {sc.vdadd[0].A}
+(assert (= sc_93 sc_25))
+; 
+; =  {of.input.V[12].O} {of.vdadd[0].A}
+(assert (= of_93 of_25))
+; 
+; =  {sc.input.V[3].O} {sc.vdadd[3].B}
+(assert (= sc_111 sc_41))
+; 
+; =  {of.input.V[3].O} {of.vdadd[3].B}
+(assert (= of_111 of_41))
+; 
+; =  {sc.input.V[2].O} {sc.ihill_rep[7].n}
+(assert (= sc_85 sc_3))
+; 
+; =  {of.input.V[2].O} {of.ihill_rep[7].n}
+(assert (= of_85 of_3))
 ; 
 ; =  {sc.input.I[1].O} {sc.ihill_rep[11].Km}
-(assert (= sc_75 sc_10))
+(assert (= sc_71 sc_10))
 ; 
 ; =  {of.input.I[1].O} {of.ihill_rep[11].Km}
-(assert (= of_75 of_10))
+(assert (= of_71 of_10))
 ; 
-; =  {sc.input.V[1].O} {sc.ihill_rep[11].n}
-(assert (= sc_125 sc_8))
+; =  {sc.ihill_rep[7].REP} {sc.vdadd[8].A}
+(assert (= sc_7 sc_20))
 ; 
-; =  {of.input.V[1].O} {of.ihill_rep[11].n}
-(assert (= of_125 of_8))
+; =  {of.ihill_rep[7].REP} {of.vdadd[8].A}
+(assert (= of_7 of_20))
 ; 
-; =  {sc.input.I[7].O} {sc.vdadd[10].D}
-(assert (= sc_53 sc_33))
-; 
-; =  {of.input.I[7].O} {of.vdadd[10].D}
-(assert (= of_53 of_33))
-; 
-; =  {sc.input.I[17].O} {sc.iadd[0].B}
-(assert (= sc_77 sc_135))
-; 
-; =  {of.input.I[17].O} {of.iadd[0].B}
-(assert (= of_77 of_135))
-; 
-; =  {sc.ihill_rep[0].REP} {sc.vdadd[3].A}
-(assert (= sc_7 sc_40))
-; 
-; =  {of.ihill_rep[0].REP} {of.vdadd[3].A}
-(assert (= of_7 of_40))
-; 
-; =  {sc.input.V[7].O} {sc.vdadd[5].B}
-(assert (= sc_97 sc_46))
-; 
-; =  {of.input.V[7].O} {of.vdadd[5].B}
-(assert (= of_97 of_46))
-; 
-; =  {sc.input.I[8].O} {sc.vdadd[7].D}
-(assert (= sc_51 sc_23))
-; 
-; =  {of.input.I[8].O} {of.vdadd[7].D}
-(assert (= of_51 of_23))
-; 
-; =  {sc.vgain[4].P} {sc.vdadd[5].A}
-(assert (= sc_2 sc_45))
-; 
-; =  {of.vgain[4].P} {of.vdadd[5].A}
-(assert (= of_2 of_45))
-; 
-; =  {sc.input.V[0].O} {sc.ihill_rep[0].n}
-(assert (= sc_105 sc_3))
-; 
-; =  {of.input.V[0].O} {of.ihill_rep[0].n}
-(assert (= of_105 of_3))
-; 
-; =  {sc.input.V[10].O} {sc.vdadd[3].B}
-(assert (= sc_109 sc_41))
-; 
-; =  {of.input.V[10].O} {of.vdadd[3].B}
-(assert (= of_109 of_41))
-; 
-; =  {sc.input.V[16].O} {sc.vdadd[9].OUT_0}
-(assert (= sc_117 sc_29))
-; 
-; =  {of.input.V[16].O} {of.vdadd[9].OUT_0}
-(assert (= of_117 of_29))
-; 
-; =  {sc.input.V[4].O} {sc.vdadd[10].OUT_0}
-(assert (= sc_121 sc_34))
-; 
-; =  {of.input.V[4].O} {of.vdadd[10].OUT_0}
-(assert (= of_121 of_34))
-; 
-; =  {sc.input.V[5].O} {sc.vdadd[2].B}
-(assert (= sc_123 sc_21))
-; 
-; =  {of.input.V[5].O} {of.vdadd[2].B}
-(assert (= of_123 of_21))
-; 
-; =  {sc.ihill_rep[6].REP} {sc.vdadd[7].A}
-(assert (= sc_17 sc_25))
-; 
-; =  {of.ihill_rep[6].REP} {of.vdadd[7].A}
-(assert (= of_17 of_25))
-; 
-; =  {sc.input.V[6].O} {sc.vdadd[9].B}
-(assert (= sc_113 sc_31))
-; 
-; =  {of.input.V[6].O} {of.vdadd[9].B}
-(assert (= of_113 of_31))
-; 
-; =  {sc.input.I[11].O} {sc.vdadd[9].D}
+; =  {sc.input.I[10].O} {sc.vdadd[10].D}
 (assert (= sc_61 sc_28))
 ; 
-; =  {of.input.I[11].O} {of.vdadd[9].D}
+; =  {of.input.I[10].O} {of.vdadd[10].D}
 (assert (= of_61 of_28))
-(assert (<= (/ 1 sc_83) 100.))
-(assert (<= (* sc_83 1) 100.))
-(assert (not (= 1. sc_83)))
-(assert (<= (/ 1 sc_91) 100.))
-(assert (<= (* sc_91 1) 100.))
-(assert (not (= 1. sc_91)))
-(assert (<= (/ 1 sc_81) 100.))
-(assert (<= (* sc_81 1) 100.))
-(assert (not (= 1. sc_81)))
-(assert (<= (/ 1 sc_85) 100.))
-(assert (<= (* sc_85 1) 100.))
-(assert (not (= 1. sc_85)))
-(assert (<= (/ 1 sc_87) 100.))
-(assert (<= (* sc_87 1) 100.))
-(assert (not (= 1. sc_87)))
-(assert (<= (/ 1 sc_89) 100.))
-(assert (<= (* sc_89 1) 100.))
-(assert (not (= 1. sc_89)))
-(assert (not (= 1. sc_7)))
-(assert (not (= 1. sc_12)))
-(assert (not (= 1. sc_17)))
 ; 
-; =  {sc.vdadd[3].OUT} {sc.output.V[0].O} {sc.vdadd[5].OUT} {sc.output.V[1].O} {sc.vdadd[10].OUT} {sc.output.V[2].O} {sc.vdadd[7].OUT} {sc.output.V[3].O} {sc.vdadd[9].OUT} {sc.output.V[4].O} {sc.vdadd[2].OUT} {sc.output.V[5].O}
-(assert (and (and (and (and (and (and (and (and (and (and (= sc_42 sc_83) (= sc_42 sc_47)) (= sc_42 sc_91)) (= sc_42 sc_37)) (= sc_42 sc_81)) (= sc_42 sc_27)) (= sc_42 sc_85)) (= sc_42 sc_32)) (= sc_42 sc_87)) (= sc_42 sc_22)) (= sc_42 sc_89)))
-(assert (= __minima__ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (ite (>= slbot_91_1 0.) slbot_91_1 (- slbot_91_1)) (ite (>= sltop_17_1 0.) sltop_17_1 (- sltop_17_1))) (ite (>= slbot_27_1 0.) slbot_27_1 (- slbot_27_1))) (ite (>= slbot_7_1 0.) slbot_7_1 (- slbot_7_1))) (ite (>= slbot_84_1 0.) slbot_84_1 (- slbot_84_1))) (ite (>= slbot_37_1 0.) slbot_37_1 (- slbot_37_1))) (ite (>= sltop_37_1 0.) sltop_37_1 (- sltop_37_1))) (ite (>= sltop_88_1 0.) sltop_88_1 (- sltop_88_1))) (ite (>= slbot_22_1 0.) slbot_22_1 (- slbot_22_1))) (ite (>= sltop_45_1 0.) sltop_45_1 (- sltop_45_1))) (ite (>= slbot_35_1 0.) slbot_35_1 (- slbot_35_1))) (ite (>= sltop_87_1 0.) sltop_87_1 (- sltop_87_1))) (ite (>= slbot_2_1 0.) slbot_2_1 (- slbot_2_1))) (ite (>= slbot_4_1 0.) slbot_4_1 (- slbot_4_1))) (ite (>= slbot_25_1 0.) slbot_25_1 (- slbot_25_1))) (ite (>= slbot_14_1 0.) slbot_14_1 (- slbot_14_1))) (ite (>= sltop_40_1 0.) sltop_40_1 (- sltop_40_1))) (ite (>= sltop_126_1 0.) sltop_126_1 (- sltop_126_1))) (ite (>= slbot_126_1 0.) slbot_126_1 (- slbot_126_1))) (ite (>= slbot_9_1 0.) slbot_9_1 (- slbot_9_1))) (ite (>= sltop_80_1 0.) sltop_80_1 (- sltop_80_1))) (ite (>= sltop_84_1 0.) sltop_84_1 (- sltop_84_1))) (ite (>= sltop_7_1 0.) sltop_7_1 (- sltop_7_1))) (ite (>= slbot_47_1 0.) slbot_47_1 (- slbot_47_1))) (ite (>= slbot_0_1 0.) slbot_0_1 (- slbot_0_1))) (ite (>= sltop_9_1 0.) sltop_9_1 (- sltop_9_1))) (ite (>= sltop_85_1 0.) sltop_85_1 (- sltop_85_1))) (ite (>= sltop_35_1 0.) sltop_35_1 (- sltop_35_1))) (ite (>= sltop_83_1 0.) sltop_83_1 (- sltop_83_1))) (ite (>= slbot_90_1 0.) slbot_90_1 (- slbot_90_1))) (ite (>= sltop_32_1 0.) sltop_32_1 (- sltop_32_1))) (ite (>= sltop_81_1 0.) sltop_81_1 (- sltop_81_1))) (ite (>= sltop_86_1 0.) sltop_86_1 (- sltop_86_1))) (ite (>= sltop_47_1 0.) sltop_47_1 (- sltop_47_1))) (ite (>= slbot_89_1 0.) slbot_89_1 (- slbot_89_1))) (ite (>= slbot_20_1 0.) slbot_20_1 (- slbot_20_1))) (ite (>= slbot_40_1 0.) slbot_40_1 (- slbot_40_1))) (ite (>= slbot_17_1 0.) slbot_17_1 (- slbot_17_1))) (ite (>= slbot_45_1 0.) slbot_45_1 (- slbot_45_1))) (ite (>= slbot_32_1 0.) slbot_32_1 (- slbot_32_1))) (ite (>= slbot_87_1 0.) slbot_87_1 (- slbot_87_1))) (ite (>= slbot_88_1 0.) slbot_88_1 (- slbot_88_1))) (ite (>= slbot_128_1 0.) slbot_128_1 (- slbot_128_1))) (ite (>= sltop_25_1 0.) sltop_25_1 (- sltop_25_1))) (ite (>= slbot_85_1 0.) slbot_85_1 (- slbot_85_1))) (ite (>= slbot_80_1 0.) slbot_80_1 (- slbot_80_1))) (ite (>= slbot_86_1 0.) slbot_86_1 (- slbot_86_1))) (ite (>= sltop_12_1 0.) sltop_12_1 (- sltop_12_1))) (ite (>= slbot_42_1 0.) slbot_42_1 (- slbot_42_1))) (ite (>= sltop_90_1 0.) sltop_90_1 (- sltop_90_1))) (ite (>= sltop_30_1 0.) sltop_30_1 (- sltop_30_1))) (ite (>= slbot_131_1 0.) slbot_131_1 (- slbot_131_1))) (ite (>= sltop_2_1 0.) sltop_2_1 (- sltop_2_1))) (ite (>= sltop_22_1 0.) sltop_22_1 (- sltop_22_1))) (ite (>= sltop_4_1 0.) sltop_4_1 (- sltop_4_1))) (ite (>= sltop_14_1 0.) sltop_14_1 (- sltop_14_1))) (ite (>= sltop_91_1 0.) sltop_91_1 (- sltop_91_1))) (ite (>= sltop_27_1 0.) sltop_27_1 (- sltop_27_1))) (ite (>= sltop_131_1 0.) sltop_131_1 (- sltop_131_1))) (ite (>= sltop_89_1 0.) sltop_89_1 (- sltop_89_1))) (ite (>= slbot_129_1 0.) slbot_129_1 (- slbot_129_1))) (ite (>= sltop_20_1 0.) sltop_20_1 (- sltop_20_1))) (ite (>= slbot_12_1 0.) slbot_12_1 (- slbot_12_1))) (ite (>= slbot_30_1 0.) slbot_30_1 (- slbot_30_1))) (ite (>= sltop_42_1 0.) sltop_42_1 (- sltop_42_1))) (ite (>= slbot_83_1 0.) slbot_83_1 (- slbot_83_1))) (ite (>= sltop_129_1 0.) sltop_129_1 (- sltop_129_1))) (ite (>= sltop_82_1 0.) sltop_82_1 (- sltop_82_1))) (ite (>= slbot_82_1 0.) slbot_82_1 (- slbot_82_1))) (ite (>= sltop_128_1 0.) sltop_128_1 (- sltop_128_1))) (ite (>= sltop_0_1 0.) sltop_0_1 (- sltop_0_1))) (ite (>= slbot_81_1 0.) slbot_81_1 (- slbot_81_1)))))
+; =  {sc.input.I[7].O} {sc.vdadd[8].D}
+(assert (= sc_53 sc_18))
+; 
+; =  {of.input.I[7].O} {of.vdadd[8].D}
+(assert (= of_53 of_18))
+; 
+; =  {sc.input.V[1].O} {sc.ihill_rep[11].n}
+(assert (= sc_117 sc_8))
+; 
+; =  {of.input.V[1].O} {of.ihill_rep[11].n}
+(assert (= of_117 of_8))
+; 
+; =  {sc.input.V[7].O} {sc.vdadd[3].OUT_0}
+(assert (= sc_89 sc_39))
+; 
+; =  {of.input.V[7].O} {of.vdadd[3].OUT_0}
+(assert (= of_89 of_39))
+; 
+; =  {sc.input.I[8].O} {sc.vdadd[6].D}
+(assert (= sc_51 sc_33))
+; 
+; =  {of.input.I[8].O} {of.vdadd[6].D}
+(assert (= of_51 of_33))
+; 
+; =  {sc.ihill_rep[1].REP} {sc.vdadd[6].A}
+(assert (= sc_17 sc_35))
+; 
+; =  {of.ihill_rep[1].REP} {of.vdadd[6].A}
+(assert (= of_17 of_35))
+; 
+; =  {sc.input.V[10].O} {sc.vdadd[10].OUT_0}
+(assert (= sc_101 sc_29))
+; 
+; =  {of.input.V[10].O} {of.vdadd[10].OUT_0}
+(assert (= of_101 of_29))
+; 
+; =  {sc.input.V[0].O} {sc.ihill_rep[1].n}
+(assert (= sc_97 sc_13))
+; 
+; =  {of.input.V[0].O} {of.ihill_rep[1].n}
+(assert (= of_97 of_13))
+; 
+; =  {sc.vdadd[8].OUT} {sc.itov[9].X}
+(assert (= sc_22 sc_120))
+; 
+; =  {of.vdadd[8].OUT} {of.itov[9].X}
+(assert (= of_22 of_120))
+; 
+; =  {sc.vdadd[8].OUT} {sc.output.V[3].X}
+(assert (= sc_22 sc_76))
+; 
+; =  {of.vdadd[8].OUT} {of.output.V[3].X}
+(assert (= of_22 of_76))
+; 
+; =  {sc.input.V[16].O} {sc.itov[9].K}
+(assert (= sc_109 sc_121))
+; 
+; =  {of.input.V[16].O} {of.itov[9].K}
+(assert (= of_109 of_121))
+; 
+; =  {sc.itov[4].Y} {sc.vdadd[5].A}
+(assert (= sc_125 sc_45))
+; 
+; =  {of.itov[4].Y} {of.vdadd[5].A}
+(assert (= of_125 of_45))
+; 
+; =  {sc.itov[9].Y} {sc.vdadd[10].A}
+(assert (= sc_122 sc_30))
+; 
+; =  {of.itov[9].Y} {of.vdadd[10].A}
+(assert (= of_122 of_30))
+; 
+; =  {sc.input.V[5].O} {sc.vdadd[5].B}
+(assert (= sc_115 sc_46))
+; 
+; =  {of.input.V[5].O} {of.vdadd[5].B}
+(assert (= of_115 of_46))
+; 
+; =  {sc.input.V[4].O} {sc.vdadd[10].B}
+(assert (= sc_113 sc_31))
+; 
+; =  {of.input.V[4].O} {of.vdadd[10].B}
+(assert (= of_113 of_31))
+; 
+; =  {sc.input.V[6].O} {sc.vdadd[0].OUT_0}
+(assert (= sc_105 sc_24))
+; 
+; =  {of.input.V[6].O} {of.vdadd[0].OUT_0}
+(assert (= of_105 of_24))
+; 
+; =  {sc.vgain[2].P} {sc.vdadd[3].A}
+(assert (= sc_2 sc_40))
+; 
+; =  {of.vgain[2].P} {of.vdadd[3].A}
+(assert (= of_2 of_40))
+; 
+; =  {sc.input.I[11].O} {sc.vdadd[5].D}
+(assert (= sc_59 sc_43))
+; 
+; =  {of.input.I[11].O} {of.vdadd[5].D}
+(assert (= of_59 of_43))
+(assert (<= (/ 1 sc_75) 1000.))
+(assert (<= (* sc_75 1) 1000.))
+(assert (not (= 1. sc_75)))
+(assert (<= (/ 1 sc_83) 1000.))
+(assert (<= (* sc_83 1) 1000.))
+(assert (not (= 1. sc_83)))
+(assert (<= (/ 1 sc_73) 1000.))
+(assert (<= (* sc_73 1) 1000.))
+(assert (not (= 1. sc_73)))
+(assert (<= (/ 1 sc_77) 1000.))
+(assert (<= (* sc_77 1) 1000.))
+(assert (not (= 1. sc_77)))
+(assert (<= (/ 1 sc_79) 1000.))
+(assert (<= (* sc_79 1) 1000.))
+(assert (not (= 1. sc_79)))
+(assert (<= (/ 1 sc_81) 1000.))
+(assert (<= (* sc_81 1) 1000.))
+(assert (not (= 1. sc_81)))
+(assert (not (= 1. sc_17)))
+(assert (not (= 1. sc_12)))
+(assert (not (= 1. sc_7)))
+; 
+; =  {sc.vdadd[6].OUT} {sc.output.V[0].O} {sc.vdadd[3].OUT} {sc.output.V[1].O} {sc.vdadd[0].OUT} {sc.output.V[2].O} {sc.vdadd[8].OUT} {sc.output.V[3].O} {sc.vdadd[10].OUT} {sc.output.V[4].O} {sc.vdadd[5].OUT} {sc.output.V[5].O}
+(assert (and (and (and (and (and (and (and (and (and (and (= sc_37 sc_75) (= sc_37 sc_42)) (= sc_37 sc_83)) (= sc_37 sc_27)) (= sc_37 sc_73)) (= sc_37 sc_22)) (= sc_37 sc_77)) (= sc_37 sc_32)) (= sc_37 sc_79)) (= sc_37 sc_47)) (= sc_37 sc_81)))
+(assert (= __minima__ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (+ (ite (>= slbot_1_1 0.) slbot_1_1 (- slbot_1_1)) (ite (>= sltop_75_1 0.) sltop_75_1 (- sltop_75_1))) (ite (>= sltop_123_1 0.) sltop_123_1 (- sltop_123_1))) (ite (>= slbot_122_1 0.) slbot_122_1 (- slbot_122_1))) (ite (>= sltop_125_1 0.) sltop_125_1 (- sltop_125_1))) (ite (>= sltop_17_1 0.) sltop_17_1 (- sltop_17_1))) (ite (>= slbot_27_1 0.) slbot_27_1 (- slbot_27_1))) (ite (>= slbot_7_1 0.) slbot_7_1 (- slbot_7_1))) (ite (>= slbot_37_1 0.) slbot_37_1 (- slbot_37_1))) (ite (>= sltop_37_1 0.) sltop_37_1 (- sltop_37_1))) (ite (>= slbot_22_1 0.) slbot_22_1 (- slbot_22_1))) (ite (>= sltop_45_1 0.) sltop_45_1 (- sltop_45_1))) (ite (>= slbot_35_1 0.) slbot_35_1 (- slbot_35_1))) (ite (>= slbot_76_1 0.) slbot_76_1 (- slbot_76_1))) (ite (>= slbot_78_1 0.) slbot_78_1 (- slbot_78_1))) (ite (>= slbot_2_1 0.) slbot_2_1 (- slbot_2_1))) (ite (>= slbot_4_1 0.) slbot_4_1 (- slbot_4_1))) (ite (>= sltop_122_1 0.) sltop_122_1 (- sltop_122_1))) (ite (>= slbot_14_1 0.) slbot_14_1 (- slbot_14_1))) (ite (>= sltop_40_1 0.) sltop_40_1 (- sltop_40_1))) (ite (>= slbot_77_1 0.) slbot_77_1 (- slbot_77_1))) (ite (>= sltop_74_1 0.) sltop_74_1 (- sltop_74_1))) (ite (>= slbot_9_1 0.) slbot_9_1 (- slbot_9_1))) (ite (>= slbot_74_1 0.) slbot_74_1 (- slbot_74_1))) (ite (>= sltop_80_1 0.) sltop_80_1 (- sltop_80_1))) (ite (>= sltop_79_1 0.) sltop_79_1 (- sltop_79_1))) (ite (>= slbot_120_1 0.) slbot_120_1 (- slbot_120_1))) (ite (>= sltop_7_1 0.) sltop_7_1 (- sltop_7_1))) (ite (>= slbot_47_1 0.) slbot_47_1 (- slbot_47_1))) (ite (>= sltop_9_1 0.) sltop_9_1 (- sltop_9_1))) (ite (>= sltop_26_1 0.) sltop_26_1 (- sltop_26_1))) (ite (>= sltop_35_1 0.) sltop_35_1 (- sltop_35_1))) (ite (>= sltop_83_1 0.) sltop_83_1 (- sltop_83_1))) (ite (>= sltop_32_1 0.) sltop_32_1 (- sltop_32_1))) (ite (>= slbot_72_1 0.) slbot_72_1 (- slbot_72_1))) (ite (>= sltop_81_1 0.) sltop_81_1 (- sltop_81_1))) (ite (>= slbot_125_1 0.) slbot_125_1 (- slbot_125_1))) (ite (>= sltop_47_1 0.) sltop_47_1 (- sltop_47_1))) (ite (>= slbot_73_1 0.) slbot_73_1 (- slbot_73_1))) (ite (>= slbot_20_1 0.) slbot_20_1 (- slbot_20_1))) (ite (>= slbot_75_1 0.) slbot_75_1 (- slbot_75_1))) (ite (>= slbot_40_1 0.) slbot_40_1 (- slbot_40_1))) (ite (>= slbot_17_1 0.) slbot_17_1 (- slbot_17_1))) (ite (>= slbot_45_1 0.) slbot_45_1 (- slbot_45_1))) (ite (>= sltop_77_1 0.) sltop_77_1 (- sltop_77_1))) (ite (>= slbot_123_1 0.) slbot_123_1 (- slbot_123_1))) (ite (>= slbot_32_1 0.) slbot_32_1 (- slbot_32_1))) (ite (>= sltop_120_1 0.) sltop_120_1 (- sltop_120_1))) (ite (>= sltop_78_1 0.) sltop_78_1 (- sltop_78_1))) (ite (>= slbot_80_1 0.) slbot_80_1 (- slbot_80_1))) (ite (>= sltop_12_1 0.) sltop_12_1 (- sltop_12_1))) (ite (>= slbot_42_1 0.) slbot_42_1 (- slbot_42_1))) (ite (>= sltop_30_1 0.) sltop_30_1 (- sltop_30_1))) (ite (>= slbot_79_1 0.) slbot_79_1 (- slbot_79_1))) (ite (>= sltop_2_1 0.) sltop_2_1 (- sltop_2_1))) (ite (>= sltop_22_1 0.) sltop_22_1 (- sltop_22_1))) (ite (>= sltop_4_1 0.) sltop_4_1 (- sltop_4_1))) (ite (>= sltop_14_1 0.) sltop_14_1 (- sltop_14_1))) (ite (>= sltop_76_1 0.) sltop_76_1 (- sltop_76_1))) (ite (>= sltop_27_1 0.) sltop_27_1 (- sltop_27_1))) (ite (>= sltop_20_1 0.) sltop_20_1 (- sltop_20_1))) (ite (>= sltop_1_1 0.) sltop_1_1 (- sltop_1_1))) (ite (>= slbot_12_1 0.) slbot_12_1 (- slbot_12_1))) (ite (>= slbot_26_1 0.) slbot_26_1 (- slbot_26_1))) (ite (>= sltop_72_1 0.) sltop_72_1 (- sltop_72_1))) (ite (>= slbot_30_1 0.) slbot_30_1 (- slbot_30_1))) (ite (>= sltop_42_1 0.) sltop_42_1 (- sltop_42_1))) (ite (>= slbot_83_1 0.) slbot_83_1 (- slbot_83_1))) (ite (>= sltop_82_1 0.) sltop_82_1 (- sltop_82_1))) (ite (>= slbot_82_1 0.) slbot_82_1 (- slbot_82_1))) (ite (>= sltop_73_1 0.) sltop_73_1 (- sltop_73_1))) (ite (>= slbot_81_1 0.) slbot_81_1 (- slbot_81_1)))))
 (check-sat)
