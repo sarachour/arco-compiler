@@ -44,6 +44,25 @@ let dumb_cstrs_DBG = false
 
 module MapExpr =
 struct
+
+  let string_of_map_port (p:map_port) =
+    let comp,port = p in
+    "<"^(HwLib.hwcompname2str comp)^","^port^">"
+
+  let string_of_map_expr (type a) (x:a map_expr) (tostr:a -> string) =
+    let rec _tostr e =
+      match e with
+        | MEVar(q) -> tostr q
+        | MEAdd(a,b) -> (_tostr a)^"+"^(_tostr b)
+        | MESub(a,b) -> (_tostr a)^"-"^(_tostr b)
+        | MEMult(a,b) -> (_tostr a)^"*"^(_tostr b)
+        | MEDiv(a,b) -> (_tostr a)^"/"^(_tostr b)
+        | MEPower(a,b) -> (_tostr a)^"^"^(string_of_number b)
+        | MEConst(a) -> string_of_number a
+        | MEAny -> "@"
+    in
+    _tostr x
+                                 
   let map e f =
     let rec _map e =
       match e with
@@ -57,6 +76,23 @@ struct
       | MEConst(v) -> MEConst(v)
     in
     _map e
+
+end
+
+module MapSpec =
+struct
+
+  let string_of_map_abs_var (avar:map_abs_var)=
+    "string_of_abs: unimpl"
+
+  let string_of_map_port (aport:map_port_info) =
+    "string_of_map_port: unimpl"
+
+  let string_of_map_comp (comp:map_comp) =
+    "string_of_map_comp: unimpl"
+
+  let string_of_map_ctx (env:map_ctx) =
+    "string_of_map_env: unimpl"
 
 end
 
@@ -436,7 +472,6 @@ struct
       : (map_proj list*hwvid ast list) =
       List.fold_right (fun (farg:hwvid ast)
                         ((args,terms):(map_proj list)*(hwvid ast list)) ->
-                        print("-- decompose: "^(HwLib.hast2str farg)^"\n");
                         let ((arg,expr):(map_proj*hwvid ast)) = fn farg in 
                         (arg::args,expr::terms)
         ) inps ([],[])
@@ -476,7 +511,6 @@ struct
           (*no offset unless the value is resolvable as a number*)
 
         | OpN(Mult,args) ->
-          print "=== mult ===\n";
           let ((arg_projs,arg_terms):(map_proj list*hwvid ast list)) =
             decompose_list args _derive_mapping_problem
           in
@@ -491,7 +525,6 @@ struct
 
 
         | OpN(Add,args) ->
-          print "=== add ===\n";
           let (arg_projs,arg_terms) =
             decompose_list args _derive_mapping_problem
           in
@@ -502,7 +535,6 @@ struct
 
 
         | OpN(Sub,args) ->
-          print "=== sub ===\n";
           let (arg_projs,arg_terms) =
             decompose_list args _derive_mapping_problem
           in

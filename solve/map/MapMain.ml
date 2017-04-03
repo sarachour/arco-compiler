@@ -3,6 +3,8 @@ open MapData
 open Util
 open SolverData
 open MapSpecGen
+open Interactive
+
 
 module MapMain = struct
 
@@ -31,6 +33,7 @@ module MapMain = struct
         MAP.put env.comps name {spec=cfgs};
         () 
       );
+    print_string (MapSpec.string_of_map_ctx env);
     env
 
   (*build a macro-component from building blocks.*)
