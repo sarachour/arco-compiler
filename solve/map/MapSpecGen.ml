@@ -92,7 +92,11 @@ struct
     "string_of_map_comp: unimpl"
 
   let string_of_map_ctx (env:map_ctx) =
-    "string_of_map_env: unimpl"
+    MAP.str env.comps (HwLib.hwcompname2str)
+      (fun (x:map_abs_comp) ->
+         LIST.tostr string_of_map_comp "======\n" x.spec
+      )
+      
 
 end
 
