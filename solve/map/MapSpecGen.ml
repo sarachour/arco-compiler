@@ -42,6 +42,24 @@ let debug = print_debug 4 "prob-gen"
 let dumb_cstrs_DBG = false 
   
 
+module MapExpr =
+struct
+  let map e f =
+    let rec _map e =
+      match e with
+      | MEVar(q) -> MEVar(f q)
+      | MEAdd(a,b) -> MEAdd(_map a, _map b)
+      | MESub(a,b) -> MESub(_map a, _map b)
+      | MEPower(a,b) -> MEPower(_map a, b)
+      | MEMult(a,b) -> MEMult(_map a, _map b)
+      | MEDiv(a,b) -> MEDiv(_map a, _map b)
+      | MEAny -> MEAny
+      | MEConst(v) -> MEConst(v)
+    in
+    _map e
+
+end
+
 module MapCompSpecCompressor =
 struct
 
@@ -60,22 +78,20 @@ struct
   let create_var () : map_var_info =
     {priority=0; abs_var=(-1)}
 
-  let create_port name port : map_port_info =
+  let create_port port : map_port_info =
     {
       port=port;
-      comp=name;
-      priority=0;
-      range={min=0.;max=1.};
+      range=None;
       offset=create_var ();
       scale=create_var ();
     }
 
-  let create_input (prob:map_comp) (name) (port) =
-    noop (MAP.put prob.inps (name,port) (create_port name port));
+  let create_input (prob:map_comp) name  (port) =
+    noop (MAP.put prob.inps (port) (create_port port));
     ()
 
-  let create_output (prob:map_comp) (name) (port) =
-    noop (MAP.put prob.outs (name,port) (create_port name port));
+  let create_output (prob:map_comp) name (port) =
+    noop (MAP.put prob.outs (port) (create_port port));
     ()
 
   type compress_partition =
@@ -83,28 +99,82 @@ struct
     | PRTExpr of map_port map_var map_expr
     | PRTConst of number
 
-  let create_param prob parname parval =
-      error "create_param" "unimpl"
+  let create_param prob parname (parval:number) =
+    noop (MAP.put prob.params parname parval);
+    ()
 
-  let set_var_priority prob varname prio =
-    error "set_var_priority" "unimpl"
+  let _get_port comp name =
+    let key = name in 
+    let portinfo=
+      if MAP.has comp.inps key then
+        MAP.get comp.inps key 
+      else
+        MAP.get comp.outs key 
+    in
+    portinfo
 
-  let set_port_cover prob portname cover =
-    error "set_port_cover" "unimpl"
+  let set_var_priority comp varname prio =
+    match varname with
+    | MPVOffset(_,portname) ->
+      let portinfo = _get_port comp portname in
+      portinfo.offset.priority <- prio
+    | MPVScale(_,portname) ->
+      let portinfo = _get_port comp portname in
+      portinfo.scale.priority <- prio
+
+
+  let set_port_cover (comp:map_comp) (portname:string) (cover:hwdefs) =
+    let portinfo = _get_port comp portname in
+    portinfo.range <- Some cover;
+    ()
 
   let set_abs_var (comp:map_comp)
       (id:int) (varname:map_port map_var) : unit =
-    error "set_abs_var" "variable"
+    match varname with
+    | MPVOffset(_,portname) ->
+      let portinfo = _get_port comp portname in
+      portinfo.offset.abs_var <- id
+    | MPVScale(_,portname) ->
+      let portinfo = _get_port comp portname in
+      portinfo.scale.abs_var <- id;
+      ()
 
-  let set_abs_expr (comp:map_comp) (id:int) (expr) =
-    error "set_abs_expr" "unimpl"
+
+
+  let set_abs_expr (comp:map_comp) (id:int) (expr:map_port map_var map_expr) =
+    let v : map_abs_var = MAP.get comp.vars id in
+    let id_expr : int map_expr = MapExpr.map expr (fun (v:map_port map_var) ->
+        match v with
+        | MPVOffset(_,portname) ->
+          let portinfo = _get_port comp portname in
+          portinfo.offset.abs_var
+
+        | MPVScale(_,portname) ->
+          let portinfo = _get_port comp portname in
+          portinfo.scale.abs_var
+
+      )
+    in
+    v.exprs <- id_expr::v.exprs;
+    ()
 
   let set_abs_const (comp:map_comp) (id:int) (c:number) =
-    error "set_abs_const" "unimpl"
+    let v : map_abs_var = MAP.get comp.vars id in
+    match v.value with
+    | None ->
+      begin
+        v.value <- Some c;
+        true
+      end
 
-  let compress (stmts : map_stmt list) : map_comp option =
+    | Some(x) ->
+      if c = x
+      then true else false
+
+  let compress name (stmts : map_stmt list) : map_comp option =
     let prob =
       {
+        name=name;
         vars=MAP.make();
         inps=MAP.make();
         outs=MAP.make();
@@ -138,10 +208,10 @@ struct
     List.iter (fun (stmt:map_stmt) -> match stmt with
         | MSDeclInput(hwn,hwp) -> create_input prob hwn hwp
         | MSDeclOutput(hwn,hwp) -> create_output prob hwn hwp
-        | MSDeclParam(par,s) -> create_param prob par s
+        | MSDeclParam((_,par),s) -> create_param prob par s
         | MSSetVarPriority(v1,p) ->
           set_var_priority prob v1 p 
-        | MSSetPortCover(v1,c) ->
+        | MSSetPortCover((_,v1),c) ->
           set_port_cover prob v1 c
         | MSVarEqualsVar(v1,v2) ->
           add_partition (PRTVar v1) (PRTVar v2)
@@ -177,7 +247,7 @@ struct
         noop (MAP.put expr_buf abs.id exprs);
         ()
       );
-    MAP.iter expr_buf (fun id exprs ->
+    MAP.iter expr_buf (fun id (exprs) ->
         List.iter (fun e ->
             set_abs_expr prob id e
           ) exprs
@@ -411,7 +481,8 @@ struct
             decompose_list args _derive_mapping_problem
           in
           let res_term : hwvid ast=
-            HwLib.simplify hwenv (OpN(Mult,arg_terms))
+            (*HwLib.simplify hwenv (OpN(Mult,arg_terms))*)
+            (OpN(Mult,arg_terms))
           in
           let res_proj =
             derive_mapping_mult add_cstr fdbk arg_projs arg_terms res_term
@@ -506,8 +577,8 @@ struct
 
         | _ -> error "derive_scaling_factor" "unhandled"
       in
-      let simpl_res = HwLib.simplify hwenv res in 
-      proj,simpl_res
+      (*let simpl_res = HwLib.simplify hwenv res in *)
+      proj,res
     in
     let proj,_= _derive_mapping_problem node in
     let stmts = QUEUE.to_list cstrs in 

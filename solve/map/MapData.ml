@@ -29,7 +29,7 @@ type 'a map_expr =
 
 (*general map statement*)
 type map_stmt =
-  | MSDeclParam of map_port*float list
+  | MSDeclParam of map_port*number
   | MSDeclOutput of map_port
   | MSDeclInput of map_port
   | MSValid
@@ -48,31 +48,31 @@ type map_stmt =
 
 (*a particular variable is equal to this.*)
 type map_abs_var = {
-  exprs : int ast list;
-  value: number option;
-  members: map_port map_var list;
-  priority: int;
+  mutable exprs : int map_expr list;
+  mutable value: number option;
+  mutable members: map_port map_var list;
+  mutable priority: int;
   id:int;
 }
 
 type map_var_info = {
-  priority: int;
-  abs_var:int;
+  mutable priority: int;
+  mutable abs_var:int;
 }
 type map_port_info = {
   port: string;
-  comp: hwcompname;
-  priority: int;
-  range: num_interval;
+  mutable range: hwdefs option;
+
   offset: map_var_info;
   scale: map_var_info;
 }
 
 type map_comp = {
   vars: (int,map_abs_var) map;
-  inps: (map_port,map_port_info) map;
-  outs: (map_port,map_port_info) map;
-  params: (string,float) map;
+  inps: (string,map_port_info) map;
+  outs: (string,map_port_info) map;
+  params: (string,number) map;
+  name: hwcompname;
 }
 
 type param_config = (string*float) list

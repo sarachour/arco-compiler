@@ -21,7 +21,7 @@ module MapMain = struct
         let cfgs =
           List.fold_right (fun (pars,stmts) lst ->
               let cmp : map_comp option =
-                MapCompSpecCompressor.compress stmts
+                MapCompSpecCompressor.compress hwcomp.name stmts
               in
               match cmp with
               | Some(c) -> c::lst

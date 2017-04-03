@@ -4,7 +4,6 @@ open Util
 open Globals
 
 
-
 type ast_opn =
   | Mult
   | Add
@@ -346,18 +345,25 @@ module ASTLib
         (icnv:symvar -> a)  (decl:a->(a->symvar)->symdecl) : a ast =
       let env,_,_ = mkenv [e1] cnv (fun i x c -> decl x c) in
       let lhe = to_symcaml e1 cnv in
+      print_string ((SymCaml.expr2str lhe)^"\n");
+      SymCaml.set_debug env true;
       let r = SymCaml.simpl env lhe in
       let res = from_symcaml r icnv in
       res
 
 
-  let sub (type a) (expr:a ast) (subs: (a,a ast) map) : a ast =
+  let sub_fxn (type a) (expr:a ast) (subfxn:a -> a ast option) : a ast =
     let tf x = match x with
-    | Term(v) -> if MAP.has subs v then Some(MAP.get subs v) else None
+    | Term(v) -> subfxn v 
     | _ -> None
     in
     trans expr tf
+
   
+  let sub (type a) (type b) expr (subs: (a,a ast) map) : a ast =
+    sub_fxn expr (fun k -> if MAP.has subs k then Some(MAP.get subs k) else None)
+
+
   let subs (type a) (expr:a ast) (subs : (a,a ast) map list) : a ast = 
     let rec _subs e s = match s with
     | h::t -> _subs (sub e h) t
