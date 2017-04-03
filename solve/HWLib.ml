@@ -6,6 +6,8 @@ open HWData
 open IntervalData
 open StochData
 
+open SymCamlData
+
 
 open HWConnLib
 open StochLib
@@ -19,7 +21,7 @@ let debug = print
 
 module HwLib =
 struct
-
+  
   let mkenv () = {
     units=UnitLib.mkenv();
     conns=HwConnLib.mkenv();
@@ -267,6 +269,23 @@ struct
     else
       MAP.get c.params iname
 
+  let comp_port_to_hwid env compname varname hasinst =
+    let comp = match hasinst with
+      |Some(idx) -> HCMGlobal({name=compname;inst=idx})
+      | None -> HCMLocal(compname)
+    in
+    if hasvar env compname varname then
+      begin
+        let v = getvar env compname varname in
+        HNPort(v.knd,comp,v.port,v.prop)
+      end
+    else if hasparam env compname varname then
+      let p = getparam env compname varname in
+      HNParam(comp,p.name)
+    else if istime env varname then
+      HNTime
+    else
+      error "comp_port_to_hwid" "unknown variable"
 
   let mkinst e cname =
     let c : 'a hwcomp = getcomp e cname in
@@ -327,24 +346,7 @@ struct
     | HWKInput -> getins env comp 
     | HWKOutput -> getouts env comp
 
-  let comp_port_to_hwid env compname varname hasinst =
-    let comp = match hasinst with
-      |Some(idx) -> HCMGlobal({name=compname;inst=idx})
-      | None -> HCMLocal(compname)
-    in
-    if hasvar env compname varname then
-      begin
-        let v = getvar env compname varname in
-        HNPort(v.knd,comp,v.port,v.prop)
-      end
-    else if hasparam env compname varname then
-      let p = getparam env compname varname in
-      HNParam(comp,p.name)
-    else if istime env varname then
-      HNTime
-    else
-      error "comp_port_to_hwid" "unknown variable"
-
+  
 
 
   let mkcompid (x:hwcompname) (i:int option) = match i with
@@ -787,10 +789,58 @@ struct
   let wires_are_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool =
     is_connectable env src.comp.name src.port dest.comp.name dest.port
 
-  let simplify (expr:hwvid ast) =
-    error "simplify" "unimpl"
 
-  let all_param_combos (comp:hwvid hwcomp) : (string,number) map list=
-    error "all_param_combos" "unimpl"
 
+
+  let _symvar2hwid (s:hwvid hwenv) (rst:string list) = match rst with
+      | ["l";cn;v;p] -> let cnn = str2hwcompname cn in 
+       comp_port_to_hwid s cnn v (None)
+    | ["g";cn;i;v;p] -> let cnn = str2hwcompname cn in
+      let comp : hwvid hwcomp= getcomp s cnn in
+      comp_port_to_hwid s cnn v (Some (int_of_string i))
+    | ["l";cn;"t"] -> let cnn : hwcompname = str2hwcompname cn in
+      HNTime
+    | ["g";cn;istr;"t"] -> let cnn : hwcompname = str2hwcompname cn in
+      HNTime
+    | ["l";cn;v] -> let cnn = str2hwcompname cn in
+      comp_port_to_hwid s cnn v (None)
+    | ["g";cn;i;v] -> let cnn = str2hwcompname cn in
+      comp_port_to_hwid s cnn v (Some (int_of_string i))
+    | _ -> error "apply_comp" "iconvhwid encountered unexpected hwid"
+
+  let symvar2hwid (s) (hwid:symvar) =
+    _symvar2hwid (s) (STRING.split hwid ":")
+
+  let hwid2symvar (hwid:hwvid) : symvar =
+      let proccmp (x:compid)  : string= match x with
+        | HCMLocal(v) -> "l:"^(hwcompname2str v)
+        | HCMGlobal(v) -> "g:"^(hwcompname2str v.name)^":"^(string_of_int v.inst)
+      in
+      match hwid with
+      | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
+      | HNParam(cmp,name) -> (proccmp cmp)^":"^name
+      | HNTime -> "t'"
+
+
+
+
+
+  let simplify (he) (expr:hwvid ast) : hwvid ast =
+    let simpl_expr = ASTLib.simpl expr
+        (hwid2symvar )
+        (symvar2hwid he)
+        (fun e c -> SymbolVar(c e))
+    in
+    simpl_expr
+
+  let all_param_combos (comp:hwvid hwcomp) :
+    (string,number) map list=
+    let parlist : (string*number) list list =
+      MAP.map comp.params (fun name p ->
+        List.map (fun v -> (name,v)) p.value)
+    in
+    let combos = LIST.permutations parlist in
+    List.map
+      (fun c -> MAP.from_list c)
+      combos  
 end

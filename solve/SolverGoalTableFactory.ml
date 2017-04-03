@@ -54,7 +54,7 @@ struct
         comp_ctx=compctxtbl;
         sln_ctx=sln;
         search=search;
-        map_ctx=MapMain.mkctx (comptbl);
+        map_ctx=MapMain.mkctx env.hw (comptbl);
       } in
     tbl
 

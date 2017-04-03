@@ -361,25 +361,28 @@ struct
     {scale=MEConst((Integer 1));offset=MEExp(arg.offset)}
     *)
 
-  (*propagate wire rules for scaling factors *)
-  let derive_mapping_expr (node:hwvid ast) (fdbk:string list)
-      (params:(string,number) map)
-    : (map_stmt list)*map_proj =
-    let decompose_list (args:hwvid ast list)
+  let decompose_list (inps:hwvid ast list)
         (fn:hwvid ast -> map_proj*hwvid ast)
       : (map_proj list*hwvid ast list) =
       List.fold_right (fun (farg:hwvid ast)
                         ((args,terms):(map_proj list)*(hwvid ast list)) ->
-          let ((arg,expr):(map_proj*hwvid ast)) = fn farg in 
-          (arg::args,expr::terms)
-        ) args ([],[])
-    in
+                        print("-- decompose: "^(HwLib.hast2str farg)^"\n");
+                        let ((arg,expr):(map_proj*hwvid ast)) = fn farg in 
+                        (arg::args,expr::terms)
+        ) inps ([],[])
+
+  (*propagate wire rules for scaling factors *)
+  let derive_mapping_expr hwenv (node:hwvid ast) (fdbk:string list)
+      (params:(string,number) map)
+    : (map_stmt list)*map_proj =
+    (*visit all the elements in a list*)
     let cstrs : map_stmt queue = QUEUE.make () in 
     let add_cstr x =
       noop (QUEUE.enqueue cstrs x)
     in
     let rec _derive_mapping_problem (expr:hwvid ast) : (map_proj)*hwvid ast =
-      let proj,res = match node with
+      let proj,res =
+        match expr with
         | Term(HNPort(knd,HCMLocal(cmp),port,prop)) ->
           {
             scale=MEVar(MPVScale(cmp,port));
@@ -403,9 +406,13 @@ struct
           (*no offset unless the value is resolvable as a number*)
 
         | OpN(Mult,args) ->
+          print "=== mult ===\n";
           let ((arg_projs,arg_terms):(map_proj list*hwvid ast list)) =
-            decompose_list args _derive_mapping_problem in
-          let res_term : hwvid ast= HwLib.simplify (OpN(Mult,arg_terms)) in
+            decompose_list args _derive_mapping_problem
+          in
+          let res_term : hwvid ast=
+            HwLib.simplify hwenv (OpN(Mult,arg_terms))
+          in
           let res_proj =
             derive_mapping_mult add_cstr fdbk arg_projs arg_terms res_term
           in
@@ -413,7 +420,10 @@ struct
 
 
         | OpN(Add,args) ->
-          let (arg_projs,arg_terms) = decompose_list args _derive_mapping_problem in
+          print "=== add ===\n";
+          let (arg_projs,arg_terms) =
+            decompose_list args _derive_mapping_problem
+          in
           let res_projs =
             derive_mapping_add add_cstr arg_projs
           in
@@ -421,7 +431,10 @@ struct
 
 
         | OpN(Sub,args) ->
-          let (arg_projs,arg_terms) = decompose_list args _derive_mapping_problem in
+          print "=== sub ===\n";
+          let (arg_projs,arg_terms) =
+            decompose_list args _derive_mapping_problem
+          in
           let res_projs =
             derive_mapping_sub add_cstr arg_projs
           in
@@ -490,9 +503,10 @@ struct
 
         | Decimal(d) ->
           {scale=MEConst((Integer 1)); offset=MEConst(Integer 0);},Decimal(d)
+
         | _ -> error "derive_scaling_factor" "unhandled"
       in
-      let simpl_res = HwLib.simplify res in 
+      let simpl_res = HwLib.simplify hwenv res in 
       proj,simpl_res
     in
     let proj,_= _derive_mapping_problem node in
@@ -501,7 +515,7 @@ struct
     stmts,proj
 
 
-  let derive_mapping_variable comp params (v:hwvid hwportvar) : map_stmt list =
+  let derive_mapping_variable hwenv comp params (v:hwvid hwportvar) : map_stmt list =
       let stmtq = QUEUE.make() in
       let enq x =
         noop (QUEUE.enqueue stmtq x)
@@ -513,7 +527,7 @@ struct
       begin
         match v.bhvr with
         | HWBAnalog(bhvr) ->
-            let cstrs,linear = derive_mapping_expr bhvr.rhs [] params in
+            let cstrs,linear = derive_mapping_expr hwenv bhvr.rhs [] params in
             begin
               enq_all cstrs;
               enq (MSVarEqualsExpr(MPVScale(comp,v.port),linear.scale));
@@ -522,7 +536,7 @@ struct
             end
 
           | HWBAnalogState(bhvr) ->
-            let cstrs,linear = derive_mapping_expr bhvr.rhs [v.port] params in
+            let cstrs,linear = derive_mapping_expr hwenv bhvr.rhs [v.port] params in
             begin
               let icvar,_ =bhvr.ic in
               enq_all cstrs;
@@ -543,7 +557,7 @@ struct
       QUEUE.destroy stmtq;
       lst
 
-  let derive_mapping_comp_with_params comp params =
+  let derive_mapping_comp_with_params hwenv comp params =
     let stmts = QUEUE.make () in
     let enq xs = List.iter (fun x -> noop(QUEUE.enqueue stmts x)) xs in
       (*add decls*)
@@ -562,7 +576,7 @@ struct
       );
     HwLib.comp_iter_outs comp (fun outvar ->
         let cstrlst : map_stmt list =
-          derive_mapping_variable comp.name params outvar 
+          derive_mapping_variable hwenv comp.name params outvar 
         in
         enq cstrlst;
       );
@@ -571,13 +585,13 @@ struct
     (params,cstrs)
 
   (*derive scaling factors from the component*)
-  let derive_mapping_comp tbl (comp:hwvid hwcomp)= 
+  let derive_mapping_comp hwenv (comp:hwvid hwcomp)= 
     let param_combos : ((string,number) map) list =
       HwLib.all_param_combos comp
     in
     List.map
       (fun params ->
-         derive_mapping_comp_with_params comp params 
+         derive_mapping_comp_with_params hwenv comp params 
       )
       param_combos
 end

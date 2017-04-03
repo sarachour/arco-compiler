@@ -53,25 +53,9 @@ struct
     | [v] ->  MathLib.str2mid s v
     | _ -> error "apply_comp" "iconvmid encountered unexpected string"
 
-  let _symvar2hwid (s:hwvid hwenv) (rst:string list) = match rst with
-    | ["l";cn;v;p] -> let cnn = HwLib.str2hwcompname cn in 
-      HwLib.comp_port_to_hwid s cnn v (None)
-   | ["g";cn;i;v;p] -> let cnn = HwLib.str2hwcompname cn in
-     let comp : hwvid hwcomp= HwLib.getcomp s cnn in
-     HwLib.comp_port_to_hwid s cnn v (Some (int_of_string i))
-   | ["l";cn;"t"] -> let cnn : hwcompname = HwLib.str2hwcompname cn in
-     HNTime
-   | ["g";cn;istr;"t"] -> let cnn : hwcompname = HwLib.str2hwcompname cn in
-     HNTime
-   | ["l";cn;v] -> let cnn = HwLib.str2hwcompname cn in
-     HwLib.comp_port_to_hwid s cnn v (None)
-   | ["g";cn;i;v] -> let cnn = HwLib.str2hwcompname cn in
-     HwLib.comp_port_to_hwid s cnn v (Some (int_of_string i))
-   | _ -> error "apply_comp" "iconvhwid encountered unexpected hwid"
-
+  
   let symvar2mid s mid = _symvar2mid (s) (STRING.split mid ":")
 
-  let symvar2hwid (s) hwid = _symvar2hwid (s) (STRING.split hwid ":")
 
   let symvar2unid (mstate:math_state) (hwstate:hwcomp_state) uid =
    match STRING.split uid ":" with
@@ -79,20 +63,11 @@ struct
          MathId(_symvar2mid (mstate.env) (m2::r))
        else
          MathId(tempmid())
-    | "h"::r -> HwId(_symvar2hwid (hwstate.env) r)
+    | "h"::r -> HwId(HwLib._symvar2hwid (hwstate.env) r)
     | h::r -> error "iconvunid" ("unexpected prefix "^h)
     | _ -> error "" ""
 
-  let hwid2symvar hwid =
-    let proccmp (x:compid)  : string= match x with
-      | HCMLocal(v) -> "l:"^(HwLib.hwcompname2str v)
-      | HCMGlobal(v) -> "g:"^(HwLib.hwcompname2str v.name)^":"^(string_of_int v.inst)
-    in
-    match hwid with
-    | HNPort(knd,cmp,name,prop) -> (proccmp cmp)^":"^name^":"^prop
-    | HNParam(cmp,name) -> (proccmp cmp)^":"^name
-    | HNTime -> "t'"
-
+  
   let mid2symvar (mid:mid) : string = match mid with
     | MNVar(k,n) -> n
     | MNParam(name,v) -> name
@@ -101,7 +76,7 @@ struct
 
   let unid2symvar uid = match uid with
     | MathId(m) -> "m:"^(mid2symvar m)
-    | HwId(h) -> "h:"^(hwid2symvar h)
+    | HwId(h) -> "h:"^(HwLib.hwid2symvar h)
 
   let print_wildcard (v:string) (bans:symexpr list) =
     let ban_str = LIST.fold bans (fun (x:symexpr) str ->

@@ -2,8 +2,7 @@ open HWData
 open MapData
 open Util
 open SolverData
-open MapProblemGenerator
-open MapResolver
+open MapSpecGen
 
 module MapMain = struct
 
@@ -11,11 +10,28 @@ module MapMain = struct
     {comps=MAP.make()}
 
   (**)
-  let mkctx (tbl:(hwcompname,ucomp) map) : map_ctx =
+  let mkctx hwenv (tbl:(hwcompname,ucomp) map) : map_ctx =
     let env = {comps=MAP.make()} in
-    (*create compressed problem for each component*)
-    error "MapMain.build"
-      "not implemented, construct compressed reprs"
+    MAP.iter tbl (fun name comp ->
+        let hwcomp = comp.d in
+        let stmts :
+          (((string,number) map)*(map_stmt list)) list =
+          MapCompSpecGenerator.derive_mapping_comp hwenv hwcomp
+        in
+        let cfgs =
+          List.fold_right (fun (pars,stmts) lst ->
+              let cmp : map_comp option =
+                MapCompSpecCompressor.compress stmts
+              in
+              match cmp with
+              | Some(c) -> c::lst
+              | None -> lst
+            ) stmts []
+        in
+        MAP.put env.comps name {spec=cfgs};
+        () 
+      );
+    env
 
   (*build a macro-component from building blocks.*)
   let infer (tbl:gltbl) : (wireid,hw_mapping) map option=

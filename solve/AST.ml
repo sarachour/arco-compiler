@@ -341,7 +341,9 @@ module ASTLib
       let rhe = to_symcaml e2 cnv in
       SymCaml.eq env lhe rhe
 
-    let simpl (type a) (e1:a ast) (cnv:a->symvar) (icnv:symvar -> a)  (decl:a->(a->symvar)->symdecl) : a ast =
+    let simpl (type a)
+        (e1:a ast) (cnv:a->symvar)
+        (icnv:symvar -> a)  (decl:a->(a->symvar)->symdecl) : a ast =
       let env,_,_ = mkenv [e1] cnv (fun i x c -> decl x c) in
       let lhe = to_symcaml e1 cnv in
       let r = SymCaml.simpl env lhe in

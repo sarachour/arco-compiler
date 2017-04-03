@@ -78,7 +78,7 @@ type map_comp = {
 type param_config = (string*float) list
 
 type map_abs_comp = {
-  spec:(param_config,map_comp) map;
+  spec:(map_comp) list;
 }
 type map_ctx = {
   comps: (hwcompname,map_abs_comp) map;

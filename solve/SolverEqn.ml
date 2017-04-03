@@ -22,7 +22,6 @@ open SolverUtil
 open SolverRslv
 
 open MapMain
-open MapHeuristics
 
 open SolverSearch 
 open GoalLib 
