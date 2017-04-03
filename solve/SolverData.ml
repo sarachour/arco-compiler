@@ -13,6 +13,7 @@ open SearchData
 
 open IntervalData
 open StochData
+open MapData
 
 
 (*Unified math and hardware ids*)
@@ -168,9 +169,10 @@ type gltbl = {
   env: uenv;
   mutable sln_ctx: usln;
   mutable comp_ctx : (hwcompname,ucomp_ctx) map;
-  mutable map_ctx : hwvid map_ctx; 
   mutable avail_comps : (hwcompname, ucomp) map;
   (*state of table*)
   mutable goals : (int,goal) map;
   mutable search: (sstep,gltbl) ssearch;
+
+  mutable map_ctx : map_ctx;
 }

@@ -39,7 +39,7 @@ exception MapSMTResolverError of string
 let error n m = raise (MapSMTResolverError (n^":"^m))
 
 let debug = print_debug 2 "map-rslv"
-
+(*
 module MapSMTResolver =
 struct
 
@@ -328,3 +328,127 @@ struct
     Z3Lib.save_z3_prob (name^"_"^(string_of_int inst)^"_map") stmts minexpr true 
 end
 
+module MapPerturber =
+struct
+
+  (*
+    break into subproblems and find subgraphs based on dependency chains.
+    (a) -> (b).
+    subgraphs are broken by equality contraints
+    (ie if all the equality constrints are broken, the ensuing subgraph is the problem).
+     we try and characterize the perturbation. For example, if
+     -> s_x = s_y : perturb(s_x) = perturb(s_y)
+     -> s_x = s_y+c : perturb(s_x) = perturb(s_y)
+     -> s_x = s_y*c : perturb(s_x) = c*perturb(s_y)
+     -> s_x = s_y*n : perturb(s_x) = 
+     -> s_x < const : if s_x+perturb(x) >= const: perturb(s_x)<-0
+
+     iterate on problem until you have a partial spec, then use
+     dreal to solve non-linear portion of problem.
+
+     -> get initial solution (full sln of of non-equal edges,
+     collapsing equal variables that are involved in problem).
+
+     -> once you have an initial solution, map out the space.
+     choose deltas and iterate over deps to find contridictions.
+     basically, you can solve addition, constant multiplication
+     raising one variable to the power. x^n = y, p_y = 2*x^n.
+     substitute until you break down into small symbolic program.
+     we should prove the problem is convex, ie if scale can by q and r,
+     where s in q<s<r s can be scaled.
+
+     -> put the concretized problem in dReal.
+
+     -> for connecting an output and an input: you're adding a quality
+     constraint between components. you need to find at least one
+     point in the mag space that makes them equal
+         -> if the spec for the port is depends-on, you have to re-solve the mapping. re-solving the mapping. 
+
+
+  *)
+
+
+
+  (*some expressions have equivalent pertubation.*)
+  
+  type map_port_id = | SVScale of string | SVOffset of string
+
+
+  
+  (*
+     it's a constant float (this is something that is propagated),
+     it's something that can perturbed from an existing input.
+     If the component has the relation.
+
+     a = c*b then the variable that represents a can be the initial
+     value + the ast that is the perturbation of b, where it is the function of only b. where the perturbation is c*(sc)^n.
+
+     equivalence (all points to the same variable)
+     pertubation (the variable is a perturbed version of another var)
+     dep (the variable is a fully dependent verison of anothe rvar)
+
+
+  *)
+  type map_var_cls =
+    | MPCNone
+    | MPCConst
+    | MPCPerturb of float*int
+    | MPCDynamic
+
+  (*abstract var*)
+  type map_var_spec = {
+    cstrs : (int ast) list;
+    cls: map_var_cls;
+    init: float;
+  }
+  type map_port_spec = {
+    op_rng: num_interval;
+    var: string;
+  }
+  type map_comp_spec = {
+    var: (int,map_var_spec) map;
+    outs:(map_port_id,map_port_spec) map;
+    inps:(map_port_id,map_port_spec) map;
+  }
+
+  type map_spec_env = {
+    comps:(string,map_comp_spec) map;
+  }
+
+  
+
+  (*
+   compute the initial fp values from the model.
+
+     question: scalable on connect?? How???
+     what if the scaling factor is a*b=c*d?
+     you connect one input, 1.
+
+     maybe when you want to connect two edges, you plug in
+     the initial values and say add deltas so that the two expressions
+     are equal.
+
+     adder a+b -> scaling factor s on output.
+     a is perturb friendly, b is perturb friendly (a and b are equivalent).
+     you connect it to c*d where one of the terms is substituted.
+     the scaling factor is the same as 
+
+  *)
+  let init_model (pr:linear_stmt list) =
+    error "init_model" "unimpl"
+
+  let gen_model (pr:linear_stmt list) (init_sln:hw_mapping list) =
+    let comp_spec : map_comp_spec = {
+        var=MAP.make();
+        outs=MAP.make();
+        inps=MAP.make()
+      }
+    in
+    List.iter (fun (m:hw_mapping) ->
+        error "gen_model" "decl"
+    );
+    error "gen_model" "unoimpl"
+
+
+end
+*)

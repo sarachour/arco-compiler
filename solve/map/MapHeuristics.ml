@@ -39,7 +39,7 @@ let debug = print_debug 4 "map-heur"
 
 module MapHeuristics =
 struct
-
+  (*
   (*derive c*)
   let noise_summary (tbl:gltbl) =
     (*for each generated output*)
@@ -311,4 +311,6 @@ struct
       end
     | None ->
       None
+
+     *)
 end

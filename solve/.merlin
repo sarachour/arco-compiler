@@ -1,5 +1,7 @@
 S .
 S symcaml/
+S map/
 B _build 
 B _build/symcaml
+B _build/map
 

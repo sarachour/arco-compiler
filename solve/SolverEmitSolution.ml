@@ -92,7 +92,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
   let mappings = MapMain.infer slntbl in
-  MapMain.save_z3_problem slntbl out i;
+  (*MapMain.save_z3_problem slntbl out i;*)
   to_mat_file slntbl out i SFCircMapSDE mappings;
   to_mat_file slntbl out i SFCircMapODE mappings;
   slvr_print_inter "---- Generating Summary File ---";
@@ -101,7 +101,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
     match mappings with
     | Some(mappings) ->
       begin
-        let map_sum = MapUtil.mappings2str mappings in
+        let map_sum = MapUtil.string_of_mapping mappings in
         IO.save (out^"_"^(string_of_int i)^"_map.sum") map_sum
       end
 

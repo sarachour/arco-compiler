@@ -787,4 +787,10 @@ struct
   let wires_are_connectable (type a) (env:a hwenv) (src:wireid) (dest:wireid) : bool =
     is_connectable env src.comp.name src.port dest.comp.name dest.port
 
+  let simplify (expr:hwvid ast) =
+    error "simplify" "unimpl"
+
+  let all_param_combos (comp:hwvid hwcomp) : (string,number) map list=
+    error "all_param_combos" "unimpl"
+
 end

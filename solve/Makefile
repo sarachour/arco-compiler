@@ -2,7 +2,7 @@
 DIFFEQ=../diffeq
 #DEPS=*.ml *.mly *.ml l
 DEPS=*.ml 
-DIR_DEPS=
+DIR_DEPS=map
 COMP_DEPS=*.mly *.mll
 ARGS=C_INCLUDE_PATH=/opt/local/include LIBRARY_PATH=/opt/local/lib CC=gcc-mp-4.8
 FLAGS=-use-ocamlfind -use-menhir -menhir "menhir --infer --explain"

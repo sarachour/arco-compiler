@@ -18,6 +18,8 @@ open SymCamlData
 open SearchData
 open Search 
 
+open MapMain
+
 open SolverData
 open SolverUtil
 open SlnLib
@@ -47,12 +49,12 @@ struct
     let search= SlvrSearchLib.mksearch () in
     let tbl : gltbl = {
         env=env;
-        map_ctx=IntervalLib.mk_map_ctx ();
         goals=MAP.make();
         avail_comps=comptbl;
         comp_ctx=compctxtbl;
         sln_ctx=sln;
         search=search;
+        map_ctx=MapMain.mkctx (comptbl);
       } in
     tbl
 

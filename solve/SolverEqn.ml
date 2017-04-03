@@ -91,7 +91,7 @@ struct
       else if STRING.startswith inp "x" then
         begin
           Printf.printf ("---- Summarizing Heuristics------\n");
-          noop (MapHeuristics.heuristic v);
+          noop (MapMain.infer_feasible v);
         end
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===\n" in
@@ -130,7 +130,7 @@ struct
 
   let test_node_map_full_cons tbl node =
     let mint,musr= mkmenu tbl None in
-    if MapHeuristics.full_heuristic tbl then
+    if MapMain.infer_feasible tbl then
       begin
         debug ("<<< SAT => VALID >>");
         musr();
@@ -149,22 +149,15 @@ struct
     if use_heuristic = false then
       true
     else
-      match MapHeuristics.heuristic tbl with
-        | Some(score) -> if MATH.is_infinite score
-          then
-            begin
-              debug ("[test-node-validity][FAIL] mapping scoring is too high:"^(string_of_float score));
-              musr();
-              false
-            end
-          else
-            begin
-              debug ("[test-node-validity][PASS] mapping is plausible: "^(string_of_float score));
-              true
-            end
-        | None ->
-          debug "[test-node-validity][FAIL] mapping is invalid by construction.";
-          false
+      match MapMain.infer_feasible tbl with
+      | true ->
+        begin
+          debug ("[test-node-validity][PASS] mapping is plausible: ");
+          true
+        end
+      | false ->
+        debug "[test-node-validity][FAIL] mapping is invalid by construction.";
+        false
 
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
     let mint,_ = mkmenu v None in
