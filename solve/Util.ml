@@ -69,6 +69,10 @@ let str_of_float f =
 
 module OPTION =
 struct
+  let tostr (type a) (f:a option) (ts:a->string) = match f with
+    | Some(q) -> ts q
+    | None -> "<none>"
+
   let force_conc (type a) (f:a option): a = match f with
     |Some(q) -> q
     |_ -> error "force_conc" "none is disallowed."

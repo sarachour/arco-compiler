@@ -49,6 +49,13 @@ struct
     let comp,port = p in
     "<"^(HwLib.hwcompname2str comp)^","^port^">"
 
+  let string_of_map_var (type a) (p:a map_var ) tostr = match p with
+    | MPVOffset(o) -> "offset("^(tostr o)^")"
+    | MPVScale(o) -> "scale("^(tostr o)^")"
+
+  let string_of_map_port_var q = string_of_map_var q string_of_map_port
+
+
   let string_of_map_expr (type a) (x:a map_expr) (tostr:a -> string) =
     let rec _tostr e =
       match e with
@@ -62,7 +69,10 @@ struct
         | MEAny -> "@"
     in
     _tostr x
-                                 
+
+  let string_of_map_port_var_expr (x:map_port map_var map_expr) =
+    string_of_map_expr x string_of_map_port_var
+
   let map e f =
     let rec _map e =
       match e with
@@ -82,21 +92,33 @@ end
 module MapSpec =
 struct
 
+  let string_of_abs_var_id (id:int) =
+    "v("^(string_of_int id)^")"
+
   let string_of_map_abs_var (avar:map_abs_var)=
-    "string_of_abs: unimpl"
+    let expr2str (i:int map_expr) =
+      MapExpr.string_of_map_expr i (string_of_abs_var_id)
+    in
+    "exprs="^(LIST.tostr expr2str "=" avar.exprs )^"\n"^
+    "value="^(OPTION.tostr avar.value (string_of_number))^"\n"^
+    "mems="^(LIST.tostr MapExpr.string_of_map_port_var "," avar.members)^"\n"
 
   let string_of_map_port (aport:map_port_info) =
     "string_of_map_port: unimpl"
 
   let string_of_map_comp (comp:map_comp) =
-    "string_of_map_comp: unimpl"
-
+    ("====== "^(HwLib.hwcompname2str comp.name)^" ======")^"\n"^
+    (MAP.str comp.vars (string_of_abs_var_id) (string_of_map_abs_var))^"\n"^
+    (MAP.str comp.inps (ident) (string_of_map_port))^"\n"^
+    (MAP.str comp.outs (ident) (string_of_map_port))^"\n"
+    
   let string_of_map_ctx (env:map_ctx) =
-    MAP.str env.comps (HwLib.hwcompname2str)
+    MAP.str env.comps
+      (fun q -> "=== "^(HwLib.hwcompname2str q)^" ===\n")
       (fun (x:map_abs_comp) ->
-         LIST.tostr string_of_map_comp "======\n" x.spec
+         LIST.tostr string_of_map_comp "\n======\n" x.spec
       )
-      
+
 
 end
 
@@ -139,6 +161,11 @@ struct
     | PRTExpr of map_port map_var map_expr
     | PRTConst of number
 
+  let string_of_compress_partition c :string = match c with
+    | PRTVar(v) -> MapExpr.string_of_map_port_var v
+    | PRTExpr(e) -> MapExpr.string_of_map_port_var_expr e
+    | PRTConst(c) -> string_of_number c
+
   let create_param prob parname (parval:number) =
     noop (MAP.put prob.params parname parval);
     ()
@@ -152,6 +179,10 @@ struct
         MAP.get comp.outs key 
     in
     portinfo
+
+  let _get_abs_var comp n =
+    let avar = MAP.get comp.vars n in
+    avar
 
   let set_var_priority comp varname prio =
     match varname with
@@ -170,14 +201,20 @@ struct
 
   let set_abs_var (comp:map_comp)
       (id:int) (varname:map_port map_var) : unit =
+    let avar = _get_abs_var comp id in
+    avar.members <- varname::avar.members;
     match varname with
     | MPVOffset(_,portname) ->
-      let portinfo = _get_port comp portname in
-      portinfo.offset.abs_var <- id
+      begin
+        let portinfo = _get_port comp portname in
+        portinfo.offset.abs_var <- id
+      end
+
     | MPVScale(_,portname) ->
-      let portinfo = _get_port comp portname in
-      portinfo.scale.abs_var <- id;
-      ()
+      begin
+        let portinfo = _get_port comp portname in
+        portinfo.scale.abs_var <- id
+      end
 
 
 
@@ -211,19 +248,7 @@ struct
       if c = x
       then true else false
 
-  let compress name (stmts : map_stmt list) : map_comp option =
-    let prob =
-      {
-        name=name;
-        vars=MAP.make();
-        inps=MAP.make();
-        outs=MAP.make();
-        params=MAP.make()
-      }
-    in
-    let valid = REF.mk true in
-    let parts : compress_partition set queue = QUEUE.make () in
-    let add_partition x1 x2 =
+  let add_partition parts (x1:compress_partition) (x2:compress_partition) =
       let matches = QUEUE.filter parts (fun q ->
           SET.has q x1 || SET.has q x2
         ) in
@@ -239,33 +264,87 @@ struct
           let s = SET.make () in
           noop (SET.add s x1);
           noop (SET.add s x2);
+          (print_string ("-> adding partition:"^
+           (string_of_compress_partition x1 )^","^
+           (string_of_compress_partition x2 )^"\n")
+          );
           noop (QUEUE.enqueue parts s);
           ()
         end
-      | _ -> error "add_partition" "doesn't exist"
+      | [s1;s2] ->
+        begin
+          noop (SET.add_all s1 (SET.to_list s2));
+          noop (QUEUE.rm parts s2);
+          SET.destroy s2;
+          noop (SET.add_all s1 [x1;x2]);
+          ()
+        end
+
+      | _ ->
+        (print_string ("-> on partition:"^
+           (string_of_compress_partition x1 )^","^
+           (string_of_compress_partition x2 )^"\n")
+          );
+        error "add_partition" "more than one exist"
+
+  let compress name (stmts : map_stmt list) : map_comp option =
+    let prob =
+      {
+        name=name;
+        vars=MAP.make();
+        inps=MAP.make();
+        outs=MAP.make();
+        params=MAP.make()
+      }
     in
+    print "==========\n";
+    let valid = REF.mk true in
+    let parts : compress_partition set queue = QUEUE.make () in
     
     List.iter (fun (stmt:map_stmt) -> match stmt with
-        | MSDeclInput(hwn,hwp) -> create_input prob hwn hwp
-        | MSDeclOutput(hwn,hwp) -> create_output prob hwn hwp
-        | MSDeclParam((_,par),s) -> create_param prob par s
+        | MSDeclInput(hwn,hwp) ->
+          begin
+            create_input prob hwn hwp;
+            add_partition parts (PRTVar (MPVScale(hwn,hwp))) (PRTVar (MPVScale(hwn,hwp)));
+            add_partition parts (PRTVar (MPVOffset(hwn,hwp))) (PRTVar (MPVOffset(hwn,hwp)))
+          end
+
+        | MSDeclOutput(hwn,hwp) ->
+          begin
+            create_output prob hwn hwp;
+            add_partition parts (PRTVar (MPVScale(hwn,hwp))) (PRTVar (MPVScale(hwn,hwp)));
+            add_partition parts (PRTVar (MPVOffset(hwn,hwp))) (PRTVar (MPVOffset(hwn,hwp)))
+          end
+
+        | MSDeclParam((_,par),s) ->
+          create_param prob par s
+
         | MSSetVarPriority(v1,p) ->
           set_var_priority prob v1 p 
+
         | MSSetPortCover((_,v1),c) ->
           set_port_cover prob v1 c
+
         | MSVarEqualsVar(v1,v2) ->
-          add_partition (PRTVar v1) (PRTVar v2)
+          add_partition parts (PRTVar v1) (PRTVar v2)
+
         | MSVarEqualsConst(v1,e) ->
-          add_partition (PRTVar v1) (PRTConst e)
+          add_partition parts (PRTVar v1) (PRTConst e)
+
         | MSVarEqualsExpr(v1,e) ->
-          add_partition (PRTVar v1) (PRTExpr e)
+          add_partition parts (PRTVar v1) (PRTExpr e)
+
         | MSExprEqualsExpr(e1,e2) ->
-          add_partition (PRTExpr e1) (PRTExpr e2)
+          add_partition parts (PRTExpr e1) (PRTExpr e2)
+
         | MSExprEqualsConst(e1,c) ->
-          add_partition (PRTExpr e1) (PRTConst c)
+          add_partition parts (PRTExpr e1) (PRTConst c)
+
         | MSInvalid -> REF.upd valid (fun _ -> false)
         | MSValid -> ()
       ) stmts;
+
+    (*process the var data.*)
     let expr_buf = MAP.make () in 
     QUEUE.iter parts (fun (equiv_set) ->
         let abs = create_abs_var prob in
@@ -287,6 +366,7 @@ struct
         noop (MAP.put expr_buf abs.id exprs);
         ()
       );
+    (*traverse expression buf.*)
     MAP.iter expr_buf (fun id (exprs) ->
         List.iter (fun e ->
             set_abs_expr prob id e
@@ -613,14 +693,18 @@ struct
 
         | _ -> error "derive_scaling_factor" "unhandled"
       in
-      (*let simpl_res = HwLib.simplify hwenv res in *)
-      proj,res
+      let simpl_res = HwLib.simplify hwenv res in 
+      proj,simpl_res
     in
     let proj,_= _derive_mapping_problem node in
     let stmts = QUEUE.to_list cstrs in 
     QUEUE.destroy cstrs;
     stmts,proj
 
+  let wrap_var_eq_expr v e = match e with
+    | MEVar(q) -> (MSVarEqualsVar(v,q))
+    | MEConst(q) -> (MSVarEqualsConst(v,q))
+    | q -> (MSVarEqualsExpr(v,q))
 
   let derive_mapping_variable hwenv comp params (v:hwvid hwportvar) : map_stmt list =
       let stmtq = QUEUE.make() in
@@ -637,8 +721,8 @@ struct
             let cstrs,linear = derive_mapping_expr hwenv bhvr.rhs [] params in
             begin
               enq_all cstrs;
-              enq (MSVarEqualsExpr(MPVScale(comp,v.port),linear.scale));
-              enq (MSVarEqualsExpr(MPVOffset(comp,v.port),linear.offset));
+              enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
+              enq (wrap_var_eq_expr (MPVOffset(comp,v.port)) linear.offset);
               ()
             end
 
@@ -648,9 +732,9 @@ struct
               let icvar,_ =bhvr.ic in
               enq_all cstrs;
               enq (MSDeclInput(comp,icvar));
-              enq (MSVarEqualsExpr(MPVScale(comp,v.port),linear.scale));
+              enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
               enq (MSVarEqualsConst(MPVOffset(comp,v.port),Integer 0));
-              enq (MSVarEqualsExpr(MPVOffset(comp,v.port),linear.offset));
+              enq (wrap_var_eq_expr (MPVOffset(comp,v.port)) linear.offset);
               enq (MSVarEqualsVar(MPVScale(comp,v.port),
                                   MPVScale(comp,icvar)));
               enq (MSVarEqualsVar(MPVOffset(comp,v.port),
@@ -696,11 +780,14 @@ struct
     let param_combos : ((string,number) map) list =
       HwLib.all_param_combos comp
     in
-    List.map
-      (fun params ->
-         derive_mapping_comp_with_params hwenv comp params 
-      )
-      param_combos
+    if List.length param_combos = 0 then
+      [derive_mapping_comp_with_params hwenv comp (MAP.make())]
+    else
+      List.map
+        (fun params ->
+          derive_mapping_comp_with_params hwenv comp params 
+        )
+        param_combos
 end
 
 
