@@ -81,6 +81,17 @@ struct
   | Some(q) -> Some(q)
   | None -> Some dflt
 
+  let map (type a) (type b) (f:a option) (fn:a->b) : b option =
+    match f with
+    | Some(x) -> Some(fn x)
+    | None -> None
+
+  let map_option (type a) (type b) (f:a option) (fn:a->b option) : b option =
+    match f with
+    | Some(x) -> fn x
+    | None -> None
+
+
   let conc_list (type a) (f: a option list) : a list =
     List.fold_left (fun lst el -> match el with
         | Some(e) -> e::lst | None -> lst ) [] f

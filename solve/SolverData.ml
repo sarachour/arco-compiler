@@ -174,5 +174,5 @@ type gltbl = {
   mutable goals : (int,goal) map;
   mutable search: (sstep,gltbl) ssearch;
 
-  mutable map_ctx : map_ctx;
+  mutable map_ctx : map_port map_ctx;
 }

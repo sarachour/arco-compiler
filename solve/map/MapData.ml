@@ -2,13 +2,13 @@ open HWData
 open AST
 open IntervalData
 open StochData
+open MathData
 
 
 open Util
 
 type map_type =
   | MTOffset | MTScale;;
-
 
 type map_port = hwcompname*string
 
@@ -47,10 +47,10 @@ type map_stmt =
 (*the port mappings, perturb function.*)
 
 (*a particular variable is equal to this.*)
-type map_abs_var = {
+type 'a map_abs_var = {
   mutable exprs : int map_expr list;
   mutable value: number option;
-  mutable members: map_port map_var list;
+  mutable members: 'a map_var list;
   mutable priority: int;
   id:int;
 }
@@ -61,28 +61,38 @@ type map_var_info = {
 }
 type map_port_info = {
   port: string;
-  mutable range: hwdefs option;
+  mutable range: num_interval option;
+  is_stvar: bool;
 
   offset: map_var_info;
   scale: map_var_info;
 }
 
-type map_comp = {
-  vars: (int,map_abs_var) map;
+type 'a map_comp = {
+  vars: (int,'a map_abs_var) map;
   inps: (string,map_port_info) map;
   outs: (string,map_port_info) map;
   params: (string,number) map;
+  mutable id:int;
+}
+
+
+type 'a map_abs_comp = {
+  spec:(int,'a map_comp) map;
   name: hwcompname;
 }
 
-type param_config = (string*float) list
+type 'a map_ctx = {
+  comps: (hwcompname,'a map_abs_comp) map;
+}
 
-type map_abs_comp = {
-  spec:(map_comp) list;
+(*for a circuit*)
+type 'a map_circ = {
+  vars: (int,'a map_abs_var) map;
+  ports: (wireid,map_port_info) map;
+  mappings: (wireid,num_interval) map;
 }
-type map_ctx = {
-  comps: (hwcompname,map_abs_comp) map;
-}
+
 
 type hw_mapping = {
   mutable scale:float;
@@ -92,47 +102,3 @@ type hw_mapping = {
   mutable wire: wireid;
 }
 (*determines the kind of variable*)
-(*
-type linear_slack_dir =
-  | SVMin | SVMax
-
-type linear_id =
-  | SVScaleVar of wireid
-  | SVOffsetVar of wireid
-
-type linear_smt_id =
-  | SVLinVar of linear_id
-  | SVSlackVar of linear_slack_dir*float*wireid*int
-
-type linear_stmt =
-  | SVNoOffset of linear_id ast
-  | SVNoScale of linear_id ast
-  | SVNeq of (linear_id ast)*linear_id ast
-  | SVEquals of (linear_id ast) list
-  | SVCoverEq of (linear_smt_id ast) list
-  | SVCoverLTE of (linear_smt_id ast) list
-  | SVCoverGTE of (linear_smt_id ast) list
-  | SVDeclMapVar of linear_smt_id
-  | SVLTE of (linear_id ast*linear_id ast)
-
-type linear_mapping = {
-  scale : linear_id ast;
-  offset : linear_id ast;
-  term: hwvid ast;
-}
-
-
-type map_heuristic = {
-  math_rng:num_interval;
-  hw_rng:num_interval;
-  math_noise:rand_var;
-  hw_noise:rand_var;
-  mutable scale: bool;
-  mutable offset: bool;
-}
-
-type map_heuristics = {
-  mappings:(wireid,map_heuristic) map;
-  mutable valid: bool;
-}
-*)

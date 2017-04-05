@@ -395,6 +395,14 @@ struct
   let conccomp_port2wire (c:ucomp_conc) port : wireid =
     {comp=(conccomp2inst c);port=port}
 
+  let comp_get_port_cfg (c:ucomp_conc) (port:string) =
+    if MAP.has c.cfg.inps port then
+      Some (MAP.get c.cfg.inps port).expr
+    else if MAP.has c.cfg.outs port then
+      Some (MAP.get c.cfg.outs port).expr
+    else
+      None
+
   let get_conc_comp (tbl:gltbl) (f:hwcompinst) = 
     if MAP.has tbl.comp_ctx f.name then
       let ctx = MAP.get tbl.comp_ctx f.name in

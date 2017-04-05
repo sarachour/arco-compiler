@@ -73,6 +73,8 @@ type wireid = {
     comp:hwcompinst;
     port:string;
 }
+let mkwire (name:hwcompname) (inst:int) port : wireid =
+{port=port;comp={name=name;inst=inst}}
 
 type wireconn = {
   src: wireid;

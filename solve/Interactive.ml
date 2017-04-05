@@ -73,5 +73,7 @@ let print_debug (i:int) (x:string) (v:string) =
   in
   _if_debug i fxn
 
+let print = print_debug 0
+
 let exec_debug (i:int) (e:unit->unit) =
   _if_debug i e

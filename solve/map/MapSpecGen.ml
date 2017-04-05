@@ -92,10 +92,14 @@ end
 module MapSpec =
 struct
 
+  let find_comp_config (ctx:'a map_ctx) (cmp:hwcompname)
+      (params:(string,number) map) =
+    []
+
   let string_of_abs_var_id (id:int) =
     "v("^(string_of_int id)^")"
 
-  let string_of_map_abs_var (avar:map_abs_var)=
+  let string_of_map_abs_var (avar:'a map_abs_var) (conv:'a -> string) =
     let expr2str (i:int map_expr) =
       MapExpr.string_of_map_expr i (string_of_abs_var_id)
     in
@@ -103,20 +107,54 @@ struct
     "value="^(OPTION.tostr avar.value (string_of_number))^"\n"^
     "mems="^(LIST.tostr MapExpr.string_of_map_port_var "," avar.members)^"\n"
 
-  let string_of_map_port (aport:map_port_info) =
+
+  let map_var (type a) (type b)
+      (x:a map_var) (f:a->b) : b map_var =
+    match x with
+    | MPVScale(r) -> MPVScale(f r)
+    | MPVOffset(r) -> MPVOffset(f r)
+
+  let get_comp (ctx:'a map_ctx) name id : 'a map_comp =
+    error "get_comp" "unimpl"
+
+  let set_offset_var (ctx:'a map_circ)
+      (key:'a) (id:int) =
+    let d = MAP.get ctx.ports key in
+    d.offset.abs_var <- id
+
+
+  let set_scale_var (ctx:'a map_circ)
+      (key:'a) (id:int) =
+    let d = MAP.get ctx.ports key in
+    d.scale.abs_var <- id
+
+  let get_offset_var (ctx:'a map_ctx)
+      (key:'a) (id:int) =
+    error "get_offset_var" "dne"
+
+  let get_scale_var (ctx:'a map_ctx)
+      (key:'a) (id:int) =
+    error "get_scale_var" "dne"
+
+  let string_of_map_port_info (aport:map_port_info) =
     "string_of_map_port: unimpl"
 
-  let string_of_map_comp (comp:map_comp) =
-    ("====== "^(HwLib.hwcompname2str comp.name)^" ======")^"\n"^
-    (MAP.str comp.vars (string_of_abs_var_id) (string_of_map_abs_var))^"\n"^
-    (MAP.str comp.inps (ident) (string_of_map_port))^"\n"^
-    (MAP.str comp.outs (ident) (string_of_map_port))^"\n"
+  let string_of_map_port ((a,b):map_port) =
+    (HwLib.hwcompname2str a)^"."^b
+
+  let string_of_map_comp (comp:'a map_comp) (f:'a -> string) =
+    ("====== #"^(string_of_int comp.id)^" ======")^"\n"^
+    (MAP.str comp.vars (string_of_abs_var_id)
+       (fun q -> string_of_map_abs_var q f))^"\n"^
+    (MAP.str comp.inps (ident) (string_of_map_port_info))^"\n"^
+    (MAP.str comp.outs (ident) (string_of_map_port_info))^"\n"
     
-  let string_of_map_ctx (env:map_ctx) =
+  let string_of_map_ctx (env:'a map_ctx) (f:'a->string) =
     MAP.str env.comps
       (fun q -> "=== "^(HwLib.hwcompname2str q)^" ===\n")
-      (fun (x:map_abs_comp) ->
-         LIST.tostr string_of_map_comp "\n======\n" x.spec
+      (fun (x:'a map_abs_comp) ->
+         MAP.str x.spec (fun _ -> "\n")
+           (fun q -> string_of_map_comp q f)
       )
 
 
@@ -125,7 +163,7 @@ end
 module MapCompSpecCompressor =
 struct
 
-  let create_abs_var prob : map_abs_var =
+  let create_abs_var (prob:'a map_comp) : 'a map_abs_var =
     let id = MAP.size prob.vars in
     let obj = {
       exprs = [];
@@ -146,13 +184,14 @@ struct
       range=None;
       offset=create_var ();
       scale=create_var ();
+      is_stvar=false;
     }
 
-  let create_input (prob:map_comp) name  (port) =
+  let create_input (prob:'a map_comp) name  (port) =
     noop (MAP.put prob.inps (port) (create_port port));
     ()
 
-  let create_output (prob:map_comp) name (port) =
+  let create_output (prob:'a map_comp) name (port) =
     noop (MAP.put prob.outs (port) (create_port port));
     ()
 
@@ -180,7 +219,7 @@ struct
     in
     portinfo
 
-  let _get_abs_var comp n =
+  let _get_abs_var (comp:'a map_comp) n =
     let avar = MAP.get comp.vars n in
     avar
 
@@ -194,12 +233,13 @@ struct
       portinfo.scale.priority <- prio
 
 
-  let set_port_cover (comp:map_comp) (portname:string) (cover:hwdefs) =
+  let set_port_cover (comp:'a map_comp)
+      (portname:string) (cover:hwdefs) =
     let portinfo = _get_port comp portname in
     portinfo.range <- Some cover;
     ()
 
-  let set_abs_var (comp:map_comp)
+  let set_abs_var (comp:'a map_comp)
       (id:int) (varname:map_port map_var) : unit =
     let avar = _get_abs_var comp id in
     avar.members <- varname::avar.members;
@@ -218,9 +258,11 @@ struct
 
 
 
-  let set_abs_expr (comp:map_comp) (id:int) (expr:map_port map_var map_expr) =
-    let v : map_abs_var = MAP.get comp.vars id in
-    let id_expr : int map_expr = MapExpr.map expr (fun (v:map_port map_var) ->
+  let set_abs_expr (comp:'a map_comp) (id:int)
+      (expr:map_port map_var map_expr) =
+    let v : 'a map_abs_var = MAP.get comp.vars id in
+    let id_expr : int map_expr =
+      MapExpr.map expr (fun (v:map_port map_var) ->
         match v with
         | MPVOffset(_,portname) ->
           let portinfo = _get_port comp portname in
@@ -235,8 +277,8 @@ struct
     v.exprs <- id_expr::v.exprs;
     ()
 
-  let set_abs_const (comp:map_comp) (id:int) (c:number) =
-    let v : map_abs_var = MAP.get comp.vars id in
+  let set_abs_const (comp:'a map_comp) (id:int) (c:number) =
+    let v : 'a map_abs_var = MAP.get comp.vars id in
     match v.value with
     | None ->
       begin
@@ -248,7 +290,10 @@ struct
       if c = x
       then true else false
 
-  let add_partition parts (x1:compress_partition) (x2:compress_partition) =
+
+
+  let add_partition parts
+      (x1:compress_partition) (x2:compress_partition) =
       let matches = QUEUE.filter parts (fun q ->
           SET.has q x1 || SET.has q x2
         ) in
@@ -287,10 +332,10 @@ struct
           );
         error "add_partition" "more than one exist"
 
-  let compress name (stmts : map_stmt list) : map_comp option =
-    let prob =
+  let compress name (stmts : map_stmt list) : 'a map_comp option =
+    let prob : 'a map_comp =
       {
-        name=name;
+        id=0;
         vars=MAP.make();
         inps=MAP.make();
         outs=MAP.make();
@@ -305,15 +350,19 @@ struct
         | MSDeclInput(hwn,hwp) ->
           begin
             create_input prob hwn hwp;
-            add_partition parts (PRTVar (MPVScale(hwn,hwp))) (PRTVar (MPVScale(hwn,hwp)));
-            add_partition parts (PRTVar (MPVOffset(hwn,hwp))) (PRTVar (MPVOffset(hwn,hwp)))
+            add_partition parts (PRTVar (MPVScale(hwn,hwp)))
+              (PRTVar (MPVScale(hwn,hwp)));
+            add_partition parts (PRTVar (MPVOffset(hwn,hwp)))
+              (PRTVar (MPVOffset(hwn,hwp)))
           end
 
         | MSDeclOutput(hwn,hwp) ->
           begin
             create_output prob hwn hwp;
-            add_partition parts (PRTVar (MPVScale(hwn,hwp))) (PRTVar (MPVScale(hwn,hwp)));
-            add_partition parts (PRTVar (MPVOffset(hwn,hwp))) (PRTVar (MPVOffset(hwn,hwp)))
+            add_partition parts (PRTVar (MPVScale(hwn,hwp)))
+              (PRTVar (MPVScale(hwn,hwp)));
+            add_partition parts (PRTVar (MPVOffset(hwn,hwp)))
+              (PRTVar (MPVOffset(hwn,hwp)))
           end
 
         | MSDeclParam((_,par),s) ->
@@ -347,7 +396,7 @@ struct
     (*process the var data.*)
     let expr_buf = MAP.make () in 
     QUEUE.iter parts (fun (equiv_set) ->
-        let abs = create_abs_var prob in
+        let abs : 'a map_abs_var = create_abs_var prob in
         let exprs =
           SET.fold equiv_set (fun (q:compress_partition) exprs ->
             match q with
@@ -693,8 +742,8 @@ struct
 
         | _ -> error "derive_scaling_factor" "unhandled"
       in
-      let simpl_res = HwLib.simplify hwenv res in 
-      proj,simpl_res
+      (*let simpl_res = HwLib.simplify hwenv res in*)
+      proj,res
     in
     let proj,_= _derive_mapping_problem node in
     let stmts = QUEUE.to_list cstrs in 
