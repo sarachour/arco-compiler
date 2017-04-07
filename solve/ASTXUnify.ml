@@ -1,5 +1,6 @@
 open SymCamlData
 open SymCaml
+open PyCamlWrapper
 
 open Util
 open Globals
@@ -131,6 +132,7 @@ struct
     let vtable : sym_vtable = mk_vtable  () in
     (*variable table*)
     try
+      SymCaml.set_debug symenv.s true;
       SymCaml.define_function symenv.s "VAR";
       SymCaml.define_function symenv.s "MEAN";
       SymCaml.define_symbol symenv.s ("m:"^tempvar());
@@ -241,7 +243,8 @@ struct
       if_numeric_unify s hwexpr texpr
     in
     if unified_numeric then result else
-      let simpl_symhwexpr = SymCaml.simpl symenv.s symhwexpr in
+      let _ = print ("==== UNIFY ("^(SymCaml.expr2str symhwexpr)^") ====") in
+      let simpl_symhwexpr = SymCaml.simpl symenv.s symhwexpr in 
       let maybe_assigns =
         try
           SymCaml.pattern symenv.s symtexpr simpl_symhwexpr
@@ -431,7 +434,8 @@ struct
 
     let mk_comp_search (hwenv:hwvid hwenv) (menv:mid menv) (comp:hwvid hwcomp) (inst) (cfg:hwcompcfg) (hvar:string) =
       let search : (rstep, rtbl) ssearch =
-        SearchLib.mksearch apply_step unapply_step order_steps (get_score()) (step2str)
+        SearchLib.mksearch apply_step unapply_step
+          order_steps (get_score()) (step2str)
       in
       let hw_st : hwcomp_state = {
         env=hwenv;
@@ -445,6 +449,9 @@ struct
         env=menv;
         solved=[];
       } in
+      print "==== Initialize Symcaml ====\n";
+      PyCamlWrapper.set_python_home ("/usr/local/lib/python3.4");
+      print ("PYHOME:"^(PyCamlWrapper.get_python_home ())^"\n");
       let sym_st : symcaml_env = {
         s=SymCaml.init();
         cnv= ASTUnifySymcaml.unid2symvar;
