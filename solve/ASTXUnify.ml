@@ -236,7 +236,7 @@ struct
     let symhwexpr = to_symexpr s hwexpr in
     let symtexpr = to_symexpr s texpr in
     print_unify symhwexpr symtexpr;
-    (*SymCaml.set_debug symenv.s true;*)
+    SymCaml.set_debug symenv.s true;
     let unified_numeric,result =
       if_numeric_unify s hwexpr texpr
     in
