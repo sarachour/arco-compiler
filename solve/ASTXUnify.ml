@@ -450,8 +450,6 @@ struct
         solved=[];
       } in
       print "==== Initialize Symcaml ====\n";
-      PyCamlWrapper.set_python_home ("/usr/local/lib/python3.4");
-      print ("PYHOME:"^(PyCamlWrapper.get_python_home ())^"\n");
       let sym_st : symcaml_env = {
         s=SymCaml.init();
         cnv= ASTUnifySymcaml.unid2symvar;
