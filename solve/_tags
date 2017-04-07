@@ -2,6 +2,8 @@ true: package(threads,core,pycaml,str,camlp4,symcaml)
 true: thread,debug
 <symcaml>: include
 <map>: include
+<pyenv>: -traverse
+
 "interval": include
 "stochastic": include
 "compile-ast": use_menhir

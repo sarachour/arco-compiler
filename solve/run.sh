@@ -14,6 +14,9 @@ SOLVER=./solver.debug
 ./killall.sh z3 
 ./killall.sh solver.debug 
 ./killall.sh solver 
+
+source ./pyenv/bin/activate 
+
 ./mkconfigs.sh
 
 if [ "$CMD" = "test-math" ]; then
