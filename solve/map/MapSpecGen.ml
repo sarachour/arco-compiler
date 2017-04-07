@@ -15,6 +15,7 @@ open MathLib
 
 open Search
 open SearchData
+open Z3Data
 
 open SolverData
 open SolverUtil
@@ -45,6 +46,16 @@ let dumb_cstrs_DBG = false
 module MapExpr =
 struct
 
+  let get_abs_var (p:('a -> map_port_info)) (v:'a map_var) =
+    match v with
+    | MPVScale(vr) ->
+      let data = p vr in
+      data.scale
+    | MPVOffset(vr) ->
+      let data = p vr in
+      data.offset
+
+
   let string_of_map_port (p:map_port) =
     let comp,port = p in
     "<"^(HwLib.hwcompname2str comp)^","^port^">"
@@ -69,6 +80,13 @@ struct
         | MEAny -> "@"
     in
     _tostr x
+
+  let z3 (type a) (expr:a map_expr) (atoz3 : a -> z3expr) =
+    let rec _work e = match e with
+      | MEVar(q) -> atoz3 q
+      | MEAdd(a,b) -> Z3Plus(_work a, _work b)
+    in
+    _work expr
 
   let string_of_map_port_var_expr (x:map_port map_var map_expr) =
     string_of_map_expr x string_of_map_port_var
@@ -233,11 +251,30 @@ struct
       portinfo.scale.priority <- prio
 
 
+  let port_info_set_cover (portinfo:map_port_info) (cover:hwdefs) =
+    match  cover with
+    |HWDAnalog(defs) ->
+      begin
+        portinfo.range <-
+          Some (IntervalLib.interval2numinterval defs.ival)
+      end
+
+    |HWDDigital(defs) ->
+      begin
+        portinfo.range <-
+          Some (IntervalLib.interval2numinterval defs.ival)
+      end
+    | HWDAnalogState(defs) ->
+      begin
+        portinfo.range <-
+          Some (IntervalLib.interval2numinterval defs.stvar.ival);
+        portinfo.is_stvar <- true;
+      end
+
   let set_port_cover (comp:'a map_comp)
       (portname:string) (cover:hwdefs) =
     let portinfo = _get_port comp portname in
-    portinfo.range <- Some cover;
-    ()
+    port_info_set_cover portinfo cover
 
   let set_abs_var (comp:'a map_comp)
       (id:int) (varname:map_port map_var) : unit =

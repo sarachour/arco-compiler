@@ -62,7 +62,7 @@ type map_var_info = {
 type map_port_info = {
   port: string;
   mutable range: num_interval option;
-  is_stvar: bool;
+  mutable is_stvar: bool;
 
   offset: map_var_info;
   scale: map_var_info;

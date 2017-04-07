@@ -8,6 +8,10 @@ open SolverCompLib
 open HWLib
 open SolverUtil
 
+open IntervalData
+open IntervalLib
+open MapIntervalCompute
+open MapSolve
 
 module MapMain = struct
 
@@ -141,19 +145,25 @@ module MapMain = struct
             let port_data : map_port_info =
               {
                 port=port.port;
-                range=Some port.defs;
+                range=None;
                 offset={priority=0;abs_var=0};
                 scale={priority=0;abs_var=0};
+                is_stvar=false;
               }
             in
             let iwire = (mkwire inst.name inst.inst port.port) in 
             MAP.put circ.ports iwire port_data;
+            MapCompSpecCompressor.port_info_set_cover
+              port_data port.defs;
             let map_expr =
               (SolverCompLib.comp_get_port_cfg ccomp port.port)
             in
             match OPTION.map map_expr uast2mast with
             | Some(mast) ->
-              noop (MAP.put circ.mappings iwire mast)
+              let ival : interval =
+                IntervalCompute.compute_mexpr_interval gltbl mast in
+              noop (MAP.put circ.mappings iwire
+                      (IntervalLib.interval2numinterval ival))
             | _ ->
               ();
             ()
@@ -180,7 +190,7 @@ module MapMain = struct
                 in
                 (x.comp,local_abs_var)
             in
-            MAP.put absmap local_id id;
+            noop (MAP.put absmap local_id id);
             match w with
             | MPVOffset(wire) ->
               MapSpec.set_offset_var circ wire id
@@ -237,17 +247,22 @@ module MapMain = struct
 
   (*build a macro-component from building blocks.*)
   let infer (tbl:gltbl) : (wireid,hw_mapping) map option=
-    let prob = build_prob tbl.map_ctx tbl in
-    let mappings = MapSolver.solve prob in
-    mappings
+    let prob_opt = build_prob tbl.map_ctx tbl in
+    match prob_opt with
+    | Some(prob) ->
+      let mappings = MapSolver.solve tbl prob in
+      mappings
+    | None -> None
 
   let infer_feasible (tbl:gltbl)
     : bool =
-    error "infer_feasible" "unimpl"
+    match infer tbl with
+    | Some(_) -> true
+    | None -> false
+
 
   let infer_best (tbl:gltbl) : (wireid,hw_mapping) map option =
-    error "find_best_config" "test the config."
-
+    infer tbl
 
 
 end

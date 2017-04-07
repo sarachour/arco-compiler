@@ -70,7 +70,7 @@ type 'a mapper_env = {
 type 'a interval_env = {
   mutable intervals : ('a,interval) map;
 }
-
+(*
 type 'a map_ctx = {
   mutable inst: (string,int) map;
   (*cstrs*)
@@ -83,3 +83,4 @@ type 'a map_ctx = {
   (*the interval you're imposing*)
   mutable ival_abs : ('a,interval) map;
 }
+*)

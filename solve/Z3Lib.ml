@@ -324,7 +324,7 @@ struct
         Sys.command ("./timebomb.sh 'dReal --model "^smtfile^" > "^resfile^"' "^
                     (string_of_int timeout))
       else
-        Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
+       Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
                     (string_of_int timeout))
     end;
     z3_print_debug "---> Finished Search\n";
