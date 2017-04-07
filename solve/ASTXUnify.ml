@@ -133,8 +133,8 @@ struct
     (*variable table*)
     try
       SymCaml.set_debug symenv.s true;
-      SymCaml.define_function symenv.s "VAR";
-      SymCaml.define_function symenv.s "MEAN";
+      (*SymCaml.define_function symenv.s "VAR";
+      SymCaml.define_function symenv.s "MEAN";*)
       SymCaml.define_symbol symenv.s ("m:"^tempvar());
       let decl_symvar (vname:symvar) =
           spydebug ("[env][decl] mvar "^vname);
