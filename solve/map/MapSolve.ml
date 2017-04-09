@@ -77,14 +77,17 @@ struct
           q (Z3Assert(equality))
       );
     (*add the speed constraint*)
-    q (Z3Assert(
-        Z3Lib.eq_all
-          (SET.map derivq (fun (s,o) -> vid_to_var s))
-      ));
-    q (Z3Assert(
-        Z3Lib.eq_all
-          (SET.map derivq (fun (s,o) -> vid_to_var o))
-      ));
+    if SET.size derivq > 0 then
+      begin
+        q (Z3Assert(
+            Z3Lib.eq_all
+              (SET.map derivq (fun (s,o) -> vid_to_var s))
+          ));
+        q (Z3Assert(
+            Z3Lib.eq_all
+              (SET.map derivq (fun (s,o) -> vid_to_var o))
+          ));
+      end;
     (*range decls*)
     q (Z3SAT);
     q (Z3DispModel);
@@ -137,8 +140,9 @@ struct
     : (wireid,hw_mapping) map option =
     let stmts = build_z3_prob tbl prob in
     let sln =
-      Z3Lib.exec "circ" stmts true
+      Z3Lib.exec "MAPPER" stmts true
     in
+    Z3Lib.save_z3_prob "MAPPER_PROB" stmts (Z3Int 0) true;
     let mappings = to_mappings prob sln in
     mappings
 
