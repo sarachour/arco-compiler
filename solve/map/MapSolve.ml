@@ -89,8 +89,6 @@ struct
           ));
       end;
     (*range decls*)
-    q (Z3SAT);
-    q (Z3DispModel);
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
     stmts
