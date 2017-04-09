@@ -115,6 +115,9 @@ struct
     let param_list = MAP.to_list params in 
     let same_params (cmp:'a map_comp) : bool =
       List.fold_right (fun ((par,value):string*number) (eq:bool) ->
+          print ("===  "^par^" ==\n"^
+            (MAP.str cmp.params
+               (fun x->x) (string_of_number) )^"\n");
           let cmp_value = MAP.get cmp.params par in
           cmp_value = value && eq
         ) param_list true
