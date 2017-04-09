@@ -150,7 +150,9 @@ struct
     | MPVOffset(r) -> MPVOffset(f r)
 
   let get_comp (ctx:'a map_ctx) name id : 'a map_comp =
-    error "get_comp" "unimpl"
+    let cmp : 'a map_abs_comp = MAP.get ctx.comps name in
+    let ccmp = MAP.get cmp.spec id in
+    ccmp
 
   let set_offset_var (ctx:'a map_circ)
       (key:'a) (id:int) =
