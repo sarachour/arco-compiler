@@ -56,17 +56,21 @@ struct
           ()
       );
     (*add variable constraints*)
+    let freevars = SET.make () in
     MAP.iter prob.vars (fun (vid:int) (v:wireid map_abs_var) ->
+        SET.clear freevars;
         let xexpr :z3expr list = List.map
             (fun (expr:int map_expr) ->
-              let e : z3expr = MapExpr.z3 expr
+               let z3expr = MapExpr.z3
+                   freevars ("free_"^(string_of_int vid)) expr
                   (fun (x:int) ->
                     vid_to_var x 
                   )
               in
-              e
+              z3expr
           ) v.exprs
         in
+        SET.iter freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
         let equality = Z3Lib.eq_all xexpr in
         q (Z3Assert(equality))
       );

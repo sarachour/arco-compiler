@@ -81,10 +81,25 @@ struct
     in
     _tostr x
 
-  let z3 (type a) (expr:a map_expr) (atoz3 : a -> z3expr) =
+  let z3 (type a) freshvars prefix (expr:a map_expr) (atoz3 : a -> z3expr) =
+    let fresh_var () =
+      let i = SET.size freshvars in
+      let vname = prefix^"_"^(string_of_int i) in
+      SET.add freshvars vname;
+      vname
+    in
     let rec _work e = match e with
       | MEVar(q) -> atoz3 q
       | MEAdd(a,b) -> Z3Plus(_work a, _work b)
+      | MESub(a,b) -> Z3Sub(_work a, _work b)
+      | MEConst(Integer x) -> Z3Int(x)
+      | MEConst(Decimal x) -> Z3Real(x)
+      | MEMult(a,b) -> Z3Mult(_work a,_work b)
+      | MEDiv(a,b) -> Z3Div(_work a,_work b)
+      | MEPower(a,Integer b) -> Z3Power(_work a, Z3Int b)
+      | MEPower(a,Decimal b) -> Z3Power(_work a, Z3Real b)
+      | MEAny -> Z3Var(fresh_var ())
+
     in
     _work expr
 
