@@ -12,6 +12,9 @@ open IntervalData
 open IntervalLib
 open MapIntervalCompute
 open MapSolve
+exception MapMainError of string
+
+let error n m  : unit= raise (MapMainError (n^":"^m))
 
 module MapMain = struct
 

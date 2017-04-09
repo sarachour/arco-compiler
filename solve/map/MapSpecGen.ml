@@ -112,7 +112,21 @@ struct
 
   let find_comp_config (ctx:'a map_ctx) (cmp:hwcompname)
       (params:(string,number) map) =
-    []
+    let param_list = MAP.to_list params in 
+    let same_params (cmp:'a map_comp) : bool =
+      List.fold_right (fun ((par,value):string*number) (eq:bool) ->
+          let cmp_value = MAP.get cmp.params par in
+          cmp_value = value && eq
+        ) param_list true
+    in
+    let cmps : 'a map_abs_comp = MAP.get ctx.comps cmp in 
+    MAP.fold cmps.spec (
+      fun _ (cmp:'a map_comp) (matches:'a map_comp list) ->
+        if same_params cmp then
+          cmp::matches
+        else
+          matches
+      ) []
 
   let string_of_abs_var_id (id:int) =
     "v("^(string_of_int id)^")"
