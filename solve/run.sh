@@ -15,7 +15,6 @@ SOLVER=./solver.debug
 ./killall.sh solver.debug 
 ./killall.sh solver 
 
-source ./pyenv/bin/activate 
 
 ./mkconfigs.sh
 
