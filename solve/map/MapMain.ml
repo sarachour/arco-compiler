@@ -78,20 +78,24 @@ module MapMain = struct
       (ctx:map_port map_ctx) (param_map:(hwcompinst,int) map)
       (w:wireid) (cont:wireid map_var) =
     let w_conc_id = MAP.get param_map w.comp in
+    (*get the abstract variable that corresponds to the port*)
     let mvar : map_port map_abs_var =
       match cont with
       | MPVScale(_) ->
         begin
           enq [MPVScale(w);cont];
-          MapSpec.get_scale_var ctx (w.comp.name,w.port) w_conc_id 
+          MapSpec.ctx_get_scale_var ctx
+              w.comp.name w_conc_id w.port
         end
 
       | MPVOffset(_) ->
         begin
           enq [MPVOffset(w);cont];
-          MapSpec.get_offset_var ctx (w.comp.name,w.port) w_conc_id 
+          MapSpec.ctx_get_offset_var ctx
+              w.comp.name w_conc_id w.port
         end
     in
+    (*go through each of the members and add to the partition*)
     List.iter (fun (mem:map_port map_var) ->
         let mem_var : wireid map_var =
           MapSpec.map_var mem
@@ -194,15 +198,17 @@ module MapMain = struct
               | MPVScale(x) ->
                 let conc_id = MAP.get param_map x.comp in
                 let local_abs_var =
-                  MapSpec.get_scale_var ctx (x.comp.name,x.port) conc_id
+                  MapSpec.ctx_get_scale_var ctx
+                    x.comp.name conc_id x.port
                 in
-                (x.comp,local_abs_var)
+                (x.comp,local_abs_var.id)
               | MPVOffset(x) ->
                 let conc_id = MAP.get param_map x.comp in
                 let local_abs_var =
-                  MapSpec.get_offset_var ctx (x.comp.name,x.port) conc_id
+                  MapSpec.ctx_get_offset_var
+                    ctx x.comp.name conc_id x.port
                 in
-                (x.comp,local_abs_var)
+                (x.comp,local_abs_var.id)
             in
             noop (MAP.put absmap local_id id);
             match w with

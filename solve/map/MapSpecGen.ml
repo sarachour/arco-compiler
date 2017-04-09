@@ -154,30 +154,66 @@ struct
     let ccmp = MAP.get cmp.spec id in
     ccmp
 
+  
+  let _get_port comp name =
+    let key = name in 
+    let portinfo=
+      if MAP.has comp.inps key then
+        MAP.get comp.inps key 
+      else
+        MAP.get comp.outs key 
+    in
+    portinfo
+
+
   let set_offset_var (ctx:'a map_circ)
       (key:'a) (id:int) =
     let d = MAP.get ctx.ports key in
     d.offset.abs_var <- id
-
 
   let set_scale_var (ctx:'a map_circ)
       (key:'a) (id:int) =
     let d = MAP.get ctx.ports key in
     d.scale.abs_var <- id
 
-  let get_offset_var (ctx:'a map_ctx)
+  let set_offset_var (ctx:'a map_circ)
       (key:'a) (id:int) =
-    error "get_offset_var" "dne"
+    let d = MAP.get ctx.ports key in
+    d.offset.abs_var <- id
 
-  let get_scale_var (ctx:'a map_ctx)
+  let ctx_get_abs_var (ctx:'a map_ctx)
+      (name:hwcompname) (id:int) (aid:int) : 'a map_abs_var=
+    let comp = get_comp ctx name id in 
+    let a = MAP.get comp.vars aid in
+    a
+
+  let ctx_get_offset_var (ctx:'a map_ctx)
+      (name:hwcompname) (id:int) (port:string) : 'a map_abs_var =
+    let comp = get_comp ctx name id in 
+    let d = _get_port comp port in
+    MAP.get comp.vars d.offset.abs_var 
+
+  let ctx_get_scale_var (ctx:'a map_ctx)
+      (name:hwcompname) (id:int) (port:string) : 'a map_abs_var=
+    let comp = get_comp ctx name id in 
+    let d = _get_port comp port in
+    MAP.get comp.vars d.scale.abs_var 
+
+  let get_offset_var (ctx:'a map_circ)
       (key:'a) (id:int) =
-    error "get_scale_var" "dne"
+    let d = MAP.get ctx.ports key in
+    d.offset.abs_var 
+
+  let get_scale_var (ctx:'a map_circ)
+      (key:'a) (id:int) =
+    let d = MAP.get ctx.ports key in
+    d.scale.abs_var 
 
   let string_of_map_port_info (aport:map_port_info) =
     "string_of_map_port: unimpl"
 
   let string_of_map_port ((a,b):map_port) =
-    (HwLib.hwcompname2str a)^"."^b
+     (HwLib.hwcompname2str a)^"."^b
 
   let string_of_map_comp (comp:'a map_comp) (f:'a -> string) =
     ("====== #"^(string_of_int comp.id)^" ======")^"\n"^
@@ -246,19 +282,12 @@ struct
     noop (MAP.put prob.params parname parval);
     ()
 
-  let _get_port comp name =
-    let key = name in 
-    let portinfo=
-      if MAP.has comp.inps key then
-        MAP.get comp.inps key 
-      else
-        MAP.get comp.outs key 
-    in
-    portinfo
-
+  
   let _get_abs_var (comp:'a map_comp) n =
     let avar = MAP.get comp.vars n in
     avar
+
+  let _get_port = MapSpec._get_port
 
   let set_var_priority comp varname prio =
     match varname with
