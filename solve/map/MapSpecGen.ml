@@ -427,7 +427,7 @@ struct
 
         | MSSetPortCover((_,v1),c) ->
           set_port_cover prob v1 c
-
+            
         | MSVarEqualsVar(v1,v2) ->
           add_partition parts (PRTVar v1) (PRTVar v2)
 
@@ -851,10 +851,14 @@ struct
       QUEUE.destroy stmtq;
       lst
 
-  let derive_mapping_comp_with_params hwenv comp params =
+  let derive_mapping_comp_with_params hwenv (comp:'a hwcomp)
+      (params:(string,number) map) =
     let stmts = QUEUE.make () in
     let enq xs = List.iter (fun x -> noop(QUEUE.enqueue stmts x)) xs in
-      (*add decls*)
+    MAP.iter params (fun pname pval ->
+        enq ([MSDeclParam((comp.name,pname),pval)])
+      );
+    (*add decls*)
     HwLib.comp_iter_ins comp (fun var ->
         enq ([  MSDeclInput(comp.name,var.port)]);
         enq ([
