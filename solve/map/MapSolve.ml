@@ -71,8 +71,10 @@ struct
           ) v.exprs
         in
         SET.iter freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
-        let equality = Z3Lib.eq_all xexpr in
-        q (Z3Assert(equality))
+        if List.length xexpr == 0 then ()
+        else
+          let equality = Z3Lib.eq_all xexpr in
+          q (Z3Assert(equality))
       );
     (*add the speed constraint*)
     q (Z3Assert(
