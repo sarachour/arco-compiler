@@ -57,10 +57,21 @@ module MapMain = struct
                     MapSpec.string_of_map_port);
     env
 
-  let add_part partition (lst:wireid map_var list) =
-    error "add_part" "not impl"
 
-
+  let add_part (partition:wireid map_var set queue)
+      (lst:wireid map_var list) =
+    let matches, rest = QUEUE.split partition
+        (fun (s:wireid map_var set) ->
+           SET.has_any s lst 
+        )
+    in
+    let new_set : wireid map_var set = SET.make () in
+    List.iter (fun st -> SET.add_set new_set st) matches;
+    List.iter (fun x -> noop (SET.add new_set x)) lst;
+    QUEUE.clear partition;
+    QUEUE.enqueue_all partition (rest);
+    QUEUE.enqueue partition new_set;
+    ()
 
   (* Add all the other items contained under the variable. *)
   let build_connection (enq:wireid map_var list->unit)

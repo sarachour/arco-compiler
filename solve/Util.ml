@@ -306,6 +306,14 @@ struct
   let filter (type a) (s:a queue) (f:a->bool) : a list =
     List.filter f (REF.dr s)
 
+  let split (type a) (s:a queue) (f:a -> bool) :a list*a list =
+    let matches,rest = List.fold_left (fun (matches,rest) (el:a)  ->
+        if f el then (el::matches,rest) else (matches,el::rest)
+      ) ([],[]) (REF.dr s)
+    in
+    matches,rest
+
+
   let rm (type a) (s: a queue) (z:a) : a queue =
     let _ = REF.upd s (fun (x:a list) -> List.filter (fun (r:a) -> r <> z) x) in
     s
@@ -463,6 +471,9 @@ struct
       in
       zip_i a b
 
+
+  let merge (type a) (lsts : a list list) : a list = 
+    List.fold_left (fun clst lst -> clst @ lst) [] lsts 
 
 
   let uniq a =
@@ -1054,10 +1065,14 @@ struct
 
   let make_dflt (type a) () : a set = make ()
 
+  
   let tostr (type a) (a:a set) (f:a -> string) (delim:string) =
     MAP.fold a (fun k v r -> r^delim^(f k)) ""
 
   let has s e = MAP.has s e
+
+  let has_any (type a) (s:a set) (lst:a list) : bool =
+    List.fold_left (fun had k -> has s k || had) false lst 
 
   let add s e = MAP.put s e ()
 
@@ -1074,6 +1089,10 @@ struct
 
   let iter (type a) (s:a set) f =
     MAP.iter s (fun k v -> f k)
+
+  (*add b to a*)
+  let add_set (type a) (a:a set) (b:a set) =
+    iter b (fun x -> noop (add a x))
 
   let fold (type a) (s:a set) f iv =
     MAP.fold (s) (fun k v r -> f k r) iv
