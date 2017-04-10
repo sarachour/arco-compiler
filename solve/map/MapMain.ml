@@ -243,21 +243,26 @@ module MapMain = struct
                   MapExpr.map e local_to_circ_abs_var
                 ) vdata.exprs 
             in
-            let glbl_var = MAP.get circ.vars
-                (local_to_circ_abs_var vid)
-            in
-            let new_value = match glbl_var.value,vdata.value with
-              | Some(q),Some(r) -> if q = r then vdata.value else
-                  begin
-                    REF.upd is_valid (fun _ -> false);
-                    None
-                  end
-              | None,_ -> vdata.value
-              | Some(q),None -> glbl_var.value
-            in
-            glbl_var.exprs <- vdata.exprs @ t_exprs;
-            glbl_var.value <- new_value;
-            ()
+            let glbl_id = local_to_circ_abs_var vid in
+            if MAP.has circ.vars glbl_id = false then
+              error "constructing_final_cstrs"
+                ("variable doesn't exist: "^(HwLib.hwcompinst2str x)^"."^(string_of_int vid))
+            else
+              begin
+                let glbl_var = MAP.get circ.vars glbl_id in
+                let new_value = match glbl_var.value,vdata.value with
+                  | Some(q),Some(r) -> if q = r then vdata.value else
+                      begin
+                        REF.upd is_valid (fun _ -> false);
+                        None
+                      end
+                  | None,_ -> vdata.value
+                  | Some(q),None -> glbl_var.value
+                in
+                glbl_var.exprs <- vdata.exprs @ t_exprs;
+                glbl_var.value <- new_value;
+                ()
+              end
           )
       );
     if REF.dr is_valid then

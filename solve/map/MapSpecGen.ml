@@ -880,7 +880,8 @@ struct
             begin
               let icvar,_ =bhvr.ic in
               enq_all cstrs;
-              enq (MSDeclInput(comp,icvar));
+              (*enq (MSDeclInput(comp,icvar));
+                enq (MSSetPortCover(icvar,bhvr.ic.defs))*)
               enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
               enq (MSVarEqualsConst(MPVOffset(comp,v.port),Integer 0));
               enq (wrap_var_eq_expr (MPVOffset(comp,v.port)) linear.offset);
