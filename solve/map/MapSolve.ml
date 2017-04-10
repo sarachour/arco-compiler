@@ -48,7 +48,8 @@ struct
         | Some(hw_rng) ->
 
           if MAP.has prob.mappings w = false then
-              error "variable decls" ("does not exist in mappings:"^(HwLib.wireid2str w))
+            (*no mapping constraints*)
+            ()
           else
             begin
               let map_rng : num_interval =

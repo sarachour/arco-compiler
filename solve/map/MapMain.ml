@@ -159,6 +159,7 @@ module MapMain = struct
         let part lst = add_part partition lst in
         build_instance part ctx param_map inst;
         let ccomp = SolverCompLib.get_conc_comp gltbl inst in
+        (*iterate over variables*)
         HwLib.comp_iter_vars ccomp.d (fun (port:hwvid hwportvar) ->
             let port_data : map_port_info =
               {
@@ -170,7 +171,7 @@ module MapMain = struct
               }
             in
             let iwire = (mkwire inst.name inst.inst port.port) in 
-            MAP.put circ.ports iwire port_data;
+            noop (MAP.put circ.ports iwire port_data);
             MapCompSpecCompressor.port_info_set_cover
               port_data port.defs;
             let map_expr =
@@ -182,9 +183,8 @@ module MapMain = struct
                 IntervalCompute.compute_mexpr_interval gltbl mast in
               noop (MAP.put circ.mappings iwire
                       (IntervalLib.interval2numinterval ival))
-            | _ ->
-              ();
-            ()
+            | None ->
+              ()
 
         )
       );

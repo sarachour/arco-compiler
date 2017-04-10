@@ -314,6 +314,22 @@ struct
       portinfo.scale.priority <- prio
 
 
+  let get_cover  (cover:hwdefs) =
+    match  cover with
+    |HWDAnalog(defs) ->
+      begin
+          (IntervalLib.interval2numinterval defs.ival)
+      end
+
+    |HWDDigital(defs) ->
+      begin
+          (IntervalLib.interval2numinterval defs.ival)
+      end
+    | HWDAnalogState(defs) ->
+      begin
+          (IntervalLib.interval2numinterval defs.stvar.ival);
+      end
+
   let port_info_set_cover (portinfo:map_port_info) (cover:hwdefs) =
     match  cover with
     |HWDAnalog(defs) ->
@@ -334,7 +350,7 @@ struct
         portinfo.is_stvar <- true;
       end
 
-  let set_port_cover (comp:'a map_comp)
+  let comp_set_cover (comp:'a map_comp)
       (portname:string) (cover:hwdefs) =
     let portinfo = _get_port comp portname in
     port_info_set_cover portinfo cover
@@ -472,7 +488,7 @@ struct
           set_var_priority prob v1 p 
 
         | MSSetPortCover((_,v1),c) ->
-          set_port_cover prob v1 c
+          comp_set_cover prob v1 c
             
         | MSVarEqualsVar(v1,v2) ->
           add_partition parts (PRTVar v1) (PRTVar v2)
@@ -880,8 +896,6 @@ struct
             begin
               let icvar,_ =bhvr.ic in
               enq_all cstrs;
-              (*enq (MSDeclInput(comp,icvar));
-                enq (MSSetPortCover(icvar,bhvr.ic.defs))*)
               enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
               enq (MSVarEqualsConst(MPVOffset(comp,v.port),Integer 0));
               enq (wrap_var_eq_expr (MPVOffset(comp,v.port)) linear.offset);
