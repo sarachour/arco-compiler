@@ -57,6 +57,15 @@ struct
       );
     (*add variable constraints*)
     let freevars = SET.make () in
+    let set_eq lst : z3expr option = match lst with
+      | h::h2::t ->
+        begin
+          let exprs = List.map (fun el -> Z3Eq(el,h)) h2::t in
+          Some (Z3Lib.eq_all xexpr)
+        end
+
+      | _ -> None
+    in
     MAP.iter prob.vars (fun (vid:int) (v:wireid map_abs_var) ->
         SET.clear freevars;
         let xexpr :z3expr list = List.map
@@ -71,23 +80,33 @@ struct
           ) v.exprs
         in
         SET.iter freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
-        if List.length xexpr == 0 then ()
-        else
-          let equality = Z3Lib.eq_all xexpr in
+        match set_eq xexpr with
+        | Some(equality) ->
           q (Z3Assert(equality))
+        | _ -> ()
       );
-    (*add the speed constraint*)
-    if SET.size derivq > 0 then
-      begin
-        q (Z3Assert(
-            Z3Lib.eq_all
-              (SET.map derivq (fun (s,o) -> vid_to_var s))
-          ));
-        q (Z3Assert(
-            Z3Lib.eq_all
-              (SET.map derivq (fun (s,o) -> vid_to_var o))
-          ));
-      end;
+    let offset_vars = (SET.map derivq (fun (s,o) -> vid_to_var o)) in
+    begin
+      match set_eq offset_vars with
+      | Some(offset_expr) -> q (Z3Assert offset_expr)
+      | None -> ()
+    end;
+    let scale_vars = (SET.map derivq (fun (s,o) -> vid_to_var s)) in
+    begin
+      match set_eq scale_vars with
+      | Some(scale_expr) -> q (Z3Assert scale_expr)
+      | None -> ()
+    end;
+    begin
+      match scale_vars with
+      | h::t -> q (Z3Assert (Z3Not (Z3Eq(h,Z3Int(1)))))
+      | _ -> ()
+    end;
+    begin
+      match offset_vars with
+      | h::t -> q (Z3Assert (Z3Not (Z3Eq(h,Z3Int(0)))))
+      | _ -> ()
+    end;
     (*range decls*)
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
