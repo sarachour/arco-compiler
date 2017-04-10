@@ -1,5 +1,6 @@
 open MapData;;
 open HWData;;
+open HWLib;;
 open Interactive;;
 
 open MapSpecGen;;
@@ -45,15 +46,24 @@ struct
         match p.range with
         | None -> ()
         | Some(hw_rng) ->
-          let map_rng : num_interval = MAP.get prob.mappings w in
-          let ovar =  p.offset.abs_var in
-          let svar =  p.scale.abs_var in 
-          let lin_expr = lin_combo map_rng.max svar ovar in
-          q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
-          let lin_expr = lin_combo map_rng.min svar ovar in
-          q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
-          noop (SET.add derivq (ovar,svar));
-          ()
+
+          if MAP.has prob.mappings w = false then
+              error "variable decls" ("does not exist in mappings:"^(HwLib.wireid2str w))
+          else
+            begin
+              let map_rng : num_interval =
+                  MAP.get prob.mappings w
+              in
+              let ovar =  p.offset.abs_var in
+              let svar =  p.scale.abs_var in 
+              let lin_expr = lin_combo map_rng.max svar ovar in
+              q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
+              let lin_expr = lin_combo map_rng.min svar ovar in
+              q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
+              noop (SET.add derivq (ovar,svar));
+              ()
+            end
+
       );
     (*add variable constraints*)
     let freevars = SET.make () in
