@@ -61,7 +61,7 @@ struct
       | h::h2::t ->
         begin
           let exprs = List.map (fun el -> Z3Eq(el,h)) (h2::t) in
-          Some (Z3Lib.eq_all exprs)
+          Some (Z3Lib.fn_all exprs (fun a b -> Z3And(a,b)) )
         end
 
       | _ -> None
