@@ -234,30 +234,28 @@ module MapMain = struct
     SET.iter gltbl.sln_ctx.comps (fun (x:hwcompinst) ->
         let conc_id = MAP.get param_map x in
         let templ = MapSpec.get_comp ctx x.name conc_id in
-        let local_to_circ_abs_var (i:int) : int =
+        let local_to_circ_abs_var (i:int) : wireid map_abs_var option =
           if MAP.has absmap (x,i) then
-            MAP.get absmap (x,i)
+            let q = MAP.get absmap (x,i) in
+            Some (MAP.get circ.vars q) 
           else
-            begin
-              error "local_to_circ_abs_var"
-              ("variable does not exist:"^(HwLib.hwcompinst2str x)^"."^(string_of_int i));
-              0
-            end
+            None
         in
         MAP.iter templ.vars (fun vid vdata ->
             let t_exprs : int map_expr list =
               List.map (fun (e:int map_expr) ->
-                  MapExpr.map e local_to_circ_abs_var
-                ) vdata.exprs 
+                  MapExpr.map e (fun id ->
+                      match local_to_circ_abs_var id with
+                      | Some(v) -> v.id
+                      | None -> ret (error "mkexprs" "deps must be contained in var ") 0
+                    )
+                ) vdata.exprs
             in
-            let glbl_id = local_to_circ_abs_var vid in
-            if MAP.has circ.vars glbl_id = false then
-              error "constructing_final_cstrs"
-                ("variable doesn't exist: "^(HwLib.hwcompinst2str x)^"."^(string_of_int vid))
-            else
+            match local_to_circ_abs_var vid with
+            | None -> ()
+            | Some(glbl_var) ->
               begin
-                let glbl_var = MAP.get circ.vars glbl_id in
-                let new_value = match glbl_var.value,vdata.value with
+                  let new_value = match glbl_var.value,vdata.value with
                   | Some(q),Some(r) -> if q = r then vdata.value else
                       begin
                         REF.upd is_valid (fun _ -> false);
