@@ -58,7 +58,14 @@ struct
   let string_of_map_cstr (p:map_cstr) =
     match p with
     | MCGT -> ">"
+    | MCGTE -> ">="
     | MCNE -> "!="
+
+  let z3_of_map_cstr (cstr:map_cstr)(targ) (other) =
+    match cstr with
+    |MCGT -> Z3GT(targ,other)
+    |MCGTE -> Z3GTE(targ,other)
+    |MCNE -> Z3Not(Z3Eq(targ,other))
 
   let string_of_map_port (p:map_port) =
     let comp,port = p in
@@ -157,7 +164,11 @@ struct
     let expr2str (i:int map_expr) =
       MapExpr.string_of_map_expr i (string_of_abs_var_id)
     in
+    let cstr2str (cstr,expr) =
+      (MapExpr.string_of_map_cstr cstr)^(expr2str expr)
+    in
     "exprs="^(LIST.tostr expr2str "=" avar.exprs )^"\n"^
+    "cstrs="^(LIST.tostr cstr2str "," avar.cstrs )^"\n"^
     "value="^(OPTION.tostr avar.value (string_of_number))^"\n"^
     "mems="^(LIST.tostr MapExpr.string_of_map_port_var "," avar.members)^"\n"
 
@@ -437,9 +448,15 @@ struct
 
   let add_partition parts
       (x1:compress_partition) (x2:compress_partition) =
-      let matches = QUEUE.filter parts (fun q ->
-          SET.has q x1 || SET.has q x2
-        ) in
+    let not_cstr (x:compress_partition) = match x with
+      | PRTCstr(_) -> false
+      | _ -> true
+    in
+    let matches = QUEUE.filter parts (fun q ->
+        let has_x1 = SET.has q x1 && not_cstr x1 in
+        let has_x2 = SET.has q x2 && not_cstr x2 in 
+        has_x1 || has_x2
+      ) in
       match matches with
       | [s] ->
         begin
@@ -971,7 +988,7 @@ struct
         enq ([
             MSDeclOutput(comp.name,outvar.port);
             MSVarHasCstr(
-              MPVScale(comp.name,outvar.port),MCGT,
+              MPVScale(comp.name,outvar.port),MCGTE,
               MEConst (Integer 0));
             MSSetPortCover((comp.name,outvar.port),outvar.defs)
           ])

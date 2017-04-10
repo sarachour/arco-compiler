@@ -248,7 +248,8 @@ module MapMain = struct
                   MapExpr.map e (fun id ->
                       match local_to_circ_abs_var id with
                       | Some(v) -> v.id
-                      | None -> ret (error "mkexprs" "deps must be contained in var ") 0
+                      | None ->
+                        ret (error "mkexprs" "deps must be contained in var ") 0
                     )
                 ) vdata.exprs
             in

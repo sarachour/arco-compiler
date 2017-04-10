@@ -17,7 +17,7 @@ type 'a map_var =
   | MPVScale of 'a
 
 type map_cstr =
-  | MCNE | MCGT
+  | MCNE | MCGT | MCGTE
 
 (*a constrained configuration*)
 type 'a map_expr =

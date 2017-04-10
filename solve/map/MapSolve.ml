@@ -77,18 +77,24 @@ struct
 
       | _ -> None
     in
+    let map_expr_to_z3 vid expr =
+      MapExpr.z3
+        freevars ("free_"^(string_of_int vid)) expr
+        (fun (x:int) -> vid_to_var x )
+    in
     MAP.iter prob.vars (fun (vid:int) (v:wireid map_abs_var) ->
         SET.clear freevars;
         let xexpr :z3expr list = List.map
             (fun (expr:int map_expr) ->
-               let z3expr = MapExpr.z3
-                   freevars ("free_"^(string_of_int vid)) expr
-                  (fun (x:int) ->
-                    vid_to_var x 
-                  )
-              in
-              z3expr
+               let z3expr = map_expr_to_z3 vid expr in
+               z3expr
           ) v.exprs
+        in
+        let xcstr : z3expr list = List.map (
+            fun ((cstr,expr):map_cstr*int map_expr)  ->
+              let z3expr = map_expr_to_z3 vid expr in 
+              MapExpr.z3_of_map_cstr cstr (vid_to_var vid) z3expr
+          ) v.cstrs
         in
         SET.iter freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
         match set_eq xexpr with
@@ -108,18 +114,6 @@ struct
       | Some(scale_expr) -> q (Z3Assert scale_expr)
       | None -> ()
     end;
-    begin
-      match scale_vars with
-      | h::t -> q (Z3Assert (Z3Not (Z3Eq(h,Z3Int(1)))))
-      | _ -> ()
-    end;
-    (*
-    begin
-      match offset_vars with
-      | h::t -> q (Z3Assert (Z3Not (Z3Eq(h,Z3Int(0)))))
-      | _ -> ()
-    end;
-    *)
     (*range decls*)
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
