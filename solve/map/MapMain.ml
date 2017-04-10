@@ -270,19 +270,29 @@ module MapMain = struct
     let prob_opt = build_prob tbl.map_ctx tbl in
     match prob_opt with
     | Some(prob) ->
-      let mappings = MapSolver.solve tbl prob in
+      let mappings = MapSolver.mappings tbl prob in
       mappings
     | None -> None
 
   let infer_feasible (tbl:gltbl)
     : bool =
-    match infer tbl with
-    | Some(_) -> true
+    let prob_opt = build_prob tbl.map_ctx tbl in
+    match prob_opt with
+    | Some(prob) ->
+      MapSolver.sat tbl prob 
+      
     | None -> false
 
 
+
   let infer_best (tbl:gltbl) : (wireid,hw_mapping) map option =
-    infer tbl
+    let prob_opt = build_prob tbl.map_ctx tbl in
+    match prob_opt with
+    | Some(prob) ->
+      let mappings = MapSolver.mappings tbl prob in
+      mappings
+    | None -> None
+
 
 
 end

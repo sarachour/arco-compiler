@@ -153,7 +153,16 @@ struct
         | None ->  None
       end
 
-  let solve (tbl:gltbl) (prob:wireid map_circ)
+  let sat (tbl:gltbl) (prob:wireid map_circ)
+    : bool =
+    let stmts = build_z3_prob tbl prob in
+    let sln =
+      Z3Lib.exec "MAPPER" stmts true
+    in
+    Z3Lib.save_z3_prob "MAPPER_PROB" stmts (Z3Int 0) true;
+    sln.sat
+
+  let mappings (tbl:gltbl) (prob:wireid map_circ)
     : (wireid,hw_mapping) map option =
     let stmts = build_z3_prob tbl prob in
     let sln =
