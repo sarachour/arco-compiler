@@ -42,10 +42,10 @@ struct
         noop (MAP.put scaling k 10)
       );
     MAP.iter prob.ports (fun (w:wireid) (p:map_port_info) ->
-        let map_rng : num_interval = MAP.get prob.mappings w in
         match p.range with
         | None -> ()
         | Some(hw_rng) ->
+          let map_rng : num_interval = MAP.get prob.mappings w in
           let ovar =  p.offset.abs_var in
           let svar =  p.scale.abs_var in 
           let lin_expr = lin_combo map_rng.max svar ovar in
@@ -159,7 +159,7 @@ struct
     : bool =
     let stmts = build_z3_prob tbl prob in
     let sln =
-      Z3Lib.exec "MAPPER" stmts true
+      Z3Lib.exec "mapping" stmts true
     in
     sln.sat
 

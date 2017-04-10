@@ -229,7 +229,7 @@ module MapMain = struct
         SET.destroy members
       );
     QUEUE.destroy partition;
-    print "Constructing Final Contraints.";
+    print "===Constructing Final Contraints===\n";
     let is_valid = REF.mk true in
     SET.iter gltbl.sln_ctx.comps (fun (x:hwcompinst) ->
         let conc_id = MAP.get param_map x in
