@@ -51,7 +51,7 @@ struct
           let lin_expr = lin_combo map_rng.max svar ovar in
           q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
           let lin_expr = lin_combo map_rng.min svar ovar in
-          q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.min)));
+          q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
           noop (SET.add derivq (ovar,svar));
           ()
       );
