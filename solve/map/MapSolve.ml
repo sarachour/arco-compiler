@@ -57,11 +57,11 @@ struct
       );
     (*add variable constraints*)
     let freevars = SET.make () in
-    let set_eq lst : z3expr option = match lst with
+    let set_eq (lst:z3expr list) : z3expr option = match lst with
       | h::h2::t ->
         begin
-          let exprs = List.map (fun el -> Z3Eq(el,h)) h2::t in
-          Some (Z3Lib.eq_all xexpr)
+          let exprs = List.map (fun el -> Z3Eq(el,h)) (h2::t) in
+          Some (Z3Lib.eq_all exprs)
         end
 
       | _ -> None
