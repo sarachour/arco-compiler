@@ -220,6 +220,7 @@ module MapMain = struct
         let avar : wireid map_abs_var =
           {
             exprs=[];
+            cstrs=[];
             value=None;
             members=SET.to_list members;
             priority=0;id=id
@@ -251,6 +252,17 @@ module MapMain = struct
                     )
                 ) vdata.exprs
             in
+            let t_cstrs : (map_cstr*int map_expr) list =
+              List.map (fun (c,e:map_cstr*int map_expr) ->
+                  let t_e = MapExpr.map e (fun id ->
+                      match local_to_circ_abs_var id with
+                      | Some(v) -> v.id
+                      | None -> ret (error "mkexprs" "deps must be contained in var ") 0
+                    )
+                  in
+                  (c,t_e)
+                ) vdata.cstrs
+            in
             match local_to_circ_abs_var vid with
             | None -> ()
             | Some(glbl_var) ->
@@ -265,6 +277,7 @@ module MapMain = struct
                   | Some(q),None -> glbl_var.value
                 in
                 glbl_var.exprs <- vdata.exprs @ t_exprs;
+                glbl_var.cstrs <- vdata.cstrs@ t_cstrs;
                 glbl_var.value <- new_value;
                 ()
               end

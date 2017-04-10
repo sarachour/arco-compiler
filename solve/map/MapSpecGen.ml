@@ -55,6 +55,10 @@ struct
       let data = p vr in
       data.offset
 
+  let string_of_map_cstr (p:map_cstr) =
+    match p with
+    | MCGT -> ">"
+    | MCNE -> "!="
 
   let string_of_map_port (p:map_port) =
     let comp,port = p in
@@ -255,6 +259,7 @@ struct
     let id = MAP.size prob.vars in
     let obj = {
       exprs = [];
+      cstrs = [];
       value = None;
       members = [];
       priority = 0;
@@ -286,12 +291,16 @@ struct
   type compress_partition =
     | PRTVar of map_port map_var
     | PRTExpr of map_port map_var map_expr
+    | PRTCstr of map_cstr*map_port map_var map_expr
     | PRTConst of number
 
   let string_of_compress_partition c :string = match c with
     | PRTVar(v) -> MapExpr.string_of_map_port_var v
     | PRTExpr(e) -> MapExpr.string_of_map_port_var_expr e
     | PRTConst(c) -> string_of_number c
+    | PRTCstr(cstr,e) ->
+      (MapExpr.string_of_map_cstr cstr)^(MapExpr.string_of_map_port_var_expr e)
+
 
   let create_param prob parname (parval:number) =
     noop (MAP.put prob.params parname parval);
@@ -373,8 +382,26 @@ struct
       end
 
 
+  let add_abs_cstr (comp:'a map_comp) (id:int)
+      (cstr:map_cstr) (expr:map_port map_var map_expr) =
+    let v : 'a map_abs_var = MAP.get comp.vars id in
+    let id_expr : int map_expr =
+      MapExpr.map expr (fun (v:map_port map_var) ->
+        match v with
+        | MPVOffset(_,portname) ->
+          let portinfo = _get_port comp portname in
+          portinfo.offset.abs_var
 
-  let set_abs_expr (comp:'a map_comp) (id:int)
+        | MPVScale(_,portname) ->
+          let portinfo = _get_port comp portname in
+          portinfo.scale.abs_var
+
+      )
+    in
+    v.cstrs <- (cstr,id_expr)::v.cstrs;
+    ()
+
+  let add_abs_expr (comp:'a map_comp) (id:int)
       (expr:map_port map_var map_expr) =
     let v : 'a map_abs_var = MAP.get comp.vars id in
     let id_expr : int map_expr =
@@ -489,7 +516,10 @@ struct
 
         | MSSetPortCover((_,v1),c) ->
           comp_set_cover prob v1 c
-            
+
+        | MSVarHasCstr(v,cstr,expr) ->
+          add_partition parts (PRTVar v) (PRTCstr (cstr,expr))
+
         | MSVarEqualsVar(v1,v2) ->
           add_partition parts (PRTVar v1) (PRTVar v2)
 
@@ -513,29 +543,35 @@ struct
     let expr_buf = MAP.make () in 
     QUEUE.iter parts (fun (equiv_set) ->
         let abs : 'a map_abs_var = create_abs_var prob in
-        let exprs =
-          SET.fold equiv_set (fun (q:compress_partition) exprs ->
+        let exprs,cstrs =
+          SET.fold equiv_set (fun (q:compress_partition) (exprs,cstrs) ->
             match q with
             | PRTExpr(e) ->
-              e::exprs
+              (e::exprs,cstrs)
+            | PRTCstr(c,e) ->
+              (exprs,(c,e)::cstrs)
             | PRTVar(v) ->
-              ret (set_abs_var prob abs.id v) exprs 
+              ret (set_abs_var prob abs.id v) (exprs,cstrs) 
             | PRTConst(c) ->
               begin
                 let succ = set_abs_const prob abs.id c in
                 REF.upd valid (fun q -> succ && q);
-                exprs
+                exprs,cstrs
               end
-            ) []
+            ) ([],[])
         in
-        noop (MAP.put expr_buf abs.id exprs);
+        noop (MAP.put expr_buf abs.id (exprs,cstrs));
         ()
       );
     (*traverse expression buf.*)
-    MAP.iter expr_buf (fun id (exprs) ->
+    MAP.iter expr_buf (fun id (exprs,cstrs) ->
         List.iter (fun e ->
-            set_abs_expr prob id e
-          ) exprs
+            add_abs_expr prob id e;
+          ) exprs;
+        List.iter (fun (cstr,expr) ->
+            add_abs_cstr prob id cstr expr 
+          ) cstrs
+
     );
     if REF.dr valid = false then None else
     Some prob
@@ -898,7 +934,11 @@ struct
               enq_all cstrs;
               enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
               enq (MSVarEqualsConst(MPVOffset(comp,v.port),Integer 0));
-              enq (wrap_var_eq_expr (MPVOffset(comp,v.port)) linear.offset);
+              (*all derivs must be scaled*)
+              enq (MSVarHasCstr(MPVScale(comp,v.port),MCNE,
+                                MEConst (Integer 1)));
+              enq (wrap_var_eq_expr
+                     (MPVOffset(comp,v.port)) linear.offset);
               enq (MSVarEqualsVar(MPVScale(comp,v.port),
                                   MPVScale(comp,icvar)));
               enq (MSVarEqualsVar(MPVOffset(comp,v.port),
@@ -930,6 +970,9 @@ struct
     HwLib.comp_iter_outs comp (fun outvar ->
         enq ([
             MSDeclOutput(comp.name,outvar.port);
+            MSVarHasCstr(
+              MPVScale(comp.name,outvar.port),MCGT,
+              MEConst (Integer 0));
             MSSetPortCover((comp.name,outvar.port),outvar.defs)
           ])
       );

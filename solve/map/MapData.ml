@@ -16,6 +16,9 @@ type 'a map_var =
   | MPVOffset of 'a 
   | MPVScale of 'a
 
+type map_cstr =
+  | MCNE | MCGT
+
 (*a constrained configuration*)
 type 'a map_expr =
   | MEVar of 'a
@@ -34,6 +37,8 @@ type map_stmt =
   | MSDeclInput of map_port
   | MSValid
   | MSVarEqualsConst of map_port map_var*number
+  | MSVarHasCstr of map_port map_var*map_cstr*
+                    (map_port map_var) map_expr
   | MSSetVarPriority of map_port map_var*int
   | MSSetPortCover of map_port*hwdefs
   | MSInvalid 
@@ -49,6 +54,7 @@ type map_stmt =
 (*a particular variable is equal to this.*)
 type 'a map_abs_var = {
   mutable exprs : int map_expr list;
+  mutable cstrs : (map_cstr*int map_expr) list;
   mutable value: number option;
   mutable members: 'a map_var list;
   mutable priority: int;
