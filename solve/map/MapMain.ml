@@ -235,7 +235,14 @@ module MapMain = struct
         let conc_id = MAP.get param_map x in
         let templ = MapSpec.get_comp ctx x.name conc_id in
         let local_to_circ_abs_var (i:int) : int =
-            MAP.get absmap (x,i) 
+          if MAP.has absmap (x,i) then
+            MAP.get absmap (x,i)
+          else
+            begin
+              error "local_to_circ_abs_var"
+              ("variable does not exist:"^(HwLib.hwcompinst2str x)^"."^(string_of_int i));
+              0
+            end
         in
         MAP.iter templ.vars (fun vid vdata ->
             let t_exprs : int map_expr list =
