@@ -102,11 +102,13 @@ struct
       | h::t -> q (Z3Assert (Z3Not (Z3Eq(h,Z3Int(1)))))
       | _ -> ()
     end;
+    (*
     begin
       match offset_vars with
       | h::t -> q (Z3Assert (Z3Not (Z3Eq(h,Z3Int(0)))))
       | _ -> ()
     end;
+    *)
     (*range decls*)
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
@@ -159,7 +161,6 @@ struct
     let sln =
       Z3Lib.exec "MAPPER" stmts true
     in
-    Z3Lib.save_z3_prob "MAPPER_PROB" stmts (Z3Int 0) true;
     sln.sat
 
   let mappings (tbl:gltbl) (prob:wireid map_circ)
@@ -168,7 +169,6 @@ struct
     let sln =
       Z3Lib.exec "MAPPER" stmts true
     in
-    Z3Lib.save_z3_prob "MAPPER_PROB" stmts (Z3Int 0) true;
     let mappings = to_mappings prob sln in
     mappings
 

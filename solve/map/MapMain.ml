@@ -151,7 +151,7 @@ module MapMain = struct
             build_connection part ctx param_map snk (MPVOffset src);
           )
       );
-    print "=== Proc Insts ===";
+    print "=== Proc Insts ===\n";
     let circ : wireid map_circ =
       {vars=MAP.make(); ports=MAP.make(); mappings=MAP.make()}
     in
@@ -190,7 +190,7 @@ module MapMain = struct
       );
     (*set the initial mappings.*)
     let absmap : (hwcompinst*int, int) map= MAP.make () in 
-    print "=== Construct Initial Mappings ==="; 
+    print "=== Construct Initial Mappings ===\n"; 
     QUEUE.iter partition (fun (members:wireid map_var set) ->
         let id = MAP.size circ.vars in
         SET.iter members (fun (w:wireid map_var) ->
