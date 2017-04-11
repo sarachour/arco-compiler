@@ -26,10 +26,7 @@ struct
     "v"^(string_of_int i)
 
   let vid_to_var (i:int) =
-    Z3Var(vid_to_name i)
-    (*
-     Z3Mult(Z3Var("v"^(string_of_int i)),Z3Int(MAP.get scaling i))
-    *)
+    Z3Mult(Z3Var("v"^(string_of_int i)),Z3Int(MAP.get scaling i))
 
 
   let var_to_vid (st:string) =
@@ -54,35 +51,9 @@ struct
     in
     q (Z3Comment("Variable Decls"));
     MAP.clear scaling;
+    (*construct vars in use*)
     MAP.iter prob.vars (fun k vardata ->
-        q (Z3ConstDecl(vid_to_name k,Z3Real));
-        noop (MAP.put scaling k 10)
-      );
-    MAP.iter prob.ports (fun (w:wireid) (p:map_port_info) ->
-        match p.range with
-        | None -> ()
-        | Some(hw_rng) ->
-
-          if MAP.has prob.mappings w = false then
-            (*no mapping constraints*)
-            ()
-          else
-            begin
-              let map_rng : num_interval =
-                  MAP.get prob.mappings w
-              in
-              let ovar =  p.offset.abs_var in
-              let svar =  p.scale.abs_var in 
-              let lin_expr = lin_combo map_rng.max svar ovar in
-              q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
-              let lin_expr = lin_combo map_rng.min svar ovar in
-              q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
-              (*only make stvars equal*)
-              if p.is_stvar then
-                noop (SET.add derivq (ovar,svar));
-              ()
-            end
-
+        noop (MAP.put scaling k 1)
       );
     (*add variable constraints*)
     let freevars = SET.make () in
@@ -95,11 +66,13 @@ struct
 
       | _ -> None
     in
+    let in_use = SET.make () in
     let map_expr_to_z3 vid expr =
       MapExpr.z3
         freevars ("free_"^(string_of_int vid)) expr
-        (fun (x:int) -> vid_to_var x )
+        (fun (x:int) -> SET.add in_use x; vid_to_var x )
     in
+    q (Z3Comment ("=== var cstrs ==="));
     MAP.iter prob.vars (fun (vid:int) (v:wireid map_abs_var) ->
         SET.clear freevars;
         let xexpr :z3expr list = List.map
@@ -124,6 +97,7 @@ struct
 
 
       );
+    q (Z3Comment ("=== derivative cstrs ==="));
     let offset_vars = (SET.map derivq (fun (s,o) -> vid_to_var o)) in
     begin
       match set_eq offset_vars with
@@ -136,10 +110,49 @@ struct
       | Some(scale_expr) -> q (Z3Assert scale_expr)
       | None -> ()
     end;
+    q (Z3Comment ("=== port restrictions ==="));
+    MAP.iter prob.ports (fun (w:wireid) (p:map_port_info) ->
+        match p.range with
+        | None -> ()
+        | Some(hw_rng) ->
+
+          if MAP.has prob.mappings w = false then
+            (*no mapping constraints*)
+            ()
+          else
+            begin
+              let map_rng : num_interval =
+                  MAP.get prob.mappings w
+              in
+              let ovar =  p.offset.abs_var in
+              let svar =  p.scale.abs_var in
+              if SET.has in_use ovar || SET.has in_use svar then 
+                begin
+                  noop (SET.add in_use ovar);
+                  noop (SET.add in_use svar);
+                  let lin_expr = lin_combo map_rng.max svar ovar in
+                  q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
+                  let lin_expr = lin_combo map_rng.min svar ovar in
+                  q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
+                  (*only make stvars equal*)
+                  if p.is_stvar then
+                    noop (SET.add derivq (ovar,svar));
+                  ()
+              end
+            end
+
+      );
+    let decls = MAP.fold prob.vars (fun k vardata decls ->
+        if SET.has in_use k then
+          Z3ConstDecl(vid_to_name k,Z3Real)::decls
+        else
+          decls
+      ) []
+    in
     (*range decls*)
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
-    stmts
+    decls @ stmts
 
   (*if the mappings are*)
   let asgn_to_mappings
@@ -211,21 +224,34 @@ struct
               begin
                 let mappings = MAP.make () in
                 MAP.iter circ.ports (fun wire port_info ->
-                    let ovar =
-                      MAP.get abs_var_map port_info.offset.abs_var
+                    let ovar=
+                      MAP.get_dflt
+                        abs_var_map port_info.offset.abs_var 0.
                     in
-                    let svar =
-                      MAP.get abs_var_map port_info.scale.abs_var
+                    let svar=
+                      MAP.get_dflt
+                        abs_var_map port_info.scale.abs_var 1.
                     in
-                    let math_range = MAP.get circ.mappings wire in
-                    let mapping = {
-                      scale=svar;
-                      offset=ovar;
-                      wire=wire;
-                      hrng=OPTION.force_conc port_info.range;
-                      mrng=math_range;
-                    } in
-                    noop (MAP.put mappings wire mapping)
+                    let math_range =
+                      if MAP.has circ.mappings wire then
+                        MAP.get circ.mappings wire
+                      else
+                        begin
+                          warn "cannot get math range"
+                            (HwLib.wireid2str wire);
+                          {min=0.; max =1.}
+                        end
+
+                    in
+                      let mapping = {
+                        scale=svar;
+                        offset=ovar;
+                        wire=wire;
+                        hrng=OPTION.force_conc port_info.range;
+                        mrng=math_range;
+                      } in
+                      noop (MAP.put mappings wire mapping)
+
                   );
                 Some(mappings)
               end
@@ -234,14 +260,7 @@ struct
         | None ->  None
       end
 
-  let sat (tbl:gltbl) (prob:wireid map_circ)
-    : bool =
-    let stmts = build_z3_prob tbl prob in
-    let sln =
-      Z3Lib.exec "mapping" stmts true
-    in
-    sln.sat
-
+  
   let mappings (tbl:gltbl) (prob:wireid map_circ)
     : (wireid,hw_mapping) map option =
     let stmts = build_z3_prob tbl prob in
@@ -251,5 +270,13 @@ struct
     let mappings = to_mappings prob sln in
     mappings
 
+  let sat (tbl:gltbl) (prob:wireid map_circ)
+    : bool =
+    let stmts = build_z3_prob tbl prob in
+    let sln =
+      Z3Lib.exec "mapping" stmts true
+    in
+    let mappings = to_mappings prob sln in 
+    sln.sat && mappings <> None
 
 end

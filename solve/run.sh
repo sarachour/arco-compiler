@@ -17,6 +17,7 @@ TMPDIR=tmp
 ./killall.sh solver.debug 
 ./killall.sh solver 
 rm $TMPDIR/*
+rm z3*
 
 ./mkconfigs.sh
 
@@ -34,7 +35,7 @@ fi
 
 if [ "$CMD" = "run" ]; then
   make && \
-    ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "ckt_$NAME"
+    ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "ckt_$NAME" 2> error.log
 fi
 
 
@@ -44,12 +45,16 @@ fi
 
 
 
+rm -rf $OUTDIR/$NAME/$SUBDIR/*
+
 mkdir -p $OUTDIR/$NAME/$SUBDIR
+mkdir -p $OUTDIR/$NAME/$SUBDIR/smt
 mkdir -p $TMPDIR
 
 mv ckt_* $OUTDIR/$NAME/$SUBDIR
 
-mv *.smt2 $TMPDIR/
-mv *.res $TMPDIR/
-mv *.model $TMPDIR/
+mv *.smt2 $OUTDIR/$NAME/$SUBDIR/smt
+mv *.res $OUTDIR/$NAME/$SUBDIR/smt
+mv *.model $OUTDIR/$NAME/$SUBDIR/smt
+
 mv *.debug.txt $TMPDIR

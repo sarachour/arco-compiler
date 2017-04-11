@@ -469,10 +469,6 @@ struct
           let s = SET.make () in
           noop (SET.add s x1);
           noop (SET.add s x2);
-          (print_string ("-> adding partition:"^
-           (string_of_compress_partition x1 )^","^
-           (string_of_compress_partition x2 )^"\n")
-          );
           noop (QUEUE.enqueue parts s);
           ()
         end
@@ -486,10 +482,6 @@ struct
         end
 
       | _ ->
-        (print_string ("-> on partition:"^
-           (string_of_compress_partition x1 )^","^
-           (string_of_compress_partition x2 )^"\n")
-          );
         error "add_partition" "more than one exist"
 
   let compress name (stmts : map_stmt list) : 'a map_comp option =
@@ -502,7 +494,6 @@ struct
         params=MAP.make()
       }
     in
-    print "==========\n";
     let valid = REF.mk true in
     let parts : compress_partition set queue = QUEUE.make () in
     
@@ -817,8 +808,7 @@ struct
             decompose_list args _derive_mapping_problem
           in
           let res_term : hwvid ast=
-            (*HwLib.simplify hwenv (OpN(Mult,arg_terms))*)
-            (OpN(Mult,arg_terms))
+            HwLib.simplify hwenv (OpN(Mult,arg_terms))
           in
           let res_proj =
             derive_mapping_mult add_cstr fdbk arg_projs arg_terms res_term
@@ -911,8 +901,8 @@ struct
 
         | _ -> error "derive_scaling_factor" "unhandled"
       in
-      (*let simpl_res = HwLib.simplify hwenv res in*)
-      proj,res
+      let simpl_res = HwLib.simplify hwenv res in
+      proj,simpl_res
     in
     let proj,_= _derive_mapping_problem node in
     let stmts = QUEUE.to_list cstrs in 
@@ -985,13 +975,10 @@ struct
     );
     (*add behavior cstrs*)
     HwLib.comp_iter_outs comp (fun outvar ->
-        enq ([
-            MSDeclOutput(comp.name,outvar.port);
-            (*
+        enq ([ 
               MSVarHasCstr(
-              MPVScale(comp.name,outvar.port),MCGTE,
+              MPVScale(comp.name,outvar.port),MCNE,
               MEConst (Integer 0));
-            *)
             MSSetPortCover((comp.name,outvar.port),outvar.defs)
           ])
       );
@@ -1020,276 +1007,3 @@ struct
         param_combos
 end
 
-
-(*
-module MapProblemGenerator =
-struct
-
-
-
-    let queue_interval_cover q wire hival mival idx (expr:unid ast) =
-    let enq xs = List.iter (fun x -> noop(QUEUE.enqueue q x)) xs in
-    let scale wire mval : linear_smt_id ast =
-      OpN(Add,[
-          OpN(Mult,[
-              Term(SVLinVar(SVScaleVar(wire)));
-                   Decimal(mval)
-            ]);
-          Term(SVLinVar(SVOffsetVar(wire)))
-        ])
-    in
-    let decl_slack wire =
-      enq [SVDeclMapVar(SVSlackVar(SVMin,1.0,wire,idx));
-           SVDeclMapVar(SVSlackVar(SVMax,1.0,wire,idx))]
-    in
-    let add_slack dir id expr =
-      OpN(Add,[expr;Term(SVSlackVar(dir,1.0,id,idx))])
-    in
-    let bound_to_number bnd = match bnd with
-      | BNDNum(x) -> x
-      | _ -> error "bound_to_number" ("expected a finite numerical bound:"^
-                                      (HwLib.wireid2str wire)^"/"^(uast2str expr))
-    in
-    let queue_quant v (h:interval_data) =  
-    if no_number_cstrs_DBG then
-            ()
-          else
-            enq [
-              SVCoverLTE([(scale wire v);Decimal(bound_to_number h.max)]);
-              SVCoverGTE([(scale wire v);Decimal(bound_to_number h.min)])
-            ]
-    in
-    match mival,hival with
-      | (Quantize([v]),Interval(h)) ->
-        queue_quant v h
-      | (Interval(m),Interval(h)) ->
-        begin
-          let mmin = bound_to_number m.min and mmax = bound_to_number m.max in
-          if mmin =mmax then
-            queue_quant mmin h
-          else
-            begin
-              decl_slack wire;
-              enq [
-                SVCoverEq([add_slack SVMin wire (scale wire (mmin));
-                      Decimal(bound_to_number h.min)]);
-                SVCoverEq([add_slack SVMax wire (scale wire (mmax));
-                      Decimal(bound_to_number h.max)])
-              ]
-            end
-        end
-      | (Quantize([v]),MixedInterval(_)) ->
-        error "compute_cover" "quantize-mixed-interval"
-      | (Interval(ival),MixedInterval(_)) ->
-        error "compute_cover" "interval-mixed-interval"
-      | (Quantize(_),Quantize(_)) ->
-        error "compute_cover" "quantize-quantize"
-      | (IntervalUnknown(_),_) ->
-        error "compute_cover" "unknown interval"
-      | (_,IntervalUnknown(_)) ->
-        error "compute_cover" "unknown interval"
-
-      | _ -> error "compute cover" "unsupported"
-
-  (*derive scaling factors from the component*)
-  let hwcomp_derive_scaling_factors tbl (comp:hwvid hwcomp) inst (cfg:hwcompcfg) = 
-    let stmts = QUEUE.make () in
-    let enq xs = List.iter (fun x -> noop(QUEUE.enqueue stmts x)) xs in
-    let decl_mapvar (n:wireid) =
-      enq [
-        SVDeclMapVar(SVLinVar(SVScaleVar(n)));
-        SVDeclMapVar(SVLinVar(SVOffsetVar(n)))
-      ]
-    in
-    (*add decls*)
-    HwLib.comp_iter_vars comp (fun var ->
-        let wire = SlnLib.mkwire comp.name inst var.port in 
-        noop (decl_mapvar wire)
-    );
-    (*add behavior cstrs*)
-    HwLib.comp_iter_outs comp (fun outvar ->
-        let cstrlst : linear_stmt list =
-          hwvar_derive_scaling_factors {name=comp.name;inst=inst} cfg outvar 
-        in
-        enq cstrlst;
-        ()
-      );
-    
-    (*iterate for each math variable*)
-    ConcCompLib.iter_var_cfg cfg
-      (fun (port:string) (x:hwvarcfg) ->
-         let hwport = HwLib.getvar tbl.env.hw comp.name port in 
-         let wire = SlnLib.mkwire comp.name inst port in
-         (*
-         let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
-         let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-         queue_interval_cover stmts wire hival mival 1 x.expr
-           *)
-           begin
-           match hwport.bhvr with
-           | HWBAnalog(bhvr) ->
-             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
-             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-             queue_interval_cover stmts wire hival mival 1 x.expr
-
-           | HWBAnalogState(bhvr) ->
-             let mival : interval = IntervalCompute.compute_mexpr_interval_stvar tbl (uast2mast x.expr) in
-             let mivalderiv : interval = IntervalCompute.compute_mexpr_interval_deriv tbl (uast2mast x.expr) in
-             let hival : interval = IntervalCompute.compute_stvar_hwport_interval tbl comp inst cfg port in
-             let hivalderiv : interval = IntervalCompute.compute_deriv_hwport_interval tbl comp inst cfg port in
-             let icport,_ = bhvr.ic in
-             let icwire = SlnLib.mkwire comp.name inst icport  in
-             queue_interval_cover stmts wire hival mival 1 x.expr;
-             queue_interval_cover stmts wire hivalderiv mivalderiv 2 x.expr 
-
-           | HWBDigital(_) ->
-             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
-             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-             queue_interval_cover stmts wire hival mival 1 x.expr
-
-           | HWBInput ->
-             let mival : interval = IntervalCompute.compute_mexpr_interval tbl (uast2mast x.expr) in
-             let hival : interval = IntervalCompute.compute_hwport_interval tbl comp inst cfg port in
-             queue_interval_cover stmts wire hival mival 1 x.expr
-           | _ -> error "hwcomp_derive_scaling_factors" "?"
-         end
-      )
-      (fun (param:string) (x:number) -> ());
-    let cstrs = QUEUE.to_list stmts in
-    QUEUE.destroy stmts;
-    cstrs
-
-  let hwconn_derive_scaling_cstrs (tbl:gltbl) =
-    let cstrq = QUEUE.make () in
-    let q x = noop (QUEUE.enqueue cstrq x) in
-    SlnLib.iter_conns tbl.sln_ctx (fun src dst ->
-        q (SVEquals([(Term(SVScaleVar(src)));(Term(SVScaleVar(dst)))]));
-        q (SVEquals([Term(SVOffsetVar(src));Term(SVOffsetVar(dst))]));
-        ()
-      );
-    let cstrs = QUEUE.to_list cstrq in
-    QUEUE.destroy(cstrq);
-    cstrs
-
-  (*
-    for each generated statevar def, ensure that the state variable we mapped to
-     has the same speed. Also ensure the speed combined with any sort of output measurement
-     for that property has a period less than or equal to the sampling rate
-  *)
-  let hwgen_derive_speed_cstrs (tbl:gltbl) =
-    let cstrq = QUEUE.make () in
-    let stvars = QUEUE.make () in
-    let q x = noop (QUEUE.enqueue cstrq x) in
-    let qstvar x = noop (QUEUE.enqueue stvars x) in
-    (*derive the speed equivalence relation*)
-    SlnLib.iter_generates tbl.sln_ctx (fun (x:ulabel) (routes) ->
-        let vr_maybe = match x with
-          | MOutLabel(v)-> Some (v.wire,MathLib.getvar tbl.env.math v.var)
-          | MLocalLabel(v)->Some (v.wire,MathLib.getvar tbl.env.math v.var)
-          | _ -> None
-        in
-        let hwtime2simtime wire time =
-          OpN(Mult,[Term(SVScaleVar(wire));
-                            ASTLib.number2ast time
-                    ])
-        in
-        let sampletime2simtime wire time =
-          Op2(Div, ASTLib.number2ast time, Term(SVScaleVar(wire)))
-        in
-        match vr_maybe with
-        | Some(wire,vr) ->
-          begin
-            match vr.defs with
-            | MDefVar(vr) ->
-              begin
-                q (SVNeq(
-                      Decimal(1.),Term(SVScaleVar(wire))
-                ))
-
-              end
-            | MDefStVar(stvar) ->
-              begin
-                qstvar(wire);
-                (*sampling rate in simulation time*)
-                let math_sample = ASTLib.number2ast stvar.sample in
-                (*speed in hardware time*)
-                let hw_speed = ASTLib.number2ast stvar.speed in 
-                begin
-                  match wire.comp.name with
-                  | HWCmOutput(_) ->
-                    let ovar = HwLib.wire2hwvar tbl.env.hw wire in
-                    (*get the sampling rate.*)
-                    begin
-                      match ovar.defs with
-                      | HWDDigital(dig) ->
-                        let hw_sample,_ = dig.sample in
-                        (*the scaled realtime variable cannot exceed math sampling*)
-                        let hw_sample_expr = sampletime2simtime wire hw_sample in
-                        let hw_wallclock_time = hwtime2simtime wire (Integer 1)  in
-                        q (SVLTE(hw_sample_expr,math_sample));
-                        q (SVLTE(hw_wallclock_time,hw_speed));
-                        q (SVNeq(
-                            Decimal(1.),Term(SVScaleVar(wire))
-                          ))
-                      | _ ->
-                        error "hwconn_derive_speed_constraints" "cannot derive speed of analog port"
-                    end
-                  | _ -> ()
-                end
-              
-              end
-            | _ -> ()
-          end
-        | None -> ()
-   );
-  let args = QUEUE.map stvars (fun stvar -> Term(SVScaleVar(stvar))) in
-  q (SVEquals(args));
-  let cstrs = QUEUE.to_list cstrq in
-  QUEUE.destroy(cstrq);
-  cstrs
-
-  (*given the scaling factor, scale up the noise + noise propagation*)
-  let hwgen_derive_noise_cstrs (tbl:gltbl) =
-    []
-                                            
-  
-
-  let generate_problem (tbl:gltbl) =
-    let stmtq = QUEUE.make () in
-    let valid = REF.mk true in 
-    let enq stmts = List.iter (fun st -> noop (QUEUE.enqueue stmtq st)) stmts in
-    try 
-      (*iter used comps to generate coverage constraints.*)
-      SolverCompLib.iter_used_comps tbl (fun inst ccomp ->
-          let steps =
-            try
-              hwcomp_derive_scaling_factors tbl ccomp.d ccomp.inst ccomp.cfg
-            with
-            | IntervalLibError(e) ->
-              begin
-                warn "map_problem_generator.interval_lib" e;
-                REF.upd valid (fun x -> false); []
-              end
-          in
-          enq (steps)
-        );
-      (*derive constraints from connections made by the solution*)
-      enq (hwconn_derive_scaling_cstrs tbl);
-      (*derive constraints on the uniformity of the speed*)
-      enq (hwgen_derive_speed_cstrs tbl);
-      (*derive constraints that ensure the noise is minimized*)
-      enq (hwgen_derive_noise_cstrs tbl);
-      if REF.dr valid then
-        let stmts = QUEUE.to_list stmtq in
-        QUEUE.destroy stmtq;
-        Some(stmts)
-      else
-        None
-    with
-    | MapProblemGeneratorError(e) ->
-      warn "map_problem_generator" e;
-      None
-  
-end
-
-*)

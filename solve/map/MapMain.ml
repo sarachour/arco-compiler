@@ -24,6 +24,8 @@ module MapMain = struct
   *)
 
   (**)
+  let _ctx = REF.mk None;;
+
   let mkctx hwenv (tbl:(hwcompname,ucomp) map) : 'a map_ctx =
     let env = {comps=MAP.make()} in
     MAP.iter tbl (fun name comp ->
@@ -55,8 +57,14 @@ module MapMain = struct
       );
     print_string (MapSpec.string_of_map_ctx env
                     MapSpec.string_of_map_port);
+    REF.upd _ctx (fun _ -> Some env);
     env
 
+  (*do not make duplicates*)
+  let mkctx hwenv tbl =
+    match REF.dr _ctx with
+    | Some(ctx) -> ctx
+    | None -> mkctx hwenv tbl
 
   let add_part (partition:wireid map_var set queue)
       (lst:wireid map_var list) =
@@ -69,8 +77,8 @@ module MapMain = struct
     List.iter (fun st -> SET.add_set new_set st) matches;
     List.iter (fun x -> noop (SET.add new_set x)) lst;
     QUEUE.clear partition;
-    QUEUE.enqueue_all partition (rest);
-    QUEUE.enqueue partition new_set;
+    noop (QUEUE.enqueue_all partition (rest));
+    noop (QUEUE.enqueue partition new_set);
     ()
 
   (* Add all the other items contained under the variable. *)
@@ -218,7 +226,7 @@ module MapMain = struct
         );
         let avar : wireid map_abs_var =
           {
-            exprs=[];
+            exprs=[MEVar(id)];
             cstrs=[];
             value=None;
             members=SET.to_list members;
@@ -229,11 +237,13 @@ module MapMain = struct
         SET.destroy members
       );
     QUEUE.destroy partition;
-    print "===Constructing Final Contraints===\n";
+    print ("===Constructing Final Contraints ("^
+           (string_of_int (MAP.size absmap))^") ===\n");
     let is_valid = REF.mk true in
     SET.iter gltbl.sln_ctx.comps (fun (x:hwcompinst) ->
         let conc_id = MAP.get param_map x in
         let templ = MapSpec.get_comp ctx x.name conc_id in
+        (*convert to global variables*)
         let local_to_circ_abs_var (i:int) : wireid map_abs_var option =
           if MAP.has absmap (x,i) then
             let q = MAP.get absmap (x,i) in
@@ -241,6 +251,7 @@ module MapMain = struct
           else
             None
         in
+        (*for each variable, add the exprs and constraints.*)
         MAP.iter templ.vars (fun vid vdata ->
             let t_exprs : int map_expr list =
               List.map (fun (e:int map_expr) ->
@@ -248,7 +259,8 @@ module MapMain = struct
                       match local_to_circ_abs_var id with
                       | Some(v) -> v.id
                       | None ->
-                        ret (error "mkexprs" "deps must be contained in var ") 0
+                        ret
+                          (error "mkexprs" "deps must be contained in var ") 0
                     )
                 ) vdata.exprs
             in
@@ -257,12 +269,15 @@ module MapMain = struct
                   let t_e = MapExpr.map e (fun id ->
                       match local_to_circ_abs_var id with
                       | Some(v) -> v.id
-                      | None -> ret (error "mkexprs" "deps must be contained in var ") 0
+                      | None ->
+                        ret
+                          (error "mkexprs" "deps must be contained in var ") 0
                     )
                   in
                   (c,t_e)
                 ) vdata.cstrs
             in
+            (*convert local to absolute variable*)
             match local_to_circ_abs_var vid with
             | None -> ()
             | Some(glbl_var) ->
@@ -278,7 +293,7 @@ module MapMain = struct
                       end
                   | None,_ -> vdata.value
                   | Some(q),None -> glbl_var.value
-                in
+                in 
                 glbl_var.exprs <- glbl_var.exprs @ t_exprs;
                 glbl_var.cstrs <- glbl_var.cstrs @ t_cstrs;
                 glbl_var.value <- new_value;

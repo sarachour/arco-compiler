@@ -1,5 +1,6 @@
 solver
 solver.debug
 symcaml
+output
 _build
 *.sw*
