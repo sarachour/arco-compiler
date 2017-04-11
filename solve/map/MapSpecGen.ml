@@ -944,6 +944,7 @@ struct
               (*all derivs must be scaled*)
               enq (MSVarHasCstr(MPVScale(comp,v.port),MCNE,
                                 MEConst (Integer 1)));
+              enq (MSSetVarPriority(MPVScale(comp,v.port),2));
               enq (wrap_var_eq_expr
                      (MPVOffset(comp,v.port)) linear.offset);
               enq (MSVarEqualsVar(MPVScale(comp,v.port),
@@ -970,13 +971,6 @@ struct
     HwLib.comp_iter_ins comp (fun var ->
         enq ([
             MSDeclInput(comp.name,var.port);
-            MSVarHasCstr(
-              MPVScale(comp.name,var.port),MCNE,
-              MEConst (Integer 0));
-            MSVarHasCstr(
-              MPVScale(comp.name,var.port),MCNE,
-              MESub(MEConst(Integer 0),MEConst (Integer 0)));
-
             MSSetPortCover((comp.name,var.port),var.defs)
 
           ]);
@@ -987,13 +981,6 @@ struct
     HwLib.comp_iter_outs comp (fun outvar ->
         enq ([
             MSDeclOutput(comp.name,outvar.port);
-            MSVarHasCstr(
-              MPVScale(comp.name,outvar.port),MCNE,
-              MEConst (Integer 0));
-            MSVarHasCstr(
-              MPVScale(comp.name,outvar.port),MCNE,
-              MESub(MEConst(Integer 0),MEConst (Integer 0)));
-
             MSSetPortCover((comp.name,outvar.port),outvar.defs)
           ])
       );

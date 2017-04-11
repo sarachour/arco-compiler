@@ -49,11 +49,23 @@ struct
     let lin_combo (v:float ) (sc:int) (off:int) =
       Z3Plus(Z3Mult(vid_to_var (sc),Z3Real v),vid_to_var (off))
     in
+    let scale_zero_cstr svar (math_rng:num_interval) =
+      let min_val = 0.0000001 in
+      let min_diff = min_val*.min_val in
+      if math_rng.max -. math_rng.min > min_diff then
+        q (Z3Assert(Z3And(
+            Z3GTE(vid_to_var svar,Z3Real min_val),
+            Z3LTE(vid_to_var svar,Z3Real min_val)
+        )))
+    in
     q (Z3Comment("Variable Decls"));
     MAP.clear scaling;
     (*construct vars in use*)
     MAP.iter prob.vars (fun k vardata ->
-        noop (MAP.put scaling k 1)
+        let prio : int =
+          int_of_float (10.**(float_of_int vardata.priority))
+        in
+        noop (MAP.put scaling k prio) 
       );
     (*add variable constraints*)
     let freevars = SET.make () in
@@ -134,6 +146,7 @@ struct
                   q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
                   let lin_expr = lin_combo map_rng.min svar ovar in
                   q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
+                  scale_zero_cstr svar map_rng;
                   (*only make stvars equal*)
                   if p.is_stvar then
                     noop (SET.add derivq (ovar,svar));
@@ -142,6 +155,8 @@ struct
             end
 
       );
+    print "!"
+      ("<< SOLVER # VARS = "^(string_of_int (SET.size in_use)));
     let decls = MAP.fold prob.vars (fun k vardata decls ->
         if SET.has in_use k then
           Z3ConstDecl(vid_to_name k,Z3Real)::decls

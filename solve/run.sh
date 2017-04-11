@@ -35,7 +35,7 @@ fi
 
 if [ "$CMD" = "run" ]; then
   make && \
-    ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "ckt_$NAME" 2> error.log
+    time ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "ckt_$NAME" 2> error.log 1> output.log
 fi
 
 
@@ -45,16 +45,18 @@ fi
 
 
 
-rm -rf $OUTDIR/$NAME/$SUBDIR/*
+EXPDIR=$OUTDIR/$NAME/$SUBDIR
+rm -rf $EXPDIR/*
 
-mkdir -p $OUTDIR/$NAME/$SUBDIR
-mkdir -p $OUTDIR/$NAME/$SUBDIR/smt
+mkdir -p $EXPDIR
+mkdir -p $EXPDIR/smt
 mkdir -p $TMPDIR
 
-mv ckt_* $OUTDIR/$NAME/$SUBDIR
-
-mv *.smt2 $OUTDIR/$NAME/$SUBDIR/smt
-mv *.res $OUTDIR/$NAME/$SUBDIR/smt
-mv *.model $OUTDIR/$NAME/$SUBDIR/smt
+mv error.log $EXPDIR
+mv output.log $EXPDIR
+mv ckt_* $EXPDIR
+mv *.smt2 $EXPDIR/smt
+mv *.res $EXPDIR/smt
+mv *.model $EXPDIR/smt
 
 mv *.debug.txt $TMPDIR
