@@ -25,6 +25,10 @@ open SlnLib
 open GoalLib
 open SolverCompLib
 
+
+open MapExpr
+open MapSpec
+open MapPartition
 open MapIntervalCompute
 open IntervalData
 open IntervalLib
@@ -38,342 +42,13 @@ open MapUtil
 open SymCamlData
 
 
-exception MapSpecError of string
+exception MapCompSpecCompressorError of string
 
-let error n m = raise (MapSpecError (n^":"^m))
+let error n m = raise (MapCompSpecCompressorError (n^":"^m))
 
 let debug = print_debug 4 "prob-gen"
 let dumb_cstrs_DBG = false 
-  
-
-module MapExpr =
-struct
-
-  let get_abs_var (p:('a -> map_port_info)) (v:'a map_var) =
-    match v with
-    | MPVScale(vr) ->
-      let data = p vr in
-      data.scale
-    | MPVOffset(vr) ->
-      let data = p vr in
-      data.offset
-
-  let string_of_map_cstr (p:map_cstr) =
-    match p with
-    | MCGT -> ">"
-    | MCGTE -> ">="
-    | MCNE -> "!="
-
-  let z3_of_map_cstr (cstr:map_cstr)(targ) (other) =
-    match cstr with
-    |MCGT -> Z3GT(targ,other)
-    |MCGTE -> Z3GTE(targ,other)
-    |MCNE -> Z3Not(Z3Eq(targ,other))
-
-  let string_of_map_port (p:map_port) =
-    let comp,port = p in
-    "<"^(HwLib.hwcompname2str comp)^","^port^">"
-
-  let string_of_map_var (type a) (p:a map_var ) tostr = match p with
-    | MPVOffset(o) -> "offset("^(tostr o)^")"
-    | MPVScale(o) -> "scale("^(tostr o)^")"
-
-  let string_of_map_port_var q =
-    string_of_map_var q string_of_map_port
-
-
-  
-  let string_of_map_expr (type a) (x:a map_expr) (tostr:a -> string) =
-    let rec _tostr e =
-      match e with
-        | MEVar(q) -> tostr q
-        | MEAdd(a,b) -> (_tostr a)^"+"^(_tostr b)
-        | MESub(a,b) -> (_tostr a)^"-"^(_tostr b)
-        | MEMult(a,b) -> (_tostr a)^"*"^(_tostr b)
-        | MEDiv(a,b) -> (_tostr a)^"/"^(_tostr b)
-        | MEPower(a,b) -> (_tostr a)^"^"^(string_of_number b)
-        | MEConst(a) -> string_of_number a
-        | MEAny -> "@"
-    in
-    _tostr x
-
-
-  let string_of_map_stmt (type a) (x:map_stmt) =
-    match x with
-    | MSDeclInput(x) -> "input("^(string_of_map_port x)^")"
-    | MSDeclOutput(x) -> "output("^(string_of_map_port x)^")"
-    | MSDeclParam(x,n) -> "par("^(string_of_map_port x)^")"
-    | MSVarEqualsVar(x,y) ->
-      "vv("^(string_of_map_port_var x)^"="
-      ^(string_of_map_port_var y)^")"
-    | MSVarEqualsConst(x,c) ->
-      (string_of_map_port_var x)^"="^(string_of_number c)
-    | MSVarEqualsExpr(x,e) ->
-      "ve("^(string_of_map_port_var x)^"="^
-      (string_of_map_expr e string_of_map_port_var)^")"
-    | MSValid -> "valid"
-    | MSInvalid -> "invalid"
-    | MSVarHasCstr(x,c,e) ->
-       (string_of_map_port_var x)^" "^(string_of_map_cstr c)^" "^
-      (string_of_map_expr e string_of_map_port_var)
-    | MSExprEqualsConst(e,c) ->
-      "ec("^(string_of_map_expr e string_of_map_port_var)^
-      "="^(string_of_number c)^")"
-    | MSExprEqualsExpr(e1,e2) ->
-      "ee("^(string_of_map_expr e1 string_of_map_port_var)^"="^
-      (string_of_map_expr e2 string_of_map_port_var)^")"
-    | MSSetVarPriority(_) -> "priority"
-    | MSSetPortCover(_) -> "cover"
-
-  let to_ast (type a) (expr: a map_expr) (any:a) : a ast =
-    let rec _toast e =
-      match e with
-      | MEVar(q) -> Term(q)
-      | MEConst(Integer q) -> Integer q
-      | MEConst(Decimal q) -> Decimal q
-      | MEDiv(a,b) -> Op2(Div,_toast a, _toast b)
-      | MEPower(a,Integer b) -> Op2(Power,_toast a, Integer b)
-      | MEPower(a,Decimal b) -> Op2(Power,_toast a, Decimal b)
-      | MEMult(a,b) -> OpN(Mult,[_toast a;_toast b])
-      | MEAdd(a,b) -> OpN(Add,[_toast a;_toast b])
-      | MESub(a,b) -> OpN(Sub,[_toast a;_toast b])
-      | MEAny -> Term(any)
-    in
-    _toast expr 
-
-  let from_ast (type a) (expr: a ast) (any:a) : a map_expr =
-    let pair_off (fxn:a map_expr -> a ast -> a map_expr)
-        (start:a map_expr) (rest:a ast list) :a map_expr =
-      List.fold_left
-        (fun (rest:a map_expr) (curr:a ast) ->
-           fxn rest curr
-        ) start rest 
-    in
-    let rec _fromast e : a map_expr=
-      match e with
-      | Term(q) -> if q = any then MEAny else MEVar(q)
-      | Integer(i) -> MEConst(Integer i)
-      | Decimal(i) -> MEConst(Decimal i)
-      | Op2(Div,a,b) -> MEDiv(_fromast a, _fromast b)
-      | OpN(Add,h::t) ->
-        pair_off
-          (fun a b -> MEAdd(a, _fromast b))
-          (_fromast h) t
-      | OpN(Sub,h::t) ->
-        pair_off
-        (fun a b -> MESub(a, _fromast b))
-         (_fromast h) t
-      | OpN(Mult,h::t) ->
-        pair_off
-         (fun a b -> MEMult(a, _fromast b))
-         (_fromast h) t
-      | Op1(Neg,h) ->
-        MESub(MEConst(Integer 0),_fromast h)
-      | Op2(Power,h,Integer(i)) ->
-        MEPower(_fromast h,(Integer i))
-      | Op2(Power,h,Decimal(i)) ->
-        MEPower(_fromast h,(Decimal i))
-      | _ -> error "fromast" "unimpl"
-    in
-    _fromast expr
-
-  let simpl (type a) (expr:a map_expr) (any:a)
-      (tosym:a->symvar) (fromsym:symvar->a) =
-    let expr = to_ast expr any in
-    let decl v cnv =
-      SymbolVar(cnv v)
-    in
-    let res = ASTLib.simpl expr tosym fromsym decl in
-    from_ast res any
-
-  let z3 (type a) freshvars prefix (expr:a map_expr) (atoz3 : a -> z3expr) =
-    let fresh_var () =
-      let i = SET.size freshvars in
-      let vname = prefix^"_"^(string_of_int i) in
-      SET.add freshvars vname;
-      vname
-    in
-    let rec _work e = match e with
-      | MEVar(q) -> atoz3 q
-      | MEAdd(a,b) -> Z3Plus(_work a, _work b)
-      | MESub(a,b) -> Z3Sub(_work a, _work b)
-      | MEConst(Integer x) -> Z3Int(x)
-      | MEConst(Decimal x) -> Z3Real(x)
-      | MEMult(a,b) -> Z3Mult(_work a,_work b)
-      | MEDiv(a,b) -> Z3Div(_work a,_work b)
-      | MEPower(a,Integer b) -> Z3Power(_work a, Z3Int b)
-      | MEPower(a,Decimal b) -> Z3Power(_work a, Z3Real b)
-      | MEAny -> Z3Var(fresh_var ())
-
-    in
-    _work expr
-
-  let string_of_map_port_var_expr (x:map_port map_var map_expr) =
-    string_of_map_expr x string_of_map_port_var
-
-  let map e f =
-    let rec _map e =
-      match e with
-      | MEVar(q) -> MEVar(f q)
-      | MEAdd(a,b) -> MEAdd(_map a, _map b)
-      | MESub(a,b) -> MESub(_map a, _map b)
-      | MEPower(a,b) -> MEPower(_map a, b)
-      | MEMult(a,b) -> MEMult(_map a, _map b)
-      | MEDiv(a,b) -> MEDiv(_map a, _map b)
-      | MEAny -> MEAny
-      | MEConst(v) -> MEConst(v)
-    in
-    _map e
-
-end
-
-module MapSpec =
-struct
-
-  let get_abs_comp (ctx:'a map_ctx) (name:hwcompname) : 'a map_abs_comp =
-    let key = (HwLib.hwcompname2str name) in
-    if MAP.has ctx.comps key then
-      MAP.get ctx.comps key
-    else
-      begin
-        print (MAP.str ctx.comps (fun s -> s) (fun _ -> ""));
-        raise
-          (MapSpecError("get_comp: comp_dne:"^(HwLib.hwcompname2str name)))
-      end
-
-  let get_comp (ctx:'a map_ctx) (name:hwcompname) id : 'a map_comp =
-    let cmp = get_abs_comp ctx name in 
-    let ccmp = MAP.get cmp.spec id in
-    ccmp
-
-  let find_comp_config (ctx:'a map_ctx) (cmp:hwcompname)
-      (params:(string,number) map) =
-    let param_list = MAP.to_list params in 
-    let same_params (cmp:'a map_comp) : bool =
-      List.fold_right (fun ((par,value):string*number) (eq:bool) ->
-          let cmp_value = MAP.get cmp.params par in
-          cmp_value = value && eq
-        ) param_list true
-    in
-    let cmps : 'a map_abs_comp = get_abs_comp ctx cmp in 
-    MAP.fold cmps.spec (
-      fun _ (cmp:'a map_comp) (matches:'a map_comp list) ->
-        if same_params cmp then
-          cmp::matches
-        else
-          matches
-      ) []
-
-  let string_of_abs_var_id (id:int) =
-    "v("^(string_of_int id)^")"
-
-  let string_of_map_abs_var (avar:'a map_abs_var) (conv:'a -> string) =
-    let expr2str (i:int map_expr) =
-      MapExpr.string_of_map_expr i (string_of_abs_var_id)
-    in
-    let cstr2str (cstr,expr) =
-      (MapExpr.string_of_map_cstr cstr)^(expr2str expr)
-    in
-    "exprs="^(LIST.tostr expr2str "=" avar.exprs )^"\n"^
-    "cstrs="^(LIST.tostr cstr2str "," avar.cstrs )^"\n"^
-    "value="^(OPTION.tostr avar.value (string_of_number))^"\n"^
-    "mems="^(LIST.tostr MapExpr.string_of_map_port_var "," avar.members)^"\n"
-
-
-  let map_var (type a) (type b)
-      (x:a map_var) (f:a->b) : b map_var =
-    match x with
-    | MPVScale(r) -> MPVScale(f r)
-    | MPVOffset(r) -> MPVOffset(f r)
-
-  
-
-  
-  let _get_port comp name =
-    let key = name in 
-    let portinfo=
-      if MAP.has comp.inps key then
-        MAP.get comp.inps key 
-      else
-        MAP.get comp.outs key 
-    in
-    portinfo
-
-
-  let circ_get_port_info (ctx:'a map_circ)
-      (wire:wireid) =
-    let key = HwLib.wireid2str wire in
-    let _,d = MAP.get ctx.ports key in
-    d
-
-  let circ_get_mapping (ctx:'a map_circ)
-      (wire:wireid) =
-    let key = HwLib.wireid2str wire in
-    MAP.ifget ctx.mappings key
-
-  let circ_get_deriv_mapping (ctx:'a map_circ)
-      (wire:wireid) =
-    let key = HwLib.wireid2str wire in
-    MAP.ifget ctx.deriv_mappings key
-
-  let circ_set_offset_var (ctx:'a map_circ)
-      (wire:wireid) (id:int) =
-    let d = circ_get_port_info ctx wire in
-    d.offset.abs_var <- id
-
-  let circ_set_scale_var (ctx:'a map_circ)
-      (wire:wireid) (id:int) =
-    let d = circ_get_port_info ctx wire in
-    d.scale.abs_var <- id
-
-  let circ_set_offset_var (ctx:'a map_circ)
-      (wire:wireid) (id:int) =
-    let d = circ_get_port_info ctx wire in
-    d.offset.abs_var <- id
-
-  let ctx_get_abs_var (ctx:'a map_ctx)
-      (name:hwcompname) (id:int) (aid:int) : 'a map_abs_var=
-    let comp = get_comp ctx name id in 
-    let a = MAP.get comp.vars aid in
-    a
-
-  let ctx_get_offset_var (ctx:'a map_ctx)
-      (name:hwcompname) (id:int) (port:string) : 'a map_abs_var =
-    let comp = get_comp ctx name id in 
-    let d = _get_port comp port in
-    MAP.get comp.vars d.offset.abs_var 
-
-  let ctx_get_scale_var (ctx:'a map_ctx)
-      (name:hwcompname) (id:int) (port:string) : 'a map_abs_var=
-    let comp = get_comp ctx name id in 
-    let d = _get_port comp port in
-    MAP.get comp.vars d.scale.abs_var 
-
-  
-  let string_of_map_port_info (aport:map_port_info) =
-    "string_of_map_port: unimpl"
-
-  let string_of_map_port ((a,b):map_port) =
-     (HwLib.hwcompname2str a)^"."^b
-
-  let string_of_map_comp (comp:'a map_comp) (f:'a -> string) =
-    ("====== #"^(string_of_int comp.id)^" ======")^"\n"^
-    (MAP.str comp.vars (string_of_abs_var_id)
-       (fun q -> string_of_map_abs_var q f))^"\n"^
-    (MAP.str comp.inps (ident) (string_of_map_port_info))^"\n"^
-    (MAP.str comp.outs (ident) (string_of_map_port_info))^"\n"
-    
-  let string_of_map_ctx (env:'a map_ctx) (f:'a->string) =
-    MAP.str env.comps
-      (fun q -> "=== "^(q)^" ===\n")
-      (fun (x:'a map_abs_comp) ->
-         MAP.str x.spec (fun _ -> "\n")
-           (fun q -> string_of_map_comp q f)
-      )
-
-
-end
-
+ 
 module MapCompSpecCompressor =
 struct
 
@@ -583,67 +258,14 @@ struct
       then true else false
 
 
-  type 'a partition = {
-    els : (string,'a) map queue;
-    tostr : 'a -> string
-  }
-  let mk_partition tostr : 'a partition=
-    {els=QUEUE.make (); tostr=tostr}
-
-
-  let get_partitions (type a) (part:a partition)
-      (lst:a list) =
-    let matchpart (els:(string,a) map)  =
-      List.fold_right 
-        (fun x r ->
-           MAP.has els (part.tostr x) || r
-        ) lst false 
-    in
-    QUEUE.split part.els matchpart 
-
-  let add_partition (type a) (part:a partition)
-      (xs:a list) =
-    let matches,rest = get_partitions part xs in
-    print ("merge "^(LIST.length2str matches)^"\n");
-    match matches with
-      | [s] ->
-        begin
-          List.iter
-            (fun x -> noop (MAP.put s (part.tostr x) x))
-            xs
-
-        end
-      | [] ->
-        begin
-          let s = MAP.make () in
-          List.iter
-            (fun x -> noop (MAP.put s (part.tostr x) x))
-          xs;
-          noop (QUEUE.enqueue part.els s);
-          ()
-        end
-      | _ ->
-        begin
-          let giant = MAP.make () in
-          List.iter (fun s ->
-              MAP.iter s (fun k v ->
-                  noop (MAP.put giant k v )
-                ) 
-            ) matches;
-          QUEUE.clear part.els;
-          noop (QUEUE.enqueue_all part.els rest);
-          noop (QUEUE.enqueue part.els giant);
-          ()
-        end
-
-
+  
   let add_compress_partition part xscstr =
     let not_cstr (x:compress_partition) = match x with
       | PRTCstr(_) -> false
       | _ -> true
     in
     let xs = List.filter not_cstr xscstr in
-    add_partition part xs
+    MapPartition.add_partition part xs
 
   let compress (name:hwcompname) (stmts : map_stmt list)
     : 'a map_comp option =
@@ -658,7 +280,7 @@ struct
     in
     let valid = REF.mk true in
     let parts : compress_partition partition =
-      mk_partition string_of_compress_partition
+      MapPartition.mk string_of_compress_partition
     in
     (*creates partitions*)
     List.iter (fun (stmt:map_stmt) ->
@@ -688,22 +310,22 @@ struct
           comp_set_cover cmp prob v1 bhvr defs
 
         | MSVarHasCstr(v,cstr,expr) ->
-          add_partition parts [(PRTVar v);(PRTCstr (cstr,expr))]
+          add_compress_partition parts [(PRTVar v);(PRTCstr (cstr,expr))]
 
         | MSVarEqualsVar(v1,v2) ->
-          add_partition parts [(PRTVar v1);(PRTVar v2)]
+          add_compress_partition parts [(PRTVar v1);(PRTVar v2)]
 
         | MSVarEqualsConst(v1,e) ->
-          add_partition parts [(PRTVar v1);(PRTConst e)]
+          add_compress_partition parts [(PRTVar v1);(PRTConst e)]
 
         | MSVarEqualsExpr(v1,e) ->
-          add_partition parts [(PRTVar v1);(PRTExpr e)]
+          add_compress_partition parts [(PRTVar v1);(PRTExpr e)]
 
         | MSExprEqualsExpr(e1,e2) ->
-          add_partition parts [(PRTExpr e1);(PRTExpr e2)]
+          add_compress_partition parts [(PRTExpr e1);(PRTExpr e2)]
 
         | MSExprEqualsConst(e1,c) ->
-          add_partition parts [(PRTExpr e1);(PRTConst c)]
+          add_compress_partition parts [(PRTExpr e1);(PRTConst c)]
 
         | MSInvalid ->
           REF.upd valid (fun _ -> false)

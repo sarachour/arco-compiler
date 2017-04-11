@@ -3,6 +3,8 @@ open HWData;;
 open HWLib;;
 open Interactive;;
 
+open MapExpr;;
+open MapSpec;;
 open MapSpecGen;;
 open MapIntervalCompute;;
 open IntervalData;;
