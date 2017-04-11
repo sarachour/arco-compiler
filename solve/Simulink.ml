@@ -947,10 +947,15 @@ struct
                 begin
                   let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
                   let _,variance,noise_in,noise_out = create_noise q cmpns in 
-                  let dcclamp,dclamp_in,dclamp_out= create_clamp q cmpns dflt_min dflt_max in
-                  let sclamp,sclamp_in,sclamp_out= create_clamp q cmpns smin smax in
-                  declare_clamp comp.name vr.port (ClampDeriv(sclamp,dcclamp));
+                  let dcclamp,dclamp_in,dclamp_out=
+                    create_clamp q cmpns dflt_min dflt_max in
+                  let sclamp,sclamp_in,sclamp_out=
+                    create_clamp q cmpns smin smax in
+                  (*don't clamp the derivative.*)
+                  declare_clamp comp.name vr.port
+                    (ClampDeriv(sclamp,dcclamp));
                   q (add_route_line handle dclamp_in);
+                  (*q (add_route_line handle noise_in);*)
                   q (add_route_line dclamp_out noise_in);
                   q (add_route_line var_handle variance);
                   q (add_route_line noise_out integ_in);

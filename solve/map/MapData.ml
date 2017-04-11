@@ -68,6 +68,7 @@ type map_var_info = {
 type map_port_info = {
   port: string;
   mutable range: num_interval option;
+  mutable deriv_range: num_interval option;
   mutable is_stvar: bool;
 
   offset: map_var_info;
@@ -92,11 +93,13 @@ type 'a map_ctx = {
   comps: (hwcompname,'a map_abs_comp) map;
 }
 
+
 (*for a circuit*)
 type 'a map_circ = {
   vars: (int,'a map_abs_var) map;
   ports: (wireid,map_port_info) map;
   mappings: (wireid,num_interval) map;
+  deriv_mappings: (wireid,num_interval) map;
 }
 
 

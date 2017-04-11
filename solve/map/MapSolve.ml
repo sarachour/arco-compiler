@@ -129,17 +129,16 @@ struct
         | Some(hw_rng) ->
 
           if MAP.has prob.mappings w = false then
-            (*no mapping constraints*)
             ()
           else
-            begin
-              let map_rng : num_interval =
-                  MAP.get prob.mappings w
-              in
+            begin 
               let ovar =  p.offset.abs_var in
               let svar =  p.scale.abs_var in
               if SET.has in_use ovar || SET.has in_use svar then 
                 begin
+                  let map_rng : num_interval =
+                    MAP.get prob.mappings w
+                  in 
                   noop (SET.add in_use ovar);
                   noop (SET.add in_use svar);
                   let lin_expr = lin_combo map_rng.max svar ovar in
@@ -149,7 +148,17 @@ struct
                   scale_zero_cstr svar map_rng;
                   (*only make stvars equal*)
                   if p.is_stvar then
-                    noop (SET.add derivq (ovar,svar));
+                    begin
+                      let map_d_rng : num_interval =
+                        MAP.get prob.deriv_mappings w
+                      in
+                      let hwd_rng = OPTION.force_conc p.deriv_range in
+                      let lin_expr = lin_combo map_d_rng.max svar ovar in
+                      q (Z3Assert(Z3LTE(lin_expr,Z3Real hwd_rng.max)));
+                      let lin_expr = lin_combo map_d_rng.min svar ovar in
+                      q (Z3Assert(Z3GTE(lin_expr,Z3Real hwd_rng.min)));
+                      noop (SET.add derivq (ovar,svar));
+                    end;
                   ()
               end
             end

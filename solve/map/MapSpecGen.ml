@@ -34,6 +34,8 @@ open StochLib
 open MapData
 open MapUtil
 
+open SymCamlData
+
 
 exception MapSpecError of string
 
@@ -91,6 +93,67 @@ struct
         | MEAny -> "@"
     in
     _tostr x
+
+  let to_ast (type a) (expr: a map_expr) (any:a) : a ast =
+    let rec _toast e =
+      match e with
+      | MEVar(q) -> Term(q)
+      | MEConst(Integer q) -> Integer q
+      | MEConst(Decimal q) -> Decimal q
+      | MEDiv(a,b) -> Op2(Div,_toast a, _toast b)
+      | MEPower(a,Integer b) -> Op2(Power,_toast a, Integer b)
+      | MEPower(a,Decimal b) -> Op2(Power,_toast a, Decimal b)
+      | MEMult(a,b) -> OpN(Mult,[_toast a;_toast b])
+      | MEAdd(a,b) -> OpN(Add,[_toast a;_toast b])
+      | MESub(a,b) -> OpN(Sub,[_toast a;_toast b])
+      | MEAny -> Term(any)
+    in
+    _toast expr 
+
+  let from_ast (type a) (expr: a ast) (any:a) : a map_expr =
+    let pair_off (fxn:a map_expr -> a ast -> a map_expr)
+        (start:a map_expr) (rest:a ast list) :a map_expr =
+      List.fold_left
+        (fun (rest:a map_expr) (curr:a ast) ->
+           fxn rest curr
+        ) start rest 
+    in
+    let rec _fromast e : a map_expr=
+      match e with
+      | Term(q) -> if q = any then MEAny else MEVar(q)
+      | Integer(i) -> MEConst(Integer i)
+      | Decimal(i) -> MEConst(Decimal i)
+      | Op2(Div,a,b) -> MEDiv(_fromast a, _fromast b)
+      | OpN(Add,h::t) ->
+        pair_off
+          (fun a b -> MEAdd(a, _fromast b))
+          (_fromast h) t
+      | OpN(Sub,h::t) ->
+        pair_off
+         (fun a b -> MESub(a, _fromast b))
+         (_fromast h) t
+      | OpN(Mult,h::t) ->
+        pair_off
+         (fun a b -> MEDiv(a, _fromast b))
+         (_fromast h) t
+      | Op1(Neg,h) ->
+        MESub(MEConst(Integer 0),_fromast h)
+      | Op2(Power,h,Integer(i)) ->
+        MEPower(_fromast h,(Integer i))
+      | Op2(Power,h,Decimal(i)) ->
+        MEPower(_fromast h,(Decimal i))
+      | _ -> error "fromast" "unimpl"
+    in
+    _fromast expr
+
+  let simpl (type a) (expr:a map_expr) (any:a)
+      (tosym:a->symvar) (fromsym:symvar->a) =
+    let expr = to_ast expr any in
+    let decl v cnv =
+      SymbolVar(cnv v)
+    in
+    let res = ASTLib.simpl expr tosym fromsym decl in
+    from_ast res any
 
   let z3 (type a) freshvars prefix (expr:a map_expr) (atoz3 : a -> z3expr) =
     let fresh_var () =
@@ -286,6 +349,7 @@ struct
     {
       port=port;
       range=None;
+      deriv_range=None;
       offset=create_var ();
       scale=create_var ();
       is_stvar=false;
@@ -365,8 +429,11 @@ struct
       end
     | HWDAnalogState(defs) ->
       begin
+        print (portinfo.port^"\n");
         portinfo.range <-
           Some (IntervalLib.interval2numinterval defs.stvar.ival);
+        portinfo.deriv_range <-
+          Some (IntervalLib.interval2numinterval defs.deriv.ival);
         portinfo.is_stvar <- true;
       end
 
@@ -605,7 +672,7 @@ struct
     | q -> MSExprEqualsConst(q,f)
 
   let feedback_in_terms (fdbk:string list) (lst:hwvid ast list)  =
-    let rec is_term_feedback el = match el with
+    let rec is_term_feedback (el:'a ast) = match el with
       | OpN(Mult,exprs) ->
         List.fold_left (fun isfdbk t -> isfdbk || is_term_feedback t) false exprs
       | Op2(Div,expr1,expr2) ->
@@ -629,6 +696,19 @@ struct
         (LIST.zip lst projs )
     in
     OPTION.conc_list nonfeedback
+
+  let map_expr_simpl (x:map_port map_var map_expr) =
+    let to_sym (x:map_port map_var) = match x with
+      | MPVScale(cmp,p) -> "scale:"^(HwLib.hwcompname2str cmp)^":"^p
+      | MPVOffset(cmp,p) -> "offset:"^(HwLib.hwcompname2str cmp)^":"^p
+    in
+    let from_sym (x:string) = match STRING.split x ":" with
+      | ["scale";name;port] -> MPVScale(HwLib.str2hwcompname name,port)
+      | ["offset";name;port] -> MPVOffset(HwLib.str2hwcompname name,port)
+      | _ -> error "from_sym" "malformed"
+    in
+    MapExpr.simpl x (MPVScale(HWCmComp "*","*"))
+      to_sym from_sym
 
   let derive_mapping_add enq arg_projs =
       (*create scaling constraints*)
@@ -670,7 +750,8 @@ struct
 
 
 
-  let derive_mapping_mult enq ( fdbk:string list) arg_projs arg_terms res_expr : map_proj = 
+  let derive_mapping_mult enq ( fdbk:string list) arg_projs
+      arg_terms (res_expr:'a ast) : map_proj =
     (*if this aggregate term is zero, then*)
     (*this term goes to zero*)
     match res_expr with
@@ -769,6 +850,7 @@ struct
                         (arg::args,expr::terms)
         ) inps ([],[])
 
+  
   (*propagate wire rules for scaling factors *)
   let derive_mapping_expr hwenv (node:hwvid ast) (fdbk:string list)
       (params:(string,number) map)
@@ -907,7 +989,10 @@ struct
     let proj,_= _derive_mapping_problem node in
     let stmts = QUEUE.to_list cstrs in 
     QUEUE.destroy cstrs;
-    stmts,proj
+    stmts,{
+      scale=map_expr_simpl proj.scale;
+      offset=map_expr_simpl proj.offset
+    }
 
   let wrap_var_eq_expr v e = match e with
     | MEVar(q) -> (MSVarEqualsVar(v,q))

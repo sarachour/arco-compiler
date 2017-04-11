@@ -161,7 +161,11 @@ module MapMain = struct
       );
     print "=== Proc Insts ===\n";
     let circ : wireid map_circ =
-      {vars=MAP.make(); ports=MAP.make(); mappings=MAP.make()}
+      {
+        vars=MAP.make(); ports=MAP.make();
+       deriv_mappings=MAP.make();mappings=MAP.make()
+      }
+      
     in
     SET.iter sln.comps (fun (inst:hwcompinst) ->
         let part lst = add_part partition lst in
@@ -173,6 +177,7 @@ module MapMain = struct
               {
                 port=port.port;
                 range=None;
+                deriv_range=None;
                 offset={priority=0;abs_var=0};
                 scale={priority=0;abs_var=0};
                 is_stvar=false;
@@ -189,8 +194,19 @@ module MapMain = struct
             | Some(mast) ->
               let ival : interval =
                 IntervalCompute.compute_mexpr_interval gltbl mast in
-              noop (MAP.put circ.mappings iwire
-                      (IntervalLib.interval2numinterval ival))
+              begin
+                noop (MAP.put circ.mappings iwire
+                        (IntervalLib.interval2numinterval ival));
+                if port_data.is_stvar then
+                  begin
+                    let deriv_ival = 
+                      IntervalCompute.compute_mexpr_interval_deriv
+                        gltbl mast
+                    in
+                    noop (MAP.put circ.deriv_mappings iwire
+                            (IntervalLib.interval2numinterval deriv_ival))
+                  end
+              end
             | None ->
               ()
         )
