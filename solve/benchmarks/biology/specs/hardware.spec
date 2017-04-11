@@ -279,7 +279,7 @@ comp mm
   def V(Ytot) mag = [0.0001,1000] mV
   def I(kf) mag = [0.0001,0.01] uA
   def I(kr) mag = [0.0001,1] uA
-  def V(XY0) mag = [0.00,60] mV
+  def V(XY0) mag = [0.00,600] mV
 
 
   output XY {V:mV}
@@ -289,7 +289,9 @@ comp mm
   rel V(X) = V(Xtot) - V(XY)
   rel V(Y) = V(Ytot) - V(XY)
   rel ddt V(XY) = ((I(kf)*V(X)*V(Y))) - I(kr)*V(XY) init V(XY0)
-  def V(XY) mag = [0,10000] mV
+  def V(XY) mag = [0,3200] mV
+  def V(X) mag = [0,1600] mV
+  def V(Y) mag = [0,1600] mV
   var ddt V(XY) = 0.001*V(XY) + 0.1 shape GAUSS
 
 end

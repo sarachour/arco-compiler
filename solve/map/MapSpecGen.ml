@@ -78,9 +78,11 @@ struct
     | MPVOffset(o) -> "offset("^(tostr o)^")"
     | MPVScale(o) -> "scale("^(tostr o)^")"
 
-  let string_of_map_port_var q = string_of_map_var q string_of_map_port
+  let string_of_map_port_var q =
+    string_of_map_var q string_of_map_port
 
 
+  
   let string_of_map_expr (type a) (x:a map_expr) (tostr:a -> string) =
     let rec _tostr e =
       match e with
@@ -94,6 +96,34 @@ struct
         | MEAny -> "@"
     in
     _tostr x
+
+
+  let string_of_map_stmt (type a) (x:map_stmt) =
+    match x with
+    | MSDeclInput(x) -> "input("^(string_of_map_port x)^")"
+    | MSDeclOutput(x) -> "output("^(string_of_map_port x)^")"
+    | MSDeclParam(x,n) -> "par("^(string_of_map_port x)^")"
+    | MSVarEqualsVar(x,y) ->
+      "vv("^(string_of_map_port_var x)^"="
+      ^(string_of_map_port_var y)^")"
+    | MSVarEqualsConst(x,c) ->
+      (string_of_map_port_var x)^"="^(string_of_number c)
+    | MSVarEqualsExpr(x,e) ->
+      "ve("^(string_of_map_port_var x)^"="^
+      (string_of_map_expr e string_of_map_port_var)^")"
+    | MSValid -> "valid"
+    | MSInvalid -> "invalid"
+    | MSVarHasCstr(x,c,e) ->
+       (string_of_map_port_var x)^" "^(string_of_map_cstr c)^" "^
+      (string_of_map_expr e string_of_map_port_var)
+    | MSExprEqualsConst(e,c) ->
+      "ec("^(string_of_map_expr e string_of_map_port_var)^
+      "="^(string_of_number c)^")"
+    | MSExprEqualsExpr(e1,e2) ->
+      "ee("^(string_of_map_expr e1 string_of_map_port_var)^"="^
+      (string_of_map_expr e2 string_of_map_port_var)^")"
+    | MSSetVarPriority(_) -> "priority"
+    | MSSetPortCover(_) -> "cover"
 
   let to_ast (type a) (expr: a map_expr) (any:a) : a ast =
     let rec _toast e =
@@ -553,46 +583,70 @@ struct
       then true else false
 
 
+  type 'a partition = {
+    els : (string,'a) map queue;
+    tostr : 'a -> string
+  }
+  let mk_partition tostr : 'a partition=
+    {els=QUEUE.make (); tostr=tostr}
 
-  let add_partition parts
-      (x1:compress_partition) (x2:compress_partition) =
+
+  let get_partitions (type a) (part:a partition)
+      (lst:a list) =
+    let matchpart (els:(string,a) map)  =
+      List.fold_right 
+        (fun x r ->
+           MAP.has els (part.tostr x) || r
+        ) lst false 
+    in
+    QUEUE.split part.els matchpart 
+
+  let add_partition (type a) (part:a partition)
+      (xs:a list) =
+    let matches,rest = get_partitions part xs in
+    print ("merge "^(LIST.length2str matches)^"\n");
+    match matches with
+      | [s] ->
+        begin
+          List.iter
+            (fun x -> noop (MAP.put s (part.tostr x) x))
+            xs
+
+        end
+      | [] ->
+        begin
+          let s = MAP.make () in
+          List.iter
+            (fun x -> noop (MAP.put s (part.tostr x) x))
+          xs;
+          noop (QUEUE.enqueue part.els s);
+          ()
+        end
+      | _ ->
+        begin
+          let giant = MAP.make () in
+          List.iter (fun s ->
+              MAP.iter s (fun k v ->
+                  noop (MAP.put giant k v )
+                ) 
+            ) matches;
+          QUEUE.clear part.els;
+          noop (QUEUE.enqueue_all part.els rest);
+          noop (QUEUE.enqueue part.els giant);
+          ()
+        end
+
+
+  let add_compress_partition part xscstr =
     let not_cstr (x:compress_partition) = match x with
       | PRTCstr(_) -> false
       | _ -> true
     in
-    let matches = QUEUE.filter parts (fun q ->
-        let has_x1 = SET.has q x1 && not_cstr x1 in
-        let has_x2 = SET.has q x2 && not_cstr x2 in 
-        has_x1 || has_x2
-      ) in
-      match matches with
-      | [s] ->
-        begin
-          noop (SET.add s x1);
-          noop (SET.add s x2);
-          ()
-        end
-      | [] ->
-        begin
-          let s = SET.make () in
-          noop (SET.add s x1);
-          noop (SET.add s x2);
-          noop (QUEUE.enqueue parts s);
-          ()
-        end
-      | [s1;s2] ->
-        begin
-          noop (SET.add_all s1 (SET.to_list s2));
-          noop (QUEUE.rm parts s2);
-          SET.destroy s2;
-          noop (SET.add_all s1 [x1;x2]);
-          ()
-        end
+    let xs = List.filter not_cstr xscstr in
+    add_partition part xs
 
-      | _ ->
-        error "add_partition" "more than one exist"
-
-  let compress name (stmts : map_stmt list) : 'a map_comp option =
+  let compress (name:hwcompname) (stmts : map_stmt list)
+    : 'a map_comp option =
     let prob : map_port map_comp =
       {
         id=0;
@@ -603,24 +657,25 @@ struct
       }
     in
     let valid = REF.mk true in
-    let parts : compress_partition set queue = QUEUE.make () in
-    List.iter (fun (stmt:map_stmt) -> match stmt with
+    let parts : compress_partition partition =
+      mk_partition string_of_compress_partition
+    in
+    (*creates partitions*)
+    List.iter (fun (stmt:map_stmt) ->
+        print ((MapExpr.string_of_map_stmt stmt)^"\n");
+        match stmt with
         | MSDeclInput(hwn,hwp) ->
           begin
             create_input prob hwn hwp;
-            add_partition parts (PRTVar (MPVScale(hwn,hwp)))
-              (PRTVar (MPVScale(hwn,hwp)));
-            add_partition parts (PRTVar (MPVOffset(hwn,hwp)))
-              (PRTVar (MPVOffset(hwn,hwp)))
+            add_compress_partition parts [(PRTVar (MPVScale(hwn,hwp)))];
+            add_compress_partition parts [(PRTVar (MPVOffset(hwn,hwp)))]
           end
 
         | MSDeclOutput(hwn,hwp) ->
           begin
             create_output prob hwn hwp;
-            add_partition parts (PRTVar (MPVScale(hwn,hwp)))
-              (PRTVar (MPVScale(hwn,hwp)));
-            add_partition parts (PRTVar (MPVOffset(hwn,hwp)))
-              (PRTVar (MPVOffset(hwn,hwp)))
+            add_compress_partition parts [(PRTVar (MPVScale(hwn,hwp)))];
+            add_compress_partition parts [(PRTVar (MPVOffset(hwn,hwp)))]
           end
 
         | MSDeclParam((_,par),s) ->
@@ -633,33 +688,37 @@ struct
           comp_set_cover cmp prob v1 bhvr defs
 
         | MSVarHasCstr(v,cstr,expr) ->
-          add_partition parts (PRTVar v) (PRTCstr (cstr,expr))
+          add_partition parts [(PRTVar v);(PRTCstr (cstr,expr))]
 
         | MSVarEqualsVar(v1,v2) ->
-          add_partition parts (PRTVar v1) (PRTVar v2)
+          add_partition parts [(PRTVar v1);(PRTVar v2)]
 
         | MSVarEqualsConst(v1,e) ->
-          add_partition parts (PRTVar v1) (PRTConst e)
+          add_partition parts [(PRTVar v1);(PRTConst e)]
 
         | MSVarEqualsExpr(v1,e) ->
-          add_partition parts (PRTVar v1) (PRTExpr e)
+          add_partition parts [(PRTVar v1);(PRTExpr e)]
 
         | MSExprEqualsExpr(e1,e2) ->
-          add_partition parts (PRTExpr e1) (PRTExpr e2)
+          add_partition parts [(PRTExpr e1);(PRTExpr e2)]
 
         | MSExprEqualsConst(e1,c) ->
-          add_partition parts (PRTExpr e1) (PRTConst c)
+          add_partition parts [(PRTExpr e1);(PRTConst c)]
 
-        | MSInvalid -> REF.upd valid (fun _ -> false)
+        | MSInvalid ->
+          REF.upd valid (fun _ -> false)
         | MSValid -> ()
       ) stmts;
-
+    (*merge overlap*)
+    print (">>> # Partitions "^(HwLib.hwcompname2str name)^"="^
+           (string_of_int (QUEUE.length parts.els))^"\n");
     (*process the var data.*)
     let expr_buf = MAP.make () in 
-    QUEUE.iter parts (fun (equiv_set) ->
+    QUEUE.iter parts.els (fun (equiv_set) ->
         let abs : 'a map_abs_var = create_abs_var prob in
         let exprs,cstrs =
-          SET.fold equiv_set (fun (q:compress_partition) (exprs,cstrs) ->
+          MAP.fold equiv_set
+            (fun _ (q:compress_partition) (exprs,cstrs) ->
             match q with
             | PRTExpr(e) ->
               (e::exprs,cstrs)
@@ -752,33 +811,41 @@ struct
 
   let derive_mapping_add enq arg_projs =
       (*create scaling constraints*)
-        List.iter (fun (proj2:map_proj) ->
-            List.iter (fun (proj1:map_proj) ->
-                match proj1.scale,proj2.scale with
-                | MEVar(a),MEVar(b) -> enq (MSVarEqualsVar(a,b))
-                | MEVar(a),MEConst(b) -> enq (MSVarEqualsConst(a,b))
-                | MEConst(a),MEVar(b) -> enq (MSVarEqualsConst(b,a))
-                | expr,MEVar(a) -> enq (MSVarEqualsExpr(a,expr))
-                | MEVar(a),expr -> enq (MSVarEqualsExpr(a,expr))
-                | expr1,expr2 -> enq (MSExprEqualsExpr(expr1,expr2))
+    List.iter (fun (proj2:map_proj) ->
+        List.iter (fun (proj1:map_proj) ->
+            let proj1s = map_expr_simpl proj1.scale in
+            let proj2s = map_expr_simpl proj2.scale in
+                match proj1s,proj2s with
+                | MEVar(a),MEVar(b) ->
+                  enq (MSVarEqualsVar(a,b))
+                | MEVar(a),MEConst(b) ->
+                  enq (MSVarEqualsConst(a,b))
+                | MEConst(a),MEVar(b) ->
+                  enq (MSVarEqualsConst(b,a))
+                | expr,MEVar(a) ->
+                  enq (MSVarEqualsExpr(a,expr))
+                | MEVar(a),expr ->
+                  enq (MSVarEqualsExpr(a,expr))
+                | expr1,expr2 ->
+                  enq (MSExprEqualsExpr(expr1,expr2))
               ) arg_projs
-          )  arg_projs;
-        let res_offset = match arg_projs with
-          | p1::rest -> List.fold_right (fun (proj:map_proj) expr ->
-              MEAdd(expr,proj.offset)
-          ) rest p1.offset
-          | [] -> error "res_scale" "cannot offset args"
-        in
-        let res_scale : map_port map_var map_expr= match arg_projs with
-          | p1::rest -> List.fold_right (fun curr h ->
-              match h,curr.scale with
-              | MEConst(_),MEVar(a) -> h
-              | MEVar(_),expr -> h
-              | _ -> curr.scale 
-            ) rest p1.scale
-          | [] -> error "res_scale" "cannot scale no args"
-        in
-        {scale=res_scale;offset=res_offset}
+        )  arg_projs;
+      let res_offset = match arg_projs with
+        | p1::rest -> List.fold_right (fun (proj:map_proj) expr ->
+            MEAdd(expr,proj.offset)
+        ) rest p1.offset
+        | [] -> error "res_scale" "cannot offset args"
+      in
+      let res_scale : map_port map_var map_expr= match arg_projs with
+        | p1::rest -> List.fold_right (fun curr h ->
+            match h,curr.scale with
+            | MEConst(_),MEVar(a) -> h
+            | MEVar(_),expr -> h
+            | _ -> curr.scale 
+          ) rest p1.scale
+        | [] -> error "res_scale" "cannot scale no args"
+      in
+      {scale=res_scale;offset=res_offset}
          
 
   let derive_mapping_sub =
@@ -1039,7 +1106,8 @@ struct
     | MEConst(q) -> (MSVarEqualsConst(v,q))
     | q -> (MSVarEqualsExpr(v,q))
 
-  let derive_mapping_variable hwenv comp params (v:hwvid hwportvar) : map_stmt list =
+  let derive_mapping_variable hwenv comp params
+      (v:hwvid hwportvar) : map_stmt list =
       let stmtq = QUEUE.make() in
       let enq x =
         noop (QUEUE.enqueue stmtq x)
@@ -1050,8 +1118,19 @@ struct
       (*stupidly enforce linear*)
       begin
         match v.bhvr with
+        | HWBDigital(bhvr) ->
+          let cstrs,linear =
+            derive_mapping_expr hwenv bhvr.rhs [] params in
+            begin
+              enq_all cstrs;
+              enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
+              enq (wrap_var_eq_expr (MPVOffset(comp,v.port)) linear.offset);
+              ()
+            end
+
         | HWBAnalog(bhvr) ->
-            let cstrs,linear = derive_mapping_expr hwenv bhvr.rhs [] params in
+          let cstrs,linear =
+            derive_mapping_expr hwenv bhvr.rhs [] params in
             begin
               enq_all cstrs;
               enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
@@ -1060,7 +1139,8 @@ struct
             end
 
           | HWBAnalogState(bhvr) ->
-            let cstrs,linear = derive_mapping_expr hwenv bhvr.rhs [v.port] params in
+            let cstrs,linear =
+              derive_mapping_expr hwenv bhvr.rhs [v.port] params in
             begin
               let icvar,_ =bhvr.ic in
               enq_all cstrs;
