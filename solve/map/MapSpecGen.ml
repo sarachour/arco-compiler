@@ -987,9 +987,11 @@ struct
     HwLib.comp_iter_outs comp (fun outvar ->
         enq ([
             MSDeclOutput(comp.name,outvar.port);
-            MSVarHasCstr(
+            (*
+              MSVarHasCstr(
               MPVScale(comp.name,outvar.port),MCGTE,
               MEConst (Integer 0));
+            *)
             MSSetPortCover((comp.name,outvar.port),outvar.defs)
           ])
       );

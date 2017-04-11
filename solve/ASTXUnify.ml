@@ -241,7 +241,6 @@ struct
       if_numeric_unify s hwexpr texpr
     in
     if unified_numeric then result else
-      let _ = print ("==== UNIFY ("^(SymCaml.expr2str symhwexpr)^") ====") in
       let simpl_symhwexpr = SymCaml.simpl symenv.s symhwexpr in 
       let maybe_assigns =
         try
