@@ -19,7 +19,7 @@
 %}
 
 
-%token EOF EOL OBRAC CBRAC EQ COMMA COLON
+%token EOF EOL OBRAC CBRAC EQ COMMA COLON UNSAT DELTASAT
 %token SOLUTION ENTIRE NEG_INFTY POS_INFTY UNKNOWN SAT
 
 %token <string> TOKEN
@@ -77,7 +77,7 @@ stmts:
   | SOLUTION COLON EOL {
     {sat=true;model=None}
   }
-  | UNKNOWN EOL {
+  | stmts UNKNOWN EOL {
     {sat=false;model=None}
   }
   | stmts lst(model_stmt) {
@@ -85,8 +85,20 @@ stmts:
     obj.model <- Some(mdl);
     obj
   }
-  | SAT EOL {
-    {sat=true;model=None}
+  | stmts SAT EOL {
+    $1.sat <- true;
+    $1
+  }
+  | stmts DELTASAT EQ FLOAT EOL {
+    $1.sat <- true;
+    $1
+  }
+  | stmts DELTASAT EOL {
+    $1.sat <- true;
+    $1
+  }
+  | UNSAT EOL {
+    {sat=false;model=None}
   }
   | stmts EOL {
      $1

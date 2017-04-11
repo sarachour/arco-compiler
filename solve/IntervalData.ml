@@ -16,6 +16,9 @@ type num_interval = {
   min: float;
   max:float;
 }
+
+let string_of_num_interval interval =
+  "["^(string_of_float interval.min)^","^(string_of_float interval.max)^"]"
 type interval_cstr =
   | ICstrContains of float
   | ICstrExcludes of float

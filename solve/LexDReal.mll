@@ -31,6 +31,9 @@ rule env = parse
   | "Solution"              {SOLUTION}
   | "unknown"               {UNKNOWN}
   | "sat"                   {SAT}
+  | "unsat"                 {UNSAT}
+  | "delta-sat with the following box" {DELTASAT}
+  | "delta-sat with delta " {DELTASAT}
   | floatexp as i           { let str = i in
                               let args = STRING.split str "e" in
                               let base = float_of_string (List.nth args 0) in

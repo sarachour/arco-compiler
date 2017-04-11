@@ -9,12 +9,14 @@ SUBDIR=$5
 
 SOLVER=./solver.debug
 
+OUTDIR=output/$HWSPEC
+TMPDIR=tmp
 
 ./killall.sh dReal
 ./killall.sh z3 
 ./killall.sh solver.debug 
 ./killall.sh solver 
-
+rm $TMPDIR/*
 
 ./mkconfigs.sh
 
@@ -41,8 +43,6 @@ if [ "$CMD" = "config" ]; then
 fi
 
 
-OUTDIR=output/$HWSPEC
-TMPDIR=tmp
 
 mkdir -p $OUTDIR/$NAME/$SUBDIR
 mkdir -p $TMPDIR
@@ -50,4 +50,6 @@ mkdir -p $TMPDIR
 mv ckt_* $OUTDIR/$NAME/$SUBDIR
 
 mv *.smt2 $TMPDIR/
+mv *.res $TMPDIR/
+mv *.model $TMPDIR/
 mv *.debug.txt $TMPDIR

@@ -26,7 +26,23 @@ struct
     "v"^(string_of_int i)
 
   let vid_to_var (i:int) =
-    Z3Mult(Z3Var("v"^(string_of_int i)),Z3Int(MAP.get scaling i))
+    Z3Var(vid_to_name i)
+    (*
+     Z3Mult(Z3Var("v"^(string_of_int i)),Z3Int(MAP.get scaling i))
+    *)
+
+
+  let var_to_vid (st:string) =
+    if STRING.startswith st "v" then
+      match STRING.split st "v" with
+      | [id] -> Some (int_of_string id)
+      | _ ->
+        begin
+          error "var_to_vid" ("malformed:"^st);
+          None
+        end
+    else
+      None
 
   let build_z3_prob (tbl:gltbl) (prob:wireid map_circ)  =
     let stmtq = QUEUE.make () in
@@ -61,7 +77,9 @@ struct
               q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
               let lin_expr = lin_combo map_rng.min svar ovar in
               q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
-              noop (SET.add derivq (ovar,svar));
+              (*only make stvars equal*)
+              if p.is_stvar then
+                noop (SET.add derivq (ovar,svar));
               ()
             end
 
@@ -100,7 +118,11 @@ struct
         match set_eq xexpr with
         | Some(equality) ->
           q (Z3Assert(equality))
-        | _ -> ()
+        | _ -> ();
+        List.iter (fun expr -> q (Z3Assert(expr))) xcstr;
+        ()
+
+
       );
     let offset_vars = (SET.map derivq (fun (s,o) -> vid_to_var o)) in
     begin
@@ -119,30 +141,56 @@ struct
     QUEUE.destroy stmtq;
     stmts
 
-  let asgn_to_mappings (asgn:z3assign) =
-    match asgn with
+  (*if the mappings are*)
+  let asgn_to_mappings
+      (circ:wireid map_circ) (vals:(int,float) map) (valid:bool ref)
+      (asgn:z3assign) =
+    let name,value = match asgn with
             | Z3Set(vname,Z3QFloat(dir)) ->
-              error "to_mappings" "unhandled flt"
+              vname,Some (Decimal dir)
 
             | Z3Set(vname,Z3QInt(dir)) ->
-              error "to_mappings" "unhandled int"
+              vname,Some (Integer dir)
 
             | Z3Set(vname,Z3QInterval(Z3QInfinite(dir))) ->
-              error "to_mappings" "unhandled inf"
+              vname,None
 
             | Z3Set(vname,Z3QInterval(Z3QAny)) ->
-                error "to_mappings" "unhandled any"
+              vname,Some (Integer 0)
 
             | Z3Set(vname,Z3QInterval(Z3QRange(min,max))) ->
-                error "to_mappings" "unhandled range"
+              let delta = max -. min in
+              if delta < 0.001 then
+                vname, Some (Decimal (max ))
+              else
+                begin
+                  vname,None
+                end
 
             | Z3Set(vname,Z3QInterval(Z3QLowerBound(min))) ->
-                error "to_mappings" "unhandled lb"
+              begin
+                vname,None
+              end
 
             | Z3Set(vname,Z3QInterval(Z3QUpperBound(max))) ->
-              error "to_mappings" "unhandled ub"
+              begin
+                vname,None
+              end
 
-            | _ -> error "z3set" "unexpected"
+            | _ -> error "z3set" "unexpected"; "",None
+    in
+    match var_to_vid name, value with
+    | Some(id),Some(v) ->
+      let scale = MAP.get scaling id in
+      let sc_value =
+        ((float_of_number v) /. (float_of_int scale))
+      in
+      noop (MAP.put vals id sc_value)
+    | Some(name),None ->
+      REF.upd valid (fun _ -> true)
+    | None,_ ->
+      ()
+
 
   let to_mappings (circ:wireid map_circ)  (sln:z3sln)=
     if sln.sat = false then None
@@ -151,10 +199,36 @@ struct
         match sln.model with
         | Some(model) ->
           begin
+            let is_valid = REF.mk true in
+            let abs_var_map = MAP.make () in 
             List.iter (fun (asgn:z3assign)  ->
-                asgn_to_mappings asgn
+                noop (asgn_to_mappings circ abs_var_map is_valid asgn)
               ) model;
-            None
+            None;
+            (*there was an issue converting mappings*)
+            if REF.dr  is_valid = false then None
+            else
+              begin
+                let mappings = MAP.make () in
+                MAP.iter circ.ports (fun wire port_info ->
+                    let ovar =
+                      MAP.get abs_var_map port_info.offset.abs_var
+                    in
+                    let svar =
+                      MAP.get abs_var_map port_info.scale.abs_var
+                    in
+                    let math_range = MAP.get circ.mappings wire in
+                    let mapping = {
+                      scale=svar;
+                      offset=ovar;
+                      wire=wire;
+                      hrng=OPTION.force_conc port_info.range;
+                      mrng=math_range;
+                    } in
+                    noop (MAP.put mappings wire mapping)
+                  );
+                Some(mappings)
+              end
           end
 
         | None ->  None
@@ -172,7 +246,7 @@ struct
     : (wireid,hw_mapping) map option =
     let stmts = build_z3_prob tbl prob in
     let sln =
-      Z3Lib.exec "MAPPER" stmts true
+      Z3Lib.exec "mapping" stmts true
     in
     let mappings = to_mappings prob sln in
     mappings

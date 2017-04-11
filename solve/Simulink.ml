@@ -1031,7 +1031,7 @@ struct
     if MAP.has mappings wire then
       MAP.get mappings wire
     else
-      let mapstr : string= MapUtil.string_of_mapping mappings in
+      let mapstr : string= MapUtil.string_of_mappings mappings in
       warn "get_mapping" mapstr;
       error "get_mapping" ("mapping for wire "^(SlnLib.wireid2str wire)^" does not exist:\n"^mapstr)
 

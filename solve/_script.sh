@@ -1,2 +1,2 @@
 #!/bin/bash
-dReal --model z3-tmp.mapper.smt2 > z3-res.mapper.res
+dReal --model z3-prob-106.mapping.smt2 > z3-sln-106.mapping.res

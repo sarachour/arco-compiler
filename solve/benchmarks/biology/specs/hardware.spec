@@ -340,7 +340,7 @@ schematic
   inst vtoi : 30
 %
 
-
+  conn * -> *
   % Transcription rate functions
   conn input(I) -> itov
   conn input(I) -> ihill_stim

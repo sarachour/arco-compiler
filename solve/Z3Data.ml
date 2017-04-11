@@ -36,6 +36,7 @@ type z3st =
   | Z3Maximize of z3expr
   | Z3DispModel
   | Z3Comment of string
+  | Z3Exit
 
 type z3interval =
   | Z3QRange of float*float
@@ -57,6 +58,6 @@ type z3assign =
 type z3model = z3assign list
 
 type z3sln = {
-  sat: bool;
+  mutable sat: bool;
   mutable model: z3model option;
 }

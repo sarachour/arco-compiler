@@ -186,7 +186,8 @@ schematic
   inst input I : 50
   inst output I : 10
   inst copy I : 10
-  inst mm : 2
+  inst mm : 4 
+
   inst switch : 15
 
   inst input V : 125
@@ -206,73 +207,75 @@ schematic
 
 
   % Transcription rate functions
-  conn input(I) -> itov
-  conn input(I) -> ihill
-  conn input(I) -> igenebind
-  conn input(I) -> switch
-  conn input(I) -> iadd
-  conn input(I) -> mm
+  conn * -> *
 
-  conn input(V) -> ihill
-  conn input(V) -> vtoi
-  conn input(V) -> itov
-  conn input(V) -> vadd
-  conn input(V) -> vgain
-  conn input(V) -> switch
-  conn input(V) -> mm
-
-  conn mm -> output(V)
-  conn mm -> itov
-  conn mm -> iadd
-  conn mm -> vgain
-  %new
-  conn mm -> mm
-
-
-  conn switch -> itov
-  conn switch -> iadd
-  conn switch -> output(I)
-  conn switch -> itov
-
-  conn ihill -> output(I)
-  conn ihill -> itov
-  conn ihill -> iadd
-  conn ihill -> igenebind
-
-  conn igenebind -> output(I)
-  conn igenebind -> itov
-  conn igenebind -> ihill
-  conn igenebind -> iadd
-
-  conn itov -> output(V)
-  conn itov -> vadd
-  conn itov -> vgain
-  conn itov -> switch
-
-  conn iadd -> output(I)
-  conn iadd -> ihill
-  conn iadd -> switch
-  conn iadd -> igenebind
-  conn iadd -> itov
-
-  %new
-  conn iadd -> iadd
-
-  conn vtoi -> iadd
-  conn vtoi -> ihill
-  conn vtoi -> switch
-  conn vtoi -> output(I)
-
-  conn vgain -> output(V)
-  conn vgain -> vadd
-  conn vgain -> vtoi
-  conn vgain -> mm
-  conn vgain -> itov
-  conn vgain -> vgain
-
-  conn vadd -> output(V)
-  conn vadd -> vtoi
-  conn vadd -> vgain
-  conn vadd -> vadd
+%  conn input(I) -> itov
+%  conn input(I) -> ihill
+%  conn input(I) -> igenebind
+%  conn input(I) -> switch
+%  conn input(I) -> iadd
+%  conn input(I) -> mm
+%
+%  conn input(V) -> ihill
+%  conn input(V) -> vtoi
+%  conn input(V) -> itov
+%  conn input(V) -> vadd
+%  conn input(V) -> vgain
+%  conn input(V) -> switch
+%  conn input(V) -> mm
+%
+%  conn mm -> output(V)
+%  conn mm -> itov
+%  conn mm -> iadd
+%  conn mm -> vgain
+%  %new
+%  conn mm -> mm
+%
+%
+%  conn switch -> itov
+%  conn switch -> iadd
+%  conn switch -> output(I)
+%  conn switch -> itov
+%
+%  conn ihill -> output(I)
+%  conn ihill -> itov
+%  conn ihill -> iadd
+%  conn ihill -> igenebind
+%
+%  conn igenebind -> output(I)
+%  conn igenebind -> itov
+%  conn igenebind -> ihill
+%  conn igenebind -> iadd
+%
+%  conn itov -> output(V)
+%  conn itov -> vadd
+%  conn itov -> vgain
+%  conn itov -> switch
+%
+%  conn iadd -> output(I)
+%  conn iadd -> ihill
+%  conn iadd -> switch
+%  conn iadd -> igenebind
+%  conn iadd -> itov
+%
+%  %new
+%  conn iadd -> iadd
+%
+%  conn vtoi -> iadd
+%  conn vtoi -> ihill
+%  conn vtoi -> switch
+%  conn vtoi -> output(I)
+%
+%  conn vgain -> output(V)
+%  conn vgain -> vadd
+%  conn vgain -> vtoi
+%  conn vgain -> mm
+%  conn vgain -> itov
+%  conn vgain -> vgain
+%
+%  conn vadd -> output(V)
+%  conn vadd -> vtoi
+%  conn vadd -> vgain
+%  conn vadd -> vadd
 
 end

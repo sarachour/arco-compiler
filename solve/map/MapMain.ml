@@ -185,12 +185,11 @@ module MapMain = struct
                       (IntervalLib.interval2numinterval ival))
             | None ->
               ()
-
         )
       );
     (*set the initial mappings.*)
     let absmap : (hwcompinst*int, int) map= MAP.make () in 
-    print "=== Construct Initial Mappings ===\n"; 
+    print "=== Construct Initial Mappings from Partition ===\n"; 
     QUEUE.iter partition (fun (members:wireid map_var set) ->
         let id = MAP.size circ.vars in
         SET.iter members (fun (w:wireid map_var) ->
@@ -268,17 +267,20 @@ module MapMain = struct
             | None -> ()
             | Some(glbl_var) ->
               begin
-                  let new_value = match glbl_var.value,vdata.value with
+                let new_value =
+                  match glbl_var.value,vdata.value with
                   | Some(q),Some(r) -> if q = r then vdata.value else
                       begin
+                        print ("contridiction has two values: "^
+                               (string_of_number q)^","^(string_of_number r)^"\n");
                         REF.upd is_valid (fun _ -> false);
                         None
                       end
                   | None,_ -> vdata.value
                   | Some(q),None -> glbl_var.value
                 in
-                glbl_var.exprs <- vdata.exprs @ t_exprs;
-                glbl_var.cstrs <- vdata.cstrs@ t_cstrs;
+                glbl_var.exprs <- glbl_var.exprs @ t_exprs;
+                glbl_var.cstrs <- glbl_var.cstrs @ t_cstrs;
                 glbl_var.value <- new_value;
                 ()
               end
@@ -303,7 +305,7 @@ module MapMain = struct
     let prob_opt = build_prob tbl.map_ctx tbl in
     match prob_opt with
     | Some(prob) ->
-      MapSolver.sat tbl prob 
+      MapSolver.sat tbl prob  
       
     | None -> false
 
@@ -320,23 +322,3 @@ module MapMain = struct
 
 
 end
-
-(*
-module MapMain = struct
-
-
-  let infer (tbl:gltbl)  : (wireid,hw_mapping) map option =
-    match MapProblemGenerator.generate_problem tbl with
-    | Some(stmts) ->
-      let sln : (wireid,hw_mapping) map option = MapSMTResolver.solve tbl stmts in
-      sln
-    | None -> None
-
-  let save_z3_problem (tbl:gltbl) name inst =
-    match MapProblemGenerator.generate_problem tbl with
-    | Some(stmts) ->
-      noop (MapSMTResolver.save_z3_problem tbl stmts name inst) 
-    | None ->() 
-
-end
-*)

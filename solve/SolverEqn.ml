@@ -155,8 +155,10 @@ struct
           true
         end
       | false ->
-        debug "[test-node-validity][FAIL] mapping is invalid by construction.";
-        false
+        begin
+          debug "[test-node-validity][FAIL] mapping is invalid by construction.";
+          false
+        end
 
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
     let mint,_ = mkmenu v None in

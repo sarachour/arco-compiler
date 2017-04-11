@@ -19,6 +19,14 @@ module Z3Lib =
 struct
 
 
+  let prob_idx = REF.mk 0;;
+
+  let new_idx () =
+    let i = REF.dr prob_idx in
+    REF.upd prob_idx (fun q -> q+1);
+    i
+
+   
   let z3expr2str x =
     let rec _s x = match x with
     | Z3And(a,b) -> "(and "^(_s a)^" "^(_s b)^")"
@@ -49,6 +57,7 @@ struct
     | Z3ConstDecl(s,u) -> "(declare-const "^s^" "^(z3vartyp2str u)^")"
     | Z3Assert(q) -> "(assert "^(z3expr2str q)^")"
     | Z3SAT -> "(check-sat)"
+    | Z3Exit -> "(exit)"
     | Z3DispModel -> "(get-model)"
     | _ -> "TODO"
 
@@ -222,6 +231,7 @@ struct
       end
     | Z3Comment(str) -> os ("; "^str)
     | Z3SAT -> os "(check-sat)"
+    | Z3Exit -> os "(exit)"
     | Z3DispModel -> os "(get-model)"
     | Z3Minimize(q) ->
       begin
@@ -310,8 +320,9 @@ struct
       else
         stmts @ [Z3SAT ]
     in
-    let smtfile =  "z3-tmp."^root^".smt2" in
-    let resfile = "z3-res."^root^".res" in
+    let idx = string_of_int (new_idx ()) in 
+    let smtfile =  "z3-prob-"^idx^"."^root^".smt2" in
+    let resfile = "z3-sln-"^idx^"."^root^".res" in
     let oc = open_out smtfile in
     (*solve for fif mintues*)
     (*let x = List.sort sortsts (LIST.uniq x) in*)
@@ -341,12 +352,13 @@ struct
   let exec (root:string) (stmts:z3st list) use_dreal : z3sln=
     let stmts =
       if use_dreal then
-        (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT]
+        (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT; Z3Exit]
       else
         stmts @ [Z3SAT; Z3DispModel]
     in
-    let smtfile =  "z3-tmp."^root^".smt2" in
-    let resfile = "z3-res."^root^".res" in
+    let idx = string_of_int (new_idx ()) in 
+    let smtfile =  "z3-prob-"^idx^"."^root^".smt2" in
+    let resfile = "z3-sln-"^idx^"."^root^".res" in
     let oc = open_out smtfile in
     (*solve for fif mintues*)
     (*let x = List.sort sortsts (LIST.uniq x) in*)
