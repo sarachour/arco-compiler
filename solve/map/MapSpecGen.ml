@@ -968,17 +968,32 @@ struct
       );
     (*add decls*)
     HwLib.comp_iter_ins comp (fun var ->
-        enq ([  MSDeclInput(comp.name,var.port)]);
         enq ([
-              MSSetPortCover((comp.name,var.port),var.defs)
+            MSDeclInput(comp.name,var.port);
+            MSVarHasCstr(
+              MPVScale(comp.name,var.port),MCNE,
+              MEConst (Integer 0));
+            MSVarHasCstr(
+              MPVScale(comp.name,var.port),MCNE,
+              MESub(MEConst(Integer 0),MEConst (Integer 0)));
+
+            MSSetPortCover((comp.name,var.port),var.defs)
+
+          ]);
+        enq ([
             ])
     );
     (*add behavior cstrs*)
     HwLib.comp_iter_outs comp (fun outvar ->
-        enq ([ 
-              MSVarHasCstr(
+        enq ([
+            MSDeclOutput(comp.name,outvar.port);
+            MSVarHasCstr(
               MPVScale(comp.name,outvar.port),MCNE,
               MEConst (Integer 0));
+            MSVarHasCstr(
+              MPVScale(comp.name,outvar.port),MCNE,
+              MESub(MEConst(Integer 0),MEConst (Integer 0)));
+
             MSSetPortCover((comp.name,outvar.port),outvar.defs)
           ])
       );
