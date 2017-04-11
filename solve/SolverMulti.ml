@@ -90,6 +90,44 @@ struct
     SearchLib.mkscore state delta
 
   
+  let score_solved_vars (s:mustep list) =
+    let get_partial_app tbl id =
+      let tree = MAP.get tbl.state.partials id.mvr in
+      let node = SearchLib.id2node tree id.ident in
+      let path = SearchLib.get_path tree node in
+      path
+    in
+    let get_global_app tbl id =
+      let tree = MAP.get tbl.state.globals id.mvr_seq in
+      let node = SearchLib.id2node tree id.ident in
+      let path = SearchLib.get_path tree node in
+      path
+    in
+    let count_comps steps =
+      LIST.count steps (fun step -> match step with
+          | SModCompCtx(SCMakeConcComp(_)) -> true
+          | _ -> false
+        )
+    in
+    let score s = match s,REF.dr currtbl with
+      | MSPartialApp(id),Some(tbl) ->
+        begin
+          let st : sstep list = get_partial_app tbl id in
+          let ncomps = count_comps st in
+          0. -. (float_of_int ncomps) /. 3. -. (RAND.rand_norm())
+        end
+      | MSGlobalApp(id),Some(tbl) ->
+        let st : sstep list = get_global_app tbl id in
+        let ncomps = count_comps st in
+        0. -. (float_of_int ncomps) /. 3. -. (RAND.rand_norm())
+
+      | MSSolveVar(_),_ -> 10.
+      | _ -> 0.
+    in 
+    let state = List.fold_left (fun r st -> r +. (score st)) 0. s in
+    let delta = 0. in
+    SearchLib.mkscore (state) delta
+
   let score_depth_and_ncomps (s:mustep list) =
     let get_partial_app tbl id =
       let tree = MAP.get tbl.state.partials id.mvr in
@@ -134,6 +172,7 @@ struct
     | "depth" -> score_depth
     | "uniform" -> score_uniform
     | "depth-and-ncomps" -> score_depth_and_ncomps
+    | "solved-and-ncomps" -> score_solved_vars
     | "_" ->   error "score_step" "unknown strategy for eqn-selector-branch"
 
 
@@ -765,7 +804,8 @@ struct
       ()
 
   (*Find and add a new partial solutions to different nodes *)
-    let augment_with_partial_solution (ms:musearch) (pvar:string) (slns: sstep snode list option) :  'a option =
+  let augment_with_partial_solution (ms:musearch) (pvar:string) (slns: sstep snode list option)
+    :  'a option =
       let mint,musr = mkmenu ms in
       let curs = SearchLib.cursor ms.search in
       let nglbl = Globals.get_glbl_int "multi-num-global-solutions" in
@@ -825,12 +865,10 @@ struct
         in
         let nslns_per_partial = Globals.get_glbl_int "multi-num-global-solutions-per-partial" in
         List.fold_left (fun nslns x ->
-            if nslns >= nslns_per_partial then nslns
+            if add_solution x then
+              nslns + 1
             else
-              if add_solution x then
-                nslns + 1
-              else
-                nslns
+              nslns
         ) 0 csln_nodes;
         (*only mark the node visited if it still exists. This node might not exist.*)
         if SearchLib.hasnode ms.search curs then
@@ -915,7 +953,6 @@ struct
           | None ->
             debug ("no variables, but not a global solution. find another solution");
             (Interactive.force (fun () -> noop (musr())));
-            _msolve ();
             ()
           | Some(id) ->
             debug ("solving target: "^(id));

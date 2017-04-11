@@ -171,42 +171,44 @@ struct
     (*the assigned instances must be in the range to make a connection*)
 
 
-    let consistent gltbl =
-        let tbl,stmts = to_smt_prob gltbl in
-        debug "== Generated Constraints\n";
-        debug "== Created Z3 Instance\n";
-        flush_all(); 
-        let z = Z3Lib.exec "wiring" stmts false in
-        z.sat
+  let timeout = 6*50;;
+
+  let consistent gltbl =
+      let tbl,stmts = to_smt_prob gltbl in
+      debug "== Generated Constraints\n";
+      debug "== Created Z3 Instance\n";
+      flush_all(); 
+      let z = Z3Lib.exec "wiring" stmts timeout false in
+      z.sat
 
 
-    let z32cstr tbl z3 =
-      let sln = MAP.make() in
-      let proc_const v = match v with
-        | Z3Set(vid,Z3QInt(inst)) ->
-          begin
-            match id2entity tbl vid with
-            | Right(hwcomp) ->
-              noop (MAP.put sln hwcomp ({name=hwcomp.name;inst=inst}))
-            | Left(hwwire) ->
-              debug ("z32cstr.wire: "^(HwLib.wireid2str hwwire))
-          end
-        | _ -> ()
-      in
-      let _ = List.iter (fun x -> let _ = proc_const x in ()) z3 in
-      sln
+  let z32cstr tbl z3 =
+    let sln = MAP.make() in
+    let proc_const v = match v with
+      | Z3Set(vid,Z3QInt(inst)) ->
+        begin
+          match id2entity tbl vid with
+          | Right(hwcomp) ->
+            noop (MAP.put sln hwcomp ({name=hwcomp.name;inst=inst}))
+          | Left(hwwire) ->
+            debug ("z32cstr.wire: "^(HwLib.wireid2str hwwire))
+        end
+      | _ -> ()
+    in
+    let _ = List.iter (fun x -> let _ = proc_const x in ()) z3 in
+    sln
 
-    let get_sln gltbl =
-      let tbl,decls = to_smt_prob gltbl in
-      let z = Z3Lib.exec "wiring" decls false in
-      if z.sat = false then
-        error "get_sln" "no solution exists. ie UNSAT."
-      else
-        match z.model with
-        | Some(m) ->
-          let z3mdl = m in
-          let mapping = z32cstr tbl z3mdl in
-          mapping
-        | None -> error "get_sln" "no solution"
+  let get_sln gltbl =
+    let tbl,decls = to_smt_prob gltbl in
+    let z : z3sln = Z3Lib.exec "wiring" decls timeout false in
+    if z.sat = false then
+      error "get_sln" "no solution exists. ie UNSAT."
+    else
+      match z.model with
+      | Some(m) ->
+        let z3mdl = m in
+        let mapping = z32cstr tbl z3mdl in
+        mapping
+      | None -> error "get_sln" "no solution"
 end
 

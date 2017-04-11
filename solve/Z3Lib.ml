@@ -311,9 +311,8 @@ struct
     in
     sat^"\n\n"^mdl
 
-  let timeout = 60*10
   
-  let sat (root:string) (stmts:z3st list) use_dreal : bool =
+  let sat (root:string) (stmts:z3st list) timeout use_dreal : bool =
     let stmts =
       if use_dreal then
         (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT]
@@ -349,7 +348,7 @@ struct
     end
 
 
-  let exec (root:string) (stmts:z3st list) use_dreal : z3sln=
+  let exec (root:string) (stmts:z3st list) timeout use_dreal : z3sln=
     let stmts =
       if use_dreal then
         (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT; Z3Exit]
@@ -428,7 +427,7 @@ struct
   (*strategy*)
 
   type minimize_strategy = BinarySearch | LinearSearch | BestEffort
-  let minimize (root:string) (stmts:z3st list) (expr:z3expr) (minbnd:float) (maxbnd:float) use_dreal: z3sln=
+  let minimize (root:string) (stmts:z3st list) (expr:z3expr) (minbnd:float) (maxbnd:float) timeout use_dreal: z3sln=
     if use_dreal then
       begin
         let minvar = "__minima__" in
@@ -464,7 +463,7 @@ struct
             log "minimize" (">>> DReal running with max minval = "^(string_of_float target_val));
             let result: z3sln =
                 let min_expr = Z3Assert(Z3LT(Z3Var(minvar),Z3Real(target_val))) in
-                exec root ((min_decl::stmts)@[min_stmt;min_expr]) use_dreal 
+                exec root ((min_decl::stmts)@[min_stmt;min_expr]) timeout use_dreal 
             in
             match has_solution result with
             | Some(model) ->
@@ -480,7 +479,7 @@ struct
               _minimize target_val max (depth+1) 
         in
         log "minimize" (">>> DReal running feasibility with no minimizer ceiling");
-        let initial_result = exec root ((min_decl::stmts)@[min_stmt]) use_dreal in
+        let initial_result = exec root ((min_decl::stmts)@[min_stmt]) timeout use_dreal in
         match has_solution initial_result with
         | Some(init_sln) ->
           let min = get_min_val (get_min_qty init_sln) maxbnd in
@@ -494,6 +493,6 @@ struct
       end
     else
       begin
-        exec root (stmts @ [Z3Minimize expr]) use_dreal
+        exec root (stmts @ [Z3Minimize expr]) timeout use_dreal
       end
 end

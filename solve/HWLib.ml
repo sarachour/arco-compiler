@@ -691,10 +691,8 @@ struct
 
 
   let inference_comp (type a) (env:a hwenv) (x:a hwcomp) (cnv:a->hwvid)=
-    debug ("=== "^(hwcompname2str x.name)^" ===\n");
     comp_iter_ins x (fun v -> noop (inference_var env x v cnv));
     comp_iter_outs x (fun v -> noop (inference_var env x v cnv));
-    debug "=======\n";
     ()
 
 

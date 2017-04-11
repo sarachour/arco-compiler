@@ -29,6 +29,7 @@ module MapMain = struct
   let mkctx hwenv (tbl:(hwcompname,ucomp) map) : 'a map_ctx =
     let env = {comps=MAP.make()} in
     MAP.iter tbl (fun name comp ->
+        print ("> MAKE "^(HwLib.hwcompname2str name)^"\n");
         let hwcomp = comp.d in
         let stmts :
           (((string,number) map)*(map_stmt list)) list =
@@ -52,11 +53,12 @@ module MapMain = struct
               noop (MAP.put cfg_map idx cfg)
             end
           ) cfgs;
-        noop (MAP.put env.comps name {spec=cfg_map; name=name});
+        noop (MAP.put env.comps
+                (HwLib.hwcompname2str name) {spec=cfg_map; name=name});
         () 
       );
-    print_string (MapSpec.string_of_map_ctx env
-                    MapSpec.string_of_map_port);
+    (*print_string (MapSpec.string_of_map_ctx env
+                    MapSpec.string_of_map_port);*)
     REF.upd _ctx (fun _ -> Some env);
     env
 
@@ -83,9 +85,9 @@ module MapMain = struct
 
   (* Add all the other items contained under the variable. *)
   let build_connection (enq:wireid map_var list->unit)
-      (ctx:map_port map_ctx) (param_map:(hwcompinst,int) map)
+      (ctx:map_port map_ctx) (param_map:hwcompinst->int)
       (w:wireid) (cont:wireid map_var) =
-    let w_conc_id = MAP.get param_map w.comp in
+    let w_conc_id = param_map w.comp in
     (*get the abstract variable that corresponds to the port*)
     let mvar : map_port map_abs_var =
       match cont with
@@ -115,9 +117,9 @@ module MapMain = struct
 
 
   let build_instance (enq:wireid map_var list -> unit)
-      (ctx:map_port map_ctx) (param_map:(hwcompinst,int) map)
+      (ctx:map_port map_ctx) (param_map:hwcompinst -> int)
       (hi:hwcompinst) =
-    let conc_id = MAP.get param_map hi in
+    let conc_id =param_map hi in
     let cmp : map_port map_comp =
       MapSpec.get_comp ctx hi.name conc_id
     in
@@ -130,46 +132,67 @@ module MapMain = struct
             vr.members
         in
         enq mems 
-    )
+      );
+  cmp
  
 
   let build_prob (ctx:map_port map_ctx) (gltbl:gltbl)  =
-    let param_map : (hwcompinst,int) map = MAP.make() in
+    let param_map : (string,int) map = MAP.make() in
     let partition : (wireid map_var) set queue = QUEUE.make () in
     let sln = gltbl.sln_ctx in
+    let get_map_noparam (compid:hwcompinst) =
+      let key = HwLib.hwcompinst2str compid in
+      if MAP.has param_map key then
+        MAP.get param_map key
+      else
+        begin
+          error "get_map_conc: dne"
+            ((HwLib.hwcompinst2str compid)^":"^
+             (MAP.str param_map  
+                (fun (k) ->
+                   k)
+                string_of_int)
+            );
+          -1
+        end
+    in
     (*find instances*)
-    print "=== Find Instances ===";
+    print"---------\n";
     SET.iter sln.comps (fun (inst:hwcompinst) ->
+        print("->"^(HwLib.hwcompinst2str inst)^"\n");
         let ccomp = SolverCompLib.get_conc_comp gltbl inst in
         let matches : map_port map_comp list =
           MapSpec.find_comp_config ctx inst.name ccomp.cfg.pars
         in
         (*find parameter combo*)
         match matches with
-        | [h] -> noop (MAP.put param_map inst h.id)
+        | [h] ->
+          begin
+            noop (MAP.put param_map (HwLib.hwcompinst2str inst) h.id)
+          end
+
         | _ -> error "find instances" "failed."
     );
     (*partition*)
-    print "=== Proc Connections ===";
     MAP.iter sln.conns.src2dest (
       fun (src:wireid) (snks:wireid set) ->
         SET.iter snks (fun snk ->
             let part lst = add_part partition lst in
-            build_connection part ctx param_map src (MPVScale snk);
-            build_connection part ctx param_map snk (MPVOffset src);
+            build_connection part ctx get_map_noparam src (MPVScale snk);
+            build_connection part ctx get_map_noparam snk (MPVOffset src);
           )
       );
     print "=== Proc Insts ===\n";
     let circ : wireid map_circ =
       {
         vars=MAP.make(); ports=MAP.make();
-       deriv_mappings=MAP.make();mappings=MAP.make()
+        deriv_mappings=MAP.make();mappings=MAP.make()
       }
       
     in
     SET.iter sln.comps (fun (inst:hwcompinst) ->
         let part lst = add_part partition lst in
-        build_instance part ctx param_map inst;
+        let mapcmp = build_instance part ctx get_map_noparam inst in
         let ccomp = SolverCompLib.get_conc_comp gltbl inst in
         (*iterate over variables*)
         HwLib.comp_iter_vars ccomp.d (fun (port:hwvid hwportvar) ->
@@ -182,63 +205,70 @@ module MapMain = struct
                 scale={priority=0;abs_var=0};
                 is_stvar=false;
               }
-            in
-            let iwire = (mkwire inst.name inst.inst port.port) in 
-            noop (MAP.put circ.ports iwire port_data);
-            MapCompSpecCompressor.port_info_set_cover
-              port_data port.defs;
+            in 
+            let map_port_data = MapSpec._get_port mapcmp port.port in
+            (*add the compression range*)
+            port_data.range <- map_port_data.range; 
+            port_data.deriv_range <- map_port_data.deriv_range; 
+            (*get the map expression.*)
             let map_expr =
               (SolverCompLib.comp_get_port_cfg ccomp port.port)
             in
-            match OPTION.map map_expr uast2mast with
-            | Some(mast) ->
-              let ival : interval =
-                IntervalCompute.compute_mexpr_interval gltbl mast in
-              begin
-                noop (MAP.put circ.mappings iwire
-                        (IntervalLib.interval2numinterval ival));
-                if port_data.is_stvar then
-                  begin
-                    let deriv_ival = 
-                      IntervalCompute.compute_mexpr_interval_deriv
-                        gltbl mast
-                    in
-                    noop (MAP.put circ.deriv_mappings iwire
-                            (IntervalLib.interval2numinterval deriv_ival))
-                  end
-              end
-            | None ->
-              ()
+            let iwire = (mkwire inst.name inst.inst port.port) in
+            let iwirestr = HwLib.wireid2str iwire in
+            begin
+              match OPTION.map map_expr uast2mast with
+              | Some(mast) ->
+                let ival : interval =
+                  IntervalCompute.compute_mexpr_interval gltbl mast in
+                begin
+                  noop (MAP.put circ.mappings iwirestr
+                          (IntervalLib.interval2numinterval ival));
+                  if port_data.is_stvar then
+                    begin
+                      let deriv_ival = 
+                        IntervalCompute.compute_mexpr_interval_deriv
+                          gltbl mast
+                      in
+                      noop (MAP.put circ.deriv_mappings iwirestr
+                              (IntervalLib.interval2numinterval deriv_ival))
+                    end
+                end
+              | None ->
+                ()
+            end;
+            noop (MAP.put circ.ports iwirestr (iwire,port_data));
         )
       );
     (*set the initial mappings.*)
-    let absmap : (hwcompinst*int, int) map= MAP.make () in 
+    let absmap : (hwcompinst*int, int) map= MAP.make () in
     print "=== Construct Initial Mappings from Partition ===\n"; 
     QUEUE.iter partition (fun (members:wireid map_var set) ->
         let id = MAP.size circ.vars in
         SET.iter members (fun (w:wireid map_var) ->
-            let local_id : hwcompinst*int = match w with
-              | MPVScale(x) ->
-                let conc_id = MAP.get param_map x.comp in
-                let local_abs_var =
-                  MapSpec.ctx_get_scale_var ctx
-                    x.comp.name conc_id x.port
-                in
-                (x.comp,local_abs_var.id)
-              | MPVOffset(x) ->
-                let conc_id = MAP.get param_map x.comp in
-                let local_abs_var =
-                  MapSpec.ctx_get_offset_var
-                    ctx x.comp.name conc_id x.port
-                in
-                (x.comp,local_abs_var.id)
+            let local_id : hwcompinst*int =
+              match w with
+                | MPVScale(x) ->
+                  let conc_id = get_map_noparam x.comp in
+                  let local_abs_var =
+                    MapSpec.ctx_get_scale_var ctx
+                      x.comp.name conc_id x.port
+                  in
+                  (x.comp,local_abs_var.id)
+                | MPVOffset(x) ->
+                  let conc_id = get_map_noparam x.comp in
+                  let local_abs_var =
+                    MapSpec.ctx_get_offset_var
+                      ctx x.comp.name conc_id x.port
+                  in
+                  (x.comp,local_abs_var.id)
             in
             noop (MAP.put absmap local_id id);
             match w with
             | MPVOffset(wire) ->
-              MapSpec.set_offset_var circ wire id
+              MapSpec.circ_set_offset_var circ wire id
             | MPVScale(wire) ->  
-              MapSpec.set_scale_var circ wire id
+              MapSpec.circ_set_scale_var circ wire id
         );
         let avar : wireid map_abs_var =
           {
@@ -257,7 +287,7 @@ module MapMain = struct
            (string_of_int (MAP.size absmap))^") ===\n");
     let is_valid = REF.mk true in
     SET.iter gltbl.sln_ctx.comps (fun (x:hwcompinst) ->
-        let conc_id = MAP.get param_map x in
+        let conc_id = get_map_noparam x in
         let templ = MapSpec.get_comp ctx x.name conc_id in
         (*convert to global variables*)
         let local_to_circ_abs_var (i:int) : wireid map_abs_var option =

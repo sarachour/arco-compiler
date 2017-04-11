@@ -26,7 +26,8 @@ struct
     "v"^(string_of_int i)
 
   let vid_to_var (i:int) =
-    Z3Mult(Z3Var("v"^(string_of_int i)),Z3Int(MAP.get scaling i))
+    Z3Var(vid_to_name i)
+    (*Z3Mult(Z3Var("v"^(string_of_int i)),Z3Int(MAP.get scaling i))*)
 
 
   let var_to_vid (st:string) =
@@ -53,10 +54,10 @@ struct
       let min_val = 0.0000001 in
       let min_diff = min_val*.min_val in
       if math_rng.max -. math_rng.min > min_diff then
-        q (Z3Assert(Z3And(
-            Z3GTE(vid_to_var svar,Z3Real min_val),
-            Z3LTE(vid_to_var svar,Z3Real min_val)
-        )))
+        q (Z3Assert(Z3Not(Z3And(
+            Z3LT(vid_to_var svar,Z3Real min_val),
+            Z3GT(vid_to_var svar,Z3Real (0.-.min_val)))
+           )))
     in
     q (Z3Comment("Variable Decls"));
     MAP.clear scaling;
@@ -123,22 +124,14 @@ struct
       | None -> ()
     end;
     q (Z3Comment ("=== port restrictions ==="));
-    MAP.iter prob.ports (fun (w:wireid) (p:map_port_info) ->
-        match p.range with
-        | None -> ()
-        | Some(hw_rng) ->
-
-          if MAP.has prob.mappings w = false then
-            ()
-          else
-            begin 
+    MAP.iter prob.ports (fun (_) ((w,p):wireid*map_port_info) ->
+        match p.range, MapSpec.circ_get_mapping prob w with
+          | Some(hw_rng),Some(map_rng) ->
+            begin
               let ovar =  p.offset.abs_var in
               let svar =  p.scale.abs_var in
               if SET.has in_use ovar || SET.has in_use svar then 
                 begin
-                  let map_rng : num_interval =
-                    MAP.get prob.mappings w
-                  in 
                   noop (SET.add in_use ovar);
                   noop (SET.add in_use svar);
                   let lin_expr = lin_combo map_rng.max svar ovar in
@@ -149,19 +142,23 @@ struct
                   (*only make stvars equal*)
                   if p.is_stvar then
                     begin
-                      let map_d_rng : num_interval =
-                        MAP.get prob.deriv_mappings w
-                      in
-                      let hwd_rng = OPTION.force_conc p.deriv_range in
-                      let lin_expr = lin_combo map_d_rng.max svar ovar in
-                      q (Z3Assert(Z3LTE(lin_expr,Z3Real hwd_rng.max)));
-                      let lin_expr = lin_combo map_d_rng.min svar ovar in
-                      q (Z3Assert(Z3GTE(lin_expr,Z3Real hwd_rng.min)));
-                      noop (SET.add derivq (ovar,svar));
+                      match p.deriv_range,
+                            MapSpec.circ_get_deriv_mapping prob w with
+                      | Some(hwd_rng),Some(map_d_rng) ->
+                        begin
+                          let lin_expr = lin_combo map_d_rng.max svar ovar in
+                          q (Z3Assert(Z3LTE(lin_expr,Z3Real hwd_rng.max)));
+                          let lin_expr = lin_combo map_d_rng.min svar ovar in
+                          q (Z3Assert(Z3GTE(lin_expr,Z3Real hwd_rng.min)));
+                          noop (SET.add derivq (ovar,svar));
+                        end
+                      | _ ->
+                        raise (MapSolverError("unexpected: must have deriv"))
                     end;
                   ()
-              end
+                end
             end
+          | _ -> ()
 
       );
     print "!"
@@ -247,7 +244,7 @@ struct
             else
               begin
                 let mappings = MAP.make () in
-                MAP.iter circ.ports (fun wire port_info ->
+                MAP.iter circ.ports (fun _ (wire,port_info) ->
                     let ovar=
                       MAP.get_dflt
                         abs_var_map port_info.offset.abs_var 0.
@@ -257,15 +254,9 @@ struct
                         abs_var_map port_info.scale.abs_var 1.
                     in
                     let math_range =
-                      if MAP.has circ.mappings wire then
-                        MAP.get circ.mappings wire
-                      else
-                        begin
-                          warn "cannot get math range"
-                            (HwLib.wireid2str wire);
-                          {min=0.; max =1.}
-                        end
-
+                      match MapSpec.circ_get_mapping circ wire with
+                      | Some(mapping) -> mapping
+                      | None -> {min=0.; max =1.}
                     in
                       let mapping = {
                         scale=svar;
@@ -284,12 +275,14 @@ struct
         | None ->  None
       end
 
-  
+
+  let timeout = 60;;
+
   let mappings (tbl:gltbl) (prob:wireid map_circ)
     : (wireid,hw_mapping) map option =
     let stmts = build_z3_prob tbl prob in
     let sln =
-      Z3Lib.exec "mapping" stmts true
+      Z3Lib.exec "mapping" stmts timeout true
     in
     let mappings = to_mappings prob sln in
     mappings
@@ -298,7 +291,7 @@ struct
     : bool =
     let stmts = build_z3_prob tbl prob in
     let sln =
-      Z3Lib.exec "mapping" stmts true
+      Z3Lib.exec "mapping" stmts timeout true
     in
     let mappings = to_mappings prob sln in 
     sln.sat && mappings <> None

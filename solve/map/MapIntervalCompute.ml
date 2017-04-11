@@ -119,31 +119,50 @@ struct
     | Term(_) -> error "compute_mexpr_interval_deriv" "cannot be input or parameter"
     | (_) -> error "compute_mexpr_interval_deriv" "cannot be expression"
 
-  let compute_hwid_interval comp (x:hwvid) : interval=
-      match x with
-        |HNParam(cmp,x) ->
-          begin
-            let param = HwLib.comp_getparam comp x in
-            let fvalue = List.map float_of_number param.value in
-            IntervalLib.mk_ival_from_floats
-              (MATH.min fvalue) (MATH.max fvalue)
-          end
+  let _get_param_interval (comp) x =
+    let param = HwLib.comp_getparam comp x in
+    let fvalue = List.map float_of_number param.value in
+    IntervalLib.mk_ival_from_floats
+      (MATH.min fvalue) (MATH.max fvalue)
 
+  let _get_var_interval (comp) port =
+    begin
+      match (HwLib.comp_getvar comp port).defs with
+      | HWDAnalog(d) -> d.ival
+      | HWDAnalogState(x) -> x.stvar.ival
+      | HWDDigital(d) -> d.ival
+    end
+  let compute_hwid_interval  (x:hwvid)
+      (parfn:string->interval) (portfn:string->interval) =
+    match x with
+        |HNParam(cmp,x) ->
+          parfn x
         |HNPort(knd,cmp,port,param) ->
-          begin
-            match (HwLib.comp_getvar comp port).defs with
-            | HWDAnalog(d) -> d.ival
-            | HWDAnalogState(x) -> x.stvar.ival
-            | HWDDigital(d) -> d.ival
-          end
+          portfn port
         |HNTime -> error "compute_hw_interval" "unexpected time"
+
+  let compute_conc_hwexpr_interval comp rhs parfxn : interval =
+      debug ("computing interval "^(HwLib.hast2str rhs));
+      let ival = IntervalLib.derive_interval rhs
+          (fun x -> compute_hwid_interval  x
+             (parfxn)
+             (_get_var_interval comp)
+          )
+      in
+      debug ("  -> "^IntervalLib.interval2str ival);
+      ival
 
   let compute_hwexpr_interval comp inst cfg rhs : interval =
     let conc_rhs =
         ConcCompLib.specialize_params_hwexpr_from_compinst comp inst cfg rhs
       in
       debug ("computing interval "^(HwLib.hast2str conc_rhs));
-      let ival = IntervalLib.derive_interval conc_rhs (compute_hwid_interval comp) in
+      let ival = IntervalLib.derive_interval conc_rhs
+          (fun x -> compute_hwid_interval  x
+             (_get_param_interval comp)
+             (_get_var_interval comp)
+          )
+      in
       debug ("  -> "^IntervalLib.interval2str ival);
       ival
 

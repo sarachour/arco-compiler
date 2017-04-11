@@ -40,7 +40,7 @@ type map_stmt =
   | MSVarHasCstr of map_port map_var*map_cstr*
                     (map_port map_var) map_expr
   | MSSetVarPriority of map_port map_var*int
-  | MSSetPortCover of map_port*hwdefs
+  | MSSetPortCover of map_port*hwvid hwcomp*hwvid hwbhv*hwdefs
   | MSInvalid 
   | MSVarEqualsVar of (map_port map_var)*(map_port map_var) 
   | MSVarEqualsExpr of (map_port map_var)*(map_port map_var) map_expr
@@ -90,16 +90,16 @@ type 'a map_abs_comp = {
 }
 
 type 'a map_ctx = {
-  comps: (hwcompname,'a map_abs_comp) map;
+  comps: (string,'a map_abs_comp) map;
 }
 
 
 (*for a circuit*)
 type 'a map_circ = {
   vars: (int,'a map_abs_var) map;
-  ports: (wireid,map_port_info) map;
-  mappings: (wireid,num_interval) map;
-  deriv_mappings: (wireid,num_interval) map;
+  ports: (string,wireid*map_port_info) map;
+  mappings: (string,num_interval) map;
+  deriv_mappings: (string,num_interval) map;
 }
 
 

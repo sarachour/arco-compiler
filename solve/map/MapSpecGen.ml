@@ -25,6 +25,7 @@ open SlnLib
 open GoalLib
 open SolverCompLib
 
+open MapIntervalCompute
 open IntervalData
 open IntervalLib
 
@@ -130,11 +131,11 @@ struct
           (_fromast h) t
       | OpN(Sub,h::t) ->
         pair_off
-         (fun a b -> MESub(a, _fromast b))
+        (fun a b -> MESub(a, _fromast b))
          (_fromast h) t
       | OpN(Mult,h::t) ->
         pair_off
-         (fun a b -> MEDiv(a, _fromast b))
+         (fun a b -> MEMult(a, _fromast b))
          (_fromast h) t
       | Op1(Neg,h) ->
         MESub(MEConst(Integer 0),_fromast h)
@@ -199,19 +200,32 @@ end
 module MapSpec =
 struct
 
+  let get_abs_comp (ctx:'a map_ctx) (name:hwcompname) : 'a map_abs_comp =
+    let key = (HwLib.hwcompname2str name) in
+    if MAP.has ctx.comps key then
+      MAP.get ctx.comps key
+    else
+      begin
+        print (MAP.str ctx.comps (fun s -> s) (fun _ -> ""));
+        raise
+          (MapSpecError("get_comp: comp_dne:"^(HwLib.hwcompname2str name)))
+      end
+
+  let get_comp (ctx:'a map_ctx) (name:hwcompname) id : 'a map_comp =
+    let cmp = get_abs_comp ctx name in 
+    let ccmp = MAP.get cmp.spec id in
+    ccmp
+
   let find_comp_config (ctx:'a map_ctx) (cmp:hwcompname)
       (params:(string,number) map) =
     let param_list = MAP.to_list params in 
     let same_params (cmp:'a map_comp) : bool =
       List.fold_right (fun ((par,value):string*number) (eq:bool) ->
-          print ("===  "^par^" ==\n"^
-            (MAP.str cmp.params
-               (fun x->x) (string_of_number) )^"\n");
           let cmp_value = MAP.get cmp.params par in
           cmp_value = value && eq
         ) param_list true
     in
-    let cmps : 'a map_abs_comp = MAP.get ctx.comps cmp in 
+    let cmps : 'a map_abs_comp = get_abs_comp ctx cmp in 
     MAP.fold cmps.spec (
       fun _ (cmp:'a map_comp) (matches:'a map_comp list) ->
         if same_params cmp then
@@ -242,10 +256,7 @@ struct
     | MPVScale(r) -> MPVScale(f r)
     | MPVOffset(r) -> MPVOffset(f r)
 
-  let get_comp (ctx:'a map_ctx) name id : 'a map_comp =
-    let cmp : 'a map_abs_comp = MAP.get ctx.comps name in
-    let ccmp = MAP.get cmp.spec id in
-    ccmp
+  
 
   
   let _get_port comp name =
@@ -259,19 +270,35 @@ struct
     portinfo
 
 
-  let set_offset_var (ctx:'a map_circ)
-      (key:'a) (id:int) =
-    let d = MAP.get ctx.ports key in
+  let circ_get_port_info (ctx:'a map_circ)
+      (wire:wireid) =
+    let key = HwLib.wireid2str wire in
+    let _,d = MAP.get ctx.ports key in
+    d
+
+  let circ_get_mapping (ctx:'a map_circ)
+      (wire:wireid) =
+    let key = HwLib.wireid2str wire in
+    MAP.ifget ctx.mappings key
+
+  let circ_get_deriv_mapping (ctx:'a map_circ)
+      (wire:wireid) =
+    let key = HwLib.wireid2str wire in
+    MAP.ifget ctx.deriv_mappings key
+
+  let circ_set_offset_var (ctx:'a map_circ)
+      (wire:wireid) (id:int) =
+    let d = circ_get_port_info ctx wire in
     d.offset.abs_var <- id
 
-  let set_scale_var (ctx:'a map_circ)
-      (key:'a) (id:int) =
-    let d = MAP.get ctx.ports key in
+  let circ_set_scale_var (ctx:'a map_circ)
+      (wire:wireid) (id:int) =
+    let d = circ_get_port_info ctx wire in
     d.scale.abs_var <- id
 
-  let set_offset_var (ctx:'a map_circ)
-      (key:'a) (id:int) =
-    let d = MAP.get ctx.ports key in
+  let circ_set_offset_var (ctx:'a map_circ)
+      (wire:wireid) (id:int) =
+    let d = circ_get_port_info ctx wire in
     d.offset.abs_var <- id
 
   let ctx_get_abs_var (ctx:'a map_ctx)
@@ -292,16 +319,7 @@ struct
     let d = _get_port comp port in
     MAP.get comp.vars d.scale.abs_var 
 
-  let get_offset_var (ctx:'a map_circ)
-      (key:'a) (id:int) =
-    let d = MAP.get ctx.ports key in
-    d.offset.abs_var 
-
-  let get_scale_var (ctx:'a map_circ)
-      (key:'a) (id:int) =
-    let d = MAP.get ctx.ports key in
-    d.scale.abs_var 
-
+  
   let string_of_map_port_info (aport:map_port_info) =
     "string_of_map_port: unimpl"
 
@@ -317,7 +335,7 @@ struct
     
   let string_of_map_ctx (env:'a map_ctx) (f:'a->string) =
     MAP.str env.comps
-      (fun q -> "=== "^(HwLib.hwcompname2str q)^" ===\n")
+      (fun q -> "=== "^(q)^" ===\n")
       (fun (x:'a map_abs_comp) ->
          MAP.str x.spec (fun _ -> "\n")
            (fun q -> string_of_map_comp q f)
@@ -414,33 +432,56 @@ struct
           (IntervalLib.interval2numinterval defs.stvar.ival);
       end
 
-  let port_info_set_cover (portinfo:map_port_info) (cover:hwdefs) =
-    match  cover with
-    |HWDAnalog(defs) ->
-      begin
-        portinfo.range <-
-          Some (IntervalLib.interval2numinterval defs.ival)
-      end
+  let port_info_set_cover hwcomp (comp:'a map_comp)
+      (portinfo:map_port_info) (bhvr:hwvid hwbhv) (cover:hwdefs)  =
+    let map_interval e : num_interval =
+      IntervalLib.interval2numinterval
+        (IntervalCompute.compute_conc_hwexpr_interval
+           hwcomp e (fun k ->
+               Interval(
+                 let v = float_of_number (MAP.get comp.params k) in
+                 {min=BNDNum v; max=BNDNum v}
+               )
+             )
+         )
+         
+    in
 
-    |HWDDigital(defs) ->
-      begin
-        portinfo.range <-
-          Some (IntervalLib.interval2numinterval defs.ival)
-      end
-    | HWDAnalogState(defs) ->
+    match cover,bhvr with
+    | HWDAnalog(defs),HWBAnalog(bhvr) ->
+        portinfo.range <- Some (map_interval bhvr.rhs)
+
+    | HWDDigital(defs),HWBDigital(bhvr) ->
+      portinfo.range <- Some(map_interval bhvr.rhs)
+
+    | HWDDigital(defs),HWBAnalog(bhvr) ->
+        portinfo.range <- Some (map_interval bhvr.rhs)
+
+    | HWDAnalog(defs),HWBDigital(bhvr) ->
+      portinfo.range <- Some(map_interval bhvr.rhs)
+
+    | HWDAnalogState(defs),HWBAnalogState(bhvr) ->
       begin
         print (portinfo.port^"\n");
         portinfo.range <-
           Some (IntervalLib.interval2numinterval defs.stvar.ival);
         portinfo.deriv_range <-
-          Some (IntervalLib.interval2numinterval defs.deriv.ival);
+          Some (map_interval bhvr.rhs);
         portinfo.is_stvar <- true;
       end
 
-  let comp_set_cover (comp:'a map_comp)
-      (portname:string) (cover:hwdefs) =
-    let portinfo = _get_port comp portname in
-    port_info_set_cover portinfo cover
+    | HWDDigital(defs),_->
+      portinfo.range <- Some (IntervalLib.interval2numinterval defs.ival)
+
+    | HWDAnalog(defs),_->
+      portinfo.range <- Some (IntervalLib.interval2numinterval defs.ival)
+
+    | _ -> error "add cover" "unhandled"
+
+  let comp_set_cover hwcomp (mapcomp:'a map_comp)
+      (portname:string) bhv (cover:hwdefs) =
+    let portinfo = _get_port mapcomp portname in
+    port_info_set_cover hwcomp mapcomp portinfo bhv cover
 
   let set_abs_var (comp:'a map_comp)
       (id:int) (varname:map_port map_var) : unit =
@@ -552,7 +593,7 @@ struct
         error "add_partition" "more than one exist"
 
   let compress name (stmts : map_stmt list) : 'a map_comp option =
-    let prob : 'a map_comp =
+    let prob : map_port map_comp =
       {
         id=0;
         vars=MAP.make();
@@ -563,7 +604,6 @@ struct
     in
     let valid = REF.mk true in
     let parts : compress_partition set queue = QUEUE.make () in
-    
     List.iter (fun (stmt:map_stmt) -> match stmt with
         | MSDeclInput(hwn,hwp) ->
           begin
@@ -589,8 +629,8 @@ struct
         | MSSetVarPriority(v1,p) ->
           set_var_priority prob v1 p 
 
-        | MSSetPortCover((_,v1),c) ->
-          comp_set_cover prob v1 c
+        | MSSetPortCover((_,v1),cmp,bhvr,defs) ->
+          comp_set_cover cmp prob v1 bhvr defs
 
         | MSVarHasCstr(v,cstr,expr) ->
           add_partition parts (PRTVar v) (PRTCstr (cstr,expr))
@@ -1056,7 +1096,7 @@ struct
     HwLib.comp_iter_ins comp (fun var ->
         enq ([
             MSDeclInput(comp.name,var.port);
-            MSSetPortCover((comp.name,var.port),var.defs)
+            MSSetPortCover((comp.name,var.port),comp,var.bhvr,var.defs)
 
           ]);
         enq ([
@@ -1066,7 +1106,7 @@ struct
     HwLib.comp_iter_outs comp (fun outvar ->
         enq ([
             MSDeclOutput(comp.name,outvar.port);
-            MSSetPortCover((comp.name,outvar.port),outvar.defs)
+            MSSetPortCover((comp.name,outvar.port),comp,outvar.bhvr,outvar.defs)
           ])
       );
     HwLib.comp_iter_outs comp (fun outvar ->
@@ -1092,5 +1132,6 @@ struct
           derive_mapping_comp_with_params hwenv comp params 
         )
         param_combos
+
 end
 
