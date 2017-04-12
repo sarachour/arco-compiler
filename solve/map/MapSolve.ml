@@ -62,15 +62,20 @@ struct
         end
     else
       None
+
+
   let scale_zero_cstr z3st svar (math_rng:num_interval) =
     let q s = noop (QUEUE.enqueue z3st.stmtq s) in
-    let min_val = 0.0000001 in
+    let min_val = 0.0012 in
     let min_diff = min_val*.min_val in
     if math_rng.max -. math_rng.min > min_diff then
       q (Z3Assert(Z3Not(Z3And(
           Z3LT(vid_to_var z3st svar,Z3Real min_val),
           Z3GT(vid_to_var z3st svar,Z3Real (0.-.min_val)))
         )))
+
+  
+
 
   let set_eq (lst:z3expr list) : z3expr option = match lst with
       | h::h2::t ->
@@ -117,9 +122,8 @@ struct
       ) v.exprs
     in
     let xcstr : z3expr list = List.map (
-        fun ((cstr,expr):map_cstr*int map_expr)  ->
-          let z3expr = map_expr_to_z3 z3st (string_of_int v.id) expr in 
-          MapExpr.z3_of_map_cstr cstr (vid_to_var z3st v.id) z3expr
+        fun ((cstr):int map_cstr)  ->
+          MapExpr.z3_of_map_cstr cstr (map_expr_to_z3 z3st (string_of_int v.id))
       ) v.cstrs
     in
     (*declare any free variables you need.*)

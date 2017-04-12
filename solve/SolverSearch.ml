@@ -115,7 +115,26 @@ struct
     let state = 0. in
     let delta = LIST.sum score_single s in
     SearchLib.mkscore state delta
- 
+
+  let score_by_weighed_goal_count_and_depth_jitter  (s:sstep list) =
+    let score_single st = match st with
+      | SModGoalCtx(SGAddGoal(g)) ->
+        let goal_score =
+          ((GoalLib.goal_difficulty g.d)/.100.)*.(1. +. get_goal_weight g)
+        in
+        0. -. goal_score -. 1.
+      | SModGoalCtx(SGRemoveGoal(g)) ->
+        let goal_score =
+          ((GoalLib.goal_difficulty g.d)/.100.)*.(1. +. get_goal_weight g)
+        in
+        0. +. goal_score +. 1. 
+      | SModGoalCtx(_) ->  0.
+      | _ -> 0.
+    in
+    let delta =  1. in
+    let state = RAND.rand_norm () +. (LIST.sum score_single s) in
+    SearchLib.mkscore state delta
+
 
     
   let score_step () =
@@ -123,7 +142,8 @@ struct
     match typ with
     | "goals" -> score_by_goal_count
     | "goal-weight" -> score_by_weighed_goal_count
-    | "goal-weight-and-depth" -> score_by_weighed_goal_count_and_depth
+    | "goal-weight-and-depth-jitter" ->
+      score_by_weighed_goal_count_and_depth_jitter
     | "uniform" -> score_uniform
     | "_" ->   error "score_step" "unknown strategy for eqn-selector-branch"
 

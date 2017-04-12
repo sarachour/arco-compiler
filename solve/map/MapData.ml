@@ -18,8 +18,6 @@ type 'a map_var =
   | MPVOffset of 'a 
   | MPVScale of 'a
 
-type map_cstr =
-  | MCNE | MCGT | MCGTE |MCEQ
 
 (*a constrained configuration*)
 type 'a map_expr =
@@ -32,6 +30,16 @@ type 'a map_expr =
   | MEMult of ('a map_expr)*('a map_expr)
   | MEDiv of ('a map_expr)*('a map_expr)
 
+type 'a map_cstr =
+  | MCEQ of 'a*'a map_expr 
+  | MCGT of 'a*'a map_expr 
+  | MCGTE of 'a*'a map_expr 
+  | MCLTE of 'a*'a map_expr 
+  | MCLT of 'a*'a map_expr 
+  | MCNot of 'a map_cstr
+  | MCAnd of 'a map_cstr*'a map_cstr
+  | MCOr of 'a map_cstr*'a map_cstr
+
 (*general map statement*)
 type map_stmt =
   | MSDeclParam of map_port*number
@@ -39,8 +47,7 @@ type map_stmt =
   | MSDeclInput of map_port
   | MSValid
   | MSVarEqualsConst of map_port map_var*number
-  | MSVarHasCstr of map_port map_var*map_cstr*
-                    (map_port map_var) map_expr
+  | MSVarHasCstr of map_port map_var*map_port map_var map_cstr
   | MSSetVarPriority of map_port map_var*int
   | MSSetPortCover of map_port*hwvid hwcomp*hwvid hwbhv*hwdefs
   | MSInvalid 
@@ -56,7 +63,7 @@ type map_stmt =
 (*a particular variable is equal to this.*)
 type 'a map_abs_var = {
   mutable exprs : int map_expr list;
-  mutable cstrs : (map_cstr*int map_expr) list;
+  mutable cstrs : (int map_cstr) list;
   mutable value: number option;
   mutable members: 'a map_var list;
   mutable priority: int;

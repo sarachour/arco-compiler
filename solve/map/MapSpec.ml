@@ -94,8 +94,8 @@ struct
     let expr2str (i:int map_expr) =
       MapExpr.string_of_map_expr i (string_of_abs_var_id)
     in
-    let cstr2str (cstr,expr) =
-      (MapExpr.string_of_map_cstr cstr)^(expr2str expr)
+    let cstr2str (cstr) =
+      (MapExpr.string_of_map_cstr cstr)
     in
     "exprs="^(LIST.tostr expr2str "=" avar.exprs )^"\n"^
     "cstrs="^(LIST.tostr cstr2str "," avar.cstrs )^"\n"^

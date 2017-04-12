@@ -63,20 +63,28 @@ struct
       let data = p vr in
       data.offset
 
-  let string_of_map_cstr (p:map_cstr) =
+  let string_of_map_cstr (p:'a map_cstr) =
     match p with
-    | MCGT -> ">"
-    | MCGTE -> ">="
-    | MCNE -> "!="
-    | MCEQ -> "="
+    | MCGT(v,e) -> ">"
+    | MCGTE(v,e) -> ">="
+    | MCEQ(v,e) -> "="
+    | MCNot(cstr) -> "!"
+    | MCAnd(a,b) -> "^"
+    | MCOr(a,b) -> "|"
 
-  let z3_of_map_cstr (cstr:map_cstr)(targ) (other) =
-    match cstr with
-    |MCGT -> Z3GT(targ,other)
-    |MCGTE -> Z3GTE(targ,other)
-    |MCNE -> Z3Not(Z3Eq(targ,other))
-    |MCEQ -> (Z3Eq(targ,other))
-
+  let z3_of_map_cstr (cstr:'a map_cstr) (fxn:'a map_expr -> z3expr) =
+    let rec _work cstr = 
+      match cstr with
+      |MCGT(v,e) -> Z3GT(fxn (MEVar v),fxn e)
+      |MCLT(v,e) -> Z3LT(fxn (MEVar v),fxn e)
+      |MCGTE(v,e) -> Z3GTE(fxn (MEVar v),fxn e)
+      |MCLTE(v,e) -> Z3LTE(fxn (MEVar v),fxn e)
+      |MCEQ(v,e) -> Z3Eq(fxn (MEVar v),fxn e)
+      |MCNot(cstr) -> Z3Not(_work cstr)
+      |MCAnd(a,b) -> Z3And(_work a, _work b)
+      |MCOr(a,b) -> Z3Or(_work a, _work b)
+    in
+    _work cstr 
   let string_of_map_port (p:map_port) =
     let comp,port = p in
     "<"^(HwLib.hwcompname2str comp)^","^port^">"
@@ -120,9 +128,8 @@ struct
       (string_of_map_expr e string_of_map_port_var)^")"
     | MSValid -> "valid"
     | MSInvalid -> "invalid"
-    | MSVarHasCstr(x,c,e) ->
-       (string_of_map_port_var x)^" "^(string_of_map_cstr c)^" "^
-      (string_of_map_expr e string_of_map_port_var)
+    | MSVarHasCstr(v,cstr) ->
+       (string_of_map_cstr cstr)
     | MSExprEqualsConst(e,c) ->
       "ec("^(string_of_map_expr e string_of_map_port_var)^
       "="^(string_of_number c)^")"
@@ -232,5 +239,18 @@ struct
     in
     _map e
 
+  let map_cstr (type a) (type b) (c:a map_cstr) (f:a -> b) =
+    let rec _map (cstr:a map_cstr) : b map_cstr =
+      match cstr with
+      | MCGT(v,e) -> MCGT(f v, map e f)
+      | MCGTE(v,e) -> MCGTE(f v, map e f)
+      | MCLT(v,e) -> MCLT(f v, map e f)
+      | MCLTE(v,e) -> MCLTE(f v, map e f)
+      | MCEQ(v,e) -> MCEQ(f v, map e f)
+      | MCNot(e) -> MCNot(_map e)
+      | MCAnd(a,b) -> MCAnd(_map a,_map b)
+      | MCOr(a,b) -> MCOr(_map a, _map b)
+    in
+    _map c
 end
 

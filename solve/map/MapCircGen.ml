@@ -38,7 +38,6 @@ module MapCircGen = struct
     mutable is_valid : bool;
     deriv_wire: wireid;
     deriv_port : map_port_info;
-    cstrs: map_cstr set;
   }
 
   let destroy_circ_gen_state cgst =
@@ -275,14 +274,15 @@ module MapCircGen = struct
       else
         None
 
-  let circ_of_local_map_expr cgst circ (x:hwcompinst) (expr:int map_expr) =
-    MapExpr.map expr (fun id ->
+  let circ_of_local_map_var cgst circ x id =
       match local_to_circ_abs_var cgst circ x id with
       | Some(v) -> v.id
       | None ->
         ret
           (error "mkexprs" "deps must be contained in var ") 0
-      )
+
+  let circ_of_local_map_expr cgst circ (x:hwcompinst) (expr:int map_expr) =
+    MapExpr.map expr (circ_of_local_map_var cgst circ x) 
 
 
   let circ_of_wire_map_expr cgst circ (expr:wireid map_var map_expr) =
@@ -314,11 +314,14 @@ module MapCircGen = struct
     MAP.iter conc_map_comp.vars (fun vid vdata ->
         let t_exprs : int map_expr list =
           List.map (fun (e:int map_expr) ->
-              circ_of_local_map_expr cgst circ inst e) vdata.exprs
+              circ_of_local_map_expr cgst circ inst e
+            ) vdata.exprs
         in
-        let t_cstrs : (map_cstr*int map_expr) list =
-          List.map (fun (c,e) ->
-              c,circ_of_local_map_expr cgst circ inst e) vdata.cstrs
+        let t_cstrs : (int map_cstr) list =
+          List.map (fun (c:int map_cstr) ->
+              MapExpr.map_cstr c
+                (fun x -> circ_of_local_map_var cgst circ inst x)
+            ) vdata.cstrs
         in
         (*convert local to absolute variable*)
         match local_to_circ_abs_var cgst circ inst vid with
@@ -398,7 +401,6 @@ module MapCircGen = struct
                     scale={priority=0;abs_var=0-1};
                     port="**deriv**";
                    };
-      cstrs = MAP.make();
       is_valid = true;
     }
     in
@@ -436,7 +438,6 @@ module MapCircGen = struct
     MapPartition.iter cgst.vargrps
       (fun (members:(wireid map_var) list) ->
         let id = MAP.size circ.vars in
-        SET.clear cgst.cstrs;
         List.iter (fun (wire:wireid map_var) ->
             update_port_and_math_with_id cgst circ ctx wire id
           ) members;
