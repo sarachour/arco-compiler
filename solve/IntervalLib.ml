@@ -302,6 +302,13 @@ struct
     | BNDInf(_) -> true
     | _ -> false
 
+  let is_unbounded_interval (x:interval) =
+    match x with
+    | Interval(a) -> is_inf_bound a.min || is_inf_bound a.max
+    | MixedInterval(_) -> error "is_inf_interval" "unhandled"
+    | Quantize(_) -> false
+    | IntervalUnknown(_) -> true
+
   let rec has_inf_bound (x:interval) =
     match x with
     | Interval(a) ->

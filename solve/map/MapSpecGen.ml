@@ -264,8 +264,11 @@ struct
       | PRTCstr(_) -> false
       | _ -> true
     in
-    let xs = List.filter not_cstr xscstr in
-    MapPartition.add_partition part xs
+    let xs,rest = LIST.split  xscstr not_cstr in
+    MapPartition.add_partition part xs;
+    match xs with
+    | h::t -> MapPartition.add_partition part (h::rest)
+    | [] -> MapPartition.add_partition part (rest)
 
   let compress (name:hwcompname) (stmts : map_stmt list)
     : 'a map_comp option =
@@ -771,6 +774,9 @@ struct
               (*all derivs must be scaled*)
               enq (MSVarHasCstr(MPVScale(comp,v.port),MCNE,
                                 MEConst (Integer 1)));
+              enq (MSVarHasCstr(MPVOffset(comp,v.port),MCEQ,
+                                MEConst (Integer 0)));
+
               enq (MSSetVarPriority(MPVScale(comp,v.port),2));
               enq (wrap_var_eq_expr
                      (MPVOffset(comp,v.port)) linear.offset);

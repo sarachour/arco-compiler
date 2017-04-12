@@ -3,8 +3,10 @@ open AST
 open IntervalData
 open StochData
 open MathData
+open StrMap
 
 
+open MapPartition
 open Util
 
 type map_type =
@@ -17,7 +19,7 @@ type 'a map_var =
   | MPVScale of 'a
 
 type map_cstr =
-  | MCNE | MCGT | MCGTE
+  | MCNE | MCGT | MCGTE |MCEQ
 
 (*a constrained configuration*)
 type 'a map_expr =
@@ -93,13 +95,23 @@ type 'a map_ctx = {
   comps: (string,'a map_abs_comp) map;
 }
 
+(*math info*)
+type map_math_info = {
+  mutable is_stvar: bool;
+  mutable range: num_interval option;
+  mutable deriv_range: num_interval option;
+  offset: map_var_info;
+  scale: map_var_info;
+
+}
+
 
 (*for a circuit*)
 type 'a map_circ = {
   vars: (int,'a map_abs_var) map;
-  ports: (string,wireid*map_port_info) map;
-  mappings: (string,num_interval) map;
-  deriv_mappings: (string,num_interval) map;
+  ports: (wireid,map_port_info) smap;
+  mappings: (wireid,map_math_info) smap;
+  equiv: (int map_expr) partition;
 }
 
 

@@ -87,7 +87,11 @@ module MapMain = struct
     let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl in
     match prob_opt with
     | Some(prob) ->
-      MapSolver.sat tbl prob  
+      begin
+        let is_sat = MapSolver.sat tbl prob in
+        if is_sat then print "SAT\n" else print "UNSAT\n";
+        is_sat
+      end
       
     | None -> false
 

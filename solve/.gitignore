@@ -3,3 +3,6 @@ solver.debug
 symcaml
 _build
 *.sw*
+*.res
+*.smt2
+*.smt2.model

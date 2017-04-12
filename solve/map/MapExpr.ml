@@ -49,6 +49,11 @@ let dumb_cstrs_DBG = false
 module MapExpr =
 struct
 
+  let unwrap_map_var (p:'a map_var) : 'a =
+    match p with
+    | MPVScale(v) -> v
+    | MPVOffset(v) -> v
+
   let get_abs_var (p:('a -> map_port_info)) (v:'a map_var) =
     match v with
     | MPVScale(vr) ->
@@ -63,12 +68,14 @@ struct
     | MCGT -> ">"
     | MCGTE -> ">="
     | MCNE -> "!="
+    | MCEQ -> "="
 
   let z3_of_map_cstr (cstr:map_cstr)(targ) (other) =
     match cstr with
     |MCGT -> Z3GT(targ,other)
     |MCGTE -> Z3GTE(targ,other)
     |MCNE -> Z3Not(Z3Eq(targ,other))
+    |MCEQ -> (Z3Eq(targ,other))
 
   let string_of_map_port (p:map_port) =
     let comp,port = p in

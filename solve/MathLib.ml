@@ -376,6 +376,18 @@ struct
     in
     _infer_var xstart
 
+  let expr_is_stvar (menv:mid menv) (mast:mid ast) =
+    match mast with
+    | Term(MNVar(_,n)) ->
+      isstvar menv n
+    | _ ->
+      false
+
+  let expr_has_stvar (menv:mid menv) (mast:mid ast) =
+    ASTLib.fold mast (fun expr has_stvar ->
+        expr_is_stvar menv expr || has_stvar
+      ) false
+
   let is_input_expr (a:mid ast) = false
 
   let inference (e:'a menv) (cnv:'a -> mid) =

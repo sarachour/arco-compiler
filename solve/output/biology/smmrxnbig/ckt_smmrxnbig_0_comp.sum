@@ -55,7 +55,7 @@ input kr.I
 
 input XY0.V
 <input>
-<analog> [v]=[0.,60.] {v}->[v]=@
+<analog> [v]=[0.,600.] {v}->[v]=@
 
 input Ytot.V
 <input>
@@ -71,16 +71,16 @@ input Xtot.V
 
 output X.V
 <analog>:(6800-ES) / std=none 0
-<analog> [v]=[-9999.9999,1000.] {v}->[v]=@
+<analog> [v]=[0.,1600.] {v}->[v]=@
 
 output XY.V
 <analog-st> ((0.0001*E*S)-(0.01*ES)) ic=XY0.V / std=gauss ((0.001*ES)+0.1)
 <analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
-<analog-st> [v]=[0.,10000.] {v}->[v]=@ {v}->*[v]=@
+<analog-st> [v]=[0.,3200.] {v}->[v]=@ {v}->*[v]=@
 
 output Y.V
 <analog>:(4400-ES) / std=none 0
-<analog> [v]=[-9999.9999,1000.] {v}->[v]=@
+<analog> [v]=[0.,1600.] {v}->[v]=@
 
 
 ==== input.V 2 ====

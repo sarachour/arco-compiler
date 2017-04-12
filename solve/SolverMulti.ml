@@ -114,18 +114,18 @@ struct
         begin
           let st : sstep list = get_partial_app tbl id in
           let ncomps = count_comps st in
-          0. -. (float_of_int ncomps) /. 3. -. (RAND.rand_norm())
+          0. -. (float_of_int ncomps) /. 5. -. (RAND.rand_norm())
         end
       | MSGlobalApp(id),Some(tbl) ->
         let st : sstep list = get_global_app tbl id in
         let ncomps = count_comps st in
-        0. -. (float_of_int ncomps) /. 3. -. (RAND.rand_norm())
+        0. -. (float_of_int ncomps) /. 5. -. (RAND.rand_norm())
 
-      | MSSolveVar(_),_ -> 10.
+      | MSSolveVar(_),_ -> 100.
       | _ -> 0.
     in 
     let state = List.fold_left (fun r st -> r +. (score st)) 0. s in
-    let delta = 0. in
+    let delta = 10. in
     SearchLib.mkscore (state) delta
 
   let score_depth_and_ncomps (s:mustep list) =
@@ -801,6 +801,7 @@ struct
           end
       end
     else
+      debug (">>>SOLUTION IS UNFINISHED <<<");
       ()
 
   (*Find and add a new partial solutions to different nodes *)
@@ -841,19 +842,28 @@ struct
         musr ();
         match find_global_solution ms nglbl with
         | Some(slns) ->
-          debug ("  >> Found # Global Solutions: "^
+          begin
+            debug ("  >> Found # Global Solutions: "^
                  (string_of_int (List.length slns))^"/"^(string_of_int nglbl));
-          List.iter (fun sln -> add_glbl_sln partial_node sln) slns;
-          SearchLib.try_visited ms.search partial_node;
-          true
+            List.iter
+              (fun sln -> add_glbl_sln partial_node sln)
+              slns;
+            SearchLib.try_visited ms.search partial_node;
+            musr ();
+            true
+          end
+
         | None ->
-          debug ("  >> Found NO Solutions.");
-          if SearchLib.hasnode ms.search partial_node then
-            begin
-              debug "   xx let's kill this branch";
-              noop (SearchLib.deadend ms.search partial_node ms.state);
-            end;
-          false
+          begin
+            debug ("  >> Found NO Solutions.");
+            if SearchLib.hasnode ms.search partial_node then
+              begin
+                debug "   xx let's kill this branch";
+                noop (SearchLib.deadend ms.search partial_node ms.state);
+              end;
+            false
+          end
+          
       in
       match slns with
       | Some(cslns) ->
@@ -865,6 +875,7 @@ struct
         in
         let nslns_per_partial = Globals.get_glbl_int "multi-num-global-solutions-per-partial" in
         List.fold_left (fun nslns x ->
+            (*if nslns >= ms.nslns then nslns else*)
             if add_solution x then
               nslns + 1
             else

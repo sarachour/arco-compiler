@@ -22,8 +22,8 @@ val 6800 -> input.V[2].O
 
 === Connect ===
 input.I[0].O ->  mm[0].kf
-mm[0].Y ->  output.V[0].X
 mm[0].X ->  output.V[1].X
+mm[0].Y ->  output.V[0].X
 input.V[2].O ->  mm[0].Xtot
 input.I[1].O ->  mm[0].kr
 input.V[1].O ->  mm[0].XY0

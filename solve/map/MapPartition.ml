@@ -1,5 +1,4 @@
 open Util;;
-open Interactive;;
 
 type 'a partition = {
     els : (string,'a) map queue;
@@ -26,16 +25,21 @@ struct
     in
     QUEUE.split part.els matchpart 
 
+  let iter (part:'a partition) (f:'a list -> unit) : unit =
+    QUEUE.iter part.els (fun mp ->
+        let vls = (MAP.to_values mp) in
+        f vls
+      )
   let add_partition (type a) (part:a partition)
-      (xs:a list) =
+      (xs:a list)  =
     let matches,rest = get_partitions part xs in
-    print ("merge "^(LIST.length2str matches)^"\n");
     match matches with
       | [s] ->
         begin
           List.iter
             (fun x -> noop (MAP.put s (part.tostr x) x))
-            xs
+            xs;
+          ()
 
         end
       | [] ->

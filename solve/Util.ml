@@ -471,6 +471,12 @@ struct
       in
       zip_i a b
 
+  let split (type a) (s:a list) (f:a -> bool) :a list*a list =
+    let matches,rest = List.fold_left (fun (matches,rest) (el:a)  ->
+        if f el then (el::matches,rest) else (matches,el::rest)
+      ) ([],[]) (s)
+    in
+    matches,rest
 
   let merge (type a) (lsts : a list list) : a list = 
     List.fold_left (fun clst lst -> clst @ lst) [] lsts 

@@ -891,7 +891,8 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
                   end
 
                 | None ->
-                  debug ("[TERMINATE] found "^(string_of_int currslns)^" / "^(string_of_int nslns));
+                  debug ("[TERMINATE] found "^
+                         (string_of_int currslns)^" / "^(string_of_int nslns));
                   debug "[TERMINATE] could not find another node";
                   musr();
                   ()

@@ -127,7 +127,9 @@ struct
         SET.rm (MAP.get sln.conns.dest2src conn.dst) conn.src;
         ()
       end
-    | false,false -> error "rm_conn"
+    | false,false ->
+      (*TODO: this used to be an error.*)
+      warn "rm_conn"
                        ("cannot remove connection that doesn't exist "^(wireconn2str conn))
     | _ -> error "rm_conn" "only part of conn exists"
 

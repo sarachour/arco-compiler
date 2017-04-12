@@ -6,6 +6,7 @@ open Interactive;;
 open MapExpr;;
 open MapSpec;;
 open MapSpecGen;;
+open MapPartition;;
 open MapIntervalCompute;;
 open IntervalData;;
 open IntervalLib;;
@@ -14,6 +15,7 @@ open SolverData;;
 open Util;;
 open Z3Data;;
 open Z3Lib;;
+open StrMap;;
 
 exception MapSolverError of string
 
@@ -22,13 +24,30 @@ let error n m  : unit= raise (MapSolverError (n^":"^m))
 module MapSolver =
 struct
 
-  let scaling : (int,int) map= MAP.make ();;
 
   let vid_to_name (i:int) =
     "v"^(string_of_int i)
 
-  let vid_to_var (i:int) =
-    Z3Var(vid_to_name i)
+  type prob_state = {
+    in_use: int set;
+    (*free variables and variables that are derivatives*)
+    freevars: string set;
+    stmtq: z3st queue;
+    scale: (int,int) map;
+
+    (*solution*)
+    mutable is_valid : bool;
+    absvar_map : (int,float) map;
+  }
+
+  let vid_to_var_name z3st (i:int) =
+    let nominal = (vid_to_name i)
+    in
+    nominal 
+
+  let vid_to_var z3st (i:int) =
+    let nominal = Z3Var(vid_to_var_name z3st i) in
+    nominal
     (*Z3Mult(Z3Var("v"^(string_of_int i)),Z3Int(MAP.get scaling i))*)
 
 
@@ -43,36 +62,17 @@ struct
         end
     else
       None
+  let scale_zero_cstr z3st svar (math_rng:num_interval) =
+    let q s = noop (QUEUE.enqueue z3st.stmtq s) in
+    let min_val = 0.0000001 in
+    let min_diff = min_val*.min_val in
+    if math_rng.max -. math_rng.min > min_diff then
+      q (Z3Assert(Z3Not(Z3And(
+          Z3LT(vid_to_var z3st svar,Z3Real min_val),
+          Z3GT(vid_to_var z3st svar,Z3Real (0.-.min_val)))
+        )))
 
-  let build_z3_prob (tbl:gltbl) (prob:wireid map_circ)  =
-    let stmtq = QUEUE.make () in
-    let derivq = SET.make () in
-    let q s = noop (QUEUE.enqueue stmtq s) in
-    (*var decls*)
-    let lin_combo (v:float ) (sc:int) (off:int) =
-      Z3Plus(Z3Mult(vid_to_var (sc),Z3Real v),vid_to_var (off))
-    in
-    let scale_zero_cstr svar (math_rng:num_interval) =
-      let min_val = 0.0000001 in
-      let min_diff = min_val*.min_val in
-      if math_rng.max -. math_rng.min > min_diff then
-        q (Z3Assert(Z3Not(Z3And(
-            Z3LT(vid_to_var svar,Z3Real min_val),
-            Z3GT(vid_to_var svar,Z3Real (0.-.min_val)))
-           )))
-    in
-    q (Z3Comment("Variable Decls"));
-    MAP.clear scaling;
-    (*construct vars in use*)
-    MAP.iter prob.vars (fun k vardata ->
-        let prio : int =
-          int_of_float (10.**(float_of_int vardata.priority))
-        in
-        noop (MAP.put scaling k prio) 
-      );
-    (*add variable constraints*)
-    let freevars = SET.make () in
-    let set_eq (lst:z3expr list) : z3expr option = match lst with
+  let set_eq (lst:z3expr list) : z3expr option = match lst with
       | h::h2::t ->
         begin
           let exprs = List.map (fun el -> Z3Eq(el,h)) (h2::t) in
@@ -80,106 +80,186 @@ struct
         end
 
       | _ -> None
-    in
-    let in_use = SET.make () in
-    let map_expr_to_z3 vid expr =
+
+  let lin_combo z3st (v:float ) (sc:int) (off:int) =
+    Z3Plus(Z3Mult(vid_to_var z3st (sc),Z3Real v),vid_to_var z3st (off))
+
+  let var_in_use (z3st:prob_state) vid =
+    SET.has z3st.in_use vid
+
+  let mark_var_in_use (z3st:prob_state) vid =
+    noop (SET.add z3st.in_use vid);
+    ()
+
+  let map_expr_to_z3 (z3st:prob_state) (prefix:string) expr =
       MapExpr.z3
-        freevars ("free_"^(string_of_int vid)) expr
-        (fun (x:int) -> SET.add in_use x; vid_to_var x )
+        z3st.freevars ("free_"^(prefix)) expr
+        (fun (x:int) ->
+           mark_var_in_use z3st x;
+           vid_to_var z3st x
+        )
+
+  let declare_scaling_factors (z3st:prob_state) (circ:wireid map_circ) =
+    MAP.iter circ.vars (fun k vardata ->
+        let prio : int =
+          int_of_float (10.**(float_of_int vardata.priority))
+        in
+        noop (MAP.put z3st.scale k prio) 
+      )
+
+  let emit_absvar_cstrs (z3st:prob_state) (v:wireid map_abs_var) =
+    let q s = noop (QUEUE.enqueue z3st.stmtq s) in
+    SET.clear z3st.freevars;
+    let xexpr :z3expr list = List.map
+        (fun (expr:int map_expr) ->
+            let z3expr = map_expr_to_z3 z3st (string_of_int v.id) expr in
+            z3expr
+      ) v.exprs
     in
-    q (Z3Comment ("=== var cstrs ==="));
-    MAP.iter prob.vars (fun (vid:int) (v:wireid map_abs_var) ->
-        SET.clear freevars;
-        let xexpr :z3expr list = List.map
-            (fun (expr:int map_expr) ->
-               let z3expr = map_expr_to_z3 vid expr in
-               z3expr
-          ) v.exprs
-        in
-        let xcstr : z3expr list = List.map (
-            fun ((cstr,expr):map_cstr*int map_expr)  ->
-              let z3expr = map_expr_to_z3 vid expr in 
-              MapExpr.z3_of_map_cstr cstr (vid_to_var vid) z3expr
-          ) v.cstrs
-        in
-        SET.iter freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
-        match set_eq xexpr with
-        | Some(equality) ->
-          q (Z3Assert(equality))
-        | _ -> ();
-        List.iter (fun expr -> q (Z3Assert(expr))) xcstr;
-        ()
-
-
-      );
-    q (Z3Comment ("=== derivative cstrs ==="));
-    let offset_vars = (SET.map derivq (fun (s,o) -> vid_to_var o)) in
+    let xcstr : z3expr list = List.map (
+        fun ((cstr,expr):map_cstr*int map_expr)  ->
+          let z3expr = map_expr_to_z3 z3st (string_of_int v.id) expr in 
+          MapExpr.z3_of_map_cstr cstr (vid_to_var z3st v.id) z3expr
+      ) v.cstrs
+    in
+    (*declare any free variables you need.*)
+    SET.iter z3st.freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
+    (*declare any equality constraints*)
     begin
-      match set_eq offset_vars with
-      | Some(offset_expr) -> q (Z3Assert offset_expr)
-      | None -> ()
+      match set_eq xexpr with
+      | Some(equality) ->
+        q (Z3Assert(equality))
+      | _ -> ()
     end;
-    let scale_vars = (SET.map derivq (fun (s,o) -> vid_to_var s)) in
     begin
-      match set_eq scale_vars with
-      | Some(scale_expr) -> q (Z3Assert scale_expr)
-      | None -> ()
+      match v.value with
+      | Some(Integer c) -> q (Z3Assert(Z3Eq(vid_to_var z3st v.id,Z3Int(c))))
+      | Some(Decimal c) -> q (Z3Assert(Z3Eq(vid_to_var z3st v.id,Z3Real(c))))
+      | _ -> ()
     end;
-    q (Z3Comment ("=== port restrictions ==="));
-    MAP.iter prob.ports (fun (_) ((w,p):wireid*map_port_info) ->
-        match p.range, MapSpec.circ_get_mapping prob w with
-          | Some(hw_rng),Some(map_rng) ->
+    (*declare any outstanding constraints*)
+    List.iter (fun expr -> q (Z3Assert(expr))) xcstr;
+    ()
+
+  (*merge derivative variables.*)
+  let preprocess_abs_vars (z3st:prob_state) circ (p:map_port_info) (m:map_math_info)=
+    ()
+
+  let emit_port_cstrs (z3st:prob_state) circ (p:map_port_info) (m:map_math_info) = 
+    let q s = noop (QUEUE.enqueue z3st.stmtq s) in
+    match p.range, m.range with
+     | Some(hw_rng),Some(map_rng) ->
+        begin
+          let ovar =  p.offset.abs_var in
+          let svar =  p.scale.abs_var in
+          (*variable is being used*)
+          if var_in_use z3st ovar || var_in_use z3st svar then 
             begin
-              let ovar =  p.offset.abs_var in
-              let svar =  p.scale.abs_var in
-              if SET.has in_use ovar || SET.has in_use svar then 
-                begin
-                  noop (SET.add in_use ovar);
-                  noop (SET.add in_use svar);
-                  let lin_expr = lin_combo map_rng.max svar ovar in
-                  q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
-                  let lin_expr = lin_combo map_rng.min svar ovar in
-                  q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
-                  scale_zero_cstr svar map_rng;
-                  (*only make stvars equal*)
-                  if p.is_stvar then
+              noop (SET.add z3st.in_use ovar);
+              noop (SET.add z3st.in_use svar);
+              let lin_expr = lin_combo z3st map_rng.max svar ovar in
+              q (Z3Assert(Z3LTE(lin_expr,Z3Real hw_rng.max)));
+              let lin_expr = lin_combo z3st map_rng.min svar ovar in
+              q (Z3Assert(Z3GTE(lin_expr,Z3Real hw_rng.min)));
+              scale_zero_cstr z3st svar map_rng;
+              (*only make stvars equal*)
+              begin
+                  match p.deriv_range, m.deriv_range with
+                  | Some(hwd_rng),Some(map_d_rng) ->
                     begin
-                      match p.deriv_range,
-                            MapSpec.circ_get_deriv_mapping prob w with
-                      | Some(hwd_rng),Some(map_d_rng) ->
-                        begin
-                          let lin_expr = lin_combo map_d_rng.max svar ovar in
-                          q (Z3Assert(Z3LTE(lin_expr,Z3Real hwd_rng.max)));
-                          let lin_expr = lin_combo map_d_rng.min svar ovar in
-                          q (Z3Assert(Z3GTE(lin_expr,Z3Real hwd_rng.min)));
-                          noop (SET.add derivq (ovar,svar));
-                        end
-                      | _ ->
-                        raise (MapSolverError("unexpected: must have deriv"))
-                    end;
-                  ()
-                end
+                      let lin_expr = lin_combo z3st map_d_rng.max svar ovar in
+                      q (Z3Assert(Z3LTE(lin_expr,Z3Real hwd_rng.max)));
+                      let lin_expr = lin_combo z3st map_d_rng.min svar ovar in
+                      q (Z3Assert(Z3GTE(lin_expr,Z3Real hwd_rng.min)));
+                    end
+                  | None,None -> ()
+                  | _ ->
+                    raise (MapSolverError("unexpected: must have deriv"))
+              end;
+              ()
             end
-          | _ -> ()
+        end
+        | _ -> ()
 
-      );
+  let emit_equality z3st (args:int map_expr list) =
+    let q s = noop (QUEUE.enqueue z3st.stmtq s) in
+    let xexpr :z3expr list = List.map
+        (fun (expr:int map_expr) ->
+            let z3expr = map_expr_to_z3 z3st "glbl" expr in
+            z3expr
+      ) args  
+    in
+    match set_eq xexpr with
+    | Some(eq) -> q (Z3Assert(eq))
+    | None -> raise (MapSolverError "unexpected.")
+
+  let build_z3_prob (tbl:gltbl) (circ:wireid map_circ)  =
+    let deriv_scale : wireid map_abs_var = {
+      exprs=[]; cstrs=[];
+      id=MAP.size circ.vars;
+      priority=0;
+      value=None;
+      members=[];
+    }
+    in
+    let deriv_offset: wireid map_abs_var = {
+      exprs=[]; cstrs=[];
+      id=MAP.size circ.vars+1;
+      priority=0;
+      value=None;
+      members=[];
+    } in
+    noop (MAP.put circ.vars deriv_scale.id deriv_scale);
+    noop (MAP.put circ.vars deriv_offset.id deriv_offset);
+    let z3state : prob_state = {
+      in_use = SET.make();
+      freevars = SET.make();
+      stmtq = QUEUE.make();
+      scale = MAP.make();
+      is_valid = true;
+      absvar_map = MAP.make();
+    } in
+    let q s = noop (QUEUE.enqueue z3state.stmtq s) in
+    (*var decls*)
+    q (Z3Comment("Variable Decls"));
+    (*add variable constraints*)
+    q (Z3Comment ("=== port restrictions ==="));
+    SMAP.iter circ.ports (fun (w:wireid) (port:map_port_info) ->
+        let math = SMAP.get circ.mappings w in
+        preprocess_abs_vars z3state circ port math
+    );
+    (*construct vars in use*)
+    declare_scaling_factors z3state circ;
+    q (Z3Comment ("=== var cstrs ==="));
+    MAP.iter circ.vars (fun (vid:int) (v:wireid map_abs_var) ->
+        emit_absvar_cstrs z3state v
+    );
+    q (Z3Comment ("=== global cstrs ==="));
+    MapPartition.iter circ.equiv (fun  (v:int map_expr list) ->
+        emit_equality z3state v
+    );
+    q (Z3Comment ("=== port restrictions ==="));
+    SMAP.iter circ.ports (fun (w:wireid) (port:map_port_info) ->
+        let math = SMAP.get circ.mappings w in
+        emit_port_cstrs z3state circ port math 
+    );
     print "!"
-      ("<< SOLVER # VARS = "^(string_of_int (SET.size in_use)));
-    let decls = MAP.fold prob.vars (fun k vardata decls ->
-        if SET.has in_use k then
-          Z3ConstDecl(vid_to_name k,Z3Real)::decls
+      ("<< SOLVER # VARS = "^(string_of_int (SET.size z3state.in_use)));
+    let decls = MAP.fold circ.vars (fun k vardata decls ->
+        if var_in_use z3state k then
+          Z3ConstDecl(vid_to_var_name z3state k,Z3Real)::decls
         else
           decls
       ) []
     in
     (*range decls*)
-    let stmts = QUEUE.to_list stmtq in
-    QUEUE.destroy stmtq;
-    decls @ stmts
+    let stmts = QUEUE.to_list z3state.stmtq in
+    QUEUE.destroy z3state.stmtq;
+    z3state,decls @ stmts
 
   (*if the mappings are*)
   let asgn_to_mappings
-      (circ:wireid map_circ) (vals:(int,float) map) (valid:bool ref)
+      z3st (circ:wireid map_circ) 
       (asgn:z3assign) =
     let name,value = match asgn with
             | Z3Set(vname,Z3QFloat(dir)) ->
@@ -189,7 +269,10 @@ struct
               vname,Some (Integer dir)
 
             | Z3Set(vname,Z3QInterval(Z3QInfinite(dir))) ->
-              vname,None
+              begin
+                z3st.is_valid <- false;
+                vname,None
+              end
 
             | Z3Set(vname,Z3QInterval(Z3QAny)) ->
               vname,Some (Integer 0)
@@ -205,11 +288,13 @@ struct
 
             | Z3Set(vname,Z3QInterval(Z3QLowerBound(min))) ->
               begin
+                z3st.is_valid <- false;
                 vname,None
               end
 
             | Z3Set(vname,Z3QInterval(Z3QUpperBound(max))) ->
               begin
+                z3st.is_valid <- false;
                 vname,None
               end
 
@@ -217,46 +302,45 @@ struct
     in
     match var_to_vid name, value with
     | Some(id),Some(v) ->
-      let scale = MAP.get scaling id in
+      let scale = MAP.get z3st.scale id in
       let sc_value =
         ((float_of_number v) /. (float_of_int scale))
       in
-      noop (MAP.put vals id sc_value)
+      noop (MAP.put z3st.absvar_map id sc_value)
     | Some(name),None ->
-      REF.upd valid (fun _ -> true)
+      ()
     | None,_ ->
       ()
 
 
-  let to_mappings (circ:wireid map_circ)  (sln:z3sln)=
+  let to_mappings z3st (circ:wireid map_circ)  (sln:z3sln)=
     if sln.sat = false then None
     else
       begin
         match sln.model with
         | Some(model) ->
           begin
-            let is_valid = REF.mk true in
-            let abs_var_map = MAP.make () in 
             List.iter (fun (asgn:z3assign)  ->
-                noop (asgn_to_mappings circ abs_var_map is_valid asgn)
+                noop (asgn_to_mappings z3st circ asgn)
               ) model;
-            None;
-            (*there was an issue converting mappings*)
-            if REF.dr  is_valid = false then None
+            if z3st.is_valid = false then None
             else
               begin
                 let mappings = MAP.make () in
-                MAP.iter circ.ports (fun _ (wire,port_info) ->
-                    let ovar=
+                SMAP.iter circ.ports (fun wire (port_info) ->
+                    let ovar:float =
                       MAP.get_dflt
-                        abs_var_map port_info.offset.abs_var 0.
+                        z3st.absvar_map port_info.offset.abs_var 0.
                     in
-                    let svar=
+                    let svar : float=
                       MAP.get_dflt
-                        abs_var_map port_info.scale.abs_var 1.
+                        z3st.absvar_map port_info.scale.abs_var 1.
                     in
-                    let math_range =
-                      match MapSpec.circ_get_mapping circ wire with
+                    let math_range :num_interval =
+                      match
+                        OPTION.map_option (MapSpec.circ_get_mapping circ wire)
+                          (fun x -> x.range)
+                      with
                       | Some(mapping) -> mapping
                       | None -> {min=0.; max =1.}
                     in
@@ -282,20 +366,20 @@ struct
 
   let mappings (tbl:gltbl) (prob:wireid map_circ)
     : (wireid,hw_mapping) map option =
-    let stmts = build_z3_prob tbl prob in
+    let z3st,stmts = build_z3_prob tbl prob in
     let sln =
       Z3Lib.exec "mapping" stmts timeout true
     in
-    let mappings = to_mappings prob sln in
+    let mappings = to_mappings z3st prob sln in
     mappings
 
   let sat (tbl:gltbl) (prob:wireid map_circ)
     : bool =
-    let stmts = build_z3_prob tbl prob in
+    let z3st,stmts = build_z3_prob tbl prob in
     let sln =
       Z3Lib.exec "mapping" stmts timeout true
     in
-    let mappings = to_mappings prob sln in 
-    sln.sat && mappings <> None
-
+    let mappings = to_mappings z3st prob sln in
+    let is_sat = sln.sat && mappings <> None in
+    is_sat
 end
