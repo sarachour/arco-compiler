@@ -183,12 +183,14 @@ struct
 
   let emit_equality z3st (args:int map_expr list) =
     let q s = noop (QUEUE.enqueue z3st.stmtq s) in
+    SET.clear z3st.freevars;
     let xexpr :z3expr list = List.map
         (fun (expr:int map_expr) ->
             let z3expr = map_expr_to_z3 z3st "glbl" expr in
             z3expr
       ) args  
     in
+    SET.iter z3st.freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
     match set_eq xexpr with
     | Some(eq) -> q (Z3Assert(eq))
     | None -> raise (MapSolverError "unexpected.")

@@ -60,7 +60,7 @@ struct
         if MathLib.isstvar menv name then
           Some {expr=MEVar(deriv_scale_var);}
         else
-          None
+          Some {expr=MEAny}
 
       | Term(MNParam(name,Integer 0)) ->
         Some {expr=MEConst(Integer 0)}
@@ -69,7 +69,7 @@ struct
         Some {expr=MEConst(Integer 0)}
 
       | Term(MNParam(name,v)) ->
-        Some {expr=MEConst(Integer 1)}
+        Some {expr=MEAny}
 
       | Integer(0) ->
         Some {expr=MEConst(Integer 0)}
@@ -78,10 +78,10 @@ struct
         Some {expr=MEConst(Integer 0)}
 
       | Integer(i) ->
-        Some {expr=MEConst(Integer 1)}
+        Some {expr=MEAny}
 
       | Decimal(i) ->
-        Some {expr=MEConst(Integer 1)}
+        Some {expr=MEAny}
 
       | Op2(Power,denom,Integer i) ->
         begin

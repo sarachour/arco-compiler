@@ -446,7 +446,6 @@ struct
         env=menv;
         solved=[];
       } in
-      print "==== Initialize Symcaml ====\n";
       let sym_st : symcaml_env = {
         s=SymCaml.init();
         cnv= ASTUnifySymcaml.unid2symvar;
