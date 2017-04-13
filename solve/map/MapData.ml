@@ -124,7 +124,8 @@ type 'a map_circ = {
   vars: (int,'a map_abs_var) map;
   ports: (wireid,map_port_info) smap;
   mappings: (wireid,map_math_info) smap;
-  equiv: (int map_expr) partition;
+  matheq: (int map_expr) partition;
+  glbleq: (int map_expr) partition;
   time: map_time;
 }
 

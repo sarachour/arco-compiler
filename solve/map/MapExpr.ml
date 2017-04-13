@@ -98,6 +98,8 @@ struct
 
 
   
+  let any = REF.mk 0;;
+
   let string_of_map_expr (type a) (x:a map_expr) (tostr:a -> string) =
     let rec _tostr e =
       match e with
@@ -109,7 +111,12 @@ struct
         | MEPower(a,b) -> (_tostr a)^"^"^(string_of_number b)
         | MEPowerVar(a,b,c) -> (_tostr a)^"^"^(HwLib.hast2str b)
         | MEConst(a) -> string_of_number a
-        | MEAny -> "@"
+        | MEAny ->
+          begin
+            REF.upd any (fun x -> (x+1 mod 1000000000));
+            "@"^(string_of_int (REF.dr any))
+          end
+
     in
     _tostr x
 

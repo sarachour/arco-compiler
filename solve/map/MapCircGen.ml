@@ -34,7 +34,8 @@ module MapCircGen = struct
   type circ_gen_state = {
     a2c_map : (hwcompinst,int) smap;
     l2c_map : (hwcompinst*int,int) smap;
-    mapequiv : (wireid map_var map_expr) partition;
+    glblcstr: (wireid map_var map_expr) partition;
+    mathcstr: (wireid map_var map_expr) partition;
     vargrps: (wireid map_var) partition;
 
     mutable is_valid : bool;
@@ -157,9 +158,6 @@ module MapCircGen = struct
   let build_instance cgst (ctx:map_port map_ctx) 
       (hi:hwcompinst) =
     let part lst = MapPartition.add_partition cgst.vargrps lst in
-    let part_map_equiv lst =
-      MapPartition.add_partition cgst.mapequiv lst
-    in
     let conc_id : int =conc_of_abs_map_comp cgst hi in
     let conc_cmp : map_port map_comp =
       MapSpec.get_comp ctx hi.name conc_id
@@ -199,11 +197,10 @@ module MapCircGen = struct
       inst (port:hwvid hwportvar) port_is_stvar : map_math_info =
 (*get the map expression.*)
     let part lst = MapPartition.add_partition cgst.vargrps lst in
-    let part_map_equiv lst =
-      MapPartition.add_partition cgst.mapequiv lst
+    let part_math lst =
+      MapPartition.add_partition cgst.mathcstr lst
     in
     let conc_map_comp_id = conc_of_abs_map_comp cgst inst in
-    let conc_map_comp = MapSpec.get_comp ctx inst.name conc_map_comp_id in
     let conc_bhv_comp = SolverCompLib.get_conc_comp gltbl inst in
     let map_expr_opt : mid ast option =
       OPTION.map
@@ -271,11 +268,12 @@ module MapCircGen = struct
               begin
                 match sexpr_opt with
                 | Some(sexpr) ->
-                  part_map_equiv [sexpr.expr;MEVar(MPVScale(wire))]
+                  part_math [sexpr.expr;MEVar(MPVScale(wire))]
                 | None -> ()
               end;
-              MapPartition.iter equivs (fun (cls:wireid map_var map_expr list) ->
-                  part_map_equiv cls
+              MapPartition.iter equivs (
+                fun (cls:wireid map_var map_expr list) ->
+                  part_math cls
               )
             end
           else
@@ -410,7 +408,7 @@ module MapCircGen = struct
   let add_global_exprs_to_circ gltbl (cgst:circ_gen_state)
       (circ:wireid map_circ) (ctx:map_port map_ctx) (hi:hwcompinst) =
     let part_map_equiv lst =
-      MapPartition.add_partition circ.equiv lst
+      MapPartition.add_partition circ.glbleq lst
     in
     let conc_id : int =conc_of_abs_map_comp cgst hi in
     let conc_cmp : map_port map_comp =
@@ -509,18 +507,19 @@ module MapCircGen = struct
 
 
   let build_prob (ctx:map_port map_ctx) (gltbl:gltbl)  =
+    let parteqtostr x = 
+             MapExpr.string_of_map_expr x
+               (fun v ->
+                  MapExpr.string_of_map_var v HwLib.wireid2str)
+    in
     let cgst : circ_gen_state = {
       a2c_map = SMAP.mk (HwLib.hwcompinst2str);
       l2c_map = SMAP.mk (fun (h,i) -> (HwLib.hwcompinst2str h)^"."^(string_of_int i));
       vargrps = MapPartition.mk 
           (fun x -> MapExpr.string_of_map_var x HwLib.wireid2str);
 
-      mapequiv = MapPartition.mk 
-          (fun x ->
-             MapExpr.string_of_map_expr x
-               (fun v ->
-                  MapExpr.string_of_map_var v HwLib.wireid2str)
-          );
+      mathcstr = MapPartition.mk parteqtostr;
+      glblcstr= MapPartition.mk parteqtostr;
 
       deriv_wire = mkwire (HWCmComp "**deriv**") 0 "**deriv**";
       deriv_port = {is_stvar=true;range=None;deriv_range=None;
@@ -536,7 +535,9 @@ module MapCircGen = struct
         vars=MAP.make();
         ports=SMAP.mk(HwLib.wireid2str);
         mappings=SMAP.mk(HwLib.wireid2str);
-        equiv=MapPartition.mk (fun x ->
+        matheq=MapPartition.mk (fun x ->
+            MapExpr.string_of_map_expr x string_of_int);
+        glbleq=MapPartition.mk (fun x ->
             MapExpr.string_of_map_expr x string_of_int);
         time={min_speed=None;max_speed=None;vid=0-4}
           
@@ -594,7 +595,7 @@ module MapCircGen = struct
         add_global_exprs_to_circ gltbl cgst circ ctx inst 
       );
     print ("== Adding Global Variables ==");
-    MapPartition.iter cgst.mapequiv (fun (exprs:wireid map_var map_expr list) ->
+    MapPartition.iter cgst.mathcstr (fun (exprs:wireid map_var map_expr list) ->
         let iexprs : int map_expr list = List.map (
             fun (expr:wireid map_var map_expr) ->
               let iexpr : int map_expr =
@@ -603,7 +604,7 @@ module MapCircGen = struct
               iexpr
           ) exprs
         in
-        MapPartition.add_partition circ.equiv iexprs
+        MapPartition.add_partition circ.matheq iexprs
         
       );
     let is_valid = cgst.is_valid in

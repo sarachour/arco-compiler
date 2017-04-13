@@ -432,6 +432,8 @@ schematic
   conn vtoi -> ihill_rep2
   conn vtoi -> ihill_stim
   conn vtoi -> switch
+  %new
+  conn vtoi -> vdadd
   conn vtoi -> output(I)
 
   conn vgain -> output(V)

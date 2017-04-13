@@ -272,7 +272,11 @@ struct
         emit_absvar_cstrs z3state v
     );
     q (Z3Comment ("=== global cstrs ==="));
-    MapPartition.iter circ.equiv (fun  (v:int map_expr list) ->
+    MapPartition.iter circ.glbleq (fun  (v:int map_expr list) ->
+        emit_equality z3state v
+      );
+    q (Z3Comment ("=== math cstrs ==="));
+    MapPartition.iter circ.matheq (fun  (v:int map_expr list) ->
         emit_equality z3state v
     );
     q (Z3Comment ("=== time cstrs ==="));
