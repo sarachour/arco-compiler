@@ -35,11 +35,11 @@ local R : unit %10
 
 %param r2_delta : unit = 1
 input r2_delta : unit
-def r2_delta mag = [1,1]
+def r2_delta mag = [1,1] unit
 
 %param r3_delta : unit = 1
 input r3_delta : unit
-def r3_delta mag = [1,1]
+def r3_delta mag = [1,1] unit
 
 type s
 time t : s
