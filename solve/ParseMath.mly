@@ -179,14 +179,14 @@ st:
   | DEF DDT TOKEN SAMPLE number TOKEN {
     let name = $3 and step = $5 in
     MathLib.upd_def dat name (fun x -> match x with
-       | MDefStVar(d) -> d.sample <- step; x
+       | MDefStVar(d) -> d.sample <- Some step; x
        | _ -> error "def ddt time" "must be defined after relation"
        );
   }
   | DEF DDT TOKEN SPEED number TOKEN {
     let name = $3 and step = $5 in
     MathLib.upd_def dat name (fun x -> match x with
-       | MDefStVar(d) -> d.speed <- step; x
+       | MDefStVar(d) -> d.speed <- Some step; x
        | _ -> error "def ddt time" "must be defined after relation"
        );
   }

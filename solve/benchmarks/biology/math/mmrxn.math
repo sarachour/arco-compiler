@@ -21,23 +21,23 @@ rel ddt ES = kf*E*S - (kr + kcat)*ES init 0
 def ES mag = [0,0.124] M
 var ddt ES = 0.04*ES shape GAUSS
 
-def ddt ES sample 100 s
-def ddt ES speed 100 ms 
+%def ddt ES sample 100 s
+%def ddt ES speed 100 ms 
 
 % individually solvable
 rel ddt S =  (kr+kcat)*ES - kf*E*S init 0.256
 def S mag = [0,0.256] M
 var ddt S = 0.04*S shape GAUSS
 
-def ddt S sample 100 s
-def ddt S speed 100 ms 
+%def ddt S sample 100 s
+%def ddt S speed 100 ms 
 
 rel ddt E = (kr+ kcat)*ES -kf*E*S init 0.124
 def E mag = [0,0.124] M
 var ddt E = 0.04*E shape GAUSS
 
-def ddt E sample 100 s
-def ddt E speed 100 ms 
+%def ddt E sample 100 s
+%def ddt E speed 100 ms 
 
 
 rel ddt P = kcat*ES - krp*P init  0
@@ -45,6 +45,6 @@ def P mag = [0,0.124] M
 var ddt P = 0.04*P shape GAUSS
 
 % sample every 0.1 seconds of simulation time
-def ddt P sample 100 s
-def ddt P speed 100 ms 
+%def ddt P sample 100 s
+%def ddt P speed 100 ms 
 

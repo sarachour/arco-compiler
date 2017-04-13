@@ -183,7 +183,7 @@ comp itov
   input K {V:mV}
   output Y {V:mV}
   def I(X) mag = [0.0,10] uA
-  def V(K) mag = [1,330] mV
+  def V(K) mag = [0,330] mV
 
   rel V(Y) = (V(K))*I(X)
   var I(Y) = 0.1 shape GAUSS
@@ -220,8 +220,8 @@ comp ihill_rep
 
     def I(Vmax) mag = [0.0,10] uA
     def I(S) mag = [0,10] uA
-    def I(Km) mag = [1,10] uA
-    def V(n) mag = [1,5] mV
+    def I(Km) mag = [0.5,10] uA
+    def V(n) mag = [1,3] mV
 
 
     output REP {I:uA}
@@ -240,7 +240,7 @@ comp ihill_rep2
 
   def I(Vmax) mag = [0.0,10] uA
   def I(S) mag = [0,10] uA
-  def V(n) mag = [1,5] mV
+  def V(n) mag = [1,3] mV
 
   
   output REP2 {I:uA}
@@ -256,9 +256,9 @@ comp igenebind
   input K {I:uA}
   input Vmax {I:uA}
 
-  def I(TF) mag = [0.0001,10] uA
-  def I(K) mag = [0.0001,10] uA
-  def I(Vmax) mag = [0.0001,10] uA
+  def I(TF) mag = [0.000,10] uA
+  def I(K) mag = [0.000,10] uA
+  def I(Vmax) mag = [0.000,10] uA
 
   output GE {I:uA}
 
@@ -316,21 +316,21 @@ end
 
 
 schematic
-%
+
   inst input I : 500
   inst output I : 10
   inst copy I : 10
   inst mm : 4
   inst switch : 15
-%  
+%%  
   inst input V : 125
   inst output V : 75
   inst copy V : 10
-%
+%%
   inst vadd : 25
   inst vdadd : 12
   inst vgain : 40
-%
+%%
   inst iadd : 30
   inst igenebind : 8
   inst ihill_stim : 8
@@ -342,7 +342,7 @@ schematic
   inst vtoi : 30
 %
 
-  conn * -> *
+
   % Transcription rate functions
   conn input(I) -> itov
   conn input(I) -> ihill_stim
@@ -443,7 +443,7 @@ schematic
   conn vadd -> output(V)
   conn vadd -> vtoi
   conn vadd -> vgain
-  conn vadd -> vdadd
+  %conn vadd -> vdadd
   conn vadd -> vadd
 
   conn vdadd -> output(V)

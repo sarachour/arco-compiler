@@ -40,10 +40,10 @@ def ES mag = [0,4400] M
 
 % sample every 0.1 seconds of simulation time
 %1: def ddt ES sample 0.1 s
-def ddt ES sample 100.0 s
+%def ddt ES sample 100.0 s
 % the speed (in wall clock time) should be one ms of real time at most
 %1: def ddt ES speed 1 ms
-def ddt ES speed 100.0 ms
+%def ddt ES speed 100.0 ms
 
 
 

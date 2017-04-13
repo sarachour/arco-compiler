@@ -178,20 +178,35 @@ struct
     | _,MBhvUndef-> error "compatible_hwvar_with_mvar" "cannot unify undefined"
     | _ -> false
 
-  let compatible_hwvar_with_hwexpr (env:'a hwenv) cfg (hv:'a hwportvar) (dest_wire:wireid)
+  let compatible_hwvar_with_hwexpr
+      (env:'a hwenv) cfg (hv:'a hwportvar) (dest_wire:wireid)
       (prop:string) (expr:'b ast) : bool =
     if hv.prop = prop then
-      if HwLib.is_connectable env hv.comp hv.port dest_wire.comp.name dest_wire.port then
+      if HwLib.is_connectable env
+          hv.comp hv.port dest_wire.comp.name dest_wire.port then
         begin
           match hv.bhvr with
-          | HWBAnalog(_) -> ConcCompLib.is_abs cfg hv.port 
-          | _ -> false
+          | HWBAnalog(_) ->
+            begin
+              ConcCompLib.is_abs cfg hv.port
+            end
+          | _ ->
+            begin
+              false
+            end
+
         end
       else
-        false
+        begin
+          false
+        end
+
     (*not the same property*)
     else
-      false
+      begin
+        false
+      end
+
 
   
    (*given an output port, get the inputs that can be connected to the source wire

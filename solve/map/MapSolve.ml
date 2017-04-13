@@ -104,6 +104,9 @@ struct
            vid_to_var z3st x
         )
 
+  let map_cstr_to_z3 (z3st:prob_state) (prefix:string) cstr =
+    MapExpr.z3_of_map_cstr cstr (map_expr_to_z3 z3st (prefix))
+
   let declare_scaling_factors (z3st:prob_state) (circ:wireid map_circ) =
     MAP.iter circ.vars (fun k vardata ->
         let prio : int =
@@ -114,7 +117,7 @@ struct
 
   let emit_absvar_cstrs (z3st:prob_state) (v:wireid map_abs_var) =
     let q s = noop (QUEUE.enqueue z3st.stmtq s) in
-    SET.clear z3st.freevars;
+    (*clear the set of free variables in use.*)
     let xexpr :z3expr list = List.map
         (fun (expr:int map_expr) ->
             let z3expr = map_expr_to_z3 z3st (string_of_int v.id) expr in
@@ -123,9 +126,11 @@ struct
     in
     let xcstr : z3expr list = List.map (
         fun ((cstr):int map_cstr)  ->
-          MapExpr.z3_of_map_cstr cstr (map_expr_to_z3 z3st (string_of_int v.id))
+          map_cstr_to_z3 z3st (string_of_int v.id) cstr 
       ) v.cstrs
     in
+    if List.length xexpr > 0 || List.length xcstr > 0 then
+      mark_var_in_use z3st v.id;
     (*declare any free variables you need.*)
     SET.iter z3st.freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
     (*declare any equality constraints*)
@@ -187,17 +192,37 @@ struct
 
   let emit_equality z3st (args:int map_expr list) =
     let q s = noop (QUEUE.enqueue z3st.stmtq s) in
-    SET.clear z3st.freevars;
     let xexpr :z3expr list = List.map
         (fun (expr:int map_expr) ->
-            let z3expr = map_expr_to_z3 z3st "glbl" expr in
+            let z3expr = map_expr_to_z3 z3st ("glbl") expr in
             z3expr
       ) args  
     in
-    SET.iter z3st.freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
     match set_eq xexpr with
     | Some(eq) -> q (Z3Assert(eq))
-    | None -> raise (MapSolverError "unexpected.")
+    | _ -> ()
+
+  let emit_time_cstrs (z3st) (circ:'a map_circ) =
+    let q s = noop (QUEUE.enqueue z3st.stmtq s) in
+    let time = circ.time in
+    let delta = 0.0012 in
+    begin
+      match time.min_speed with
+      | Some(speed) ->
+        let cstr = MCGTE((time.vid), MEConst(Decimal (speed-.delta))) in
+        let z3expr = map_cstr_to_z3 z3st ("time") cstr in
+        q (Z3Assert(z3expr))
+      | None -> ()
+    end;
+    begin
+      match time.max_speed with
+      | Some(speed) ->
+        let cstr = MCLTE((time.vid), MEConst(Decimal (speed+.delta))) in
+        let z3expr = map_cstr_to_z3 z3st ("time") cstr in
+        q (Z3Assert(z3expr))
+      | None -> ()
+    end
+
 
   let build_z3_prob (tbl:gltbl) (circ:wireid map_circ)  =
     let deriv_scale : wireid map_abs_var = {
@@ -229,7 +254,13 @@ struct
     (*var decls*)
     q (Z3Comment("Variable Decls"));
     (*add variable constraints*)
-    q (Z3Comment ("=== port restrictions ==="));
+    q (Z3Comment ("===summarize  ==="));
+    MAP.iter circ.vars (fun id (a:wireid map_abs_var) ->
+        let memstr = LIST.tostr
+            (fun v -> MapExpr.string_of_map_var v HwLib.wireid2str)
+            "," a.members in
+        q (Z3Comment((string_of_int id)^"="^memstr))
+    );
     SMAP.iter circ.ports (fun (w:wireid) (port:map_port_info) ->
         let math = SMAP.get circ.mappings w in
         preprocess_abs_vars z3state circ port math
@@ -244,6 +275,8 @@ struct
     MapPartition.iter circ.equiv (fun  (v:int map_expr list) ->
         emit_equality z3state v
     );
+    q (Z3Comment ("=== time cstrs ==="));
+    emit_time_cstrs z3state circ;
     q (Z3Comment ("=== port restrictions ==="));
     SMAP.iter circ.ports (fun (w:wireid) (port:map_port_info) ->
         let math = SMAP.get circ.mappings w in
@@ -258,10 +291,14 @@ struct
           decls
       ) []
     in
+    let free_decls = SET.map z3state.freevars (fun freevar ->
+        Z3ConstDecl(freevar, Z3Real);
+      )
+    in
     (*range decls*)
     let stmts = QUEUE.to_list z3state.stmtq in
     QUEUE.destroy z3state.stmtq;
-    z3state,decls @ stmts
+    z3state,decls @ free_decls @ stmts
 
   (*if the mappings are*)
   let asgn_to_mappings

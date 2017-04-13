@@ -527,7 +527,7 @@ struct
 
 
   let derive_mapping_div (enq) (numer) (denom) =
-    enq (wrap_const numer.scale (Integer 1) );
+    enq (wrap_const numer.offset (Integer 0) );
     enq (wrap_const denom.offset (Integer 0) );
     let res = {
       scale=MEDiv(numer.scale,denom.scale);
@@ -545,20 +545,21 @@ struct
            offset=MEConst((Integer 0))
          }
 
-  let derive_mapping_pow_var (enq) (base) exp  =
+  let derive_mapping_pow_expr (enq) (base) (exp) expr  =
     enq (wrap_const base.offset (Integer 0));
     enq (wrap_const exp.offset (Integer 0));
     enq (wrap_const exp.scale (Integer 1));
-    enq (wrap_const base.scale (Integer 1));
-    {scale=MEConst(Integer 1);offset=MEConst(Integer 0)}
+    {scale=MEPowerVar(base.scale,expr,MEConst(Integer 1));
+     offset=MEConst(Integer 0)}
 
+  (*
   let derive_mapping_pow_expr (enq) (base) exp =
     enq (wrap_const base.offset (Integer 0) );
     enq (wrap_const exp.offset (Integer 0) );
     enq (wrap_const exp.scale (Integer 1) );
     enq (wrap_const base.scale (Integer 1) );
     {scale=MEConst(Integer 1); offset=MEConst(Integer 0);}
-
+  *)
 
   let derive_mapping_neg (enq) arg =
     enq (wrap_const arg.scale (Integer 1) );
@@ -665,37 +666,30 @@ struct
           let res_proj = derive_mapping_neg add_cstr arg_proj in
           res_proj,Op1(Neg,arg_expr)
 
-        | Op2(Power,Term(base),Integer(exp)) ->
-          let base_proj,base_expr = _derive_mapping_problem (Term base) in
+        | Op2(Power,(base),Integer(exp)) ->
+          let base_proj,base_expr = _derive_mapping_problem (base) in
           let exp_proj,exp_expr = _derive_mapping_problem (Integer exp) in
           let res_proj :map_proj =
             derive_mapping_pow_val add_cstr
-              base_proj exp_proj (Integer (exp))
+              exp_proj base_proj (Integer (exp))
           in
           res_proj,Op2(Power,exp_expr,base_expr)
 
 
-        | Op2(Power,Term(base),Decimal(exp)) ->
-          let base_proj,base_expr = _derive_mapping_problem (Term base) in
+        | Op2(Power,(base),Decimal(exp)) ->
+          let base_proj,base_expr = _derive_mapping_problem (base) in
           let exp_proj,exp_expr = _derive_mapping_problem (Decimal exp) in
           let res_proj = derive_mapping_pow_val add_cstr
-              exp_proj base_proj (Decimal (exp)) in
+              base_proj exp_proj (Decimal (exp)) in
           res_proj,Op2(Power,exp_expr,base_expr)
 
 
-        | Op2(Power,Term(base),Term(exp)) ->
-          let base_proj,base_expr = _derive_mapping_problem (Term base) in
-          let exp_proj,exp_expr = _derive_mapping_problem (Term exp) in
-          let res_proj = derive_mapping_pow_var add_cstr exp_proj base_proj in 
-          res_proj,Op2(Power,exp_expr,base_expr)
-
-
-
+                
         | Op2(Power,base,exp) ->
           let base_proj,base_expr = _derive_mapping_problem base in
           let exp_proj,exp_expr = _derive_mapping_problem exp in
           let res_proj =
-            {scale=MEConst(Integer 1); offset=MEConst(Integer 0)}
+            derive_mapping_pow_expr add_cstr base_proj exp_proj exp
           in
           res_proj,Op2(Power,base_expr,exp_expr)
 
@@ -778,7 +772,7 @@ struct
               enq (wrap_var_eq_expr (MPVScale(comp,v.port)) linear.scale);
               enq (MSVarEqualsConst(MPVOffset(comp,v.port),Integer 0));
               (*all derivs must be scaled*)
-              approx_neq enq (MPVScale(comp,v.port)) 1.;
+              (*approx_neq enq (MPVScale(comp,v.port)) 1.;*)
               enq (MSVarHasCstr(MPVOffset(comp,v.port),MCEQ(
                   MPVOffset(comp,v.port),
                   MEConst (Integer 0)

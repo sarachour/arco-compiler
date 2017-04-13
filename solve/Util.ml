@@ -346,6 +346,9 @@ struct
   let iter (type a) (type b) (x:a queue) (r:a -> unit): unit =
     List.iter r (REF.dr x)
 
+  let fold (type a) (type b) (x:a queue) (r:a -> b -> b) (init:b): b=
+    List.fold_left (fun x y -> r y x) init (REF.dr x)
+
   let dequeue_back (type a) (type b) (x:a queue) : a queue =
     let rec deq_back l = match l with
       | [] -> []

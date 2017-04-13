@@ -107,6 +107,7 @@ struct
         | MEMult(a,b) -> (_tostr a)^"*"^(_tostr b)
         | MEDiv(a,b) -> (_tostr a)^"/"^(_tostr b)
         | MEPower(a,b) -> (_tostr a)^"^"^(string_of_number b)
+        | MEPowerVar(a,b,c) -> (_tostr a)^"^"^(HwLib.hast2str b)
         | MEConst(a) -> string_of_number a
         | MEAny -> "@"
     in
@@ -139,6 +140,24 @@ struct
     | MSSetVarPriority(_) -> "priority"
     | MSSetPortCover(_) -> "cover"
 
+  let has_uninterp (type a) (expr: a map_expr)  :bool =
+    let rec _toast e =
+      match e with
+      | MEVar(q) -> false
+      | MEConst(Integer q) -> false
+      | MEConst(Decimal q) -> false
+      | MEDiv(a,b) -> _toast a || _toast b
+      | MEPower(a,Integer b) -> _toast a
+      | MEPower(a,Decimal b) -> _toast a 
+      | MEPowerVar(_) -> true
+      | MEMult(a,b) -> _toast a || _toast b
+      | MEAdd(a,b) -> _toast a || _toast b
+      | MESub(a,b) -> _toast a || _toast b
+      | MEAny -> false
+      | _ -> error "has_uninterp" "uninterpreted not permitted"
+    in
+    _toast expr 
+
   let to_ast (type a) (expr: a map_expr) (any:a) : a ast =
     let rec _toast e =
       match e with
@@ -152,6 +171,7 @@ struct
       | MEAdd(a,b) -> OpN(Add,[_toast a;_toast b])
       | MESub(a,b) -> OpN(Sub,[_toast a;_toast b])
       | MEAny -> Term(any)
+      | _ -> error "to_ast" "uninterpreted not permitted"
     in
     _toast expr 
 
@@ -193,18 +213,19 @@ struct
 
   let simpl (type a) (expr:a map_expr) (any:a)
       (tosym:a->symvar) (fromsym:symvar->a) =
-    let expr = to_ast expr any in
-    let decl v cnv =
-      SymbolVar(cnv v)
-    in
-    let res = ASTLib.simpl expr tosym fromsym decl in
-    from_ast res any
+    if has_uninterp expr then expr else
+      let symexpr = to_ast expr any in
+      let decl v cnv =
+        SymbolVar(cnv v)
+      in
+      let res = ASTLib.simpl symexpr tosym fromsym decl in
+      from_ast res any
 
   let z3 (type a) freshvars prefix (expr:a map_expr) (atoz3 : a -> z3expr) =
     let fresh_var () =
       let i = SET.size freshvars in
       let vname = prefix^"_"^(string_of_int i) in
-      SET.add freshvars vname;
+      noop (SET.add freshvars vname);
       vname
     in
     let rec _work e = match e with
@@ -218,12 +239,32 @@ struct
       | MEPower(a,Integer b) -> Z3Power(_work a, Z3Int b)
       | MEPower(a,Decimal b) -> Z3Power(_work a, Z3Real b)
       | MEAny -> Z3Var(fresh_var ())
-
+      | _ -> error "uninterp" "uninterp not allowed"
     in
     _work expr
 
   let string_of_map_port_var_expr (x:map_port map_var map_expr) =
     string_of_map_expr x string_of_map_port_var
+
+  let interpret (type a) (e:a map_expr) (f:hwvid ast -> float option) =
+    let rec _map (e:a map_expr) =
+      match e with
+      | MEVar(q) -> MEVar(q)
+      | MEAdd(a,b) -> MEAdd(_map a, _map b)
+      | MESub(a,b) -> MESub(_map a, _map b)
+      | MEPower(a,b) -> MEPower(_map a, b)
+      | MEPowerVar(a,b,fb) ->
+        begin
+          match f b with
+          | Some(v) -> MEPower(a,Decimal v)
+          | None -> fb
+        end
+      | MEMult(a,b) -> MEMult(_map a, _map b)
+      | MEDiv(a,b) -> MEDiv(_map a, _map b)
+      | MEAny -> MEAny
+      | MEConst(v) -> MEConst(v)
+    in
+    _map e
 
   let map e f =
     let rec _map e =
@@ -234,10 +275,41 @@ struct
       | MEPower(a,b) -> MEPower(_map a, b)
       | MEMult(a,b) -> MEMult(_map a, _map b)
       | MEDiv(a,b) -> MEDiv(_map a, _map b)
+      | MEPowerVar(a,b,c) -> MEPowerVar(_map a,b,_map c)
       | MEAny -> MEAny
       | MEConst(v) -> MEConst(v)
     in
     _map e
+
+  let map_cstr_expr (type a) (c:a map_cstr)
+      (f:a map_expr -> a map_expr): a map_cstr =
+    let rec _map (cstr:a map_cstr) : a map_cstr =
+      match cstr with
+      | MCGT(v,e) -> MCGT(v, f e)
+      | MCGTE(v,e) -> MCGTE(v, f e)
+      | MCLT(v,e) -> MCLT(v, f e)
+      | MCLTE(v,e) -> MCLTE(v, f e)
+      | MCEQ(v,e) -> MCEQ(v, f e)
+      | MCNot(e) -> MCNot(_map e)
+      | MCAnd(a,b) -> MCAnd(_map a,_map b)
+      | MCOr(a,b) -> MCOr(_map a, _map b)
+    in
+    _map c
+
+  let interpret_cstr (type a) (c:a map_cstr)
+      (f:hwvid ast -> float option): a map_cstr =
+    let rec _map (cstr:a map_cstr) : a map_cstr =
+      match cstr with
+      | MCGT(v,e) -> MCGT(v, interpret e f)
+      | MCGTE(v,e) -> MCGTE(v, interpret e f)
+      | MCLT(v,e) -> MCLT(v, interpret e f)
+      | MCLTE(v,e) -> MCLTE(v, interpret e f)
+      | MCEQ(v,e) -> MCEQ(v, interpret e f)
+      | MCNot(e) -> MCNot(_map e)
+      | MCAnd(a,b) -> MCAnd(_map a,_map b)
+      | MCOr(a,b) -> MCOr(_map a, _map b)
+    in
+    _map c
 
   let map_cstr (type a) (type b) (c:a map_cstr) (f:a -> b) =
     let rec _map (cstr:a map_cstr) : b map_cstr =

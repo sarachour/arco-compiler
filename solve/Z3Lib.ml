@@ -363,7 +363,8 @@ struct
     (*let x = List.sort sortsts (LIST.uniq x) in*)
     z3stmts2buf oc stmts;
     close_out oc;
-    z3_print_debug "---> Executing SMT Solver\n";
+    print "[Z3]" ("---> Executing SMT Solver prob="^(idx)^"\n");
+    z3_print_debug "--->" "Executing SMT Solver\n";
     flush_all ();
     begin
       if use_dreal then
@@ -373,7 +374,7 @@ struct
         Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
                     (string_of_int timeout))
     end;
-    z3_print_debug "---> Finished Search\n";
+    z3_print_debug "--->" "Finished Search\n";
     flush_all ();
     begin
       let z =

@@ -25,6 +25,7 @@ type 'a map_expr =
   | MEAny
   | MEConst of number 
   | MEPower of ('a map_expr)*number
+  | MEPowerVar of ('a map_expr)*(hwvid ast)*('a map_expr)
   | MEAdd of ('a map_expr)*('a map_expr)
   | MESub of ('a map_expr)*('a map_expr)
   | MEMult of ('a map_expr)*('a map_expr)
@@ -113,12 +114,18 @@ type map_math_info = {
 }
 
 
+type map_time = {
+  mutable min_speed: float option;
+  mutable max_speed: float option;
+  mutable vid: int;
+}
 (*for a circuit*)
 type 'a map_circ = {
   vars: (int,'a map_abs_var) map;
   ports: (wireid,map_port_info) smap;
   mappings: (wireid,map_math_info) smap;
   equiv: (int map_expr) partition;
+  time: map_time;
 }
 
 

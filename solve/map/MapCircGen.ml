@@ -21,6 +21,7 @@ open AST
 open MathData
 open MathLib
 open SolverUtil
+open SymCamlData
 
 open StrMap;;
 
@@ -35,6 +36,7 @@ module MapCircGen = struct
     l2c_map : (hwcompinst*int,int) smap;
     mapequiv : (wireid map_var map_expr) partition;
     vargrps: (wireid map_var) partition;
+
     mutable is_valid : bool;
     deriv_wire: wireid;
     deriv_port : map_port_info;
@@ -56,7 +58,67 @@ module MapCircGen = struct
           )))
       end
 
-  
+  let add_time_cstrs  (circ:'a map_circ) (gltbl:gltbl) =
+    let speed_q = QUEUE.make () in 
+    let sample_period_q = QUEUE.make () in
+    let find_best q f : float option =
+      QUEUE.fold q (fun el rest ->
+          match el, rest with
+          | Some(el),None -> Some el
+          | Some(el),Some(curr) ->
+            if f el curr then Some el else
+              Some curr
+          | _ -> rest
+        ) None
+    in
+    MathLib.iter_vars gltbl.env.math (fun (v:mid mvar) ->
+        match v.defs with
+        | MDefStVar(defs) ->
+          begin
+            noop (QUEUE.enqueue speed_q
+                    ((OPTION.map defs.speed float_of_number )));
+            noop (QUEUE.enqueue sample_period_q
+                    (OPTION.map defs.sample float_of_number ))
+          end
+
+        | _ -> ()
+      );
+    (*i'm interested in the smallest sampling freqency.*)
+    let max_sample_period : float option =
+      find_best sample_period_q (fun el smallest -> el < smallest)
+    in
+    (*i'm interested in the fastest sampling rate.*)
+    let min_speed: float option =
+      find_best speed_q (fun el fastest -> el > fastest)
+    in
+    QUEUE.clear sample_period_q;
+    (*enumerate*)
+    let us_to_s = 1000.*.1000. in
+    HwLib.iter_comps gltbl.env.hw (fun c ->
+        HwLib.comp_iter_vars c (fun v ->
+            match v.defs with
+            | HWDDigital(d) ->
+              let sample,_ = d.sample in 
+              noop (QUEUE.enqueue sample_period_q
+                      (Some ((float_of_number sample) /. us_to_s))
+                   )
+            | _ -> ()
+        )
+        
+    );
+    let max_port_period : float option =
+      find_best sample_period_q (fun el largest -> el > largest)
+    in
+    circ.time.min_speed <- min_speed;
+    begin
+      match max_sample_period,max_port_period with
+      | Some(max_sample),Some(max_port) ->
+        circ.time.max_speed <- Some (max_sample /. max_port )
+      | _ -> ();
+    end;
+    ()
+
+
 
   (* Add all the other items contained under the variable. *)
   let build_connection 
@@ -95,6 +157,9 @@ module MapCircGen = struct
   let build_instance cgst (ctx:map_port map_ctx) 
       (hi:hwcompinst) =
     let part lst = MapPartition.add_partition cgst.vargrps lst in
+    let part_map_equiv lst =
+      MapPartition.add_partition cgst.mapequiv lst
+    in
     let conc_id : int =conc_of_abs_map_comp cgst hi in
     let conc_cmp : map_port map_comp =
       MapSpec.get_comp ctx hi.name conc_id
@@ -107,10 +172,12 @@ module MapCircGen = struct
             )
             vr.members
         in
-        part mems 
+         part mems 
       );
     ()
+
   
+
   let populate_a2c_map (cgst:circ_gen_state) ctx gltbl (inst:hwcompinst) =
     print("->"^(HwLib.hwcompinst2str inst)^"\n");
     let ccomp = SolverCompLib.get_conc_comp gltbl inst in
@@ -281,31 +348,86 @@ module MapCircGen = struct
         ret
           (error "mkexprs" "deps must be contained in var ") 0
 
-  let circ_of_local_map_expr cgst circ (x:hwcompinst) (expr:int map_expr) =
-    MapExpr.map expr (circ_of_local_map_var cgst circ x) 
+  let circ_of_local_map_expr gltbl cgst (circ:wireid map_circ) 
+      (x:hwcompinst) (expr:int map_expr) =
+    let _interpret (ast:hwvid ast) =
+      let conc_comp = ConcCompLib.get_conc_comp gltbl x in
+      let expr = ConcCompLib.concrete_hwexpr_from_compid 
+          (HCMLocal(x.name)) conc_comp.cfg ast
+      in
+      ASTLib.compute expr
+    in
+    let fvar = 999 in
+    let interp_expr : int map_expr = MapExpr.interpret expr _interpret in
+    let gexpr =
+      MapExpr.map interp_expr (fun i -> circ_of_local_map_var cgst circ x i)
+    in
+    MapExpr.simpl gexpr (fvar) string_of_int int_of_string  
 
-
-  let circ_of_wire_map_expr cgst circ (expr:wireid map_var map_expr) =
-    MapExpr.map expr (fun id ->
-        let wire = MapExpr.unwrap_map_var id in
-        let global_var : int= match id with
-          | MPVScale(wire) ->
-            if wire = cgst.deriv_wire then
-              cgst.deriv_port.scale.abs_var
-            else
-              MapSpec.circ_get_scale_var circ wire
-          | MPVOffset(wire) ->
-            if wire = cgst.deriv_wire then
-              cgst.deriv_port.scale.abs_var
-            else
-              MapSpec.circ_get_offset_var circ wire
-                                 
-        in
-        global_var 
-
+  let circ_of_local_map_cstr gltbl cgst circ
+      (inst:hwcompinst) (cstr:int map_cstr) =
+    let _interpret (ast:hwvid ast) =
+      let conc_comp = ConcCompLib.get_conc_comp gltbl inst in
+      let expr = ConcCompLib.concrete_hwexpr_from_compid 
+          (HCMLocal(inst.name)) conc_comp.cfg ast
+      in
+      ASTLib.compute expr
+    in
+    let fvar = 999 in
+    let icstr :int map_cstr = MapExpr.interpret_cstr cstr _interpret in
+    let newicstr = MapExpr.map_cstr icstr
+        (fun x -> circ_of_local_map_var cgst circ inst x)
+    in
+    MapExpr.map_cstr_expr newicstr
+      (fun e ->
+         MapExpr.simpl e (fvar) string_of_int int_of_string  
       )
 
-  
+  let circ_of_wire_map_expr cgst circ (expr:wireid map_var map_expr) =
+    if MapExpr.has_uninterp expr then
+      raise
+        (MapCircGenError "circ_of_wire_map_expr: was not expecting uninterpreted")
+    else
+      MapExpr.map expr (fun id ->
+          let wire = MapExpr.unwrap_map_var id in
+          let global_var : int= match id with
+            | MPVScale(wire) ->
+              if wire = cgst.deriv_wire then
+                cgst.deriv_port.scale.abs_var
+              else
+                MapSpec.circ_get_scale_var circ wire
+
+            | MPVOffset(wire) ->
+              if wire = cgst.deriv_wire then
+                cgst.deriv_port.scale.abs_var
+              else
+                MapSpec.circ_get_offset_var circ wire
+
+          in
+          global_var 
+        )
+
+  let add_global_exprs_to_circ gltbl (cgst:circ_gen_state)
+      (circ:wireid map_circ) (ctx:map_port map_ctx) (hi:hwcompinst) =
+    let part_map_equiv lst =
+      MapPartition.add_partition circ.equiv lst
+    in
+    let conc_id : int =conc_of_abs_map_comp cgst hi in
+    let conc_cmp : map_port map_comp =
+      MapSpec.get_comp ctx hi.name conc_id
+    in
+    MAP.iter conc_cmp.vars (fun id vr ->
+        if List.length vr.members = 0 &&
+           (List.length vr.cstrs > 0 || List.length vr.exprs > 0)
+        then
+          let iexprs =
+            List.map (circ_of_local_map_expr gltbl cgst circ hi)
+              vr.exprs
+          in
+          part_map_equiv iexprs;
+          ()
+      )
+
   let add_abs_var_cstrs (cgst:circ_gen_state) circ (ctx:map_port map_ctx) (gltbl:gltbl) (inst:hwcompinst)=
     let conc_map_comp_id = conc_of_abs_map_comp cgst inst  in
     let conc_map_comp = MapSpec.get_comp ctx inst.name conc_map_comp_id in
@@ -314,13 +436,12 @@ module MapCircGen = struct
     MAP.iter conc_map_comp.vars (fun vid vdata ->
         let t_exprs : int map_expr list =
           List.map (fun (e:int map_expr) ->
-              circ_of_local_map_expr cgst circ inst e
+              circ_of_local_map_expr gltbl cgst circ inst e
             ) vdata.exprs
         in
         let t_cstrs : (int map_cstr) list =
           List.map (fun (c:int map_cstr) ->
-              MapExpr.map_cstr c
-                (fun x -> circ_of_local_map_var cgst circ inst x)
+              circ_of_local_map_cstr gltbl cgst circ inst c
             ) vdata.cstrs
         in
         (*convert local to absolute variable*)
@@ -350,13 +471,19 @@ module MapCircGen = struct
   let update_local_to_circ_map cgst inst id gid =
     SMAP.put cgst.l2c_map (inst,id) gid
 
-  let update_port_and_math_with_id (cgst:circ_gen_state) circ (ctx:map_port map_ctx) (wirevar:wireid map_var) abs_id  : unit=
+  let update_port_and_math_with_id (cgst:circ_gen_state) (circ:wireid map_circ)
+      (ctx:map_port map_ctx) (wirevar:wireid map_var) abs_id  : unit=
     let wire : wireid = MapExpr.unwrap_map_var wirevar in
     if cgst.deriv_wire = wire then
       begin
+        print ("-> setting deriv\n");
         match wirevar with
         | MPVScale(_) ->
-          cgst.deriv_port.scale.abs_var <- abs_id
+          begin
+            circ.time.vid <- abs_id;
+            cgst.deriv_port.scale.abs_var <- abs_id
+          end
+
         | MPVOffset(_) ->
           cgst.deriv_port.offset.abs_var <- abs_id
       end
@@ -397,8 +524,8 @@ module MapCircGen = struct
 
       deriv_wire = mkwire (HWCmComp "**deriv**") 0 "**deriv**";
       deriv_port = {is_stvar=true;range=None;deriv_range=None;
-                    offset={priority=0;abs_var=0-1};
-                    scale={priority=0;abs_var=0-1};
+                    offset={priority=0;abs_var=0-2};
+                    scale={priority=0;abs_var=0-3};
                     port="**deriv**";
                    };
       is_valid = true;
@@ -410,11 +537,14 @@ module MapCircGen = struct
         ports=SMAP.mk(HwLib.wireid2str);
         mappings=SMAP.mk(HwLib.wireid2str);
         equiv=MapPartition.mk (fun x ->
-            MapExpr.string_of_map_expr x string_of_int)
+            MapExpr.string_of_map_expr x string_of_int);
+        time={min_speed=None;max_speed=None;vid=0-4}
           
       }
-      
     in
+    add_time_cstrs circ gltbl;
+    MapPartition.add_partition cgst.vargrps [MPVScale cgst.deriv_wire];
+    MapPartition.add_partition cgst.vargrps [MPVOffset cgst.deriv_wire];
     debug "==== Populating A2C Map ====\n";
     SET.iter gltbl.sln_ctx.comps (fun (inst:hwcompinst) ->
         populate_a2c_map cgst ctx gltbl inst
@@ -437,29 +567,33 @@ module MapCircGen = struct
     print "=== Construct Initial Mappings from Partition ===\n"; 
     MapPartition.iter cgst.vargrps
       (fun (members:(wireid map_var) list) ->
-        let id = MAP.size circ.vars in
-        List.iter (fun (wire:wireid map_var) ->
-            update_port_and_math_with_id cgst circ ctx wire id
-          ) members;
-        let avar : wireid map_abs_var =
-          {
-            exprs=[MEVar(id)];
-            cstrs=[];
-            value=None;
-            members=members;
-            priority=0;
-            id=id
-          }
-        in
-        noop (MAP.put circ.vars id avar)
+          let id = MAP.size circ.vars in
+          List.iter (fun (wire:wireid map_var) ->
+              update_port_and_math_with_id cgst circ ctx wire id
+            ) members;
+          let avar : wireid map_abs_var =
+            {
+              exprs=[MEVar(id)];
+              cstrs=[];
+              value=None;
+              members=members;
+              priority=0;
+              id=id
+            }
+          in
+          noop (MAP.put circ.vars id avar)
       );
 
-    print ("===Constructing Final Contraints ("^
+    print ("===Constructing Abs Var Contraints ("^
            (string_of_int (SMAP.size cgst.l2c_map))^") ===\n");
     SET.iter gltbl.sln_ctx.comps (fun (x:hwcompinst) ->
         add_abs_var_cstrs cgst circ ctx gltbl x 
       );
-    print ("== adding global variables ==");
+    print "=== Constructing Global Constraints ===\n";
+    SET.iter gltbl.sln_ctx.comps (fun (inst:hwcompinst) ->
+        add_global_exprs_to_circ gltbl cgst circ ctx inst 
+      );
+    print ("== Adding Global Variables ==");
     MapPartition.iter cgst.mapequiv (fun (exprs:wireid map_var map_expr list) ->
         let iexprs : int map_expr list = List.map (
             fun (expr:wireid map_var map_expr) ->

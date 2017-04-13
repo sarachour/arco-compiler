@@ -145,6 +145,7 @@ struct
   let test_node_map_cons tbl node =
     let mint,musr= mkmenu tbl None in
     let use_heuristic = Globals.get_glbl_bool "eqn-use-map-heuristic" in
+    musr();
     if use_heuristic = false then
       true
     else
@@ -761,7 +762,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
       if nsols > 0 then
         begin
           debug ("[FOUND-SOLS] ===> Found <"^(string_of_int nsols)^"> solutions");
-          SlvrSearchLib.increase_goal_weight tbl.search (GUnifiable g) 0.5;
+          SlvrSearchLib.increase_goal_weight tbl.search (GUnifiable g) (0.-.0.5);
           ()
         end
       else
