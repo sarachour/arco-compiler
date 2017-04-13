@@ -309,7 +309,7 @@ comp switch
 
   output PROD {I:uA}
 
-  rel I(PROD) = I(Vmax)/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)/500.0))
+  rel I(PROD) = I(Vmax)*(1/(( ( I(SUB)/I(Kmod) )+ 1)^(V(n)/500.0)))
 end
 
 

@@ -762,7 +762,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
       if nsols > 0 then
         begin
           debug ("[FOUND-SOLS] ===> Found <"^(string_of_int nsols)^"> solutions");
-          SlvrSearchLib.increase_goal_weight tbl.search (GUnifiable g) (0.-.0.5);
+          SlvrSearchLib.decrease_goal_weight tbl.search (GUnifiable g) (0.1);
           ()
         end
       else
