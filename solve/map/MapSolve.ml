@@ -232,6 +232,28 @@ struct
             q [Z3Eq(Z3Var(i),Z3Int 1)]
         end
 
+      | Z3Eq(Z3Mult(Z3Var(i),j),Z3Var(k)) ->
+        if i = k then
+          q [Z3Eq(j,Z3Int(1))];
+        _work j
+
+      | Z3Eq(Z3Mult(j,Z3Var(i)),Z3Var(k)) ->
+        if i = k then
+          q [Z3Eq(j,Z3Int(1))];
+        _work j
+
+      | Z3Eq(Z3Var(k),Z3Mult(Z3Var(i),j)) ->
+        if i = k then
+          q [Z3Eq(j,Z3Int(1))];
+        _work j
+
+      | Z3Eq(Z3Var(k),Z3Mult(j,Z3Var(i))) ->
+        if i = k then
+          q [Z3Eq(j,Z3Int(1))];
+        _work j
+
+      
+
       | _ -> ()
     in
     _work expr;
@@ -337,7 +359,15 @@ struct
       ("<< SOLVER # VARS = "^(string_of_int (SET.size z3state.in_use)));
     let decls = MAP.fold circ.vars (fun k vardata decls ->
         if var_in_use z3state k then
-          Z3ConstDecl(vid_to_var_name z3state k,Z3Real)::decls
+          let vname = vid_to_var_name z3state k in
+          let decl = Z3ConstDecl(vid_to_var_name z3state k,Z3Real) in
+          let finite =
+            Z3Assert(Z3And(
+                Z3LTE(Z3Var vname,Z3Int(999999999999)),
+                Z3GTE(Z3Var vname,Z3Int(0-999999999999))
+              ))
+          in
+          decl::finite::decls
         else
           decls
       ) []
