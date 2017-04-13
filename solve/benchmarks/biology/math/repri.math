@@ -26,15 +26,16 @@ param kd_prot : 1/s = 0.03010299956
 param kd_mrna : 1/s = 0.15051499783
 param a_tr : 1/s = 0.4995
 
-input a0_tr : 1/s
-%param a0_tr : 1/s = 0.0005
-def a0_tr mag = [0.0005,0.0005] unit
+%input a0_tr : 1/s
+param a0_tr : 1/s = 0.0005
+%def a0_tr mag = [0.0005,0.0005] unit
+
 time t : s
 
-input KMp : M
+%input KMp : M
+%def KMp mag = [20,20] M
 %Set KMp to 20
-%param KMp : 1/s = 40
-def KMp mag = [20,20] M
+param KMp : 1/s = 40
 
 
 
