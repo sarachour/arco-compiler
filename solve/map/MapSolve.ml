@@ -415,6 +415,12 @@ struct
   let asgn_to_mappings
       z3st (circ:wireid map_circ) 
       (asgn:z3assign) =
+    let set_invalid n =
+      if STRING.startswith n "v" then
+        z3st.is_valid <- false
+      else
+        ()
+    in
     let name,value = match asgn with
             | Z3Set(vname,Z3QFloat(dir)) ->
               vname,Some (Decimal dir)
@@ -424,7 +430,7 @@ struct
 
             | Z3Set(vname,Z3QInterval(Z3QInfinite(dir))) ->
               begin
-                z3st.is_valid <- false;
+                set_invalid (vname);
                 vname,None
               end
 
@@ -442,13 +448,13 @@ struct
 
             | Z3Set(vname,Z3QInterval(Z3QLowerBound(min))) ->
               begin
-                z3st.is_valid <- false;
+                set_invalid (vname);
                 vname,None
               end
 
             | Z3Set(vname,Z3QInterval(Z3QUpperBound(max))) ->
               begin
-                z3st.is_valid <- false;
+                set_invalid(vname);
                 vname,None
               end
 
@@ -520,9 +526,7 @@ struct
       end
 
 
-  let timeout = 60;;
-
-  let mappings (tbl:gltbl) (prob:wireid map_circ)
+  let mappings (tbl:gltbl) (prob:wireid map_circ) timeout
     : (wireid,hw_mapping) map option =
     let z3st,stmts = build_z3_prob tbl prob in
     let sln =
@@ -531,7 +535,7 @@ struct
     let mappings = to_mappings z3st prob sln in
     mappings
 
-  let sat (tbl:gltbl) (prob:wireid map_circ)
+  let sat (tbl:gltbl) (prob:wireid map_circ) timeout
     : bool =
     let z3st,stmts = build_z3_prob tbl prob in
     let sln =

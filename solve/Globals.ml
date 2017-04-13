@@ -31,10 +31,10 @@ let _ = MAP.put glbls "slvr-solutions" (GlblPropInt 1)
 let _ = MAP.put glbls "slvr-partial-depth" (GlblPropInt 32)
 let _ = MAP.put glbls "slvr-global-depth" (GlblPropInt 5)
 
-
 let _ = MAP.put glbls "z3-minimize-depth" (GlblPropInt 3)
 let _ = MAP.put glbls "z3-minimize-strategy" (GlblPropString "binary")
 
+let _ = MAP.put glbls "map-infer-feasible-timeout" (GlblPropInt 60)
 (*
 
 *)

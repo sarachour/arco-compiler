@@ -78,17 +78,18 @@ module MapMain = struct
     let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl false in
     match prob_opt with
     | Some(prob) ->
-      let mappings = MapSolver.mappings tbl prob in
+      let mappings : 'a option = MapSolver.mappings tbl prob 60 in
       mappings
     | None -> None
 
   let infer_feasible (tbl:gltbl)
     : bool =
     let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl true in
+    let timeout = Globals.get_glbl_int "map-infer-feasible-timeout" in
     match prob_opt with
     | Some(prob) ->
       begin
-        let is_sat = MapSolver.sat tbl prob in
+        let is_sat = MapSolver.sat tbl prob timeout in
         if is_sat then print "SAT\n" else print "UNSAT\n";
         is_sat
       end
@@ -101,7 +102,7 @@ module MapMain = struct
     let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl false in
     match prob_opt with
     | Some(prob) ->
-      let mappings = MapSolver.mappings tbl prob in
+      let mappings = MapSolver.mappings tbl prob 120 in
       mappings
     | None -> None
 

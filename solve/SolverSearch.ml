@@ -38,7 +38,10 @@ struct
 
   let __goal2weightkey (g:goal_data) :string = match g with
     | GUnifiable(GUMathGoal(mvar)) -> "<mvar-goal>"^(mvar.d.name)
-    | GUnifiable(GUHWInExprGoal(goal)) -> (MathLib.mast2str goal.expr)
+    | GUnifiable(GUHWInExprGoal(goal)) ->
+      (*(HwLib.hwcompname2str goal.wire.comp.name)^"."^
+        goal.wire.port^"="^*)
+      (MathLib.mast2str goal.expr)
     | GUnifiable(GUHWConnOutBlock(goal)) ->
       "<conn-out-goal>"^(HwLib.hwcompname2str goal.wire.comp.name)^"."^goal.wire.port
     | GUnifiable(GUHWConnInBlock(goal)) -> 
@@ -78,7 +81,18 @@ struct
     let delta = 0. in
     SearchLib.mkscore state delta
   
-  let score_by_goal_count  (s:sstep list) =
+  let score_by_goal_count_squared  (s:sstep list) =
+    let score_single st = match st with
+      | SModGoalCtx(SGAddGoal(g)) -> 0. -. (GoalLib.goal_difficulty g.d)**2.
+      | SModGoalCtx(SGRemoveGoal(g)) ->  (GoalLib.goal_difficulty g.d)**2.
+      | SModGoalCtx(_) ->  0.
+      | _ -> 0.
+    in
+    let state = 0. in
+    let delta = LIST.sum score_single s in
+    SearchLib.mkscore state delta
+ 
+ let score_by_goal_count  (s:sstep list) =
     let score_single st = match st with
       | SModGoalCtx(SGAddGoal(g)) -> 0. -. (GoalLib.goal_difficulty g.d)
       | SModGoalCtx(SGRemoveGoal(g)) ->  (GoalLib.goal_difficulty g.d)
@@ -88,8 +102,7 @@ struct
     let state = 0. in
     let delta = LIST.sum score_single s in
     SearchLib.mkscore state delta
- 
- 
+
   let score_by_weighed_goal_count  (s:sstep list) =
     let score_single st = match st with
       | SModGoalCtx(SGAddGoal(g)) ->
@@ -141,9 +154,12 @@ struct
     let typ = get_glbl_string "eqn-selector-branch" in
     match typ with
     | "goals" -> score_by_goal_count
+    | "goals-squared" -> score_by_goal_count
     | "goal-weight" -> score_by_weighed_goal_count
     | "goal-weight-and-depth-jitter" ->
       score_by_weighed_goal_count_and_depth_jitter
+    | "goal-weight-and-depth" ->
+      score_by_weighed_goal_count_and_depth
     | "uniform" -> score_uniform
     | "_" ->   error "score_step" "unknown strategy for eqn-selector-branch"
 

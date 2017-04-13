@@ -127,7 +127,8 @@ struct
 
 
 
-  let test_node_map_cons tbl node =
+  
+  let test_node_map_cons tbl (node:sstep snode) =
     let mint,musr= mkmenu tbl None in
     if MapMain.infer_feasible tbl then
       begin
@@ -745,7 +746,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
         begin
           debug ("[FOUND-SOLS] ===> Found <"^(string_of_int nsols)^"> solutions");
           SearchLib.visited tbl.search (SearchLib.cursor tbl.search);
-          SlvrSearchLib.increase_goal_weight tbl.search (GUnifiable g) (0.25);
+          SlvrSearchLib.decrease_goal_weight tbl.search (GUnifiable g) (0.001);
           ()
         end
       else

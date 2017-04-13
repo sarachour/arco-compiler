@@ -142,22 +142,18 @@ comp vadd
   input A {V:mV}
   input B {V:mV}
   input C {V:mV}
-  input D {V:mV}
-
   output OUT {V:mV}
 
   % does not take inputs outside of this range
   param BSW : none = {0,1}
   param CSW : none = {0,1}
-  param DSW : none = {0,1}
 
   def V(A) mag = [0,3300] mV
   def V(B) mag = [0,3300] mV 
   def V(C) mag = [0,3300] mV 
-  def V(D) mag = [0,3300] mV
 
   % only produces outputs in this range
-  rel V(OUT) =  ((V(A) + BSW*V(B)) - CSW*V(C) - DSW*V(D))*0.25
+  rel V(OUT) =  ((V(A) + BSW*V(B)) -  CSW*V(C))*0.25
   var V(OUT) = 0.001*V(OUT) + 0.1 shape GAUSS
 
 
@@ -426,6 +422,7 @@ schematic
   conn iadd -> switch
   conn iadd -> igenebind
   conn iadd -> itov
+  conn iadd -> vdadd
 
   %new
   conn iadd -> iadd
@@ -449,7 +446,7 @@ schematic
   conn vadd -> output(V)
   conn vadd -> vtoi
   conn vadd -> vgain
-  %conn vadd -> vdadd
+  conn vadd -> vdadd
   conn vadd -> vadd
 
   conn vdadd -> output(V)
