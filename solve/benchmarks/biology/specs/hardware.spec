@@ -340,7 +340,8 @@ schematic
 %
   inst itov : 30
   inst vtoi : 30
-%
+  %
+  conn * -> *
   %new
   conn switch -> igenebind
   conn switch -> iadd

@@ -35,8 +35,21 @@ fi
 
 if [ "$CMD" = "run" ]; then
   make && \
-    time ${SOLVER} -hwspec benchmarks/$HWSPEC/specs/hardware.spec -formula benchmarks/$HWSPEC/math/$NAME.math -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "ckt_$NAME" 
+    time ${SOLVER} \
+    -hwspec benchmarks/$HWSPEC/specs/hardware.spec  \
+    -formula benchmarks/$HWSPEC/math/$NAME.math  \
+    -config benchmarks/$HWSPEC/configs/$CFG.cfg -output "ckt_$NAME" 
 fi
+
+if [ "$CMD" = "bmark" ]; then
+  make;
+  $( /usr/bin/time -o time.log ${SOLVER} \
+    -hwspec benchmarks/$HWSPEC/specs/hardware.spec \
+    -formula benchmarks/$HWSPEC/math/$NAME.math \
+    -config benchmarks/$HWSPEC/configs/$CFG.cfg \
+    -output "ckt_$NAME" 2> error.log > output.log ) 
+fi
+
 
 
 if [ "$CMD" = "config" ]; then
@@ -54,6 +67,7 @@ mkdir -p $TMPDIR
 
 mv error.log $EXPDIR
 mv output.log $EXPDIR
+mv time.log $EXPDIR
 mv ckt_* $EXPDIR
 mv *.smt2 $EXPDIR/smt
 mv *.res $EXPDIR/smt
