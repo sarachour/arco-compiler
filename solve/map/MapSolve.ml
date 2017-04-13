@@ -214,7 +214,10 @@ struct
         begin
           if i = k && i != j then
             q [Z3Eq(Z3Var(j),Z3Int(1))]
+          else if j = k && i != j then
+            q [Z3Eq(Z3Var(i),Z3Int(1))]
           else if i = k && i = j then
+            
             q [Z3Eq(Z3Var(i),Z3Int 1)]
         end
 
@@ -223,6 +226,8 @@ struct
         begin
           if i = k && i != j then
             q [Z3Eq(Z3Var(j),Z3Int(1))]
+          else if j = k && i != j then
+            q [Z3Eq(Z3Var(i),Z3Int(1))]
           else if i = k && i = j then
             q [Z3Eq(Z3Var(i),Z3Int 1)]
         end
