@@ -10,7 +10,7 @@ output S : M
 output ES : M
 output P : M
 
-input kf : 1/s;
+input kf : 1/s
 %param kf : 1/s = 3.154
 def kf mag = [3.154,3.153] M
 
