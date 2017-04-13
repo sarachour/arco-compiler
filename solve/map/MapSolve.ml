@@ -207,8 +207,32 @@ struct
       let lst = List.map (fun e -> Z3Assert(e)) e in
       noop (QUEUE.enqueue_all dumb_guesses lst)
     in
+    let is_equiv term targ =
+      let matches = QUEUE.filter dumb_guesses
+          (fun (e:z3st) -> match e with
+          | Z3Assert(Z3Eq(a,b)) ->
+            (a = term && b = targ) || (b = term && a = targ)
+          | _ -> false
+        ) in
+      List.length matches > 0
+    in
+
     let rec _work e = match e with
       | Z3And(a,b) -> begin _work a; _work b end
+
+      | Z3Eq(Z3Power(base,exp),Z3Power(base2,exp2)) ->
+        if exp = exp2 then q [Z3Eq((base),(base2))]
+      | Z3Eq(Z3Div(x,y),Z3Int(1)) ->
+        q [Z3Eq(x,y)]
+
+      | Z3Eq(Z3Div(x,y),Z3Var(v)) ->
+        if is_equiv (Z3Var v) (Z3Int 1) then
+          q [Z3Eq(x,y)]
+
+      | Z3Eq(Z3Mult(i,expr),Z3Mult(j,expr2)) ->
+        if i = j then q [Z3Eq(expr,expr2)]
+        else if expr = expr2 then q [Z3Eq(i,j)]
+
       | Z3Eq(Z3Mult(Z3Var(i),Z3Var(j)),Z3Var(k)) ->
         (* a*b = a*)
         begin
