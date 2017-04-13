@@ -474,15 +474,19 @@ struct
                       | Some(mapping) -> mapping
                       | None -> {min=0.; max =1.}
                     in
-                      let mapping = {
-                        scale=svar;
-                        offset=ovar;
-                        wire=wire;
-                        hrng=OPTION.force_conc port_info.range;
-                        mrng=math_range;
-                      } in
-                      noop (MAP.put mappings wire mapping)
-
+                    begin
+                      match port_info.range with
+                      | (Some(hwrange)) ->
+                        let mapping = {
+                          scale=svar;
+                          offset=ovar;
+                          wire=wire;
+                          hrng=hwrange;
+                          mrng=math_range;
+                        } in
+                        noop (MAP.put mappings wire mapping)
+                      | None -> ()
+                    end
                   );
                 Some(mappings)
               end

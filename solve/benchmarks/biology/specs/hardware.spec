@@ -341,8 +341,8 @@ schematic
   inst itov : 30
   inst vtoi : 30
   %
-  conn * -> *
   %new
+  
   conn switch -> igenebind
   conn switch -> iadd
 
@@ -442,6 +442,7 @@ schematic
   conn vgain -> output(V)
   conn vgain -> vdadd
   conn vgain -> vtoi
+  conn vgain -> itov
   conn vgain -> mm
   conn vgain -> vgain
 

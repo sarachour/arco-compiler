@@ -75,7 +75,7 @@ module MapMain = struct
 
   (*build a macro-component from building blocks.*)
   let infer (tbl:gltbl) : (wireid,hw_mapping) map option=
-    let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl in
+    let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl false in
     match prob_opt with
     | Some(prob) ->
       let mappings = MapSolver.mappings tbl prob in
@@ -84,7 +84,7 @@ module MapMain = struct
 
   let infer_feasible (tbl:gltbl)
     : bool =
-    let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl in
+    let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl true in
     match prob_opt with
     | Some(prob) ->
       begin
@@ -98,7 +98,7 @@ module MapMain = struct
 
 
   let infer_best (tbl:gltbl) : (wireid,hw_mapping) map option =
-    let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl in
+    let prob_opt = MapCircGen.build_prob tbl.map_ctx tbl false in
     match prob_opt with
     | Some(prob) ->
       let mappings = MapSolver.mappings tbl prob in

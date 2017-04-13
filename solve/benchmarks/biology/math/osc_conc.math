@@ -41,10 +41,12 @@ def r2_delta mag = [1,1] unit
 input r3_delta : unit
 def r3_delta mag = [1,1] unit
 
+
 type s
 time t : s
 
-rel ddt A =  ( r6_theta*DAp +  MA*r10_beta +  DRp*r12_theta)- ((R*r1_gamma + r2_delta +  DA*r5_gamma)-DR*r11_gamma)*A init 0
+rel ddt A =  ( r6_theta*DAp +  MA*r10_beta +  DRp*r12_theta + DR*r11_gamma)- ((R*r1_gamma + r2_delta +  DA*r5_gamma))*A init 0
+
 %rel ddt A =  ((( r6_theta*DAp) + ( MA*r10_beta) + ( A*DR*r11_gamma) + ( DRp*r12_theta))- (( A*R*r1_gamma) + ( A*r2_delta) + ( A*DA*r5_gamma))) init 0
 def A mag = [0,1] A 
 

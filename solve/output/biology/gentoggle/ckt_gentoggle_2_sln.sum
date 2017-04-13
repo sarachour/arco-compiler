@@ -5,54 +5,53 @@ in IPTG -> input.V[0].X
 
 val 13.32 -> input.I[1].X
 val 2.5 -> input.V[1].X
-val 0 -> [input.V[2].X,input.V[3].X]
-val 0. -> [input.V[4].X,input.V[5].X]
+val 0 -> input.V[2].X
+val 0. -> [input.V[3].X,input.V[4].X]
 val 15.6 -> input.I[2].X
-val 1000.75 -> input.V[6].X
-val 0.0029618 -> input.V[7].X
+val 1000.75 -> input.V[5].X
+val 0.0029618 -> input.V[6].X
 val 1 -> [input.I[3].X,input.I[6].X,input.I[5].X,input.I[4].X]
 
 
 === Generate ===
 in K2P -> input.I[0].O
 in IPTG -> input.V[0].O
-lc umodif -> switch[2].PROD
-lc UTF -> ihill_rep[4].REP
-lc VTF -> igenebind[3].GE
+lc umodif -> switch[1].PROD
+lc UTF -> ihill_rep[3].REP
+lc VTF -> igenebind[2].GE
 out V -> [vdadd[5].OUT,output.V[0].O]
-out U -> [vdadd[0].OUT,output.V[1].O]
+out U -> [vdadd[4].OUT,output.V[1].O]
 
 val 13.32 -> input.I[1].O
 val 2.5 -> input.V[1].O
-val 0 -> [input.V[3].O,input.V[2].O]
-val 0. -> [input.V[5].O,input.V[4].O]
+val 0 -> input.V[2].O
+val 0. -> [input.V[4].O,input.V[3].O]
 val 15.6 -> input.I[2].O
-val 1000.75 -> input.V[6].O
-val 0.0029618 -> input.V[7].O
+val 1000.75 -> input.V[5].O
+val 0.0029618 -> input.V[6].O
 val 1 -> [input.I[3].O,input.I[5].O,input.I[6].O,input.I[4].O]
 
-ast (337.632520764*IPTG) -> [vtoi[1].Y,vtoi[1].Y]
+ast (337.632520764*IPTG) -> [vtoi[0].Y,vtoi[0].Y]
 
 === Connect ===
-input.I[6].O ->  igenebind[3].K
-vdadd[5].OUT ->  ihill_rep[4].S output.V[0].X
-input.I[0].O ->  ihill_rep[4].Km
-input.I[3].O ->  vdadd[0].D
-input.I[4].O ->  switch[2].Kmod
+igenebind[2].GE ->  vdadd[5].B
+switch[1].PROD ->  igenebind[2].K
+input.I[6].O ->  vdadd[4].D
+vdadd[5].OUT ->  output.V[0].X ihill_rep[3].S
+input.I[0].O ->  ihill_rep[3].Km
+input.I[3].O ->  switch[1].Kmod
+input.I[4].O ->  igenebind[2].TF
 input.I[5].O ->  vdadd[5].D
-vdadd[0].OUT ->  output.V[1].X switch[2].Vmax
-vtoi[1].Y ->  switch[2].SUB
-input.I[2].O ->  ihill_rep[4].Vmax
+vtoi[0].Y ->  switch[1].SUB
+input.I[2].O ->  ihill_rep[3].Vmax
+input.V[3].O ->  vdadd[5].OUT_0
 input.V[2].O ->  vdadd[5].A
-ihill_rep[4].REP ->  vdadd[0].A
-input.V[3].O ->  vdadd[0].B
-input.I[1].O ->  igenebind[3].Vmax
-input.V[1].O ->  ihill_rep[4].n
-input.V[7].O ->  vtoi[1].K
-input.V[0].O ->  vtoi[1].X
-igenebind[3].GE ->  vdadd[5].B
-switch[2].PROD ->  igenebind[3].TF
-input.V[5].O ->  vdadd[0].OUT_0
-input.V[4].O ->  vdadd[5].OUT_0
-input.V[6].O ->  switch[2].n
+input.I[1].O ->  igenebind[2].Vmax
+input.V[1].O ->  ihill_rep[3].n
+ihill_rep[3].REP ->  vdadd[4].A
+vdadd[4].OUT ->  output.V[1].X switch[1].Vmax
+input.V[0].O ->  vtoi[0].X
+input.V[5].O ->  switch[1].n
+input.V[4].O ->  vdadd[4].OUT_0
+input.V[6].O ->  vtoi[0].K
 

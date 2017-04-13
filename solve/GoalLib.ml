@@ -87,6 +87,16 @@ struct
     | [] -> None
     | _ -> error "_get_goal" ("more than one match")
 
+  let _get_goals (type a) (tbl:gltbl) (filter:goal_data->bool) : goal list =
+    let results =
+      MAP.fold tbl.goals (fun id (goal:goal) (lst:goal list) ->
+          if filter goal.d
+          then goal::lst
+          else lst
+        ) []
+    in
+    results
+
   let get_math_goal (type a) (tbl:gltbl) (targ:string) =
     let filter g = match g with
       | GUnifiable(GUMathGoal(v)) -> v.d.name = targ
@@ -95,6 +105,14 @@ struct
     match _get_goal tbl filter with
     | Some(g) -> g
     | _ -> error "get_math_goal" "goal doesn't exist"
+
+  let has_hwexpr_goal (type a) (tbl:gltbl) (wire:wireid) =
+    let filter g = match g with
+      | GUnifiable(GUHWInExprGoal(v)) ->
+        v.wire = wire 
+      | _ -> false
+    in
+    List.length (_get_goals tbl filter) > 0
 
   let get_hwexpr_goal (type a) (tbl:gltbl) (wire:wireid) (expr:mid ast) =
     let filter g = match g with

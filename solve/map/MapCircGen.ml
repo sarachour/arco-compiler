@@ -22,6 +22,7 @@ open MathData
 open MathLib
 open SolverUtil
 open SymCamlData
+open GoalLib
 
 open StrMap;;
 
@@ -37,7 +38,7 @@ module MapCircGen = struct
     glblcstr: (wireid map_var map_expr) partition;
     mathcstr: (wireid map_var map_expr) partition;
     vargrps: (wireid map_var) partition;
-
+    build_partial: bool;
     mutable is_valid : bool;
     deriv_wire: wireid;
     deriv_port : map_port_info;
@@ -228,9 +229,30 @@ module MapCircGen = struct
           end
         else
           begin
-          math_mapping.range <- Some
-              (IntervalLib.interval2numinterval math_ival);
-          if MathLib.expr_is_stvar gltbl.env.math mast && port_is_stvar then
+            (*unless we're computing the final solution,
+              do not include the input range.*)
+            begin
+              if cgst.build_partial then
+
+                if MathLib.expr_is_stvar gltbl.env.math mast then
+                  math_mapping.range <- Some
+                      (IntervalLib.interval2numinterval math_ival)
+
+                else if
+                  MathLib.expr_is_stvar gltbl.env.math mast = false &&
+                  GoalLib.has_hwexpr_goal gltbl wire = false
+                then
+                  math_mapping.range <- Some
+                      (IntervalLib.interval2numinterval math_ival)
+                else
+                  ()
+              else
+                math_mapping.range <- Some
+                      (IntervalLib.interval2numinterval math_ival)
+            end;
+
+            if MathLib.expr_is_stvar gltbl.env.math mast &&
+               port_is_stvar then
             begin
               math_mapping.is_stvar <- true;
               let math_deriv_ival =
@@ -248,7 +270,8 @@ module MapCircGen = struct
             end
 
           (*there is a basic assignment*)
-          else if MathLib.expr_is_stvar gltbl.env.math mast && port_is_stvar = false then
+          else if MathLib.expr_is_stvar gltbl.env.math mast &&
+                  port_is_stvar = false then
             begin
               math_mapping.is_stvar <- true;
               part [MPVScale(cgst.deriv_wire);MPVScale(wire)];
@@ -304,8 +327,9 @@ module MapCircGen = struct
       }
     in 
     let map_port_data = MapSpec._get_port conc_map_comp port.port in
+
     (*add the compression range*)
-    port_data.range <- map_port_data.range; 
+    port_data.range <- map_port_data.range;
     port_data.deriv_range <- map_port_data.deriv_range; 
     port_data.is_stvar <- map_port_data.is_stvar;
     let wire = (mkwire inst.name inst.inst port.port) in
@@ -506,7 +530,7 @@ module MapCircGen = struct
 
 
 
-  let build_prob (ctx:map_port map_ctx) (gltbl:gltbl)  =
+  let build_prob (ctx:map_port map_ctx) (gltbl:gltbl) (build_partial)  =
     let parteqtostr x = 
              MapExpr.string_of_map_expr x
                (fun v ->
@@ -520,7 +544,8 @@ module MapCircGen = struct
 
       mathcstr = MapPartition.mk parteqtostr;
       glblcstr= MapPartition.mk parteqtostr;
-
+      build_partial=build_partial;
+      
       deriv_wire = mkwire (HWCmComp "**deriv**") 0 "**deriv**";
       deriv_port = {is_stvar=true;range=None;deriv_range=None;
                     offset={priority=0;abs_var=0-2};
@@ -539,7 +564,7 @@ module MapCircGen = struct
             MapExpr.string_of_map_expr x string_of_int);
         glbleq=MapPartition.mk (fun x ->
             MapExpr.string_of_map_expr x string_of_int);
-        time={min_speed=None;max_speed=None;vid=0-4}
+        time={min_speed=None;max_speed=None;vid=0-4};
           
       }
     in
