@@ -120,19 +120,19 @@ struct
     let score_single st = match st with
       | SModGoalCtx(SGAddGoal(g)) ->
         let goal_score =
-            ((GoalLib.goal_difficulty g.d)/.100.)*.(1. +. get_goal_weight g)
+            ((GoalLib.goal_difficulty g.d)/.10.)*.(1. +. get_goal_weight g)
         in
         0. -. goal_score*.1.5 
       | SModGoalCtx(SGRemoveGoal(g)) ->
         let goal_score =
-            ((GoalLib.goal_difficulty g.d)/.100.)*.(1. +. get_goal_weight g)
+            ((GoalLib.goal_difficulty g.d)/.10.)*.(1. +. get_goal_weight g)
         in
         0. +. goal_score  
       | SModGoalCtx(_) ->  0.
       | _ -> 0.
     in
-    let state = 0.0001*. RAND.rand_norm()   in
-    let delta =  (LIST.sum score_single s) in
+    let state = 0. in
+    let delta =  (LIST.sum score_single s) /. (float_of_int (List.length s)) in
     SearchLib.mkscore state delta
 
 

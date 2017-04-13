@@ -317,11 +317,11 @@ end
 
 schematic
 
+  inst switch : 15
   inst input I : 500
   inst output I : 10
   inst copy I : 10
   inst mm : 4
-  inst switch : 15
 %%  
   inst input V : 125
   inst output V : 75
@@ -341,7 +341,9 @@ schematic
   inst itov : 30
   inst vtoi : 30
 %
-
+  %new
+  conn switch -> igenebind
+  conn switch -> iadd
 
   % Transcription rate functions
   conn input(I) -> itov
