@@ -8,8 +8,6 @@
 
 
 param r1_gamma : unit = 50
-param r2_delta : unit = 1
-param r3_delta : unit = 1
 param r4_delta : unit = 0.2
 param r5_gamma : unit = 1.0
 param r6_theta:unit = 50.0
@@ -35,6 +33,13 @@ local MR : unit %9
 local R : unit %10
 
 
+%param r2_delta : unit = 1
+input r2_delta : unit
+def r2_delta mag = [1,1]
+
+%param r3_delta : unit = 1
+input r3_delta : unit
+def r3_delta mag = [1,1]
 
 type s
 time t : s
@@ -47,7 +52,7 @@ rel ddt C = (( A*R*r1_gamma) - ( C*r3_delta)) init 0
 def C mag = [0,1] A  
 
 %rel ddt DA = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) init 0
-rel ddt DA = ((r6_theta*DAp)-(((A*r5_gamma + r7_alpha) - r7_alpha)*DA)) init 0
+rel ddt DA = ((r6_theta*DAp)-(((A*r5_gamma)*DA)) init 0
 def DA mag = [0,1] A 
 
 %rel ddt DAp = (( A*DA*r5_gamma)+( r8_alpha*DAp))-(( r6_theta*DAp)+( r8_alpha*DAp)) init 0
