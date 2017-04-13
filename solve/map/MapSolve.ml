@@ -129,8 +129,6 @@ struct
           map_cstr_to_z3 z3st (string_of_int v.id) cstr 
       ) v.cstrs
     in
-    if List.length xexpr > 0 || List.length xcstr > 0 then
-      mark_var_in_use z3st v.id;
     (*declare any free variables you need.*)
     SET.iter z3st.freevars (fun f -> q (Z3ConstDecl(f, Z3Real)));
     (*declare any equality constraints*)
@@ -151,7 +149,8 @@ struct
     ()
 
   (*merge derivative variables.*)
-  let preprocess_abs_vars (z3st:prob_state) circ (p:map_port_info) (m:map_math_info)=
+  let preprocess_abs_vars (z3st:prob_state) circ
+      (p:map_port_info) (m:map_math_info)=
     ()
 
   let emit_port_cstrs (z3st:prob_state) circ (p:map_port_info) (m:map_math_info) = 
@@ -201,6 +200,49 @@ struct
     match set_eq xexpr with
     | Some(eq) -> q (Z3Assert(eq))
     | _ -> ()
+
+
+  let dumb_guesser_traverse_expr dumb_guesses expr  =
+    let q e =
+      let lst = List.map (fun e -> Z3Assert(e)) e in
+      noop (QUEUE.enqueue_all dumb_guesses lst)
+    in
+    let rec _work e = match e with
+      | Z3And(a,b) -> begin _work a; _work b end
+      | Z3Eq(Z3Mult(Z3Var(i),Z3Var(j)),Z3Var(k)) ->
+        (* a*b = a*)
+        begin
+          if i = k && i != j then
+            q [Z3Eq(Z3Var(j),Z3Int(1))]
+          else if i = k && i = j then
+            q [Z3Eq(Z3Var(i),Z3Int 1)]
+        end
+
+      | Z3Eq(Z3Var(k),Z3Mult(Z3Var(i),Z3Var(j))) ->
+        (* a*b = a*)
+        begin
+          if i = k && i != j then
+            q [Z3Eq(Z3Var(j),Z3Int(1))]
+          else if i = k && i = j then
+            q [Z3Eq(Z3Var(i),Z3Int 1)]
+        end
+
+      | _ -> ()
+    in
+    _work expr;
+    ()
+
+  let dumb_guesser (z3stmts: z3st list) =
+    let dumb_guesses = QUEUE.make () in 
+    List.iter (fun st ->
+        match st with
+        | Z3Assert(expr) ->
+          dumb_guesser_traverse_expr dumb_guesses expr
+        | _ -> ()
+      ) z3stmts;
+    let stmts = QUEUE.to_list (dumb_guesses) in
+    QUEUE.destroy dumb_guesses;
+    stmts
 
   let emit_time_cstrs (z3st) (circ:'a map_circ) =
     let q s = noop (QUEUE.enqueue z3st.stmtq s) in
@@ -301,8 +343,14 @@ struct
     in
     (*range decls*)
     let stmts = QUEUE.to_list z3state.stmtq in
+    let dumb_guesses = dumb_guesser stmts in 
     QUEUE.destroy z3state.stmtq;
-    z3state,decls @ free_decls @ stmts
+    z3state,decls @ free_decls @ stmts @
+            (Z3Comment("===dumb guesses ===")::dumb_guesses)
+
+
+
+
 
   (*if the mappings are*)
   let asgn_to_mappings
