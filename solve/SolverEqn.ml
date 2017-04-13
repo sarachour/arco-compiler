@@ -127,7 +127,7 @@ struct
 
 
 
-  let test_node_map_full_cons tbl node =
+  let test_node_map_cons tbl node =
     let mint,musr= mkmenu tbl None in
     if MapMain.infer_feasible tbl then
       begin
@@ -142,30 +142,12 @@ struct
         false
       end
 
-  let test_node_map_cons tbl node =
-    let mint,musr= mkmenu tbl None in
-    let use_heuristic = Globals.get_glbl_bool "eqn-use-map-heuristic" in
-    musr();
-    if use_heuristic = false then
-      true
-    else
-      match MapMain.infer_feasible tbl with
-      | true ->
-        begin
-          debug ("[test-node-validity][PASS] mapping is plausible: ");
-          true
-        end
-      | false ->
-        begin
-          debug "[test-node-validity][FAIL] mapping is invalid by construction.";
-          false
-        end
-
+  
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
     let mint,_ = mkmenu v None in
     debug "[mark-if-solution] testing if solution.";
     if GoalLib.num_active_goals v = 0 then
-      if HwConnRslvrLib.consistent v && test_node_map_cons v curr && test_node_map_full_cons v curr then
+      if HwConnRslvrLib.consistent v && test_node_map_cons v curr then
         begin
           debug "[mark-if-solution] found concrete hardware. marking as solution.";
           noop (SearchLib.solution v.search curr);
@@ -224,7 +206,7 @@ struct
       in
       if is_valid = false then
         false
-      else if test_node_map_cons tbl node && test_node_map_full_cons tbl node then
+      else if test_node_map_cons tbl node then
         true
       else
         begin
@@ -762,6 +744,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
       if nsols > 0 then
         begin
           debug ("[FOUND-SOLS] ===> Found <"^(string_of_int nsols)^"> solutions");
+          SearchLib.visit tbl.search (SearchLib.cursor tbl.search) tbl;
           SlvrSearchLib.increase_goal_weight tbl.search (GUnifiable g) (0.25);
           ()
         end
@@ -841,7 +824,11 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     then error "solve_goal" "cannot solve inactive goal"
     else
       match g.d with
-      |GUnifiable(g) -> solve_unifiable_goal tbl g
+      |GUnifiable(g) ->
+        begin
+          solve_unifiable_goal tbl g
+        end
+
       | _ -> error "solve_goal" "unimplemented"
 
   let solve_subtree (tbl:gltbl) (root:(sstep snode)) (nslns:int) (depth:int) : unit =
