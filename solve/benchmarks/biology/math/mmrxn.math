@@ -10,7 +10,10 @@ output S : M
 output ES : M
 output P : M
 
-param kf : 1/s = 3.154
+input kf : 1/s;
+%param kf : 1/s = 3.154
+def kf mag = [3.154,3.153] M
+
 param kr : 1/s = 2.315
 param krp : 1/s = 0
 param kcat : 1/s = 0.21
