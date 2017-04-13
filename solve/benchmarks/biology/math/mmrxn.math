@@ -17,10 +17,12 @@ def kf mag = [3.154,3.153] M
 param kr : 1/s = 2.315
 param krp : 1/s = 0
 param kcat : 1/s = 0.21
+param krcat : 1/s = 2.525
 
 time t : s
 
-rel ddt ES = kf*E*S - (kr + kcat)*ES init 0
+%rel ddt ES = kf*E*S - (kr + kcat)*ES init 0
+rel ddt ES = kf*E*S - krcat*ES init 0
 def ES mag = [0,0.124] M
 var ddt ES = 0.04*ES shape GAUSS
 
