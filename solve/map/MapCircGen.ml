@@ -327,12 +327,13 @@ module MapCircGen = struct
       }
     in 
     let map_port_data = MapSpec._get_port conc_map_comp port.port in
-
+    let wire = (mkwire inst.name inst.inst port.port) in
+    part [MPVScale(wire)];
+    part [MPVOffset(wire)];
     (*add the compression range*)
     port_data.range <- map_port_data.range;
     port_data.deriv_range <- map_port_data.deriv_range; 
     port_data.is_stvar <- map_port_data.is_stvar;
-    let wire = (mkwire inst.name inst.inst port.port) in
     if port_data.is_stvar then
       begin
         part [MPVScale(cgst.deriv_wire);MPVScale(wire)];
