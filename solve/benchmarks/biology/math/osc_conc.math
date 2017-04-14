@@ -22,15 +22,15 @@ param r14_alpha : unit = 50
 param r15_delta : unit = 0.5
 param r16_beta : unit = 5.0
 
-local A : unit %2
-local C : unit %3
+output A : unit %2
+output C : unit %3
 local DA : unit %4
 local DAp : unit %5
 local DR : unit%6
 local DRp : unit %7
 local MA : unit %8
 local MR : unit %9
-local R : unit %10
+output R : unit %10
 
 
 %param r2_delta : unit = 1
@@ -49,9 +49,9 @@ local Af : unit
 
 rel Af = r6_theta*DAp +  MA*r10_beta +  DRp*r12_theta + DR*r11_gamma
 rel ddt A =  Af - (R*r1_gamma + r2_delta +  DA*r5_gamma)*A init 0
+def A mag = [0,1] A 
 
 %rel ddt A =  ((( r6_theta*DAp) + ( MA*r10_beta) + ( A*DR*r11_gamma) + ( DRp*r12_theta))- (( A*R*r1_gamma) + ( A*r2_delta) + ( A*DA*r5_gamma))) init 0
-def A mag = [0,1] A 
 
 rel ddt C = (( A*R*r1_gamma) - ( C*r3_delta)) init 0
 def C mag = [0,1] A  
