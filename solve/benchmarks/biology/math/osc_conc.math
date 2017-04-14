@@ -46,8 +46,11 @@ type s
 time t : s
 
 local Af : unit
-
-rel Af = r6_theta*DAp +  MA*r10_beta +  DRp*r12_theta + DR*r11_gamma
+local Af_a : unit
+local Af_r : unit
+rel Af_r = r6_theta*DAp  + DR*r11_gamma
+rel Af_a =   MA*r10_beta + DRp*r12_theta
+rel Af = Af_a + Af_r
 rel ddt A =  Af - (R*r1_gamma + r2_delta +  DA*r5_gamma)*A init 0
 def A mag = [0,1] A 
 
