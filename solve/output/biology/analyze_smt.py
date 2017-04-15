@@ -12,6 +12,7 @@ def analyze_file(smtfile,resfile):
     h_res = open(respath);
 
     nvars = 0;
+    nports= 0;
     nasserts = 0;
     status = 0;
 
@@ -22,6 +23,9 @@ def analyze_file(smtfile,resfile):
             nasserts += 1
             nasserts += line.count("and") - 1
 
+        if line.startswith("(assert (<="):
+            nports += 2
+
     for line in h_res:
         if "unsat" in line:
             status = "unsat"
@@ -30,9 +34,10 @@ def analyze_file(smtfile,resfile):
         elif "sat" in line:
             status = "sat"
 
+        
     h_smt.close()
     h_res.close()
-    return {"vars":nvars,"asserts":nasserts,"status":status}
+    return {"vars":nvars,"asserts":nasserts,"ports":nports,"status":status}
 
 def main():
     if len(sys.argv) < 2:
@@ -40,7 +45,7 @@ def main():
         sys.exit(1)
     path = sys.argv[1];
     smt_path = path+"/smt"
-
+    print("executing")
     datas = {}
     for filename in os.listdir(smt_path):
         if filename.endswith(".mapping.smt2"):
@@ -64,6 +69,7 @@ def main():
     for (ident,data) in els:
         line = str(ident)+",";
         line += str(data["vars"])+",";
+        line += str(data["ports"])+",";
         line += str(data["asserts"])+",";
         line += str(data["status"])+"\n";
         h_output.write(line);

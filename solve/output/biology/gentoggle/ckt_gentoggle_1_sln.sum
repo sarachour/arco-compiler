@@ -16,10 +16,10 @@ val 1 -> [input.I[3].X,input.I[6].X,input.I[5].X,input.I[4].X]
 === Generate ===
 in K2P -> input.I[0].O
 in IPTG -> input.V[0].O
-lc umodif -> switch[1].PROD
-lc UTF -> ihill_rep[4].REP
-lc VTF -> igenebind[2].GE
-out V -> [vdadd[3].OUT,output.V[0].O]
+lc umodif -> switch[2].PROD
+lc UTF -> ihill_rep[3].REP
+lc VTF -> igenebind[0].GE
+out V -> [vdadd[4].OUT,output.V[0].O]
 out U -> [vdadd[5].OUT,output.V[1].O]
 
 val 13.32 -> input.I[1].O
@@ -31,27 +31,27 @@ val 1000.75 -> input.V[5].O
 val 0.0029618 -> input.V[6].O
 val 1 -> [input.I[3].O,input.I[5].O,input.I[6].O,input.I[4].O]
 
-ast (337.632520764*IPTG) -> [vtoi[0].Y,vtoi[0].Y]
+ast (337.632520764*IPTG) -> [vtoi[1].Y,vtoi[1].Y]
 
 === Connect ===
-igenebind[2].GE ->  vdadd[3].A
-vdadd[3].OUT ->  ihill_rep[4].S output.V[0].X
-switch[1].PROD ->  igenebind[2].K
-input.I[6].O ->  vdadd[3].D
-vdadd[5].OUT ->  output.V[1].X switch[1].Vmax
-input.I[0].O ->  ihill_rep[4].Km
-input.I[4].O ->  igenebind[2].TF
-input.I[3].O ->  switch[1].Kmod
+input.I[6].O ->  vdadd[4].D
+vdadd[5].OUT ->  output.V[1].X switch[2].Vmax
+input.I[0].O ->  ihill_rep[3].Km
+input.I[3].O ->  igenebind[0].TF
+input.I[4].O ->  switch[2].Kmod
 input.I[5].O ->  vdadd[5].D
-vtoi[0].Y ->  switch[1].SUB
-input.I[2].O ->  ihill_rep[4].Vmax
-ihill_rep[4].REP ->  vdadd[5].A
-input.V[2].O ->  vdadd[3].B
+vtoi[1].Y ->  switch[2].SUB
+input.I[2].O ->  ihill_rep[3].Vmax
+input.V[2].O ->  vdadd[5].B
 input.V[3].O ->  vdadd[5].OUT_0
-input.I[1].O ->  igenebind[2].Vmax
-input.V[1].O ->  ihill_rep[4].n
-input.V[0].O ->  vtoi[0].X
-input.V[4].O ->  vdadd[3].OUT_0
-input.V[5].O ->  switch[1].n
-input.V[6].O ->  vtoi[0].K
+input.I[1].O ->  igenebind[0].Vmax
+igenebind[0].GE ->  vdadd[4].A
+input.V[1].O ->  ihill_rep[3].n
+ihill_rep[3].REP ->  vdadd[5].A
+input.V[0].O ->  vtoi[1].X
+vdadd[4].OUT ->  output.V[0].X ihill_rep[3].S
+switch[2].PROD ->  igenebind[0].K
+input.V[5].O ->  switch[2].n
+input.V[4].O ->  vdadd[4].OUT_0
+input.V[6].O ->  vtoi[1].K
 

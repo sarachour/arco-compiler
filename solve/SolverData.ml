@@ -143,7 +143,8 @@ type scmpctx =
   | SCAddInCfg of hwcompinst*string*hwvarcfg
   | SCAddParCfg of hwcompinst*string*number
 
-type smapctx = unit
+type smapctx =
+  | SMAddForceScale of mid mvar
   
 type sstep =
   | SModSln of sslnctx 

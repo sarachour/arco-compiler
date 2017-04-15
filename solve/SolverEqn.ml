@@ -278,7 +278,8 @@ struct
 
   (*=========== RSTEP to SSTEP Conversion ==================*)
   (* handle an assignment to an input port*)
-  let rassign_inp_to_goal (stepq:sstep queue) (tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) : unit =
+  let rassign_inp_to_goal (stepq:sstep queue) (tbl:gltbl) (comp:ucomp_conc)
+      (v:string) (cfg:hwvarcfg) (force_passthrough:bool) : unit =
     let enq s = noop (QUEUE.enqueue stepq s) in
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
     match uast2mast cfg.expr with
@@ -291,15 +292,23 @@ struct
             then
               let goal = GoalLib.mk_inblock_goal tbl wire (uast2mast cfg.expr) in
               enq (SModGoalCtx(SGAddGoal(goal)))
-            else
+            else 
               enq (SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire}))))
 
         | MLocal ->
-          enq (SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire}))))
+          if force_passthrough = false then
+            enq (SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire}))))
+          else
+            let goal = GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr) in
+            enq (SModGoalCtx(SGAddGoal(goal)))
 
         | MOutput ->
-          enq (SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire}))))
-          
+          if force_passthrough = false then
+            enq (SModSln(SSlnAddRoute(MOutLabel({var=name;wire=wire}))))
+          else
+            let goal = GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr) in
+            enq (SModGoalCtx(SGAddGoal(goal)))
+
       end
     
 
@@ -358,7 +367,8 @@ struct
     | expr ->
       enq (SModSln(SSlnAddGen(MExprLabel({expr=expr;wire=wire}))))
 
-  let rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)=
+  let rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)
+    (force_passthrough: bool)=
     let compid = {name=comp.d.name;inst=comp.inst} in 
     let sstepq = QUEUE.make () in
     let enq x = noop (QUEUE.enqueue sstepq x) in
@@ -367,7 +377,7 @@ struct
           (*input assignments become goals*)
           | RAddInAssign(v,cfg) ->
             enq (SModCompCtx(SCAddInCfg(compid,v,cfg)));
-            rassign_inp_to_goal sstepq tbl comp v cfg 
+            rassign_inp_to_goal sstepq tbl comp v cfg force_passthrough
           (*out assignments are already satisfied*)
           | RAddOutAssign(v,cfg) ->
             enq (SModCompCtx(SCAddOutCfg(compid,v,cfg)));
@@ -468,7 +478,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
         | RAddParAssign(v,cfg)-> false 
         | RDisableAssign(v,cfg) -> false 
       ) in
-    let normal_ssteps = rsteps_to_ssteps tbl comp normal_rsteps ssteps in
+    let normal_ssteps = rsteps_to_ssteps tbl comp normal_rsteps ssteps false in
     let uproxy = mast2uast proxy in
     let usable_passthrough e = match e with
       | Term(v) -> v = tempid
@@ -585,36 +595,48 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     in
     match g with
       | GUMathGoal(mgoal) ->
-        begin
           let results =
             ASTUnifier.unify_comp_with_mvar tbl.env.hw tbl.env.math
               comp cfg inst hwvar.port mgoal.d.name
           in
+          begin
+          noop (commit_results results (fun ccomp (rsteps) inits ->
+              Some (rsteps_to_ssteps tbl ccomp rsteps inits true)
+              ));
           commit_results results (fun ccomp (rsteps) inits ->
-              Some (rsteps_to_ssteps tbl ccomp rsteps inits)
+              Some (rsteps_to_ssteps tbl ccomp rsteps inits false)
             )
-        end
+
+          end
 
       | GUHWInExprGoal(hgoal) ->
         let results =
           ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
             comp cfg inst hwvar.port (hackit (mast2uast hgoal.expr)) []
         in
-        commit_results results (fun ccomp rsteps inits ->
+        begin
+          noop (commit_results results (fun ccomp rsteps inits ->
             Some(((rslvd_goal_to_ssteps_inexp tbl ccomp hwvar hgoal) @
-                  (rsteps_to_ssteps tbl ccomp rsteps inits)))
-          )
+                  (rsteps_to_ssteps tbl ccomp rsteps inits true)))
+          ));
+          commit_results results (fun ccomp rsteps inits ->
+            Some(((rslvd_goal_to_ssteps_inexp tbl ccomp hwvar hgoal) @
+                  (rsteps_to_ssteps tbl ccomp rsteps inits false)))
+            )
+        end
+
 
       | GUHWConnInBlock(hgoal) ->
         let inputs =
           SolverCompLib.get_extendable_inputs_for_inblock_goal tbl.env.hw ConcCompLib.newcfg
             hwvar hgoal.wire hgoal.prop
         in
-        let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid())) (fun inits ->
-            ASTUnifier.unify_comp_with_hwvar
-              tbl.env.hw tbl.env.math comp cfg inst
-              hwvar.port (mkpassthruuexpr()) inits
-          )
+        let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid()))
+            (fun inits ->
+              ASTUnifier.unify_comp_with_hwvar
+                tbl.env.hw tbl.env.math comp cfg inst
+                hwvar.port (mkpassthruuexpr()) inits
+            )
         in
         commit_results results (fun ccomp (input,rsteps) inits ->
             error "hwconninblock" "unimplemented"
@@ -625,7 +647,8 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
           SolverCompLib.get_extendable_inputs_for_outblock_goal tbl.env.hw ConcCompLib.newcfg
             hwvar hgoal.wire hgoal.prop
         in
-        let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid())) (fun inits ->
+        let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid()))
+          (fun inits ->
             ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
               comp cfg inst hwvar.port
               (mkpassthruuexpr()) inits 

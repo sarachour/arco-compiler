@@ -196,12 +196,10 @@ module MapCircGen = struct
   let portvar_add_map_math_info_stub 
       (cgst:circ_gen_state) (circ:wireid map_circ) (ctx:map_port map_ctx)  (gltbl:gltbl)
       inst (port:hwvid hwportvar) port_is_stvar : map_math_info =
-(*get the map expression.*)
-    let part lst = MapPartition.add_partition cgst.vargrps lst in
-    let part_math lst =
-      MapPartition.add_partition cgst.mathcstr lst
+    (*get the map expression.*)
+    let part lst =
+      MapPartition.add_partition cgst.vargrps lst
     in
-    let conc_map_comp_id = conc_of_abs_map_comp cgst inst in
     let conc_bhv_comp = SolverCompLib.get_conc_comp gltbl inst in
     let map_expr_opt : mid ast option =
       OPTION.map
@@ -251,6 +249,7 @@ module MapCircGen = struct
                       (IntervalLib.interval2numinterval math_ival)
             end;
 
+            (*assign a state var to an output.*)
             if MathLib.expr_is_stvar gltbl.env.math mast &&
                port_is_stvar then
             begin
@@ -269,9 +268,11 @@ module MapCircGen = struct
               ()
             end
 
-          (*there is a basic assignment*)
+          (*there is a basic assignment to an input*)
           else if MathLib.expr_is_stvar gltbl.env.math mast &&
-                  port_is_stvar = false then
+                  port_is_stvar = false &&
+                  GoalLib.has_hwexpr_goal gltbl wire = false
+          then
             begin
               math_mapping.is_stvar <- true;
               part [MPVScale(cgst.deriv_wire);MPVScale(wire)];
@@ -282,22 +283,7 @@ module MapCircGen = struct
           else if MathLib.expr_has_stvar gltbl.env.math mast then
             begin
               (*the scaling expression of the port, in terms of other expressions*)
-              let equivs, sexpr_opt =
-                MapMathGen.gen_scale_expr gltbl.env.math mast
-                  (MPVScale cgst.deriv_wire)
-                  (fun q -> MapExpr.string_of_map_var q HwLib.wireid2str)
-              in
-              (*the scaling expression of this wire equals sexpr*)
-              begin
-                match sexpr_opt with
-                | Some(sexpr) ->
-                  part_math [sexpr.expr;MEVar(MPVScale(wire))]
-                | None -> ()
-              end;
-              MapPartition.iter equivs (
-                fun (cls:wireid map_var map_expr list) ->
-                  part_math cls
-              )
+              ()
             end
           else
             begin

@@ -338,7 +338,6 @@ schematic
   inst vtoi : 30
   %
   %new
-  
   conn switch -> igenebind
   conn switch -> iadd
 
