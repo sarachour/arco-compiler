@@ -77,35 +77,27 @@ rel ddt C = (( A*R*r1_gamma) - ( C*r3_delta)) init 0
 def C mag = [0,0.1] A  
 
 %rel ddt DA = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) init 0
+
 rel ddt DA = ((r6_theta*DAp)-((A*r5_gamma)*DA)) init 0
 def DA mag = [0,0.1] A 
 
 %rel ddt DAp = (( A*DA*r5_gamma)+( r8_alpha*DAp))-(( r6_theta*DAp)+( r8_alpha*DAp)) init 0
+
 rel ddt DAp = A*DA*r5_gamma-(r6_theta)*DAp init 0
 def DAp mag = [0,0.1] A 
 
-local DRf : unit
-rel DRf =  (DRp*r12_theta)
-rel ddt DR = DRf-(A*r11_gamma)*DR init 0
+rel ddt DR = (DRp*r12_theta)-(A*r11_gamma)*DR init 0
 def DR mag = [0,0.1] A 
 
-local DRpf : unit
-rel DRpf = ( A*DR*r11_gamma) 
-rel ddt DRp = (DRpf) - (r12_theta)*DRp init 0
+rel ddt DRp = (A*DR*r11_gamma) - (r12_theta)*DRp init 0
 def DRp mag = [0,0.1] A 
 
 
-local MAf: unit
-rel MAf = ( r7_alpha*DA)+( r8_alpha*DAp)
-rel ddt MA = (MAf)-(r9_delta)*MA init 0
+rel ddt MA = (( r7_alpha*DA)+( r8_alpha*DAp))-(r9_delta)*MA init 0
 def MA mag = [0,0.1] A 
 
-local MRf : unit
-rel MRf = ( r13_alpha*DR) + ( DRp*r14_alpha) 
-rel ddt MR = (MRf) - (r15_delta)*MR init 0
+rel ddt MR = (( r13_alpha*DR) + ( DRp*r14_alpha)) - (r15_delta)*MR init 0
 def MR mag = [0,0.1] A 
 
-local Rf : unit
-rel Rf = ( C*r3_delta) + ( MR*r16_beta)
-rel ddt R =  (Rf) - (r4_delta +  A*r1_gamma)*R init 0
+rel ddt R = ((( C*r3_delta) + ( MR*r16_beta)))  - (r4_delta +  A*r1_gamma)*R init 0
 def R mag = [0,0.1] A 

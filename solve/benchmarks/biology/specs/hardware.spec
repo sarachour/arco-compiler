@@ -100,14 +100,15 @@ comp iadd
   input A {I:uA}
   input B {I:uA}
   input C {I:uA}
-  input D {I:uA}
+  %input D {I:uA}
   output OUT {I:uA}
 
   def I(A) mag = [0.0,5] uA
   def I(B) mag = [0.0,5] uA 
   def I(C) mag = [0.0,5] uA 
-  def I(D) mag = [0.0,5] uA
-  rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
+  %def I(D) mag = [0.0,5] uA
+  %rel I(OUT) =  ((I(A) + I(B)) - I(C) - I(D))
+  rel I(OUT) =  ((I(A) + I(B)) - I(C))
   var V(OUT) = 0.00001*V(OUT) + 0.001 shape GAUSS
 
 end
