@@ -6,6 +6,7 @@ SAT=`cat output.log | grep "^SAT" | wc -l`
 UNSAT=`cat output.log | grep "^UNSAT" | wc -l`
 TIME=`cat time.log`
 
-echo "SAT=$SAT"
-echo "UNSAT=$UNSAT"
-echo "TIME=$TIME"
+OUTFILE="$cdir/$1.summary"
+echo "SAT=$SAT" > $OUTFILE
+echo "UNSAT=$UNSAT" >> $OUTFILE
+echo "TIME=$TIME" >> $OUTFILE
