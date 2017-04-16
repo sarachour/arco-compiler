@@ -40,12 +40,12 @@ param r16_beta : unit = 0.50
 output A : unit %2
 output C : unit %3
 output R : unit %10
-output DA : unit %4
-output DAp : unit %5
-output DR : unit%6
-output DRp : unit %7
-output MA : unit %8
-output MR : unit %9
+local DA : unit %4
+local DAp : unit %5
+local DR : unit%6
+local DRp : unit %7
+local MA : unit %8
+local MR : unit %9
 
 
 %param r2_delta : unit = 1

@@ -435,6 +435,7 @@ schematic
   %new
   conn vtoi -> vdadd
   conn vtoi -> output(I)
+  conn vtoi -> itov
 
   conn vgain -> output(V)
   conn vgain -> vdadd
