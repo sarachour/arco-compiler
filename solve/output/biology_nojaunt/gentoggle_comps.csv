@@ -1,0 +1,8 @@
+input.I,7,7,7,7
+output.V,2,2,2,2
+vtoi,1,1,1,1
+switch,1,1,1,1
+vdadd,2,2,2,2
+ihill_rep,1,1,1,1
+igenebind,1,1,1,1
+input.V,7,6,7,7
