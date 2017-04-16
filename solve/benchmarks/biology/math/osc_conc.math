@@ -49,12 +49,14 @@ output R : unit %10
 
 
 %param r2_delta : unit = 1
+%param r2_delta : unit = 0.01
 input r2_delta : unit
-def r2_delta mag = [1,1] unit
+def r2_delta mag = [0.01,0.01] unit
 
 %param r3_delta : unit = 1
+%param r3_delta : unit = 0.01
 input r3_delta : unit
-def r3_delta mag = [1,1] unit
+def r3_delta mag = [0.01,0.01] unit
 
 
 type s
