@@ -10,16 +10,21 @@ output S : M
 output ES : M
 output P : M
 
-%input kf : 1/s
-param kf : 1/s = 3.154
+input kf : 1/s
+%param kf : 1/s = 3.154
+def kf mag = [3.154,3.154] unit
 
 param kr : 1/s = 2.315
 param krp : 1/s = 0
 param kcat : 1/s = 0.21
 
+input Etot : M
+input Stot : M
+def Etot mag = [0,0.124] M
+def Stot mag = [0,0.256] M
+
+
 param krcat : 1/s = 2.525
-
-
 %input krcat : unit
 %def krcat mag = [2.525,2.525] unit
 
@@ -27,8 +32,11 @@ time t : s
 
 %% Initial scale of variables prevents currents /voltages from being used.
 %rel ddt ES = kf*E*S - (kr + kcat)*ES init 0
+
+
 rel ddt ES = kf*E*S - krcat*ES init 0
-def ES mag = [0,0.0014] M
+
+def ES mag = [0,0.14] M
 var ddt ES = 0.04*ES shape GAUSS
 
 %def ddt ES sample 100 s
@@ -36,16 +44,20 @@ var ddt ES = 0.04*ES shape GAUSS
 
 % individually solvable
 %rel ddt S =  (kr+kcat)*ES - kf*E*S init 0.256
-rel ddt S =  (kr)*ES - kf*E*S init 0.00256
-def S mag = [0,0.003] M
+%rel ddt S =  (kr)*ES - kf*E*S init 0.256
+
+rel S = Stot - ES - P
+def S mag = [0,0.3] M
 var ddt S = 0.04*S shape GAUSS
 
 %def ddt S sample 100 s
 %def ddt S speed 100 ms 
 
 %rel ddt E = (kr+ kcat)*ES -kf*E*S init 0.124
-rel ddt E = (kr)*ES -kf*E*S init 0.00124
-def E mag = [0,0.0014] M
+%rel ddt E = (kr)*ES -kf*E*S init 0.124
+
+rel E = Etot - ES - P 
+def E mag = [0,0.14] M
 var ddt E = 0.04*E shape GAUSS
 
 %def ddt E sample 100 s
@@ -53,7 +65,7 @@ var ddt E = 0.04*E shape GAUSS
 
 
 rel ddt P = kcat*ES - krp*P init  0
-def P mag = [0,0.0014] M
+def P mag = [0,0.14] M
 var ddt P = 0.04*P shape GAUSS
 
 % sample every 0.1 seconds of simulation time

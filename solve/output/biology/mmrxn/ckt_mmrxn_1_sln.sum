@@ -1,64 +1,81 @@
 
 === Route ===
+in Etot -> input.I[0].X
+in Stot -> input.I[1].X
+in kf -> input.I[2].X
 
-val 3.154 -> input.V[0].X
-val 0.00256 -> input.V[1].X
-val 0.317057704502 -> [input.V[2].X,input.V[3].X]
-val 0 -> [input.I[6].X,input.I[0].X,input.V[6].X,input.V[5].X,input.V[4].X,input.I[7].X]
-val 0.00124 -> input.V[7].X
-val 0.21 -> input.V[8].X
-val 2.525 -> input.I[1].X
-val 2.315 -> [input.I[2].X,input.I[3].X]
+val 2 -> input.I[3].X
+val 0 -> [input.I[12].X,input.V[3].X,input.V[2].X,input.I[5].X,input.I[4].X,input.V[1].X,input.V[0].X,input.I[13].X]
+val -500 -> [input.V[8].X,input.V[6].X,input.V[5].X,input.V[4].X,input.V[9].X]
+val -2 -> input.I[6].X
+val -1 -> [input.I[7].X,input.I[8].X]
+val 0.21 -> input.V[7].X
+val 2.525 -> input.I[9].X
+val 1 -> [input.I[14].X,input.I[11].X,input.I[10].X,input.I[15].X]
 
 
 === Generate ===
-out S -> [vdadd[4].OUT,output.V[0].O]
-out P -> [vdadd[7].OUT,output.V[1].O]
-out E -> [vdadd[1].OUT,output.V[2].O]
-out ES -> [vdadd[9].OUT,output.V[3].O]
+in Etot -> input.I[0].O
+in Stot -> input.I[1].O
+in kf -> input.I[2].O
+out S -> [iadd[5].OUT,output.I[0].O]
+out P -> [vdadd[1].OUT,output.V[0].O]
+out E -> [iadd[3].OUT,output.I[1].O]
+out ES -> [vdadd[7].OUT,output.V[1].O]
 
-val 3.154 -> input.V[0].O
-val 0.00256 -> input.V[1].O
-val 0.317057704502 -> [input.V[3].O,input.V[2].O]
-val 0 -> [input.I[6].O,input.V[6].O,input.I[0].O,input.V[5].O,input.V[4].O,input.I[7].O]
-val 0.00124 -> input.V[7].O
-val 0.21 -> input.V[8].O
-val 2.525 -> input.I[1].O
-val 2.315 -> [input.I[3].O,input.I[2].O]
+val 2 -> input.I[3].O
+val 0 -> [input.I[12].O,input.V[2].O,input.V[3].O,input.I[5].O,input.I[4].O,input.V[1].O,input.V[0].O,input.I[13].O]
+val -500 -> [input.V[8].O,input.V[5].O,input.V[6].O,input.V[4].O,input.V[9].O]
+val -2 -> input.I[6].O
+val -1 -> [input.I[8].O,input.I[7].O]
+val 0.21 -> input.V[7].O
+val 2.525 -> input.I[9].O
+val 1 -> [input.I[14].O,input.I[10].O,input.I[11].O,input.I[15].O]
 
-ast (0.21*ES) -> [vgain[6].P,vgain[6].P]
-ast (2.315*ES) -> [itov[0].Y,vgain[3].P,vgain[3].P]
-ast 2.315 -> iadd[0].OUT
-ast (3.154*E) -> [vtoi[5].Y,vgain[8].P,vgain[8].P]
-ast (3.154*S) -> [vtoi[2].Y,vtoi[2].Y]
-ast (3.154*E*S) -> [itov[10].Y,itov[10].Y]
+ast (0.21*ES) -> [itov[0].Y,itov[0].Y]
+ast (S*kf) -> [switch[9].PROD,switch[9].PROD]
+ast P -> [switch[10].PROD,switch[11].PROD]
+ast (-1*ES) -> [switch[2].PROD,switch[4].PROD,switch[4].PROD]
+ast (E*S*kf) -> [itov[8].Y,itov[8].Y]
+ast (S+-1) -> [iadd[6].OUT,iadd[6].OUT]
 
 === Connect ===
-input.I[6].O ->  iadd[0].C
-vgain[8].P ->  itov[10].K
-input.I[0].O ->  vdadd[7].D
-vdadd[7].OUT ->  output.V[1].X
-vtoi[5].Y ->  vdadd[4].D
-input.I[3].O ->  itov[0].X
-vgain[6].P ->  vdadd[7].A
-input.I[2].O ->  iadd[0].A
-input.V[8].O ->  vgain[6].X
-input.V[2].O ->  vtoi[5].K
-input.V[3].O ->  vtoi[2].K
-vtoi[2].Y ->  vdadd[1].D
-vgain[3].P ->  vdadd[4].A
-iadd[0].OUT ->  vgain[3].Z
+input.I[6].O ->  switch[2].SUB
+iadd[6].OUT ->  switch[9].SUB
+input.I[0].O ->  iadd[3].A
+input.V[9].O ->  switch[10].n
+vdadd[7].OUT ->  switch[4].Vmax output.V[1].X itov[0].X switch[2].Vmax
+input.I[9].O ->  vdadd[7].D
+input.I[4].O ->  vdadd[1].D
+input.I[3].O ->  switch[4].SUB
+input.I[5].O ->  iadd[6].C
+input.I[14].O ->  switch[11].Kmod
+itov[8].Y ->  vdadd[7].A
+input.V[8].O ->  switch[11].n
+input.I[2].O ->  switch[9].Vmax
+input.V[2].O ->  vdadd[7].B
+input.V[3].O ->  vdadd[7].OUT_0
+iadd[5].OUT ->  output.I[0].X iadd[6].A
 itov[0].Y ->  vdadd[1].A
-input.I[1].O ->  vdadd[9].D
-vdadd[9].OUT ->  itov[0].K vgain[6].Z vgain[3].X output.V[3].X
-input.I[7].O ->  iadd[0].B
-input.V[1].O ->  vdadd[4].OUT_0
-input.V[7].O ->  vdadd[1].OUT_0
-vdadd[1].OUT ->  vtoi[5].X output.V[2].X vgain[8].Z
-input.V[0].O ->  vgain[8].X
-vdadd[4].OUT ->  vtoi[2].X itov[10].X output.V[0].X
-itov[10].Y ->  vdadd[9].A
-input.V[4].O ->  vdadd[7].OUT_0
-input.V[5].O ->  vdadd[7].B
-input.V[6].O ->  vdadd[9].OUT_0
+input.I[15].O ->  switch[10].Kmod
+input.I[12].O ->  switch[11].SUB
+input.I[1].O ->  iadd[5].A
+input.I[10].O ->  switch[9].Kmod
+input.I[13].O ->  switch[10].SUB
+input.I[7].O ->  iadd[6].B
+input.V[1].O ->  vdadd[1].B
+iadd[3].OUT ->  output.I[1].X itov[8].K
+input.V[7].O ->  itov[0].K
+switch[11].PROD ->  iadd[5].C
+vdadd[1].OUT ->  switch[11].Vmax output.V[0].X switch[10].Vmax
+input.I[8].O ->  switch[4].Kmod
+switch[4].PROD ->  iadd[5].B
+input.V[0].O ->  vdadd[1].OUT_0
+switch[9].PROD ->  itov[8].X
+switch[2].PROD ->  iadd[3].B
+switch[10].PROD ->  iadd[3].C
+input.V[5].O ->  switch[9].n
+input.V[4].O ->  switch[2].n
+input.V[6].O ->  switch[4].n
+input.I[11].O ->  switch[2].Kmod
 
