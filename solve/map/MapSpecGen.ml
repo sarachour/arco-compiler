@@ -595,10 +595,18 @@ struct
       let proj,res =
         match expr with
         | Term(HNPort(knd,HCMLocal(cmp),port,prop)) ->
-          {
-            scale=MEVar(MPVScale(cmp,port));
-            offset=MEVar(MPVOffset(cmp,port))
-          },node
+          begin
+
+            let scalevar = (MPVScale(cmp,port)) in
+            add_cstr
+              (MSVarHasCstr(scalevar,
+                  MCGT(scalevar,
+                       MEConst(Integer 0))));
+            {
+              scale=MEVar(MPVScale(cmp,port));
+              offset=MEVar(MPVOffset(cmp,port))
+            },node
+          end
 
 
         | Term(HNParam(cmp,name)) ->
