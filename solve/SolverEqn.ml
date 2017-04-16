@@ -130,7 +130,9 @@ struct
   
   let test_node_map_cons tbl (node:sstep snode) =
     let mint,musr= mkmenu tbl None in
-    if MapMain.infer_feasible tbl then
+    let jaunt_enabled = Globals.get_glbl_bool "enable-jaunt" in
+    if jaunt_enabled  = false ||
+       (jaunt_enabled = true && MapMain.infer_feasible tbl) then
       begin
         debug ("<<< SAT => VALID >>");
         musr();
@@ -296,6 +298,7 @@ struct
               enq (SModSln(SSlnAddRoute(MInLabel({var=name;wire=wire}))))
 
         | MLocal ->
+          (*either extend the option*)
           if force_passthrough = false then
             enq (SModSln(SSlnAddRoute(MLocalLabel({var=name;wire=wire}))))
           else
