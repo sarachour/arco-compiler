@@ -1,58 +1,64 @@
 
 === Route ===
 
-val 3.154 -> input.V[0].X
-val 0.00256 -> input.V[1].X
-val 0.317057704502 -> [input.V[2].X,input.V[3].X]
-val 0 -> [input.V[4].X,input.I[0].X,input.V[6].X,input.V[5].X]
-val 0.00124 -> input.V[7].X
-val 0.21 -> input.I[1].X
-val 2.525 -> [input.V[8].X,input.V[9].X,input.I[2].X]
+val 3.154 -> input.I[0].X
+val 0.00256 -> input.V[0].X
+val 0.317057704502 -> [input.V[1].X,input.V[2].X]
+val 0 -> [input.I[8].X,input.I[1].X,input.V[5].X,input.V[4].X,input.V[3].X,input.I[9].X]
+val 0.00124 -> input.V[6].X
+val 0.21 -> input.I[2].X
+val 2.525 -> input.I[3].X
+val 2.315 -> [input.I[4].X,input.I[5].X]
 
 
 === Generate ===
-out S -> [vdadd[1].OUT,output.V[0].O]
-out P -> [vdadd[4].OUT,output.V[1].O]
-out E -> [vdadd[6].OUT,output.V[2].O]
+out S -> [vdadd[4].OUT,output.V[0].O]
+out P -> [vdadd[7].OUT,output.V[1].O]
+out E -> [vdadd[1].OUT,output.V[2].O]
 out ES -> [vdadd[9].OUT,output.V[3].O]
 
-val 3.154 -> input.V[0].O
-val 0.00256 -> input.V[1].O
-val 0.317057704502 -> [input.V[3].O,input.V[2].O]
-val 0 -> [input.V[4].O,input.V[6].O,input.I[0].O,input.V[5].O]
-val 0.00124 -> input.V[7].O
-val 0.21 -> input.I[1].O
-val 2.525 -> [input.V[8].O,input.I[2].O,input.V[9].O]
+val 3.154 -> input.I[0].O
+val 0.00256 -> input.V[0].O
+val 0.317057704502 -> [input.V[2].O,input.V[1].O]
+val 0 -> [input.I[8].O,input.V[5].O,input.I[1].O,input.V[4].O,input.V[3].O,input.I[9].O]
+val 0.00124 -> input.V[6].O
+val 0.21 -> input.I[2].O
+val 2.525 -> input.I[3].O
+val 2.315 -> [input.I[5].O,input.I[4].O]
 
-ast (0.21*ES) -> [itov[3].Y,itov[3].Y]
-ast (3.154*E) -> [vtoi[2].Y,vgain[8].P,vgain[8].P]
-ast (3.154*S) -> [vtoi[7].Y,vtoi[7].Y]
-ast (2.525*ES) -> [vgain[0].P,vgain[5].P,vgain[5].P]
+ast (0.21*ES) -> [itov[6].Y,itov[6].Y]
+ast (2.315*ES) -> [itov[0].Y,itov[3].Y,itov[3].Y]
+ast (3.154*E) -> [vtoi[5].Y,vgain[8].P,vgain[8].P]
+ast (3.154*S) -> [vtoi[2].Y,vtoi[2].Y]
+ast 3.154 -> iadd[0].OUT
 ast (3.154*E*S) -> [itov[10].Y,itov[10].Y]
 
 === Connect ===
 vgain[8].P ->  itov[10].K
-input.I[0].O ->  vdadd[4].D
-input.V[9].O ->  vgain[5].X
-vdadd[6].OUT ->  vtoi[2].X output.V[2].X vgain[8].Z
-vtoi[7].Y ->  vdadd[6].D
-input.I[2].O ->  vdadd[9].D
-input.V[8].O ->  vgain[0].X
-input.V[3].O ->  vtoi[2].K
-input.V[2].O ->  vtoi[7].K
+input.I[0].O ->  iadd[0].A
+vdadd[7].OUT ->  output.V[1].X
+vtoi[5].Y ->  vdadd[4].D
+input.I[9].O ->  iadd[0].B
+input.I[4].O ->  itov[3].X
+input.I[3].O ->  vdadd[9].D
+input.I[5].O ->  itov[0].X
+input.I[2].O ->  itov[6].X
+input.V[2].O ->  vtoi[2].K
+input.V[3].O ->  vdadd[7].OUT_0
 vtoi[2].Y ->  vdadd[1].D
-input.I[1].O ->  itov[3].X
-vdadd[9].OUT ->  itov[3].K vgain[5].Z vgain[0].Z output.V[3].X
-input.V[1].O ->  vdadd[1].OUT_0
-vgain[0].P ->  vdadd[1].A
-input.V[7].O ->  vdadd[6].OUT_0
-vdadd[1].OUT ->  itov[10].X output.V[0].X vtoi[7].X
+iadd[0].OUT ->  vgain[8].Z
+itov[0].Y ->  vdadd[1].A
+input.I[1].O ->  vdadd[7].D
+vdadd[9].OUT ->  itov[3].K itov[6].K itov[0].K output.V[3].X
+input.V[1].O ->  vtoi[5].K
+input.I[8].O ->  iadd[0].C
+vdadd[1].OUT ->  vtoi[5].X output.V[2].X vgain[8].X
 itov[3].Y ->  vdadd[4].A
-vdadd[4].OUT ->  output.V[1].X
-input.V[0].O ->  vgain[8].X
+itov[6].Y ->  vdadd[7].A
+input.V[0].O ->  vdadd[4].OUT_0
+vdadd[4].OUT ->  vtoi[2].X itov[10].X output.V[0].X
 itov[10].Y ->  vdadd[9].A
-input.V[4].O ->  vdadd[4].OUT_0
-input.V[5].O ->  vdadd[4].B
-input.V[6].O ->  vdadd[9].OUT_0
-vgain[5].P ->  vdadd[6].A
+input.V[5].O ->  vdadd[9].OUT_0
+input.V[4].O ->  vdadd[7].B
+input.V[6].O ->  vdadd[1].OUT_0
 
