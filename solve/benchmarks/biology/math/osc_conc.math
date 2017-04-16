@@ -50,11 +50,11 @@ local MR : unit %9
 
 %param r2_delta : unit = 1
 input r2_delta : unit
-def r2_delta mag = [0.01,0.01] unit
+def r2_delta mag = [1,1] unit
 
 %param r3_delta : unit = 1
 input r3_delta : unit
-def r3_delta mag = [0.01,0.01] unit
+def r3_delta mag = [1,1] unit
 
 
 type s
@@ -76,7 +76,7 @@ def A mag = [0,1] A
 rel ddt C = (( A*R*r1_gamma) - ( C*r3_delta)) init 0
 def C mag = [0,1] A  
 
-%rel ddt DA = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) init 1
+%rel ddt DA = (( r6_theta*DAp) +( r7_alpha*DA))-(( A*DA*r5_gamma) + ( r7_alpha*DA)) init 0.01
 
 rel ddt DA = ((r6_theta*DAp)-((A*r5_gamma)*DA)) init 0
 def DA mag = [0,1] A 
@@ -86,7 +86,7 @@ def DA mag = [0,1] A
 rel ddt DAp = A*DA*r5_gamma-(r6_theta)*DAp init 0
 def DAp mag = [0,1] A 
 
-rel ddt DR = (DRp*r12_theta)-(A*r11_gamma)*DR init 1
+rel ddt DR = (DRp*r12_theta)-(A*r11_gamma)*DR init 0.01
 def DR mag = [0,1] A 
 
 rel ddt DRp = (A*DR*r11_gamma) - (r12_theta)*DRp init 0
