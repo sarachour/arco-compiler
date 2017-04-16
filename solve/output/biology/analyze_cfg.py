@@ -103,6 +103,13 @@ def analyze_map(portinfo, filename):
            if typ == "in":
                inputs.append((scale,offset));
 
+           if typ == "val":
+               v = float(portinfo["values"][port]);
+               if v == 0:
+                   inputs.append((1,0));
+               else:
+                   print(scale,offset,v)
+                   inputs.append((scale,offset));
 
        elif line.startswith("output") and line.split(".")[2].startswith("O"):
            if typ == "out":
