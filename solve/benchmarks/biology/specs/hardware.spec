@@ -352,7 +352,7 @@ schematic
 %
   inst itov : 30
   inst vtoi : 30
-  inst vtoi_curr : 30 
+  inst vtoi_curr : 0 
   %
   %new
   conn switch -> igenebind
