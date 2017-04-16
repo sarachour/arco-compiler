@@ -567,6 +567,8 @@ struct
 
   let derive_mapping_exp (enq) arg =
     enq (wrap_const arg.scale (Integer 1) );
+    enq (wrap_const arg.scale (Integer 1) );
+    enq (wrap_const arg.scale (Integer 1) );
     error "derive_mapping_exp" "unimpl"
     (*
     {scale=MEConst((Integer 1));offset=MEExp(arg.offset)}
@@ -597,10 +599,9 @@ struct
         | Term(HNPort(knd,HCMLocal(cmp),port,prop)) ->
           begin
 
-            let scalevar = (MPVScale(cmp,port)) in
-            add_cstr
-              (MSVarHasCstr(scalevar,
-                  MCGT(scalevar,
+            let offsetvar = (MPVOffset(cmp,port)) in
+              (MSVarHasCstr(offsetvar,
+                  MCEQ(offsetvar,
                        MEConst(Integer 0))));
             {
               scale=MEVar(MPVScale(cmp,port));
