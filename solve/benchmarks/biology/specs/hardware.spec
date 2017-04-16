@@ -160,6 +160,21 @@ comp vadd
 
 end
 
+comp vtoi_curr
+input X {V:mV}
+input K {I:uA}
+output Y {I:uA}
+
+def V(X) mag = [0,100] mV
+def I(K) mag = [0,0.1] mA
+
+rel I(Y) = (I(K))*V(X)
+var I(Y) = 0.000001 shape GAUSS
+
+sim vtoi X K Y
+
+end
+
 comp vtoi
   input X {V:mV}
   input K {V:mV}
@@ -337,6 +352,7 @@ schematic
 %
   inst itov : 30
   inst vtoi : 30
+  inst vtoi_curr : 30 
   %
   %new
   conn switch -> igenebind
@@ -351,12 +367,14 @@ schematic
   conn input(I) -> switch
   conn input(I) -> iadd
   conn input(I) -> vdadd
+  conn input(I) -> vtoi_curr
   conn input(I) -> mm
 
   conn input(V) -> ihill_stim
   conn input(V) -> ihill_rep
   conn input(V) -> ihill_rep2
   conn input(V) -> vtoi
+  conn input(V) -> vtoi_curr
   conn input(V) -> itov
   conn input(V) -> vadd
   conn input(V) -> vdadd
@@ -427,6 +445,16 @@ schematic
   %new
   conn iadd -> iadd
 
+  conn vtoi_curr -> iadd
+  conn vtoi_curr -> ihill_rep
+  conn vtoi_curr -> ihill_rep2
+  conn vtoi_curr -> ihill_stim
+  conn vtoi_curr -> switch
+  %new
+  conn vtoi_curr -> vdadd
+  conn vtoi_curr -> output(I)
+  conn vtoi_curr -> itov
+
   conn vtoi -> iadd
   conn vtoi -> ihill_rep
   conn vtoi -> ihill_rep2
@@ -440,18 +468,21 @@ schematic
   conn vgain -> output(V)
   conn vgain -> vdadd
   conn vgain -> vtoi
+  conn vgain -> vtoi_curr
   conn vgain -> itov
   conn vgain -> mm
   conn vgain -> vgain
 
   conn vadd -> output(V)
   conn vadd -> vtoi
+  conn vadd -> vtoi_curr
   conn vadd -> vgain
   conn vadd -> vdadd
   conn vadd -> vadd
 
   conn vdadd -> output(V)
   conn vdadd -> vtoi
+  conn vdadd -> vtoi_curr
   conn vdadd -> itov
   conn vdadd -> ihill_rep 
   conn vdadd -> ihill_stim 

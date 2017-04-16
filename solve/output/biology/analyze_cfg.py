@@ -44,27 +44,30 @@ def analyze_sln(filename):
             nwires += 1;
 
         elif phase == "route" or phase == "generate":
-            port = segs[1].strip()
-            prefix = segs[0].split(" ")
-            typ = prefix[0].strip()
-            value = prefix[1].strip()
+                port = segs[1].strip()
+                prefix = segs[0].split(" ")
+                typ = prefix[0].strip()
+                value = prefix[1].strip()
 
-            if port.startswith("["):
-                n = len(port);
-                els = port[1:(n-1)].split(",");
-                for port in els:
+                if port.startswith("["):
+                    n = len(port);
+                    els = port[1:(n-1)].split(",");
+                    for port in els:
+                        portvals[port] = value;
+                        porttypes[port] = typ;
+                        comps.append(port.split("].")[0]);
+
+                else: 
                     portvals[port] = value;
                     porttypes[port] = typ;
-                    comps.append(port.split("[")[0]);
+                    comps.append(port.split("].")[0]);
 
-            else: 
-                portvals[port] = value;
-                porttypes[port] = typ;
-                comps.append(port.split("[")[0]);
-            
 
     data = {};
-    data["comps"] = array_to_count_map(comps);
+    uniqcomps = set(comps);
+    ccomps = map(lambda x : x.split("[")[0], uniqcomps)
+
+    data["comps"] = array_to_count_map(ccomps);
     data["wires"] =  nwires
 
     pinfo = {};
