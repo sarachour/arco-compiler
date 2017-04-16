@@ -1,0 +1,22 @@
+==== Loaded Config File (benchmarks/biology_nojaunt/configs/prod.cfg) ====
+bool enable-jaunt false
+int multi-num-global-solutions 1
+bool eqn-use-map-heuristic true
+int slvr-solutions 1
+string multi-selector-branch solved-and-ncomps
+int multi-num-global-solutions-per-partial 1
+int slvr-partial-depth 15
+int interactive 0
+int eqn-unifications 12
+int multi-num-partial-solutions 1
+int map-infer-feasible-timeout 60
+int slvr-global-depth 30
+int debug 2
+string eqn-selector-goal trivial
+int z3-minimize-depth 4
+int uast-depth 5
+string uast-selector-branch uniform
+bool _force false
+string z3-minimize-strategy binary
+string eqn-selector-branch goals
+=================================

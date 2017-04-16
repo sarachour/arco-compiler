@@ -1,0 +1,7 @@
+input.I,14,14,14
+vgain,1,1,1
+output.V,6,6,6
+itov,2,2,2
+vdadd,6,6,6
+ihill_rep,3,3,3
+input.V,16,16,16
