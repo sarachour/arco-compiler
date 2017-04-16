@@ -3,189 +3,180 @@
 in r3_delta -> [input.I[0].X,input.I[1].X]
 in r2_delta -> input.I[2].X
 
-val 2 -> input.I[3].X
-val -49 -> input.I[4].X
-val 0.05 -> input.I[5].X
-val 0 -> [input.I[27].X,input.I[11].X,input.V[12].X,input.I[10].X,input.V[11].X,input.V[10].X,input.I[9].X,input.V[9].X,input.V[8].X,input.V[7].X,input.V[6].X,input.V[5].X,input.V[4].X,input.V[3].X,input.V[2].X,input.I[8].X,input.I[7].X,input.V[1].X,input.V[0].X,input.I[6].X,input.I[32].X,input.I[31].X,input.I[30].X,input.I[29].X,input.I[28].X]
-val -500 -> [input.V[27].X,input.V[16].X,input.V[15].X,input.V[14].X,input.V[13].X,input.V[30].X,input.V[29].X,input.V[28].X]
-val -1 -> input.I[12].X
-val 0.5 -> [input.V[17].X,input.I[13].X,input.V[21].X,input.V[20].X,input.V[19].X,input.V[18].X]
-val 5 -> input.V[22].X
-val -99 -> input.I[14].X
-val -0.004 -> input.I[15].X
-val 100 -> input.I[16].X
-val -0.5 -> input.I[17].X
-val 0.0001 -> input.V[23].X
-val 0.01 -> input.I[18].X
-val 0.1 -> input.I[19].X
-val 50 -> input.I[20].X
-val 1 -> [input.I[33].X,input.V[26].X,input.I[26].X,input.I[25].X,input.I[24].X,input.V[25].X,input.I[23].X,input.I[22].X,input.V[24].X,input.I[21].X,input.I[36].X,input.I[35].X,input.I[34].X]
+val 0.05 -> input.I[3].X
+val 0 -> [input.I[26].X,input.V[13].X,input.V[12].X,input.V[11].X,input.I[9].X,input.I[8].X,input.I[7].X,input.V[10].X,input.V[9].X,input.I[6].X,input.V[8].X,input.V[7].X,input.V[6].X,input.I[5].X,input.V[5].X,input.V[4].X,input.V[3].X,input.V[2].X,input.V[1].X,input.V[0].X,input.I[4].X,input.I[29].X,input.I[28].X,input.I[27].X]
+val -500 -> [input.V[29].X,input.V[17].X,input.V[16].X,input.V[15].X,input.V[14].X,input.V[32].X,input.V[31].X,input.V[30].X]
+val 0.5 -> [input.V[18].X,input.I[10].X,input.V[22].X,input.V[21].X,input.V[20].X,input.V[19].X]
+val -99 -> input.I[11].X
+val 5 -> input.V[23].X
+val 100 -> input.I[12].X
+val -0.5 -> [input.I[13].X,input.I[14].X]
+val -0.98 -> input.I[15].X
+val 0.0001 -> input.V[24].X
+val 0.004 -> input.I[16].X
+val 0.01 -> [input.V[25].X,input.V[26].X]
+val 0.1 -> input.I[17].X
+val 1 -> [input.I[30].X,input.I[25].X,input.I[24].X,input.V[28].X,input.I[23].X,input.I[22].X,input.I[21].X,input.I[20].X,input.V[27].X,input.I[19].X,input.I[18].X,input.I[33].X,input.I[32].X,input.I[31].X]
 
 
 === Generate ===
 in r3_delta -> [input.I[1].O,input.I[0].O]
 in r2_delta -> input.I[2].O
-lc DR -> vdadd[13].OUT
+lc DR -> vdadd[17].OUT
 lc MR -> vdadd[31].OUT
-lc DRp -> vdadd[12].OUT
-lc Af_a -> iadd[5].OUT
+lc DRp -> vdadd[2].OUT
 lc MA -> vdadd[15].OUT
-lc Af_r -> iadd[26].OUT
-lc Ar -> ihill_stim[28].STIM
+lc Af_r -> iadd[19].OUT
+lc Af_a -> iadd[27].OUT
+lc Ar -> ihill_stim[24].STIM
 lc Af -> iadd[0].OUT
-lc DA -> vdadd[18].OUT
+lc DA -> vdadd[7].OUT
 lc DAp -> vdadd[21].OUT
-out C -> [vdadd[2].OUT,output.V[0].O]
-out A -> [vdadd[24].OUT,output.V[1].O]
-out R -> [vdadd[7].OUT,output.V[2].O]
+out C -> [vdadd[4].OUT,output.V[0].O]
+out A -> [vdadd[29].OUT,output.V[1].O]
+out R -> [vdadd[10].OUT,output.V[2].O]
 
-val 2 -> input.I[3].O
-val -49 -> input.I[4].O
-val 0.05 -> input.I[5].O
-val 0 -> [input.I[27].O,input.V[12].O,input.I[11].O,input.I[10].O,input.V[11].O,input.V[10].O,input.I[9].O,input.V[9].O,input.V[8].O,input.V[7].O,input.V[6].O,input.V[5].O,input.V[4].O,input.V[3].O,input.V[2].O,input.I[8].O,input.I[7].O,input.V[1].O,input.V[0].O,input.I[6].O,input.I[32].O,input.I[31].O,input.I[30].O,input.I[29].O,input.I[28].O]
-val -500 -> [input.V[27].O,input.V[15].O,input.V[16].O,input.V[14].O,input.V[13].O,input.V[30].O,input.V[29].O,input.V[28].O]
-val -1 -> input.I[12].O
-val 0.5 -> [input.V[17].O,input.V[21].O,input.I[13].O,input.V[20].O,input.V[19].O,input.V[18].O]
-val 5 -> input.V[22].O
-val -99 -> input.I[14].O
-val -0.004 -> input.I[15].O
-val 100 -> input.I[16].O
-val -0.5 -> input.I[17].O
-val 0.0001 -> input.V[23].O
-val 0.01 -> input.I[18].O
-val 0.1 -> input.I[19].O
-val 50 -> input.I[20].O
-val 1 -> [input.I[33].O,input.I[26].O,input.V[26].O,input.I[25].O,input.I[24].O,input.V[25].O,input.I[23].O,input.I[22].O,input.V[24].O,input.I[21].O,input.I[36].O,input.I[35].O,input.I[34].O]
+val 0.05 -> input.I[3].O
+val 0 -> [input.I[26].O,input.V[12].O,input.V[13].O,input.V[11].O,input.I[9].O,input.I[8].O,input.I[7].O,input.V[10].O,input.V[9].O,input.I[6].O,input.V[8].O,input.V[7].O,input.V[6].O,input.I[5].O,input.V[5].O,input.V[4].O,input.V[3].O,input.V[2].O,input.V[1].O,input.V[0].O,input.I[4].O,input.I[29].O,input.I[28].O,input.I[27].O]
+val -500 -> [input.V[29].O,input.V[16].O,input.V[17].O,input.V[15].O,input.V[14].O,input.V[32].O,input.V[31].O,input.V[30].O]
+val 0.5 -> [input.V[18].O,input.V[22].O,input.I[10].O,input.V[21].O,input.V[20].O,input.V[19].O]
+val -99 -> input.I[11].O
+val 5 -> input.V[23].O
+val 100 -> input.I[12].O
+val -0.5 -> [input.I[14].O,input.I[13].O]
+val -0.98 -> input.I[15].O
+val 0.0001 -> input.V[24].O
+val 0.004 -> input.I[16].O
+val 0.01 -> [input.V[26].O,input.V[25].O]
+val 0.1 -> input.I[17].O
+val 1 -> [input.I[30].O,input.I[24].O,input.I[25].O,input.V[28].O,input.I[23].O,input.I[22].O,input.I[21].O,input.I[20].O,input.V[27].O,input.I[19].O,input.I[18].O,input.I[33].O,input.I[32].O,input.I[31].O]
 
-ast (0.5*A) -> [vgain[1].P,vgain[1].P]
-ast (A*DR) -> [vgain[11].P,vgain[11].P]
-ast (0.5*DAp) -> [itov[19].Y,switch[25].PROD,switch[25].PROD]
-ast (0.5*A*R) -> [itov[3].Y,itov[3].Y]
-ast (0.5*MA) -> [switch[4].PROD,switch[4].PROD]
-ast ((0.5*A)+0.002) -> [ihill_stim[8].STIM,ihill_stim[8].STIM]
-ast (0.02*DA) -> [switch[27].PROD,switch[27].PROD]
+ast (A*DR) -> [vgain[1].P,vgain[1].P]
+ast (0.5*A) -> [vgain[3].P,vgain[3].P]
+ast (0.5*DAp) -> [itov[8].Y,switch[18].PROD,switch[18].PROD]
+ast (0.5*A*R) -> [itov[5].Y,itov[5].Y]
+ast ((0.5*A)+0.002) -> [ihill_stim[11].STIM,ihill_stim[11].STIM]
+ast (0.02*DA) -> [switch[23].PROD,switch[23].PROD]
+ast (0.5*MA) -> [switch[26].PROD,switch[26].PROD]
 ast (0.01*A*DA) -> [itov[22].Y,itov[22].Y]
-ast R -> switch[31].PROD
-ast A -> switch[30].PROD
-ast (A+0.004) -> [iadd[6].OUT,iadd[6].OUT]
-ast ((0.02*DA)+R) -> [iadd[29].OUT,iadd[29].OUT]
-ast (Ar+r2_delta) -> [iadd[23].OUT,iadd[23].OUT]
+ast R -> switch[30].PROD
+ast A -> switch[28].PROD
+ast (A+0.004) -> [iadd[9].OUT,iadd[9].OUT]
+ast ((0.02*DA)+R) -> [iadd[25].OUT,iadd[25].OUT]
+ast (Ar+r2_delta) -> [iadd[28].OUT,iadd[28].OUT]
 ast (5*DAp) -> [itov[16].Y,itov[16].Y]
-ast DRp -> switch[28].PROD
-ast (0.01*A) -> [switch[17].PROD,vgain[20].P,vgain[20].P]
-ast (0.5*MR) -> [itov[10].Y,itov[10].Y]
+ast DRp -> switch[27].PROD
+ast (0.01*A) -> [switch[6].PROD,vgain[20].P,vgain[20].P]
+ast (0.5*MR) -> [itov[13].Y,itov[13].Y]
 ast DR -> switch[29].PROD
 ast (0.5*DRp) -> [itov[32].Y,itov[32].Y]
-ast (C*r3_delta) -> [itov[9].Y,itov[9].Y]
-ast 0.01 -> iadd[30].OUT
+ast (C*r3_delta) -> [itov[12].Y,itov[12].Y]
 ast (0.0001*DR) -> [vgain[30].P,vgain[30].P]
-ast (0.5*DA) -> [itov[14].Y,itov[14].Y]
+ast (0.5*DA) -> [vgain[14].P,vgain[14].P]
 
 === Connect ===
-vdadd[21].OUT ->  itov[16].X itov[19].X switch[25].Vmax
-iadd[6].OUT ->  ihill_stim[8].Vmax
-input.I[0].O ->  itov[9].X
-vdadd[7].OUT ->  itov[3].X switch[31].Vmax output.V[2].X
-input.V[28].O ->  switch[30].n
-input.I[22].O ->  ihill_stim[8].S
-vdadd[24].OUT ->  switch[17].Vmax vgain[20].X output.V[1].X vdadd[13].D vgain[1].Z vgain[11].Z switch[30].Vmax
-input.V[15].O ->  switch[27].n
-itov[14].Y ->  vdadd[15].B
-input.I[32].O ->  switch[28].SUB
-input.V[27].O ->  switch[31].n
-switch[28].PROD ->  iadd[5].A
-input.I[25].O ->  ihill_stim[28].Km
-input.I[26].O ->  ihill_stim[28].S
-vdadd[18].OUT ->  itov[22].X switch[27].Vmax itov[14].X
-input.V[13].O ->  switch[4].n
-input.V[14].O ->  switch[17].n
-input.I[30].O ->  iadd[30].A
-input.I[35].O ->  switch[29].Kmod
-input.I[14].O ->  switch[17].SUB
-input.V[11].O ->  vdadd[24].B
+vdadd[21].OUT ->  itov[16].X switch[18].Vmax itov[8].X
+itov[12].Y ->  vdadd[10].A
+switch[26].PROD ->  iadd[27].B
+input.I[0].O ->  itov[12].X
+vdadd[7].OUT ->  itov[22].X vgain[14].Z switch[23].Vmax
+input.I[22].O ->  switch[23].Kmod
+input.V[15].O ->  switch[18].n
+input.V[28].O ->  ihill_stim[24].n
+input.I[32].O ->  switch[28].Kmod
+input.I[26].O ->  switch[30].SUB
+input.V[32].O ->  switch[27].n
+switch[28].PROD ->  iadd[9].A
+input.I[25].O ->  ihill_stim[24].S
+input.V[27].O ->  ihill_stim[11].n
+vdadd[10].OUT ->  itov[5].X output.V[2].X switch[30].Vmax
+input.V[13].O ->  vdadd[29].B
+vgain[14].P ->  vdadd[15].B
+switch[18].PROD ->  iadd[19].A
+input.V[14].O ->  switch[6].n
+input.I[30].O ->  switch[30].Kmod
+input.V[11].O ->  vdadd[29].OUT_0
+input.I[14].O ->  switch[18].SUB
+itov[8].Y ->  vdadd[7].A
 itov[32].Y ->  vdadd[31].A
-input.I[36].O ->  switch[28].Kmod
-iadd[5].OUT ->  iadd[0].B
-vdadd[13].OUT ->  vgain[30].Z vgain[11].X switch[29].Vmax
-input.V[22].O ->  itov[16].K
-input.I[24].O ->  switch[25].Kmod
-input.I[10].O ->  iadd[26].C
-input.I[12].O ->  switch[4].SUB
-iadd[29].OUT ->  ihill_stim[28].Vmax
-input.V[23].O ->  vgain[30].X
-input.V[21].O ->  itov[32].K
-input.V[30].O ->  switch[28].n
-input.I[7].O ->  iadd[5].C
-input.V[20].O ->  itov[19].K
+input.I[24].O ->  switch[26].Kmod
+input.V[22].O ->  itov[32].K
+input.I[12].O ->  switch[6].Kmod
+input.I[10].O ->  vdadd[21].D
+input.V[21].O ->  vgain[14].X
+input.V[23].O ->  itov[16].K
+input.V[30].O ->  switch[29].n
+input.V[20].O ->  itov[13].K
+input.I[7].O ->  iadd[25].C
 vgain[20].P ->  itov[22].K
 vgain[30].P ->  vdadd[31].B
-input.V[29].O ->  switch[29].n
+input.V[29].O ->  switch[30].n
 itov[22].Y ->  vdadd[21].A
-input.I[8].O ->  iadd[6].B
-switch[29].PROD ->  iadd[26].B
-input.I[21].O ->  ihill_stim[8].Km
-input.I[23].O ->  vdadd[12].D
-iadd[26].OUT ->  iadd[0].A
-itov[10].Y ->  vdadd[7].B
-input.V[16].O ->  switch[25].n
+input.I[8].O ->  iadd[27].C
+iadd[9].OUT ->  ihill_stim[11].Vmax
+switch[29].PROD ->  iadd[19].B
+iadd[28].OUT ->  vdadd[29].D
+input.I[23].O ->  ihill_stim[24].Km
+input.I[21].O ->  switch[18].Kmod
+input.V[16].O ->  switch[26].n
 itov[16].Y ->  vdadd[15].A
-input.V[5].O ->  vdadd[15].OUT_0
-input.V[6].O ->  vdadd[18].OUT_0
-input.I[28].O ->  switch[30].SUB
-input.I[11].O ->  iadd[29].C
-input.I[6].O ->  iadd[0].C
-input.V[17].O ->  vgain[1].X
-input.I[31].O ->  switch[29].SUB
-switch[30].PROD ->  iadd[6].A
-ihill_stim[28].STIM ->  iadd[23].A
-input.V[9].O ->  vdadd[21].B
-input.I[18].O ->  iadd[30].B
-vdadd[31].OUT ->  itov[10].X
-input.I[9].O ->  iadd[23].C
-input.I[3].O ->  switch[4].Kmod
-input.I[4].O ->  switch[27].SUB
-input.I[16].O ->  switch[17].Kmod
-switch[17].PROD ->  vdadd[18].D
-input.I[5].O ->  vdadd[31].D
-iadd[23].OUT ->  vdadd[24].D
+input.V[5].O ->  vdadd[7].B
+input.V[6].O ->  vdadd[10].OUT_0
+input.I[28].O ->  switch[28].SUB
+input.I[11].O ->  switch[6].SUB
+input.V[17].O ->  switch[23].n
+input.I[6].O ->  iadd[19].C
+itov[13].Y ->  vdadd[10].B
+input.I[31].O ->  switch[29].Kmod
+switch[30].PROD ->  iadd[25].A
+vdadd[17].OUT ->  vgain[30].Z vgain[1].X switch[29].Vmax
+input.V[9].O ->  vdadd[21].OUT_0
+input.V[31].O ->  switch[28].n
+iadd[19].OUT ->  iadd[0].A
+iadd[27].OUT ->  iadd[0].B
+iadd[25].OUT ->  ihill_stim[24].Vmax
+input.I[18].O ->  vdadd[2].D
+vdadd[31].OUT ->  itov[13].X
+input.I[9].O ->  iadd[28].C
+input.I[3].O ->  vdadd[31].D
+input.I[4].O ->  iadd[0].C
+input.I[16].O ->  iadd[9].B
+input.I[5].O ->  iadd[9].C
+itov[5].Y ->  vdadd[4].A
+switch[23].PROD ->  iadd[25].B
+input.I[2].O ->  iadd[28].B
 input.V[12].O ->  vdadd[31].OUT_0
-input.I[2].O ->  iadd[23].B
-input.V[8].O ->  vdadd[21].OUT_0
-input.I[29].O ->  iadd[30].C
-input.I[20].O ->  switch[27].Kmod
-input.V[2].O ->  vdadd[7].OUT_0
-input.V[3].O ->  vdadd[12].OUT_0
-switch[27].PROD ->  iadd[29].B
-input.I[34].O ->  switch[30].Kmod
-iadd[0].OUT ->  vdadd[24].A
-input.V[19].O ->  itov[14].K
-vgain[11].P ->  vdadd[12].A
-itov[19].Y ->  vdadd[18].A
-ihill_stim[8].STIM ->  vdadd[7].D
-input.I[15].O ->  iadd[6].C
-vdadd[2].OUT ->  output.V[0].X itov[9].K
-input.I[1].O ->  vdadd[2].D
-switch[25].PROD ->  iadd[26].A
-input.I[33].O ->  switch[31].Kmod
+input.V[8].O ->  vdadd[17].A
+input.I[29].O ->  switch[27].SUB
+switch[27].PROD ->  iadd[27].A
+input.V[3].O ->  vdadd[4].B
+input.V[2].O ->  vdadd[4].OUT_0
+input.I[20].O ->  ihill_stim[11].S
+vgain[3].P ->  itov[5].K
+iadd[0].OUT ->  vdadd[29].A
+input.V[19].O ->  itov[8].K
+switch[6].PROD ->  vdadd[7].D
+ihill_stim[11].STIM ->  vdadd[10].D
+input.I[15].O ->  switch[23].SUB
+vdadd[2].OUT ->  itov[32].X switch[27].Vmax vdadd[17].B
+input.I[1].O ->  vdadd[4].D
+input.I[33].O ->  switch[27].Kmod
+input.I[13].O ->  switch[26].SUB
 input.V[1].O ->  vdadd[2].B
-input.I[13].O ->  vdadd[21].D
-switch[31].PROD ->  iadd[29].A
-input.I[17].O ->  switch[25].SUB
-input.V[7].O ->  vdadd[18].B
-input.V[25].O ->  vdadd[13].OUT_0
-input.V[24].O ->  ihill_stim[8].n
-vgain[1].P ->  itov[3].K
-itov[3].Y ->  vdadd[2].A
-switch[4].PROD ->  iadd[5].B
-input.I[27].O ->  switch[31].SUB
+input.V[7].O ->  vdadd[15].OUT_0
+input.I[17].O ->  vdadd[15].D
+input.V[25].O ->  vgain[20].X
+input.V[24].O ->  vgain[30].X
+vgain[1].P ->  vdadd[2].A
+vdadd[29].OUT ->  vgain[3].Z switch[28].Vmax output.V[1].X vgain[20].Z switch[6].Vmax vgain[1].Z vdadd[17].D
+input.I[27].O ->  switch[29].SUB
+vdadd[4].OUT ->  itov[12].K output.V[0].X
+input.V[10].O ->  vdadd[21].B
 input.V[0].O ->  vdadd[2].OUT_0
-input.V[10].O ->  vdadd[24].OUT_0
-iadd[30].OUT ->  vgain[20].Z
-vdadd[15].OUT ->  switch[4].Vmax
-input.V[18].O ->  itov[10].K
-itov[9].Y ->  vdadd[7].A
-input.I[19].O ->  vdadd[15].D
-input.V[26].O ->  ihill_stim[28].n
-input.V[4].O ->  vdadd[12].B
-vdadd[12].OUT ->  itov[32].X switch[28].Vmax vdadd[13].A
+vdadd[15].OUT ->  switch[26].Vmax
+ihill_stim[24].STIM ->  iadd[28].A
+input.V[18].O ->  vgain[3].X
+input.I[19].O ->  ihill_stim[11].Km
+input.V[26].O ->  vdadd[17].OUT_0
+input.V[4].O ->  vdadd[7].OUT_0
 

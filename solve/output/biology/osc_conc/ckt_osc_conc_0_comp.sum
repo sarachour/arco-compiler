@@ -1,18 +1,4 @@
-==== vgain 20 ====
-input X.V
-<input>
-<analog> [v]=[0.,500.] {v}->[v]=@
-
-input Z.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-output P.V
-<analog>:(A*0.01) / std=none 0
-<analog> [v]=[0.,5000.] {v}->[v]=@
-
-
-==== vgain 0 ====
+==== vgain 2 ====
 input X.V
 <input>
 <analog> [v]=[0.,500.] {v}->[v]=@
@@ -26,7 +12,35 @@ output P.V
 <analog> [v]=[0.,5000.] {v}->[v]=@
 
 
-==== vgain 10 ====
+==== vgain 20 ====
+input X.V
+<input>
+<analog> [v]=[0.,500.] {v}->[v]=@
+
+input Z.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+output P.V
+<analog>:(0.01*A) / std=none 0
+<analog> [v]=[0.,5000.] {v}->[v]=@
+
+
+==== vgain 13 ====
+input X.V
+<input>
+<analog> [v]=[0.,500.] {v}->[v]=@
+
+input Z.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+output P.V
+<analog>:(0.5*DA) / std=none 0
+<analog> [v]=[0.,5000.] {v}->[v]=@
+
+
+==== vgain 0 ====
 input X.V
 <input>
 <analog> [v]=[0.,500.] {v}->[v]=@
@@ -72,18 +86,18 @@ input Vmax.I
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 output PROD.I
-<analog>:(A*(1/(((0/1)+1)^(-500/500.)))) / std=none 0
+<analog>:(DR*(1/(((0/1)+1)^(-500/500.)))) / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
-==== switch 31 ====
-input SUB.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
+==== switch 26 ====
 input n.V
 <input>
 <analog> [v]=[500.,3300.] {v}->[v]=@
+
+input SUB.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
 
 input Kmod.I
 <input>
@@ -94,33 +108,11 @@ input Vmax.I
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 output PROD.I
-<analog>:(R*(1/(((0/1)+1)^(-500/500.)))) / std=none 0
+<analog>:(MA*(1/(((-0.5/1)+1)^(-500/500.)))) / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
 ==== switch 27 ====
-input n.V
-<input>
-<analog> [v]=[500.,3300.] {v}->[v]=@
-
-input SUB.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-input Kmod.I
-<input>
-<analog> [v]=[0.0001,10.] {v}->[v]=@
-
-input Vmax.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-output PROD.I
-<analog>:(DA*(1/(((-49/50)+1)^(-500/500.)))) / std=none 0
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
-==== switch 30 ====
 input SUB.I
 <input>
 <analog> [v]=[0.,10.] {v}->[v]=@
@@ -142,51 +134,7 @@ output PROD.I
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
-==== switch 3 ====
-input n.V
-<input>
-<analog> [v]=[500.,3300.] {v}->[v]=@
-
-input SUB.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-input Kmod.I
-<input>
-<analog> [v]=[0.0001,10.] {v}->[v]=@
-
-input Vmax.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-output PROD.I
-<analog>:(MA*(1/(((-1/2)+1)^(-500/500.)))) / std=none 0
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
-==== switch 25 ====
-input n.V
-<input>
-<analog> [v]=[500.,3300.] {v}->[v]=@
-
-input SUB.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-input Kmod.I
-<input>
-<analog> [v]=[0.0001,10.] {v}->[v]=@
-
-input Vmax.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-output PROD.I
-<analog>:(DAp*(1/(((-0.5/1)+1)^(-500/500.)))) / std=none 0
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
-==== switch 28 ====
+==== switch 30 ====
 input SUB.I
 <input>
 <analog> [v]=[0.,10.] {v}->[v]=@
@@ -204,11 +152,11 @@ input Vmax.I
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 output PROD.I
-<analog>:(DR*(1/(((0/1)+1)^(-500/500.)))) / std=none 0
+<analog>:(A*(1/(((0/1)+1)^(-500/500.)))) / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
-==== switch 17 ====
+==== switch 5 ====
 input n.V
 <input>
 <analog> [v]=[500.,3300.] {v}->[v]=@
@@ -230,7 +178,73 @@ output PROD.I
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
-==== ihill_stim 7 ====
+==== switch 23 ====
+input n.V
+<input>
+<analog> [v]=[500.,3300.] {v}->[v]=@
+
+input SUB.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+input Kmod.I
+<input>
+<analog> [v]=[0.0001,10.] {v}->[v]=@
+
+input Vmax.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+output PROD.I
+<analog>:(DA*(1/(((-0.98/1)+1)^(-500/500.)))) / std=none 0
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+
+==== switch 28 ====
+input SUB.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+input n.V
+<input>
+<analog> [v]=[500.,3300.] {v}->[v]=@
+
+input Kmod.I
+<input>
+<analog> [v]=[0.0001,10.] {v}->[v]=@
+
+input Vmax.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+output PROD.I
+<analog>:(R*(1/(((0/1)+1)^(-500/500.)))) / std=none 0
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+
+==== switch 18 ====
+input n.V
+<input>
+<analog> [v]=[500.,3300.] {v}->[v]=@
+
+input SUB.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+input Kmod.I
+<input>
+<analog> [v]=[0.0001,10.] {v}->[v]=@
+
+input Vmax.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+output PROD.I
+<analog>:(DAp*(1/(((-0.5/1)+1)^(-500/500.)))) / std=none 0
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+
+==== ihill_stim 10 ====
 input n.V
 <input>
 <analog> [v]=[1.,5.] {v}->[v]=@
@@ -252,7 +266,7 @@ output STIM.I
 <analog> [v]=[0.,1000000.] {v}->[v]=@
 
 
-==== ihill_stim 28 ====
+==== ihill_stim 24 ====
 input n.V
 <input>
 <analog> [v]=[1.,5.] {v}->[v]=@
@@ -274,7 +288,7 @@ output STIM.I
 <analog> [v]=[0.,1000000.] {v}->[v]=@
 
 
-==== vdadd 12 ====
+==== vdadd 29 ====
 BSW ,1,0
 DSW ,1,0
 input D.I
@@ -294,7 +308,32 @@ input B.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 output OUT.V
-<analog-st> ((DRp+(0*0))-(1*A*DR)) ic=OUT_0.V / std=none 0
+<analog-st> ((Af+(1*0))-(1*(Ar+r2_delta)*A)) ic=OUT_0.V / std=none 0
+<analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
+<analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
+
+
+==== vdadd 9 ====
+BSW ,1,0
+DSW ,1,0
+input D.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+input OUT_0.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+input A.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+input B.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+output OUT.V
+<analog-st> (((C*r3_delta)+(1*(0.5*MR)))-(1*((0.5*A)+0.002)*R)) ic=OUT_0.V / std=none 0
 <analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
 <analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
 
@@ -324,56 +363,6 @@ output OUT.V
 <analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
 
 
-==== vdadd 11 ====
-BSW ,1,0
-DSW ,1,0
-input D.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-input OUT_0.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-input A.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-input B.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-output OUT.V
-<analog-st> (((A*DR)+(1*0))-(1*1*DRp)) ic=OUT_0.V / std=none 0
-<analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
-<analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
-
-
-==== vdadd 15 ====
-BSW ,1,0
-DSW ,1,0
-input D.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-input OUT_0.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-input A.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-input B.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-output OUT.V
-<analog-st> (((5*DAp)+(1*(0.5*DA)))-(1*0.1*MA)) ic=OUT_0.V / std=none 0
-<analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
-<analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
-
-
 ==== vdadd 6 ====
 BSW ,1,0
 DSW ,1,0
@@ -394,7 +383,32 @@ input B.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 output OUT.V
-<analog-st> (((C*r3_delta)+(1*(0.5*MR)))-(1*((0.5*A)+0.002)*R)) ic=OUT_0.V / std=none 0
+<analog-st> (((0.5*DAp)+(1*0))-(1*(0.01*A)*DA)) ic=OUT_0.V / std=none 0
+<analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
+<analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
+
+
+==== vdadd 14 ====
+BSW ,1,0
+DSW ,1,0
+input D.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+input OUT_0.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+input A.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+input B.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+output OUT.V
+<analog-st> (((5*DAp)+(1*(0.5*DA)))-(1*0.1*MA)) ic=OUT_0.V / std=none 0
 <analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
 <analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
 
@@ -424,32 +438,7 @@ output OUT.V
 <analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
 
 
-==== vdadd 24 ====
-BSW ,1,0
-DSW ,1,0
-input D.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-input OUT_0.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-input A.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-input B.V
-<input>
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-output OUT.V
-<analog-st> ((Af+(1*0))-(1*(Ar+r2_delta)*A)) ic=OUT_0.V / std=none 0
-<analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
-<analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
-
-
-==== vdadd 1 ====
+==== vdadd 3 ====
 BSW ,1,0
 DSW ,1,0
 input D.I
@@ -474,7 +463,7 @@ output OUT.V
 <analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
 
 
-==== vdadd 18 ====
+==== vdadd 1 ====
 BSW ,1,0
 DSW ,1,0
 input D.I
@@ -494,7 +483,32 @@ input B.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 output OUT.V
-<analog-st> (((0.5*DAp)+(1*0))-(1*(0.01*A)*DA)) ic=OUT_0.V / std=none 0
+<analog-st> (((A*DR)+(1*0))-(1*1*DRp)) ic=OUT_0.V / std=none 0
+<analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
+<analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
+
+
+==== vdadd 17 ====
+BSW ,1,0
+DSW ,1,0
+input D.I
+<input>
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+input OUT_0.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+input A.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+input B.V
+<input>
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+output OUT.V
+<analog-st> ((0+(1*DRp))-(1*A*DR)) ic=OUT_0.V / std=none 0
 <analog-st> [ddt v]=?? {ddt v}->[ddt v]=@
 <analog-st> [v]=[0.,12000.] {v}->[v]=@ {v}->*[v]=@
 
@@ -515,7 +529,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:50 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -529,16 +543,6 @@ output O.I
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
-==== input.I 35 ====
-input X.D
-<input>
-<digital>
-
-output O.I
-<analog>:1 / std=none 0
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
 ==== input.I 8 ====
 input X.D
 <input>
@@ -546,16 +550,6 @@ input X.D
 
 output O.I
 <analog>:0 / std=none 0
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
-==== input.I 34 ====
-input X.D
-<input>
-<digital>
-
-output O.I
-<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -575,7 +569,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0.5 / std=none 0
+<analog>:-0.5 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -585,7 +579,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:-1 / std=none 0
+<analog>:100 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -595,7 +589,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -625,6 +619,16 @@ input X.D
 <digital>
 
 output O.I
+<analog>:-99 / std=none 0
+<analog> [v]=[0.,10.] {v}->[v]=@
+
+
+==== input.I 26 ====
+input X.D
+<input>
+<digital>
+
+output O.I
 <analog>:0 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
@@ -635,17 +639,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0 / std=none 0
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
-==== input.I 26 ====
-input X.D
-<input>
-<digital>
-
-output O.I
-<analog>:1 / std=none 0
+<analog>:0.5 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -665,7 +659,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:-0.004 / std=none 0
+<analog>:-0.98 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -676,16 +670,6 @@ input X.D
 
 output O.I
 <analog>:0 / std=none 0
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-
-==== input.I 36 ====
-input X.D
-<input>
-<digital>
-
-output O.I
-<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -705,7 +689,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:-99 / std=none 0
+<analog>:-0.5 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -725,7 +709,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:100 / std=none 0
+<analog>:0.004 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -745,7 +729,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -755,7 +739,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:2 / std=none 0
+<analog>:0.05 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -765,7 +749,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:-49 / std=none 0
+<analog>:0 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -775,7 +759,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0.05 / std=none 0
+<analog>:0 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -825,7 +809,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:-0.5 / std=none 0
+<analog>:0.1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -835,7 +819,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -845,7 +829,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0.01 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -855,7 +839,7 @@ input X.D
 <digital>
 
 output O.I
-<analog>:0.1 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,10.] {v}->[v]=@
 
 
@@ -955,7 +939,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:-500 / std=none 0
+<analog>:0 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -966,6 +950,16 @@ input X.D
 
 output O.V
 <analog>:0 / std=none 0
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+
+==== input.V 31 ====
+input X.D
+<input>
+<digital>
+
+output O.V
+<analog>:-500 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1015,7 +1009,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:1 / std=none 0
+<analog>:0.01 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1025,7 +1019,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:-500 / std=none 0
+<analog>:1 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1085,7 +1079,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:1 / std=none 0
+<analog>:0.0001 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1135,7 +1129,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:0.0001 / std=none 0
+<analog>:5 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1145,17 +1139,7 @@ input X.D
 <digital>
 
 output O.V
-<analog>:1 / std=none 0
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-
-==== input.V 28 ====
-input X.D
-<input>
-<digital>
-
-output O.V
-<analog>:-500 / std=none 0
+<analog>:0.01 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1169,13 +1153,33 @@ output O.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
+==== input.V 28 ====
+input X.D
+<input>
+<digital>
+
+output O.V
+<analog>:1 / std=none 0
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+
 ==== input.V 17 ====
 input X.D
 <input>
 <digital>
 
 output O.V
-<analog>:0.5 / std=none 0
+<analog>:-500 / std=none 0
+<analog> [v]=[0.,3300.] {v}->[v]=@
+
+
+==== input.V 32 ====
+input X.D
+<input>
+<digital>
+
+output O.V
+<analog>:-500 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1205,11 +1209,11 @@ input X.D
 <digital>
 
 output O.V
-<analog>:5 / std=none 0
+<analog>:0.5 / std=none 0
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
-==== itov 2 ====
+==== itov 7 ====
 input X.I
 <input>
 <analog> [v]=[0.,10.] {v}->[v]=@
@@ -1219,25 +1223,11 @@ input K.V
 <analog> [v]=[0.,330.] {v}->[v]=@
 
 output Y.V
-<analog>:((0.5*A)*R) / std=gauss 0.1
+<analog>:(0.5*DAp) / std=gauss 0.1
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
-==== itov 8 ====
-input X.I
-<input>
-<analog> [v]=[0.,10.] {v}->[v]=@
-
-input K.V
-<input>
-<analog> [v]=[0.,330.] {v}->[v]=@
-
-output Y.V
-<analog>:(C*r3_delta) / std=gauss 0.1
-<analog> [v]=[0.,3300.] {v}->[v]=@
-
-
-==== itov 9 ====
+==== itov 12 ====
 input X.I
 <input>
 <analog> [v]=[0.,10.] {v}->[v]=@
@@ -1251,7 +1241,7 @@ output Y.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
-==== itov 14 ====
+==== itov 11 ====
 input X.I
 <input>
 <analog> [v]=[0.,10.] {v}->[v]=@
@@ -1261,11 +1251,11 @@ input K.V
 <analog> [v]=[0.,330.] {v}->[v]=@
 
 output Y.V
-<analog>:(0.5*DA) / std=gauss 0.1
+<analog>:(C*r3_delta) / std=gauss 0.1
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
-==== itov 16 ====
+==== itov 15 ====
 input X.I
 <input>
 <analog> [v]=[0.,10.] {v}->[v]=@
@@ -1279,7 +1269,7 @@ output Y.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
-==== itov 19 ====
+==== itov 4 ====
 input X.I
 <input>
 <analog> [v]=[0.,10.] {v}->[v]=@
@@ -1289,7 +1279,7 @@ input K.V
 <analog> [v]=[0.,330.] {v}->[v]=@
 
 output Y.V
-<analog>:(0.5*DAp) / std=gauss 0.1
+<analog>:((0.5*A)*R) / std=gauss 0.1
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
@@ -1321,7 +1311,7 @@ output Y.V
 <analog> [v]=[0.,3300.] {v}->[v]=@
 
 
-==== iadd 29 ====
+==== iadd 8 ====
 input C.I
 <input>
 <analog> [v]=[0.,5.] {v}->[v]=@
@@ -1335,65 +1325,11 @@ input B.I
 <analog> [v]=[0.,5.] {v}->[v]=@
 
 output OUT.I
-<analog>:((R+(0.02*DA))-0) / std=gauss ((1e-05*((0.02*DA)+R))+0.001)
+<analog>:((A+0.004)-0) / std=gauss ((1e-05*(A+0.004))+0.001)
 <analog> [v]=[-5.,10.] {v}->[v]=@
 
 
-==== iadd 13 ====
-input C.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-input A.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-input B.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-output OUT.I
-<analog>:((Af_a+Af_r)-0) / std=gauss ((1e-05*Af)+0.001)
-<analog> [v]=[-5.,10.] {v}->[v]=@
-
-
-==== iadd 26 ====
-input C.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-input A.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-input B.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-output OUT.I
-<analog>:(((0.5*DAp)+DR)-0) / std=gauss ((1e-05*Af_r)+0.001)
-<analog> [v]=[-5.,10.] {v}->[v]=@
-
-
-==== iadd 30 ====
-input C.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-input A.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-input B.I
-<input>
-<analog> [v]=[0.,5.] {v}->[v]=@
-
-output OUT.I
-<analog>:((0+0.01)-0) / std=gauss ((1e-05*0.01)+0.001)
-<analog> [v]=[-5.,10.] {v}->[v]=@
-
-
-==== iadd 4 ====
+==== iadd 27 ====
 input C.I
 <input>
 <analog> [v]=[0.,5.] {v}->[v]=@
@@ -1411,7 +1347,7 @@ output OUT.I
 <analog> [v]=[-5.,10.] {v}->[v]=@
 
 
-==== iadd 5 ====
+==== iadd 16 ====
 input C.I
 <input>
 <analog> [v]=[0.,5.] {v}->[v]=@
@@ -1425,11 +1361,29 @@ input B.I
 <analog> [v]=[0.,5.] {v}->[v]=@
 
 output OUT.I
-<analog>:((A+0)--0.004) / std=gauss ((1e-05*(A+0.004))+0.001)
+<analog>:((Af_a+Af_r)-0) / std=gauss ((1e-05*Af)+0.001)
 <analog> [v]=[-5.,10.] {v}->[v]=@
 
 
-==== iadd 23 ====
+==== iadd 25 ====
+input C.I
+<input>
+<analog> [v]=[0.,5.] {v}->[v]=@
+
+input A.I
+<input>
+<analog> [v]=[0.,5.] {v}->[v]=@
+
+input B.I
+<input>
+<analog> [v]=[0.,5.] {v}->[v]=@
+
+output OUT.I
+<analog>:((R+(0.02*DA))-0) / std=gauss ((1e-05*((0.02*DA)+R))+0.001)
+<analog> [v]=[-5.,10.] {v}->[v]=@
+
+
+==== iadd 28 ====
 input C.I
 <input>
 <analog> [v]=[0.,5.] {v}->[v]=@
@@ -1444,6 +1398,24 @@ input B.I
 
 output OUT.I
 <analog>:((Ar+r2_delta)-0) / std=gauss ((1e-05*(Ar+r2_delta))+0.001)
+<analog> [v]=[-5.,10.] {v}->[v]=@
+
+
+==== iadd 19 ====
+input C.I
+<input>
+<analog> [v]=[0.,5.] {v}->[v]=@
+
+input A.I
+<input>
+<analog> [v]=[0.,5.] {v}->[v]=@
+
+input B.I
+<input>
+<analog> [v]=[0.,5.] {v}->[v]=@
+
+output OUT.I
+<analog>:(((0.5*DAp)+DR)-0) / std=gauss ((1e-05*Af_r)+0.001)
 <analog> [v]=[-5.,10.] {v}->[v]=@
 
 
