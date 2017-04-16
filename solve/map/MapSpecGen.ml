@@ -600,7 +600,7 @@ struct
           begin
 
             let offsetvar = (MPVOffset(cmp,port)) in
-              (MSVarHasCstr(offsetvar,
+              add_cstr (MSVarHasCstr(offsetvar,
                   MCEQ(offsetvar,
                        MEConst(Integer 0))));
             {
