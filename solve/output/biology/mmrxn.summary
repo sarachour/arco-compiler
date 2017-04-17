@@ -1,4 +1,4 @@
-SAT=129
-UNSAT=28
-TIME=32.68user 2.63system 0:35.39elapsed 99%CPU (0avgtext+0avgdata 82880maxresident)k
-0inputs+15032outputs (0major+1467373minor)pagefaults 0swaps
+SAT=217
+UNSAT=0
+TIME=50.52user 1.07system 0:54.92elapsed 93%CPU (0avgtext+0avgdata 99240maxresident)k
+0inputs+26576outputs (0major+1214389minor)pagefaults 0swaps
