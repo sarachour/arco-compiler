@@ -318,7 +318,7 @@ module ASTLib
 
 
     let mkenv (type a) (exprs: (a ast) list) (cnv:a->symvar) (decl:  int -> a -> (a->symvar) -> symdecl) : symcaml*(symdecl list)*(symdecl list) =
-      let env = SymCaml.init() in
+      let env = SymCaml.init(SV076) in
       let _ = SymCaml.clear env in
       let getvars  (i:int)  (x:a ast) (r:(symdecl) set): (symdecl) set = match x with
         | Term(x) -> SET.add r (decl i x cnv)
