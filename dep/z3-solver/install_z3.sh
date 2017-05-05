@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cd z3
+python scripts/mk_make.py 
+cd build
+make
+sudo make install
+

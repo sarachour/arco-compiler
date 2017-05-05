@@ -447,7 +447,7 @@ struct
         solved=[];
       } in
       let sym_st : symcaml_env = {
-        s=SymCaml.init (Some "/usr/local/bin/python") (SV076) (None);
+        s=SymCaml.init (None) (SV100) (None);
         cnv= ASTUnifySymcaml.unid2symvar;
         icnv= ASTUnifySymcaml.symvar2unid;
         is_wildcard = is_wildcard hw_st;

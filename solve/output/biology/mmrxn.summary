@@ -1,4 +1,0 @@
-SAT=217
-UNSAT=0
-TIME=50.52user 1.07system 0:54.92elapsed 93%CPU (0avgtext+0avgdata 99240maxresident)k
-0inputs+26576outputs (0major+1214389minor)pagefaults 0swaps
