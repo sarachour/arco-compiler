@@ -1,4 +1,6 @@
 import itertools
+import random
+from scipy.special import comb
 
 class Eqn:
         def __init__(self,e):
@@ -55,6 +57,76 @@ class SOEq:
 
         def add_ic(self,v,ic):
             self.diffeqns[v].set_ic(ic);
+
+class Assignment:
+        def __init__(self):
+                self.assigns = {};
+
+        def add(self,v,expr):
+                self.assigns[v] = expr;
+
+
+        def equals(self,other):
+                for v in self.assigns:
+                        if not (v in other.assigns):
+                                return False;
+                        else:
+                                other_e = other.assigns[v];
+                                self_e = self.assigns[v];
+                                if other_e != self_e:
+                                        return False;
+
+                return True;
+
+
+
+        def __repr__(self):
+                return "unimpl.repr"
+
+        def __str__(self):
+                return "unimpl.str"
+
+class Assignments:
+        def __init__(self):
+                self.assigns = [];
+
+        def add(self,asgn):
+                for c_asgn in self.assigns:
+                        if c_asgn.equals(asgn):
+                                return False
+
+                self.assigns.append(asgn);
+                return True;
+
+        def __repr__(self):
+                return "unimpl.repr"
+
+        def __str__(self):
+                st = "";
+                for asgn in self.assigns:
+                        st += asgn.__str__() + "\n"
+
+                return st
+
+
+        def _contains(self,var,expr,exclude):
+                if var in exclude:
+                        e = exclude[expr];
+                        if expr == e:
+                                return True;
+                return False;
+
+        def restrict(self,exclude,size,number):
+                all_asgns = [];
+                for asgn in self.assigns:
+                        print(asgn.assigns)
+                        all_asgns += [(k,v) for k,v in asgn.assigns.iteritems() if not self._contains(k,v,exclude)];
+
+                restricts = [];
+                all_restricts= itertools.combinations(all_asgns,size);
+
+                prob = 1.0/(comb(len(all_asgns),size));
+                return filter(lambda x : random.random() < prob,all_restricts);
 
 class Engine:
 
