@@ -615,7 +615,9 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
       | GUHWInExprGoal(hgoal) ->
         let results =
           ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
-            comp cfg inst hwvar.port (hackit (mast2uast hgoal.expr)) []
+            comp cfg inst hwvar.port
+            (SolverCompLib.wireid2hwid tbl hgoal.wire)
+            (hackit (mast2uast hgoal.expr)) []
         in
         begin
           noop (commit_results results (fun ccomp rsteps inits ->
@@ -638,7 +640,9 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
             (fun inits ->
               ASTUnifier.unify_comp_with_hwvar
                 tbl.env.hw tbl.env.math comp cfg inst
-                hwvar.port (mkpassthruuexpr()) inits
+                hwvar.port
+                (SolverCompLib.wireid2hwid tbl hgoal.wire)
+                (mkpassthruuexpr()) inits
             )
         in
         commit_results results (fun ccomp (input,rsteps) inits ->
@@ -654,6 +658,7 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
           (fun inits ->
             ASTUnifier.unify_comp_with_hwvar tbl.env.hw tbl.env.math
               comp cfg inst hwvar.port
+              (SolverCompLib.wireid2hwid tbl hgoal.wire)
               (mkpassthruuexpr()) inits 
           )
         in
@@ -675,7 +680,9 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
         let results = passthru_unify tbl comp cfg inputs hwvar (Term(mkpassthrumid())) (fun inits ->
             ASTUnifier.unify_comp_with_hwvar
               tbl.env.hw tbl.env.math comp cfg inst
-              hwvar.port (mkpassthruuexpr()) inits
+              hwvar.port
+              (SolverCompLib.wireid2hwid tbl conns.dst)
+              (mkpassthruuexpr()) inits
           )
         in
         commit_results results (fun ccomp ((input,rsteps):string*rstep list) inits ->

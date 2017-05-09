@@ -1,8 +1,10 @@
 import sympy;
-from engine import Engine
+from engine import * 
 from engine import Assignment,Assignments 
 from sympy import *
 
+# a partial configuration is a set of parameter assignments, and
+# initial conditions.
 
 
 class SympyEngine(Engine):
@@ -10,73 +12,96 @@ class SympyEngine(Engine):
         def __init__(self):
                 Engine.__init__(self)
                 self.backend = "sympy"
+                
+
+        def proc_expr(self,ns,repl,e):
+           return sympify(e,locals=ns).xreplace(repl)
+
+        def unify_exprs(self,outs,templv,targv):
+           ns = self.ns
+           sub_templ = self.sub_templ
+           sub_targ = self.sub_targ
+           
+           templ_expr = self.templ.get_eqn(templv)
+           targ_expr = self.targ.get_eqn(targv)
+           asgns = dict(self.asgns[len(self.asgns)-1])
+           asgns[ns[templv]] = ns[targv]
+
+           templ = []
+           targ = []
+
+           templ.append(self.proc_expr(ns,sub_templ,templ_expr.eqn))
+           targ.append(self.proc_expr(ns,sub_targ,targ_expr.eqn))
+           if templ_expr.is_diffeq():
+              templ_ic = templ_expr.ic
+              targ_ic = targ_expr.ic
+              templ.append(self.proc_expr(ns,sub_templ,templ_ic))
+              targ.append(self.proc_expr(ns,sub_targ,targ_ic))
 
 
-        def solve_asgn(self,ns,asgn,restrict):
-                get_expr = lambda a,x : sympify(a.get_eqn(x).eqn,locals=ns)
-                get_ic = lambda a,x : sympify(a.get_eqn(x).ic,locals=ns)
-                repls = {};
+           print(templ)
+           print(targ)
+           asgns = Basic(*targ).match(Basic(*templ))
+           if asgns != None:
+              self.asgns.append(dict(asgns.items()+asgns.items()))
+              #we already unified this
+              print(outs)
+              outs.remove(templv);
+              next_templ = filter(lambda (k,v) : k in outs, asgns.items())
+              # resolve any dependencies
+              if(len(next_templ) > 0):
+                 expr = asgns[next_templ[0]]
+                 print(next_templ,expr)
+              # otherwise return the complete set of assignments
+              else:
+                 return self.asgns[len(self.asgns)-1]
 
-                excludes = {};
-                for (v,e) in restrict:
-                        if not (v in excludes):
-                                excludes[v] = []
-                        excludes[v].append(e)
+           else:
+              return None
 
-                for v in excludes:
-                        ns[v] = Wild(v,exclude=excludes[v])
+        def solve_subproblem(self,cfg):
+           ns = {}
+           self.templ.namespace(ns,True);
+           self.targ.namespace(ns,False);
+           self.ns = ns;
+            
+           exc_templ = cfg.templ.restrictions(ns)
+           exc_targ = cfg.targ.restrictions(ns)
+           self.templ.restrict(ns,exc_templ);
+           self.targ.restrict(ns,exc_targ);
 
-                for (templv,targv) in asgn:
-                        repls[sympify(templv,locals=ns)] = sympify(targv,locals=ns);
+           self.sub_templ = cfg.templ.substitutions(ns);
+           self.sub_targ = cfg.targ.substitutions(ns);
+           self.asgns = [{}]
 
-                templs = []
-                targs = []
-                for (templv,targv) in asgn:
-                        targ_expr = get_expr(self.targ,targv);
-                        templ_expr = get_expr(self.templ,templv).xreplace(repls);
-                        targs.append(targ_expr);
-                        templs.append(templ_expr);
-                        if self.templ.get_eqn(templv).is_diffeq():
-                                targ_ic = get_ic(self.targ,targv);
-                                templ_ic = get_ic(self.templ,templv).xreplace(repls);
-                                targs.append(targ_ic);
-                                templs.append(templ_ic);
+           start_templ = self.templ.priority;
+           start_targ = self.targ.priority;
 
-                new_asgn=Basic(*targs).match(Basic(*templs))
-                if new_asgn == None:
-                        return None;
-                a = Assignment();
-                for v in new_asgn:
-                        a.add(v.name,new_asgn[v]);
-
-                for (v,e) in asgn:
-                        a.add(v,e)
-
-                for v in excludes:
-                        ns[v] = Wild(v);
-                return a;
+           
+           asgns = self.unify_exprs(self.templ.outs,start_templ,start_targ)
+           print(asgns)
+           if asgns != None:
+              a = Assignment()
+              for v in asgns:
+                 a.add(v.name,asgns[v])
+              return a;
 
         def solve(self):
-                ns = {};
-                for v in self.templ.variables():
-                        ns[v] = Wild(v);
+           generator = PartialConfigGenerator(self);
+           asgns = Assignments()
+           for cfg_data in generator.generate():
+              cfg = PartialConfig()
+              cfg.load(cfg_data);
+              a = self.solve_subproblem(cfg);
+              if a != None:
+                 asgns.add(a);
 
-                for v in self.targ.variables():
-                        ns[v] = Symbol(v);
+           self.asgns = asgns;
 
-                partial_asgns = self.unifications();
-                asgns = Assignments()
-                for asgn in partial_asgns:
-                        completed_asgn = self.solve_asgn(ns,asgn,[])
-                        if completed_asgn <> None:
-                                asgns.add(completed_asgn);
+        def write(self,ofile):
+          repr = str(self.asgns)
+          fh = open(ofile,'w')
+          fh.write(repr)
+          fh.close()
 
-                for asgn in partial_asgns:
-                        restricts = asgns.restrict(asgn,2,5);
-                        for restrict in restricts:
-                                completed_asgn = self.solve_asgn(ns,asgn,restrict)
-                                if completed_asgn <> None:
-                                        asgns.add(completed_asgn);
-
-                print(asgn);
 engine = SympyEngine()

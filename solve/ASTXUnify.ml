@@ -9,6 +9,8 @@ open Interactive
 open SearchData
 open Search
 
+open AlgebraicLib
+
 open AST
 open ASTUnifyData
 
@@ -1040,7 +1042,7 @@ struct
 
   (*============ TREE START ===================*)
   (*select the next node to solve*)
-  let solve (type a) (sr:runify) nslns =
+  let _depr_solve (type a) (sr:runify) nslns =
     let desired_nslns = normalize_n_slns sr nslns in 
     let sysmenu,usrmenu = mkmenu sr in
     let _mnext () =
@@ -1113,7 +1115,159 @@ struct
     (*let _ = sysmenu "t" in*)
     ()
 
-   (* take the set of assignments, and convert to steps *)
+
+  let construct_hw_comp : unid AlgebraicLib.UnifyEnv.t -> hwvid hwcomp -> hwcompcfg -> int option -> string -> unit =
+    fun env comp cfg inst_maybe hwvar ->
+    (*==== HARDWARE ====*)
+      let proc_expr (e:hwvid ast) : unid ast =
+        hwast2uast (ASTLib.map e (HwLib.try_toglbl inst_maybe))  in
+      let proc_var (e:hwvid) =
+        HwId (HwLib.try_toglbl inst_maybe e)
+      in
+      let cmpid = HwLib.mkcompid comp.name inst_maybe in 
+      (*inputs are wildcards*)
+      MAP.iter comp.ins (fun portname portd ->
+        let portid : unid =
+            proc_var (HwLib.port2hwid
+               portd.knd portd.comp portd.port portd.prop portd.typ)
+        in
+
+        match ConcCompLib.get_var_config cfg portname with
+        | None -> 
+          begin
+            AlgebraicLib.UnifyEnv.define_pat env portid 
+          end
+        | Some(expr) ->
+            begin
+            AlgebraicLib.UnifyEnv.define_pat env portid;
+            AlgebraicLib.UnifyEnv.init_pat env portid 
+              (expr);
+            ()
+          end
+      );
+      (* parameters are lists of possible values *)
+      MAP.iter comp.params (fun paramn paramd ->
+        AlgebraicLib.UnifyEnv.define_pat_param env
+          (HwId(HNParam(cmpid,paramn))) paramd.value 
+        );
+
+      (*outputs are wildcards*)
+      MAP.iter comp.outs (fun (portname:string) (portd :hwvid hwportvar)->
+        let portid : unid =
+            proc_var (HwLib.port2hwid
+               portd.knd portd.comp portd.port portd.prop portd.typ)
+        in
+
+        match ConcCompLib.get_var_config cfg portname with 
+        | None ->
+          begin
+            AlgebraicLib.UnifyEnv.define_pat env portid;
+            match portd.bhvr with
+            | HWBAnalog(expr) ->
+              AlgebraicLib.UnifyEnv.define_pat_expr env portid
+                (proc_expr expr.rhs)
+            | HWBDigital(expr) ->
+              AlgebraicLib.UnifyEnv.define_pat_expr env portid
+                (proc_expr expr.rhs)
+            | HWBAnalogState(expr) ->
+              let ic_port,ic_prop = expr.ic in 
+              let ic_id =
+                proc_var (HwLib.port2hwid portd.knd
+                            portd.comp ic_port ic_prop portd.typ)
+              in
+              AlgebraicLib.UnifyEnv.define_pat env ic_id;
+              AlgebraicLib.UnifyEnv.define_pat_deriv_expr env portid
+                (proc_expr expr.rhs) (Term(ic_id)) 
+            | _ -> ()
+          end
+        | Some(expr) ->
+            begin
+            AlgebraicLib.UnifyEnv.define_pat env portid;
+            AlgebraicLib.UnifyEnv.init_pat env portid expr;
+            ()
+          end
+      );
+    let hwvarport = HwLib.comp_getvar comp hwvar in
+    let hwvarid = HwLib.port2hwid
+        hwvarport.knd hwvarport.comp hwvarport.port hwvarport.prop
+        hwvarport.typ
+    in
+    AlgebraicLib.UnifyEnv.pat_prioritize env (proc_var hwvarid);
+   () 
+
+  (*construct the hardware expression you wish to unify.
+    This is always an input, so it does not have any dependencies
+  *)
+  let construct_hw_expr : unid AlgebraicLib.UnifyEnv.t -> hwvid hwenv ->
+    hwvid -> unid ast -> unit =
+    fun env hwenv portid hexpr ->
+      AlgebraicLib.UnifyEnv.define_sym env (HwId portid);
+      AlgebraicLib.UnifyEnv.define_sym_expr env (HwId portid) hexpr;
+      ()
+
+  (*
+     this is the math expression.
+  *)
+  let construct_math : unid AlgebraicLib.UnifyEnv.t -> mid menv -> 
+    string -> unit
+    =
+      fun (env) (menv) mname ->
+        let mid = MathLib.str2mid menv mname in
+        AlgebraicLib.UnifyEnv.define_sym env (MathId mid);
+        MathLib.iter_vars menv (fun mvar ->
+            let mid = MathLib.var2mid mvar in
+            AlgebraicLib.UnifyEnv.define_sym env (MathId mid); 
+            match mvar.bhvr with
+            | MBhvStateVar(bhv) ->
+              begin
+                AlgebraicLib.UnifyEnv.define_sym_deriv_expr env
+                  (MathId mid) (mast2uast bhv.rhs)
+                  (ASTLib.number2ast bhv.ic);
+                ()
+              end
+            | MBhvVar(bhv) ->
+              begin
+                AlgebraicLib.UnifyEnv.define_sym_expr env
+                  (MathId mid) (mast2uast bhv.rhs);
+                ()
+              end
+            | MBhvInput ->
+              begin
+                AlgebraicLib.UnifyEnv.define_sym_expr env
+                  (MathId mid) (Term (MathId mid))
+              end
+            | _ ->
+              error "construct_math" "unexpected"
+          );
+        MAP.iter menv.params (fun _ mparam ->
+            let paramid = MathLib.str2mid menv mparam.name in
+            AlgebraicLib.UnifyEnv.define_sym_param env
+              (MathId paramid) [mparam.value]
+          );
+        AlgebraicLib.UnifyEnv.sym_prioritize env (MathId mid);
+        ()
+
+
+  let solve_math menv comp cfg inst hwvar mvar : rstep list list =
+    let nslns = Globals.get_glbl_int "eqn-unifications" in
+    let un_env = AlgebraicLib.UnifyEnv.init () in
+    construct_hw_comp un_env comp cfg inst hwvar;
+    construct_math un_env menv mvar;
+    let alg_env = AlgebraicLib.init () in 
+    let asgns = AlgebraicLib.unify alg_env un_env 10 1 in 
+    [] 
+
+  let solve_hw hwenv comp cfg inst hwvar htargvar hexpr : rstep list list =
+    let nslns = Globals.get_glbl_int "eqn-unifications" in
+    let un_env = AlgebraicLib.UnifyEnv.init () in
+    construct_hw_comp un_env comp cfg inst hwvar;
+    construct_hw_expr un_env hwenv htargvar hexpr;
+    let alg_env = AlgebraicLib.init () in 
+    let asgns = AlgebraicLib.unify alg_env un_env 10 1 in
+   (*asgns to rsteps*)
+    [] 
+
+  (* take the set of assignments, and convert to steps *)
   let get_solutions (env:runify) : (rstep list) list=
     let results : rnode list = SearchLib.get_solutions env.search None in
     (* convert to eqn steps*)
@@ -1122,6 +1276,7 @@ struct
         LIST.uniq steps
       ) results
 
+  (*
   let unify_with_hwvar (env:runify) (hexpr: unid ast) steps =
     let nslns = Globals.get_glbl_int "eqn-unifications" in
     env.tbl.target <- TRGHWVar(hexpr);
@@ -1137,18 +1292,23 @@ struct
     expand_params_tree env;
     solve env nslns;
     get_solutions env 
-
+  *)
 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
-      (hvar:string) (hexpr:unid ast) (steps:rstep list)=
-    let uenv :runify = ASTUnifyTree.mk_comp_search hwenv menv comp inst cfg hvar in
-    unify_with_hwvar uenv hexpr steps
+      (hvar:string) (hwtargvar:hwvid) (hexpr:unid ast) (steps:rstep list) =
+    (*let uenv :runify = ASTUnifyTree.mk_comp_search hwenv menv comp inst cfg hvar in*)
+    (*unify_with_hwvar uenv hexpr steps*)
+    solve_hw hwenv comp cfg inst hvar hwtargvar hexpr  
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
-      (hvar:string) (mvar:string) =
+      (hvar:string)
+      (mvar:string) =
+    (*
     let uenv :runify = ASTUnifyTree.mk_comp_search hwenv menv comp inst cfg hvar in
     unify_with_mvar uenv mvar []
+    *)
+    solve_math menv comp cfg inst hvar mvar
 
 end

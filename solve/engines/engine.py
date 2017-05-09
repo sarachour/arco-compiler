@@ -1,6 +1,7 @@
 import itertools
 import random
 from scipy.special import comb
+from sympy import * 
 
 class Eqn:
         def __init__(self,e):
@@ -23,12 +24,16 @@ class DiffEqn:
             return True;
 
 
+
 class SOEq:
         def __init__(self):
                 self.vrbs = [];
                 self.outs = [];
+                self.pars = {};
                 self.eqns = {};
+                self.inits = {};
                 self.diffeqns = {};
+                self.priority = None;
 
         def variables(self):
             return self.vrbs
@@ -43,6 +48,12 @@ class SOEq:
         def define_variable(self,v):
             self.vrbs.append(v);
 
+        def init_var(self,v,expr):
+            if not(v in self.inits):
+                self.inits[v] = [];
+
+            self.inits[v].append(v);
+
         def get_eqn(self,v):
             if v in self.eqns:
                 return self.eqns[v]
@@ -50,13 +61,36 @@ class SOEq:
                 return self.diffeqns[v]
 
         def add_eqn(self,v,e):
+            self.outs.append(v);
             self.eqns[v] = Eqn(e);
 
         def add_diff_eqn(self,v,e):
+            self.outs.append(v);
             self.diffeqns[v] = DiffEqn(e);
 
         def add_ic(self,v,ic):
             self.diffeqns[v].set_ic(ic);
+
+        def define_param(self,v,vals):
+            self.pars[v] = vals;
+
+        def prioritize(self,v):
+            self.priority = v
+
+        def restrict(self,ns,restricts):
+            for r in restricts:
+               if isinstance(ns[r], Wild):
+                  ns[r] = Wild(r,exclude=restricts[r])
+
+        def namespace(self,ns,is_wild):
+            for v in self.variables():
+               if is_wild:
+                  ns[v] = Wild(v)
+               else:
+                  ns[v] = Symbol(v)
+
+            for v in self.pars:
+                  ns[v] = Symbol(v)
 
 class Assignment:
         def __init__(self):
@@ -84,7 +118,10 @@ class Assignment:
                 return "unimpl.repr"
 
         def __str__(self):
-                return "unimpl.str"
+                assign_str= [(k+"="+(srepr(v))) for k,v in self.assigns.iteritems()]
+                strn="|".join(assign_str)
+                return strn
+
 
 class Assignments:
         def __init__(self):
@@ -124,15 +161,17 @@ class Assignments:
 
                 restricts = [];
                 all_restricts= itertools.combinations(all_asgns,size);
-
-                prob = 1.0/(comb(len(all_asgns),size));
-                return filter(lambda x : random.random() < prob,all_restricts);
+                prob = number/(comb(len(all_asgns),size));
+                sel=filter(lambda x : random.random() <= prob,all_restricts);
+                return map(lambda x: list(x),sel)
 
 class Engine:
 
         def __init__(self):
             self._targ = SOEq()
             self._templ = SOEq()
+            self.restrict_n = 10;
+            self.restrict_size = 1;
 
         @property
         def targ(self):
@@ -145,6 +184,12 @@ class Engine:
         @targ.setter
         def targ(self,v):
             raise Exception();
+
+        def set_restrict_n(self,n):
+            self.restrict_n = n;
+
+        def set_restrict_size(self,n):
+            self.restrict_size = n;
 
         @templ.setter
         def templ(self,v):
@@ -169,3 +214,86 @@ class Engine:
         def solve(self,n):
             raise Exception();
 
+
+        def write(self,out):
+            raise Exception();
+
+
+
+class PartialConfigSOEQ:
+        def __init__(self):
+            self.params = {};
+            self.inits = {};
+            self.restricts = {};
+            self.assigns = {};
+
+        def restrictions(self,ns):
+           excludes = {};
+           for v in self.restricts:
+              exprs = self.restricts[v]
+              excludes[v] = map(lambda x:sympify(x,locals=ns),exprs)
+           return excludes
+
+        def substitutions(self,ns):
+           repls = {}
+           for (v,e) in self.inits.items():
+              repls[ns[v]] = sympify(e,locals=ns)
+
+           for (p,v) in self.params.items():
+              repls[ns[p]] = sympify(v,locals=ns)
+
+           for (v,e) in self.assigns.items():
+              repls[ns[v]] = sympify(e,locals=ns)
+
+           return repls;
+
+
+        def set_param(self,v,e):
+           self.params[v] = e
+
+        def set_init(self,v,e):
+           self.inits[v] = e;
+
+class PartialConfig:
+        def __init__(self):
+            self.templ = PartialConfigSOEQ();
+            self.targ = PartialConfigSOEQ();
+ 
+
+        def load(self,d):
+            for (k,v,expr) in list(d):
+                if k == "vp":
+                   self.targ.set_param(v,expr)
+                elif k == "xp":
+                   self.templ.set_param(v,expr)
+                elif k == "v":
+                   self.targ.set_init(v,expr)
+                elif k == "x":
+                   self.templ.set_init(v,expr)
+
+class PartialConfigGenerator:
+
+        def __init__(self,eng):
+            self.prob = eng;
+
+        def generate(self):
+            choices= [];
+            for p in self.prob.templ.pars:
+               vals = self.prob.templ.pars[p]
+               choices.append(map(lambda v:("xp",p,v),vals))
+
+            for p in self.prob.targ.pars:
+               vals = self.prob.targ.pars[p]
+               choices.append(map(lambda v:("vp",p,v),vals))
+
+            for o in self.prob.templ.inits:
+               vals = self.prob.templ.inits[o]
+               choices.append(map(lambda v:("x",o,v),vals))
+
+            for o in self.prob.targ.inits:
+               vals = self.prob.targ.inits[o]
+               choices.append(map(lambda v:("v",o,v),vals))
+  
+            
+            configs = itertools.product(*choices);
+            return configs;

@@ -47,6 +47,18 @@ struct
   | HNPort(k,HCMGlobal(c),x,p) ->
     HNPort(k,HCMLocal(c.name),x,p)
   | _ -> x
+  let try_toglbl i_maybe x =
+    match x,i_maybe with
+    | HNPort(k,HCMLocal(c),x,p),Some(i) ->
+      HNPort(k,HCMGlobal({name=c;inst=i}),x,p)
+    | HNPort(k,HCMGlobal(c),x,p),Some(i) ->
+      error "try_toglbl" "already a global var"
+    | HNParam(HCMLocal(c),p),Some(i) ->
+      HNParam(HCMGlobal({name=c;inst=i}),p)
+    | HNParam(HCMGlobal(c),p),Some(i) ->
+      error "try_toglbl" "param already global"
+    | HNTime,Some(_) -> HNTime 
+    | _,None -> x
 
   let hwid_map_comp x fn = match x with
     | HNPort(x1,c,x2,x3) -> HNPort(x1,fn c,x2,x3)

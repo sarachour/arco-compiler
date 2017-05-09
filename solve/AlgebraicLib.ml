@@ -1,0 +1,301 @@
+open AST
+open Util
+open Sys
+
+
+module AlgebraicLib =
+struct
+
+ module UnifyEnv =
+  struct
+    type 'a unify_t =
+      | DefinePat of 'a
+      | DefineSym of 'a
+      | DefinePatExpr of 'a*'a ast
+      | DefinePatDerivExpr of 'a*'a ast*'a ast
+      | DefineSymExpr of 'a*'a ast
+      | DefineSymDerivExpr of 'a*'a ast*'a ast
+      | InitPat of 'a*'a ast
+      | DefineSymParam of 'a*number list
+      | DefinePatParam of 'a*number list
+      | PatPrioritize of 'a
+      | SymPrioritize of 'a
+
+    type 'a t = {
+      mutable steps: 'a unify_t list;
+      mutable syms: 'a list;
+      mutable pats: 'a list;
+      mutable sym_pars: 'a list;
+      mutable pat_pars: 'a list;
+    }
+
+    let init (type a) : unit -> a t =
+      fun () -> {steps=[]; syms=[]; pats=[];
+                 sym_pars=[]; pat_pars=[]}
+
+    let enq  e s = e.steps <- s::e.steps
+
+    let define_sym (type a) : a t -> a -> unit =
+      fun env var ->
+        enq env (DefineSym(var));
+        if LIST.has env.syms var = false then
+          env.syms <- var::env.syms;
+        ()
+
+    let define_pat (type a) : a t -> a -> unit =
+      fun env var ->
+        enq env (DefinePat(var));
+        if LIST.has env.pats var = false then
+          env.pats <- var::env.pats;
+        ()
+
+    let init_pat (type a) : a t -> a -> a ast -> unit =
+      fun env var expr ->
+        enq env (InitPat(var,expr));
+        ()
+
+    let define_pat_expr (type a) : a t -> a -> a ast -> unit =
+      fun env var expr ->
+        enq env (DefinePatExpr(var,expr));
+        ()
+
+    let define_pat_deriv_expr (type a) : a t -> a -> a ast -> a ast -> unit =
+      fun env var expr ic ->
+        enq env (DefinePatDerivExpr(var,expr,ic));
+        ()
+
+    let define_sym_expr (type a) : a t -> a -> a ast -> unit =
+      fun env var expr ->
+        enq env (DefineSymExpr(var,expr));
+        ()
+
+    let define_sym_deriv_expr (type a) : a t -> a -> a ast -> a ast -> unit =
+      fun env var expr ic ->
+        enq env (DefineSymDerivExpr(var,expr,ic));
+        ()
+
+    let define_sym_param (type a) : a t -> a -> number list -> unit =
+      fun env par values ->
+        enq env (DefineSymParam(par,values));
+        if LIST.has env.sym_pars par = false then
+          env.sym_pars <- par::env.sym_pars;
+        ()
+
+    let define_pat_param (type a) : a t -> a -> number list -> unit =
+      fun env par values ->
+        enq env (DefinePatParam(par,values));
+        if LIST.has env.pat_pars par = false then
+          env.pat_pars <- par::env.pat_pars;
+        ()
+
+    let pat_prioritize (type a) : a t -> a -> unit =
+      fun env var ->
+        enq env (PatPrioritize(var));
+        ()
+
+    let sym_prioritize (type a) : a t -> a -> unit =
+      fun env var ->
+        enq env (SymPrioritize(var));
+        ()
+
+    let iter_steps (type a) : a t -> (a unify_t -> unit) -> unit =
+      fun env fx ->
+        List.iter fx (List.rev env.steps) 
+  end
+
+
+  module VarMapper =
+  struct
+    exception Varmapper_error of string
+
+    type 'a t = {conv:('a,string) map;inv:(string,'a) map}
+
+    let init (type a) : unit -> a t=
+      fun () ->
+        {conv=MAP.make();inv=MAP.make()}
+
+    let clear (type a): a t -> unit =
+      fun env ->
+        MAP.clear env.conv;
+        MAP.clear env.inv;
+        ()
+
+    let destroy : 'a t -> unit =
+      fun el ->
+        ()
+
+    let map : 'a t -> 'a -> string -> unit =
+      fun mp (v:'a) (s:string) ->
+        if MAP.has mp.conv v then
+          raise (Varmapper_error "variable ident already exists")
+        else if MAP.has mp.inv s  then
+          raise (Varmapper_error ("variable str already exists:"^s))
+        else
+          begin
+            noop (MAP.put mp.conv v s);
+            noop (MAP.put mp.inv s v)
+          end
+
+    let conv_v : 'a t -> 'a -> string =
+      fun mp x ->
+        MAP.get mp.conv x
+
+    let inv_v : 'a t -> string -> 'a =
+      fun mp x ->
+        MAP.get mp.inv x
+
+    let conv_e : 'a t -> 'a ast -> string ast =
+      fun mp expr ->
+        ASTLib.map expr (fun x -> MAP.get mp.conv x)
+
+    let inv_e : 'a t -> string ast -> 'a ast =
+      fun mp expr ->
+        ASTLib.map expr (fun x -> MAP.get mp.inv x) 
+  end
+  type 'a t = {
+    varmap: 'a VarMapper.t;
+  }
+
+  let id = REF.mk 0
+
+  let init (type a):  unit -> a t =
+    fun () ->
+      {varmap=VarMapper.init()}
+
+  let simplify (type a) (env:a t) (expr: a ast) =
+
+      ()
+
+  let write_var (type a) : out_channel -> string -> a t -> a -> a ast -> a ast option  -> unit=
+    fun fh soeq env v e ic_maybe -> 
+      let varb :string = VarMapper.conv_v env.varmap v in
+      let defn =
+        Printf.fprintf fh
+          "engine.%s.define_variable(\"%s\")\n" soeq varb 
+      in
+      match ic_maybe with
+      | Some(ic) ->
+        begin
+          Printf.fprintf fh
+            "engine.%s.add_diff_eqn(%s,%s)\n"
+            soeq varb (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident);
+          Printf.fprintf fh
+            "engine.%s.add_ic(%s,%s\n)\n"
+            soeq varb (ASTLib.ast2str (VarMapper.conv_e env.varmap ic) ident);
+          ()
+        end
+
+        | None ->
+          Printf.fprintf fh
+              "engine.%s.add_eqn(%s,%s)\n"
+              soeq varb (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+
+  
+   let unify (type a) (env:a t) (prob:a UnifyEnv.t) (n) (size) =
+     VarMapper.clear env.varmap;
+     print_string "=== SYMS ====\n";
+     List.iteri (fun i (v:a) ->
+         VarMapper.map env.varmap v ("v"^(string_of_int i))
+       ) prob.syms;
+     List.iteri (fun i (v:a) ->
+         VarMapper.map env.varmap v ("pv"^(string_of_int i))
+       ) prob.sym_pars;
+     print_string "=== PATS ====\n";
+     List.iteri (fun i (v:a) ->
+         VarMapper.map env.varmap v ("x"^(string_of_int i))
+       ) prob.pats;
+     List.iteri (fun i (v:a) ->
+         VarMapper.map env.varmap v ("px"^(string_of_int i))
+       ) prob.pat_pars;
+     let file = "unify_"^(string_of_int (REF.dr id))^".py" in
+     let outfile = "unify_"^(string_of_int (REF.dr id))^".out" in
+     let fh = open_out file in
+     Printf.fprintf fh
+       "from sympy_engine import engine\n";
+     UnifyEnv.iter_steps prob (fun (step: a UnifyEnv.unify_t) ->
+         match step with
+         | DefinePat(v) ->
+           Printf.fprintf fh
+             "engine.templ.define_variable(\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+         | DefineSym(v) ->
+           Printf.fprintf fh
+             "engine.targ.define_variable(\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+
+         | DefinePatExpr(v,e) ->
+           Printf.fprintf fh
+             "engine.templ.add_eqn(\"%s\",\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+
+         | DefineSymExpr(v,e) ->
+           Printf.fprintf fh
+             "engine.targ.add_eqn(\"%s\",\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+
+         | DefinePatDerivExpr(v,e,ic) ->
+           begin
+             Printf.fprintf fh
+               ("engine.templ.add_diff_eqn(\"%s\",\"%s\")\n")
+               (VarMapper.conv_v env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident);
+             Printf.fprintf fh
+               ("engine.templ.add_ic(\"%s\",\"%s\")\n")
+               (VarMapper.conv_v env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_e env.varmap ic) ident)
+           end
+
+         | DefineSymDerivExpr(v,e,ic) ->
+           begin
+             Printf.fprintf fh
+               ("engine.targ.add_diff_eqn(\"%s\",\"%s\")\n")
+               (VarMapper.conv_v env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident);
+             Printf.fprintf fh
+               ("engine.targ.add_ic(\"%s\",\"%s\")\n")
+               (VarMapper.conv_v env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_e env.varmap ic) ident)
+           end
+         | DefinePatParam(par,vals) ->
+           Printf.fprintf fh
+             "engine.templ.define_param(\"%s\",[%s])\n"
+             (VarMapper.conv_v env.varmap par)
+             (LIST.tostr  string_of_number "," vals)
+         | DefineSymParam(par,vals) ->
+           Printf.fprintf fh
+             "engine.targ.define_param(\"%s\",[%s])\n"
+             (VarMapper.conv_v env.varmap par)
+             (LIST.tostr  string_of_number "," vals)
+         | InitPat(v,e) ->
+           Printf.fprintf fh
+             "engine.templ.init_var(\"%s\",\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+             
+         | SymPrioritize(v) ->
+           Printf.fprintf fh
+             "engine.targ.prioritize(\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+         | PatPrioritize(v) ->
+           Printf.fprintf fh
+             "engine.templ.prioritize(\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+
+       );
+     Printf.fprintf fh
+       "engine.set_restrict_n(%d)\n" n;
+     Printf.fprintf fh
+       "engine.set_restrict_size(%d)\n" size;
+     Printf.fprintf fh
+       "engine.solve()\n";
+     Printf.fprintf fh
+       "engine.write(\"%s\")\n" outfile;
+     close_out fh;
+     Sys.command ("python "^file);
+     None
+    
+
+
+end

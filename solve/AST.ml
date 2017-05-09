@@ -345,12 +345,14 @@ module ASTLib
     let simpl (type a)
         (e1:a ast) (cnv:a->symvar)
         (icnv:symvar -> a)  (decl:a->(a->symvar)->symdecl) : a ast =
+      e1
+      (*
       let env,_,_ = mkenv [e1] cnv (fun i x c -> decl x c) in
       let lhe = to_symcaml e1 cnv in
       let r = SymCaml.simpl env lhe in
       let res = from_symcaml r icnv in
       res
-
+      *)
 
   let sub_fxn (type a) (expr:a ast) (subfxn:a -> a ast option) : a ast =
     let tf x = match x with
