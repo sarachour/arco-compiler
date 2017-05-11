@@ -303,6 +303,25 @@ class PartialConfigSOEQ:
            return repls;
 
 
+        def get_restrictions(self):
+           restricts = [];
+           for v in self.restricts:
+             exc = self.restricts[v]
+             restricts.push(v,exc)
+
+           return restricts
+
+        def get_substitutions(self):
+           repls = {}
+           for (v,e) in self.inits.items():
+              repls[v] = e
+           for (v,e) in self.params.items():
+              repls[v] = e
+           for (v,e) in self.assigns.items():
+              repls[v] = e
+
+           return repls
+
         def add_restrict(self,v,e):
            if not (v in self.restricts):
              self.restricts[v] = []

@@ -6,16 +6,150 @@ from sympy import *
 # a partial configuration is a set of parameter assignments, and
 # initial conditions.
 
+# a search path is a set of assignments
+class SympySearchPath:
+
+        def __init__(self):
+            self.restricts = [];
+            self.assigns = {};
+            self.subs = {};
+            self.templ = None;
+            self.targ = None;
+
+        def add_restricts(self,r):
+            self.restricts += r
+            return self;
+
+        def add_substitutions(self,s):
+           for k in s:
+              self.substitutions[k] = s[k];
+           return self;
+
+        def add_assigns(self,a):
+          for k in s:
+              self.assigns[k] = s[k];
+          return self;
+
+        def set_unify(self,v,e):
+            self.templ = v;
+            self.targ = e;
+            return self
+
+        def load(self, v):
+            self.restricts = list(v.restricts);
+            self.assigns = dict(v.assigns);
+            self.subs = dict(v.subs);
+            self.templ = (v.templ);
+            self.targ = (v.targ);
+            return self
+
+class SympyResults:
+
+        def __init__(self):
+           self.results = [];
+
+        def join(self,assigns):
+           if assigns != None:
+                self.results.append(assigns);
+
+        def pop(self):
+              self.results.pop()
+
+        def last(self):
+              return self.results[len(self.results)-1]
+
+        def join_all(self,assigns):
+           if assigns != None:
+             iter(lambda x : self.join(x), assigns)
+
+        def get(self):
+           if len(self.results) == 0:
+               return None
+           else:
+               return self.results
+
+        def flatten_lists(self):
+           args = [];
+           for r in self.results:
+              args = args + r 
+           return args
+
+        def flatten_dicts(self):
+           args = {};
+           for rdict in self.results:
+              for k in rdict:
+                if k in args and isinstance(args[k],list):
+                  args[k].push(rdict[k])
+                elif k in args:
+                  args[k] = [args[k],rdict[k]]
+                else:
+                  args[k] = rdict[k]
+
+           return args
+
+        def empty(self):
+           return len(self.results) == 0
+   
+class SympyCtx:
+
+        def __init__(self,templ,targ,cfg):
+           self.restricts = SympyResults();
+           self.assigns = SympyResults();
+           self.subs = SympyResults();
+           self.outputs = SympyResults();
+           self.outputs.join(templ.outputs()+[templ.priority])
+           self.targ = targ;
+           self.templ = templ;
+
+           ns = {};
+           templ.namespace(ns,True);
+           targ.namespace(ns,False);
+           self.ns = ns;
+            
+           self.restricts.join_all(cfg.templ.get_restrictions())
+           self.subs.join(cfg.templ.get_substitutions());
+           self.subs.join(cfg.targ.get_substitutions());
+
+        def push(self,search_path):
+           self.restricts.join(search_path.restricts)
+           init_asgn = {};
+           init_asgn[search_path.templ]=search_path.targ
+           self.assigns.join(search_path.assigns)
+           self.assigns.join(init_asgn)
+           outs = list(self.outputs.last())
+           self.outputs.join(outs.remove(search_path.templ))
+           self.subs.join(search_path.subs)
+
+        def pop(self):
+           self.restricts.pop()
+           self.subs.pop()
+           self.assigns.pop()
+           self.assigns.pop()
+           self.outputs.pop()
+
+        def apply_ctx(self):
+           self._ns = dict(self.ns)
+           subs = self.subs.flatten_dicts();
+           assigns = self.assigns.flatten_dicts();
+
+           restricts = self.restricts.flatten_lists();
+           self.templ.restrict(self._ns,restricts);
+
+           self._subs = {}
+           for (v,e) in subs.items() + assigns.items():
+              self._subs[self._ns[v]] = sympify(e,locals=self._ns)
+
+           
+        def apply_expr(self,e):
+           return sympify(e,locals=self._ns).xreplace(self._subs)
 
 class SympyEngine(Engine):
 
         def __init__(self):
-                Engine.__init__(self)
-                self.backend = "sympy"
+           Engine.__init__(self)
+           self.backend = "sympy"
 
-        def proc_expr(self,ns,repl,e):
-           return sympify(e,locals=ns).xreplace(repl)
-
+        
         def learn_assign(self,pos,default):
            if pos != None:
               a = Assignment().load_sympy(pos)
@@ -24,69 +158,77 @@ class SympyEngine(Engine):
               a = Assignment().load_sympy(default)
               self.learn.add_negative(a)
 
-        def try_unify_exprs(self,_ns,sub_templ,sub_targ,templ_expr,targ_expr,restrict):
+        
+        def unify_exprs(self,ctx,search_path):
+           ctx.apply_ctx();
+           templ_expr = self.templ.get_eqn(search_path.templ)
+
+           if(isinstance(search_path.targ,basestring)):
+              targ_expr = self.targ.get_eqn(search_path.targ)
+
+           elif(not templ_expr.is_diffeq()):
+              targ_expr = Eqn(targv);
+
+           else:
+              return None
+       
            templ = []
            targ = []
-           ns = _ns
-           templ.append(self.proc_expr(ns,sub_templ,templ_expr.eqn))
-           targ.append(self.proc_expr(ns,sub_targ,targ_expr.eqn))
+           templ.append(ctx.apply_expr(templ_expr.eqn))
+           targ.append(ctx.apply_expr(targ_expr.eqn))
+
            if templ_expr.is_diffeq() and targ_expr.is_diffeq():
-              templ_ic = templ_expr.ic
-              targ_ic = targ_expr.ic
-              templ.append(self.proc_expr(ns,sub_templ,templ_ic))
-              targ.append(self.proc_expr(ns,sub_targ,targ_ic))
+              templ.append(ctx.apply_expr(templ_expr.ic))
+              targ.append(ctx.apply_expr(targ_expr.ic))
+
            elif not templ_expr.is_diffeq() and not targ_expr.is_diffeq():
               ()
            else:
               return None
 
-           print("TEMPL:"+str(templ))
-           print("TARG:"+str(targ))
-           new_asgns = Basic(*targ).match(Basic(*templ))
-           print("ASGNS:"+str(new_asgns));
-           return new_asgns
+           a_single_asgn = Basic(*targ).match(Basic(*templ))
+           print("TARG",targ)
+           print("TEMPL",templ)
+           print("ASGN",a_single_asgn)
+           return a_single_asgn
 
-        def unify_exprs(self,outs,templv,targv):
-           ns = self.ns
-           sub_templ = self.sub_templ
-           sub_targ = self.sub_targ
+        def unify_and_resolve_exprs(self,ctx,search_path):
+           asgns = SympyResults();
+           search_nodes =  SympyResults();
 
-           asgns = dict(self.asgns[len(self.asgns)-1])
+           init_asgn = self.unify_exprs(ctx,search_path)
+           search_nodes.join(search_path)
+           asgns.join(init_asgn)
+           if not (asgns.empty()):
+              # perform more unifications
+              parent = search_path
+              for _ in range(0,4):
+                 restricts = asgns.flatten_dicts()
+                 search_node = SympySearchPath().load(parent).add_restricts(subset)
+                 new_asgn = self.unify_exprs(ctx,search_node)
+                 asgns.join(new_asgn)
+                 search_nodes.join(search_node)
 
-           templ_expr = self.templ.get_eqn(templv)
-           if(isinstance(targv,basestring)):
-              targ_expr = self.targ.get_eqn(targv)
-              asgns[ns[templv]] = ns[targv]
-              sub_templ[ns[templv]] = ns[targv]
+           results = SymcamlResults()
+           for node in search_nodes:
+              ctx.push(node)
+              ctx.apply_ctx()
+              if ctx.conflicts() > 0:
+                 var,expr = ctx.get_conflict()
+                 if isinstance(expr,Symbol):
+                    path1 = SymcamlSearchPath().load(node).set_targ(var,expr.name)
+                    path2 = SymcamlSearchPath().load(node).set_targ(var,expr)
+                    results1 = self.unify_and_resolve_exprs(ctx,path1)
+                    results2 = self.unify_and_resolve_exprs(ctx,path2)
+                    results.join_results(result1)
+                    results.join_results(result2)
+              else:
+                results.join(ctx.get_assigns())
+              ctx.pop()
 
-           elif(not templ_expr.is_diffeq()):
-              targ_expr = Eqn(targv);
-              asgns[ns[templv]] = targ_expr.eqn
-              sub_templ[ns[templv]] = targ_expr.eqn
-
-           else:
-              return None
-
-           
-           new_asgns = self.try_unify_exprs(ns,sub_templ,sub_targ,templ_expr,targ_expr,[])
-
-           if new_asgns != None:
-              self.asgns.append(dict(new_asgns.items()+asgns.items()))
-              curr_asgn = self.asgns[len(self.asgns) - 1]
-              #we already unified this
-              outs.remove(templv);
-              #print(outs)
-              #print("------")
-              return self.resolve_entanglements(outs,curr_asgn);
-              
-           elif len(self.asgns) > 0:
-              curr_asgn = self.asgns[len(self.asgns) - 1]
-              self.learn_assign(None,curr_asgn)
-              return None
-
-           else:
-              return None
-
+           return results;
+             
+                
         def resolve_entanglements(self,outs,asgns):
            next_templ = filter(lambda (k,v) : outs.count(k.name)>0, asgns.items())
            # resolve any dependencies
@@ -120,41 +262,17 @@ class SympyEngine(Engine):
 
 
         def solve_subproblem(self,cfg,learn):
-           ns = {}
-           self.templ.namespace(ns,True);
-           self.targ.namespace(ns,False);
-           self.ns = ns;
-            
-           exc_templ = cfg.templ.restrictions(ns)
-           exc_targ = cfg.targ.restrictions(ns)
-           self.templ.restrict(ns,exc_templ);
-           self.targ.restrict(ns,exc_targ);
-
-           self.sub_templ = cfg.templ.substitutions(ns);
-           self.sub_targ = cfg.targ.substitutions(ns);
-           self.asgns = [{}]
+           ctx = SympyCtx(self.templ,self.targ,cfg);
            self.learn = learn; 
 
            s_templ = self.templ.priority;
            s_targ = self.targ.priority;
+           init_path = SympySearchPath().set_unify(s_templ,s_targ)
+           ctx.push(init_path);
+           asgns = self.unify_and_resolve_exprs(ctx,init_path)
 
-           outs = list(self.templ.outs)
-           #print("===== SUBPROBLEM ======")
-           asgns = self.unify_exprs(outs,s_templ,s_targ)
-           if asgns != None:
-              asgns_obj = [];
-              for asgn in asgns:
-                 #print(asgns)
-                 asgn_obj = Assignment().load_sympy(asgn);
-                 for par in cfg.templ.params:
-                    pval = cfg.templ.params[par]
-                    asgn_obj.add(par,pval)
-                 asgns_obj.append(asgn_obj)
-
-              return asgns_obj;
-           else:
-              return None;             
-
+           return asgns
+           
         def solve(self):
            generator = PartialConfigGenerator(self);
            asgns = Assignments()
@@ -162,7 +280,10 @@ class SympyEngine(Engine):
               cfg = PartialConfig()
               lrn = LearnAssignments()
               cfg.load(cfg_data);
+              print(cfg_data)
               new_asgns = self.solve_subproblem(cfg,lrn);
+              print(new_asgns);
+              return;
               if new_asgns != None:
                  for new_asgn in new_asgns:
                     asgns.add(new_asgn);
