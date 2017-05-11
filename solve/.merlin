@@ -1,3 +1,4 @@
+PKG core
 S .
 S symcaml/
 S map/

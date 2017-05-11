@@ -1,6 +1,10 @@
 open AST
 open Util
 open Sys
+open Core.Std
+open SymCaml
+
+exception AlgebraicLib_error of string
 
 
 module AlgebraicLib =
@@ -100,7 +104,7 @@ struct
 
     let iter_steps (type a) : a t -> (a unify_t -> unit) -> unit =
       fun env fx ->
-        List.iter fx (List.rev env.steps) 
+        List.iter ~f:fx (List.rev env.steps) 
   end
 
 
@@ -194,24 +198,24 @@ struct
    let unify (type a) (env:a t) (prob:a UnifyEnv.t) (n) (size) =
      VarMapper.clear env.varmap;
      print_string "=== SYMS ====\n";
-     List.iteri (fun i (v:a) ->
+     List.iteri ~f:(fun i (v:a) ->
          VarMapper.map env.varmap v ("v"^(string_of_int i))
        ) prob.syms;
-     List.iteri (fun i (v:a) ->
+     List.iteri ~f:(fun i (v:a) ->
          VarMapper.map env.varmap v ("pv"^(string_of_int i))
        ) prob.sym_pars;
      print_string "=== PATS ====\n";
-     List.iteri (fun i (v:a) ->
+     List.iteri ~f:(fun i (v:a) ->
          VarMapper.map env.varmap v ("x"^(string_of_int i))
        ) prob.pats;
-     List.iteri (fun i (v:a) ->
+     List.iteri ~f:(fun i (v:a) ->
          VarMapper.map env.varmap v ("px"^(string_of_int i))
        ) prob.pat_pars;
      let file = "unify_"^(string_of_int (REF.dr id))^".py" in
      let outfile = "unify_"^(string_of_int (REF.dr id))^".out" in
      let fh = open_out file in
      Printf.fprintf fh
-       "from sympy_engine import engine\n";
+       "from engines.sympy_engine import engine\n";
      UnifyEnv.iter_steps prob (fun (step: a UnifyEnv.unify_t) ->
          match step with
          | DefinePat(v) ->
@@ -294,7 +298,31 @@ struct
        "engine.write(\"%s\")\n" outfile;
      close_out fh;
      Sys.command ("python "^file);
-     None
+     let oh = open_in outfile in
+     let result : (a*a ast) list list =
+       In_channel.fold_lines oh ~init:[]
+        ~f:(fun (slns: (a*a ast) list list) (line:string)->
+          let terms = STRING.split line "|" in
+          let sln : (a*a ast) list = List.map ~f:(
+              fun (term:string) ->
+                let args = String.split term '$' in
+                match args with
+                | [lhs;rhs] ->
+                  begin
+                    let vr : a = VarMapper.inv_v env.varmap lhs in
+                    let expr : a ast = 
+                      ASTLib.from_symcaml (SymCaml.string_of_repr rhs)
+                        (VarMapper.inv_v env.varmap)
+                    in
+                    (vr,expr)
+                  end
+                | _ -> raise (AlgebraicLib_error "unexpected")
+            ) terms
+          in
+          sln::slns
+        )
+     in
+     result
     
 
 

@@ -6,3 +6,4 @@ _build
 *.res
 *.smt2
 *.smt2.model
+*.pyc

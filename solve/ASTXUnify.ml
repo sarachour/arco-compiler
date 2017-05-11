@@ -1114,6 +1114,23 @@ struct
     _solve ();
     (*let _ = sysmenu "t" in*)
     ()
+(*
+  let unify_with_hwvar (env:runify) (hexpr: unid ast) steps =
+    let nslns = Globals.get_glbl_int "eqn-unifications" in
+    env.tbl.target <- TRGHWVar(hexpr);
+    ASTUnifyTree.init_root env steps;
+    expand_params_tree env;
+    solve env nslns;
+    get_solutions env 
+
+  let unify_with_mvar (env:runify) (mvar:string) steps =
+    let nslns = Globals.get_glbl_int "eqn-unifications" in
+    env.tbl.target <- TRGMathVar(mvar);
+    ASTUnifyTree.init_root env steps;
+    expand_params_tree env;
+    solve env nslns;
+    get_solutions env 
+  *)
 
 
   let construct_hw_comp : unid AlgebraicLib.UnifyEnv.t -> hwvid hwcomp -> hwcompcfg -> int option -> string -> unit =
@@ -1248,58 +1265,67 @@ struct
         ()
 
 
-  let solve_math menv comp cfg inst hwvar mvar : rstep list list =
+  let to_rsteps : (unid*unid ast) list -> rstep list
+    -> rstep list =
+    fun asgns init_steps ->
+      print_string "--------\n";
+      let new_steps = List.map (fun (v,e) ->
+          let cfg = {expr=e} in
+          print_string ((unid2str v)^"="^(uast2str e)^"\n");
+          match v with
+          | HwId(HNPort(HWKInput,cmp,port,prop)) ->
+            RAddInAssign(port,cfg)
+          | HwId(HNPort(HWKOutput,cmp,port,prop)) ->
+            RAddOutAssign(port,cfg)
+          | HwId(HNParam(cmp,param)) ->
+            begin
+              match e with
+              | Integer(i) ->
+                RAddParAssign(param,Integer i)
+              | Decimal(d) ->
+                RAddParAssign(param,Decimal d)
+            end
+        ) asgns
+      in
+      init_steps @ new_steps
+
+
+  let solve_math menv comp cfg inst hwvar mvar steps : rstep list list =
     let nslns = Globals.get_glbl_int "eqn-unifications" in
     let un_env = AlgebraicLib.UnifyEnv.init () in
     construct_hw_comp un_env comp cfg inst hwvar;
     construct_math un_env menv mvar;
     let alg_env = AlgebraicLib.init () in 
-    let asgns = AlgebraicLib.unify alg_env un_env 10 1 in 
-    [] 
+    let asgns = AlgebraicLib.unify alg_env un_env nslns 1 in 
+    List.map (fun asgn -> to_rsteps asgn steps) asgns
 
-  let solve_hw hwenv comp cfg inst hwvar htargvar hexpr : rstep list list =
+  let solve_hw hwenv comp cfg inst hwvar htargvar hexpr steps: rstep list list =
     let nslns = Globals.get_glbl_int "eqn-unifications" in
     let un_env = AlgebraicLib.UnifyEnv.init () in
     construct_hw_comp un_env comp cfg inst hwvar;
     construct_hw_expr un_env hwenv htargvar hexpr;
     let alg_env = AlgebraicLib.init () in 
-    let asgns = AlgebraicLib.unify alg_env un_env 10 1 in
-   (*asgns to rsteps*)
-    [] 
+    let asgns = AlgebraicLib.unify alg_env un_env nslns 1 in
+    (*asgns to rsteps*)
+    List.map (fun asgn -> to_rsteps asgn steps) asgns
 
   (* take the set of assignments, and convert to steps *)
   let get_solutions (env:runify) : (rstep list) list=
     let results : rnode list = SearchLib.get_solutions env.search None in
     (* convert to eqn steps*)
     List.map (fun result ->
-        let steps : rstep list = SearchLib.get_path env.search result in
+        let steps : rstep list =
+          SearchLib.get_path env.search result in
         LIST.uniq steps
       ) results
 
-  (*
-  let unify_with_hwvar (env:runify) (hexpr: unid ast) steps =
-    let nslns = Globals.get_glbl_int "eqn-unifications" in
-    env.tbl.target <- TRGHWVar(hexpr);
-    ASTUnifyTree.init_root env steps;
-    expand_params_tree env;
-    solve env nslns;
-    get_solutions env 
-
-  let unify_with_mvar (env:runify) (mvar:string) steps =
-    let nslns = Globals.get_glbl_int "eqn-unifications" in
-    env.tbl.target <- TRGMathVar(mvar);
-    ASTUnifyTree.init_root env steps;
-    expand_params_tree env;
-    solve env nslns;
-    get_solutions env 
-  *)
-
+  
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
       (hvar:string) (hwtargvar:hwvid) (hexpr:unid ast) (steps:rstep list) =
     (*let uenv :runify = ASTUnifyTree.mk_comp_search hwenv menv comp inst cfg hvar in*)
     (*unify_with_hwvar uenv hexpr steps*)
-    solve_hw hwenv comp cfg inst hvar hwtargvar hexpr  
+    solve_hw hwenv comp cfg inst hvar hwtargvar hexpr steps 
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
@@ -1309,6 +1335,6 @@ struct
     let uenv :runify = ASTUnifyTree.mk_comp_search hwenv menv comp inst cfg hvar in
     unify_with_mvar uenv mvar []
     *)
-    solve_math menv comp cfg inst hvar mvar
+    solve_math menv comp cfg inst hvar mvar []
 
 end

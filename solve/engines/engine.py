@@ -35,6 +35,15 @@ class SOEq:
                 self.diffeqns = {};
                 self.priority = None;
 
+        def clear(self):
+                self.vrbs = [];
+                self.outs = [];
+                self.pars = {};
+                self.eqns = {};
+                self.inits = {};
+                self.diffeqns = {};
+                self.priority = None;
+
         def variables(self):
             return self.vrbs
 
@@ -82,6 +91,7 @@ class SOEq:
                if isinstance(ns[r], Wild):
                   ns[r] = Wild(r,exclude=restricts[r])
 
+        
         def namespace(self,ns,is_wild):
             for v in self.variables():
                if is_wild:
@@ -95,6 +105,12 @@ class SOEq:
 class Assignment:
         def __init__(self):
                 self.assigns = {};
+
+        def load_sympy(self,asgns):
+           a = Assignment()
+           for v in asgns:
+              a.add(v.name,asgns[v])
+           return a;
 
         def add(self,v,expr):
                 self.assigns[v] = expr;
@@ -118,7 +134,7 @@ class Assignment:
                 return "unimpl.repr"
 
         def __str__(self):
-                assign_str= [(k+"="+(srepr(v))) for k,v in self.assigns.iteritems()]
+                assign_str= [(k+"$"+(srepr(v))) for k,v in self.assigns.iteritems()]
                 strn="|".join(assign_str)
                 return strn
 
@@ -153,17 +169,41 @@ class Assignments:
                                 return True;
                 return False;
 
-        def restrict(self,exclude,size,number):
-                all_asgns = [];
-                for asgn in self.assigns:
-                        print(asgn.assigns)
-                        all_asgns += [(k,v) for k,v in asgn.assigns.iteritems() if not self._contains(k,v,exclude)];
+        def all_assigns(self,exclude):
+           all_asgns = [];
+           for asgn in self.assigns:
+              all_asgns += [(k,v) for k,v in asgn.assigns.iteritems() if not self._contains(k,v,exclude)];
+           return all_asgns;
 
+        def restrict(self,exclude,size,number):
+                all_asgns = self.assigns();
                 restricts = [];
                 all_restricts= itertools.combinations(all_asgns,size);
                 prob = number/(comb(len(all_asgns),size));
                 sel=filter(lambda x : random.random() <= prob,all_restricts);
                 return map(lambda x: list(x),sel)
+
+class LearnAssignments:
+        def __init__(self):
+           self.positive = Assignments();
+           self.negative = Assignments();
+
+        def add_negative(self,asgn):
+           self.negative.add(asgn);
+
+        def add_positive(self,asgn):
+           self.positive.add(asgn);
+
+
+        def restrict(self,size,number,exclude):
+           pos = self.positive.all_assigns(exclude)
+           neg = self.negative.all_assigns(exclude)
+           choices = set(neg).union(set(pos))
+           restricts = [];
+           all_restricts= itertools.combinations(choices,size);
+           prob = number/(comb(len(choices),size));
+           sel=filter(lambda x : random.random() <= prob,all_restricts);
+           return map(lambda x: list(x),sel)
 
 class Engine:
 
@@ -172,6 +212,7 @@ class Engine:
             self._templ = SOEq()
             self.restrict_n = 10;
             self.restrict_size = 1;
+            self.asgns = None
 
         @property
         def targ(self):
@@ -216,16 +257,30 @@ class Engine:
 
 
         def write(self,out):
-            raise Exception();
+          repr = str(self.asgns)
+          fh = open(out,'w')
+          fh.write(repr)
+          fh.close()
 
 
+
+        def clear(self):
+            self._targ.clear()
+            self._templ.clear()
+            self.asgns = None
 
 class PartialConfigSOEQ:
-        def __init__(self):
-            self.params = {};
-            self.inits = {};
-            self.restricts = {};
-            self.assigns = {};
+        def __init__(self,cfg=None):
+            if cfg == None:
+                self.params = {};
+                self.inits = {};
+                self.restricts = {};
+                self.assigns = {};
+            else:
+                self.params = dict(cfg.params);
+                self.inits = dict(cfg.inits);
+                self.restricts = dict(cfg.restricts);
+                self.assigns = dict(cfg.assigns);
 
         def restrictions(self,ns):
            excludes = {};
@@ -248,6 +303,11 @@ class PartialConfigSOEQ:
            return repls;
 
 
+        def add_restrict(self,v,e):
+           if not (v in self.restricts):
+             self.restricts[v] = []
+           self.restricts[v].append(e);
+
         def set_param(self,v,e):
            self.params[v] = e
 
@@ -255,10 +315,14 @@ class PartialConfigSOEQ:
            self.inits[v] = e;
 
 class PartialConfig:
-        def __init__(self):
-            self.templ = PartialConfigSOEQ();
-            self.targ = PartialConfigSOEQ();
- 
+        def __init__(self,cfg=None):
+            if cfg == None:
+               self.templ = PartialConfigSOEQ();
+               self.targ = PartialConfigSOEQ();
+            else:
+               self.templ = PartialConfigSOEQ(cfg.templ)
+               self.targ = PartialConfigSOEQ(cfg.targ)
+
 
         def load(self,d):
             for (k,v,expr) in list(d):
