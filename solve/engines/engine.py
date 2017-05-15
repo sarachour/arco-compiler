@@ -87,9 +87,16 @@ class SOEq:
             self.priority = v
 
         def restrict(self,ns,restricts):
-            for r in restricts:
+            tmp = {};
+            for (k,v) in restricts:
+               if not (k in tmp):
+                  tmp[k] = []
+               tmp[k].append(v)
+
+            for r in tmp:
                if isinstance(ns[r], Wild):
-                  ns[r] = Wild(r,exclude=restricts[r])
+                  exc = list(set(tmp[r]))
+                  ns[r] = Wild(r,exclude=exc)
 
         
         def namespace(self,ns,is_wild):
@@ -109,7 +116,7 @@ class Assignment:
         def load_sympy(self,asgns):
            a = Assignment()
            for v in asgns:
-              a.add(v.name,asgns[v])
+              a.add(v,asgns[v])
            return a;
 
         def add(self,v,expr):
