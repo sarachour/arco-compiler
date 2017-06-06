@@ -13,8 +13,6 @@ let _ = MAP.put glbls "_force" (GlblPropBool false)
 let _ = MAP.put glbls "interactive" (GlblPropInt 0)
 let _ = MAP.put glbls "debug" (GlblPropInt 0)
 
-let _ = MAP.put glbls "uast-selector-branch" (GlblPropString "uniform")
-let _ = MAP.put glbls "uast-depth" (GlblPropInt 3)
 let _ = MAP.put glbls "enable-jaunt" (GlblPropBool true)
 
 let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 8)
@@ -22,6 +20,9 @@ let _ = MAP.put glbls "multi-num-global-solutions" (GlblPropInt 2)
 let _ = MAP.put glbls "multi-num-global-solutions-per-partial" (GlblPropInt 1)
 let _ = MAP.put glbls "multi-selector-branch" (GlblPropString "depth")
     
+
+let _ = MAP.put glbls "unify-branch" (GlblPropInt 1)
+let _ = MAP.put glbls "unify-restrict-size" (GlblPropInt 1)
 
 let _ = MAP.put glbls "eqn-use-map-heuristic" (GlblPropBool true)
 let _ = MAP.put glbls "eqn-unifications" (GlblPropInt 1)

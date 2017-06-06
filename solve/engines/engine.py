@@ -117,11 +117,9 @@ class Assignment:
         def __init__(self):
                 self.assigns = {};
 
-        def load_sympy(self,asgns):
-           a = Assignment()
+        def load_dict(self,asgns):
            for v in asgns:
-              a.add(v,asgns[v])
-           return a;
+              self.add(v,asgns[v])
 
         def add(self,v,expr):
                 self.assigns[v] = expr;
@@ -140,6 +138,9 @@ class Assignment:
                 return True;
 
 
+        def load_list(self,asgns):
+                for (k,v) in asgns:
+                        self.add(k,v)
 
         def __repr__(self):
                 return "unimpl.repr"
@@ -186,6 +187,9 @@ class Assignments:
               all_asgns += [(k,v) for k,v in asgn.assigns.iteritems() if not self._contains(k,v,exclude)];
            return all_asgns;
 
+        def dedup(self):
+           dedup_asgns = {};
+        
         def restrict(self,exclude,size,number):
                 all_asgns = self.assigns();
                 restricts = [];
@@ -221,8 +225,8 @@ class Engine:
         def __init__(self):
             self._targ = SOEq()
             self._templ = SOEq()
-            self.restrict_n = 10;
             self.restrict_size = 1;
+            self.restrict_branches = 2;
             self.asgns = None
 
         @property
@@ -237,11 +241,12 @@ class Engine:
         def targ(self,v):
             raise Exception();
 
-        def set_restrict_n(self,n):
-            self.restrict_n = n;
 
         def set_restrict_size(self,n):
             self.restrict_size = n;
+
+        def set_restrict_branches(self,n):
+            self.restrict_fanout = n;
 
         @templ.setter
         def templ(self,v):
@@ -300,18 +305,8 @@ class PartialConfigSOEQ:
               excludes[v] = map(lambda x:sympify(x,locals=ns),exprs)
            return excludes
 
-        def substitutions(self,ns):
-           repls = {}
-           for (v,e) in self.inits.items():
-              repls[ns[v]] = sympify(e,locals=ns)
-
-           for (p,v) in self.params.items():
-              repls[ns[p]] = sympify(v,locals=ns)
-
-           for (v,e) in self.assigns.items():
-              repls[ns[v]] = sympify(e,locals=ns)
-
-           return repls;
+        def get_substitution_list(self):
+           return self.inits.items() + self.params.items() + self.assigns.items()
 
 
         def get_restrictions(self):

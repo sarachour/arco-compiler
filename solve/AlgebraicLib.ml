@@ -289,7 +289,7 @@ struct
 
        );
      Printf.fprintf fh
-       "engine.set_restrict_n(%d)\n" n;
+       "engine.set_restrict_branches(%d)\n" n;
      Printf.fprintf fh
        "engine.set_restrict_size(%d)\n" size;
      Printf.fprintf fh

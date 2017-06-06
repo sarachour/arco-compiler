@@ -1291,12 +1291,13 @@ struct
 
 
   let solve_math menv comp cfg inst hwvar mvar steps : rstep list list =
-    let nslns = Globals.get_glbl_int "eqn-unifications" in
     let un_env = AlgebraicLib.UnifyEnv.init () in
     construct_hw_comp un_env comp cfg inst hwvar;
     construct_math un_env menv mvar;
-    let alg_env = AlgebraicLib.init () in 
-    let asgns = AlgebraicLib.unify alg_env un_env nslns 1 in 
+    let alg_env = AlgebraicLib.init () in
+    let branching = Globals.get_glbl_int "unify-branch" in
+    let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
+    let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in 
     List.map (fun asgn -> to_rsteps asgn steps) asgns
 
   let solve_hw hwenv comp cfg inst hwvar htargvar hexpr steps: rstep list list =

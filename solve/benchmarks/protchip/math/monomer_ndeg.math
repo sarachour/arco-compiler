@@ -1,12 +1,15 @@
 
-output Adimer : none
-output Amonomer : none
+type ms
+type M 
 
-param kr1 : none = 10
-param kr2 : none = 10
-param KDrv : none = 10
+output Adimer :unit
+output Amonomer : unit
 
-time t : none
+param kr1 : unit = 10
+param kr2 : unit = 10
+param KDrv : unit = 10
+
+time t : ms 
 
 %monomer, this should map to AFREE
 rel ddt  Adimer = (-1*kr1*Adimer) + (kr1/KDrv)*Amonomer*Amonomer init 0

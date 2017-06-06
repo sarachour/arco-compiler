@@ -28,7 +28,7 @@ range of parameters/variables
 -> C: 100pF ~ 1uF
 
 kf:
-kr: I(kr)/C*phi_t (1/s)
+kr: I(kr)/(C*phi_t) (1/s)
 ex) kr=100nA, C=100nF, phi_t=25.9mV -> 40 (1/s)
 
 ** criteria for stability (this limits max speeup)

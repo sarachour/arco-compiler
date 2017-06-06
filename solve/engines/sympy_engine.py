@@ -246,7 +246,8 @@ class SympyEngine(Engine):
 
            depth = ctx.depth;
            fanout = ctx.max_depth - ctx.depth + 1;
-           n_restricts = 3
+           restrict_set_size = self.restrict_size;
+           restrict_branches = self.restrict_branches;
            ctx.push(search_path);
 
            #perform unification
@@ -260,15 +261,15 @@ class SympyEngine(Engine):
            parent = search_path
            if not (new_asgns.empty()):
               # perform more unifications
-              for _ in range(0,12*fanout):
+              for _ in range(0,restrict_branches*fanout):
                  #compute restictions
                  restricts = new_asgns.flatten_dicts_as_lists()
                  #compute weights for each of the restrictions
                  weights = map(lambda(v,e): self.restrict_weight(ctx,v,e),restricts)
                  weights_norm = np.array(weights) / np.sum(weights)
 
-                 # select a random set of restrictions
-                 nban = min(n_restricts,len(restricts)/2)
+                 # determine the size of the set of restrictions
+                 nban = min(restrict_set_size,len(restricts)/2)
                  subset_idx = np.random.choice(range(0,len(restricts)),nban,p=weights_norm,replace=False)
                  subset = map(lambda i : restricts[i], subset_idx)
 
@@ -287,7 +288,6 @@ class SympyEngine(Engine):
            ctx.push(parent);
            for new_asgn in new_asgns.results:
               conflicts = ctx.get_conflicts(new_asgn)
-              print("asgns=",new_asgn,"conflict=",conflicts)
               if len(conflicts) > 0:
                  var,expr= conflicts[0] 
 
@@ -314,7 +314,6 @@ class SympyEngine(Engine):
                 results.join(dict(all_asgns))
                 
            ctx.pop();
-           print("-----");
            return results;
              
                 
@@ -335,18 +334,30 @@ class SympyEngine(Engine):
            generator = PartialConfigGenerator(self);
            asgns = Assignments()
 
-           for cfg_data in generator.generate():
+           configs = generator.generate()
+           n =0;
+           for _ in configs:
+              n+=1;
+
+           configs = generator.generate()
+           i=0;
+           for cfg_data in configs:
               cfg = PartialConfig()
               lrn = LearnAssignments()
               cfg.load(cfg_data);
               new_asgns = self.solve_subproblem(cfg,lrn);
-              print("==== Done ====")
+              print("==== PARTIAL CONFIG "+str(i)+"/"+str(n)+" ====")
+              k =0;
               for asgn in new_asgns.results:
-                 print(asgn)
                  assignment = Assignment()
-                 assignment = assignment.load_sympy(asgn)
+                 # load concrete component
+                 assignment.load_list(cfg.templ.get_substitution_list());
+                 # load set of assignments
+                 assignment.load_dict(asgn)
                  asgns.add(assignment)
-
+                 k += 1;
+              print(" ->"+str(k)+" solutions.")
+              i += 1;  
            self.asgns = asgns;
             
 
