@@ -3,6 +3,10 @@ import random
 from scipy.special import comb
 from sympy import * 
 
+def get_key_value_pairs(dictarr):
+        els = map(lambda x : x.items(), dictarr);
+        return reduce(lambda x,lst: x+lst, els)
+
 class Eqn:
         def __init__(self,e):
                 self.kind = "eqn"

@@ -20,6 +20,7 @@ class SympySearchPath:
             self.restricts += r
             return self;
 
+        
         def add_substitutions(self,s):
            for k in s:
               self.substitutions[k] = s[k];
@@ -132,6 +133,8 @@ class SympyCtx:
               init_asgn[search_path.templ]=search_path.targ
            self.assigns.join(search_path.assigns)
            self.assigns.join(init_asgn)
+
+           #outputs that are still un-unified
            outs = list(self.outputs.last())
            outs.remove(search_path.templ)
            self.outputs.join(outs)
@@ -165,11 +168,14 @@ class SympyCtx:
         def is_output(self,v):
            return self.outputs.last().count(v) > 0
 
+        
         def get_conflicts(self,assigns):
            conflicts = [];
-           for k in assigns:
+           all_assigns = dict(self.assigns.flatten_dicts_as_lists() + assigns.items())
+
+           for k in all_assigns:
               if self.is_output(k):
-                 conflicts.append((k,assigns[k]))
+                 conflicts.append((k,all_assigns[k]))
            return conflicts;
 
 
@@ -199,6 +205,7 @@ class SympyEngine(Engine):
 
         def unify_exprs(self,ctx,search_path):
            ctx.apply_ctx();
+
            templ_expr = self.templ.get_eqn(search_path.templ)
 
            if(isinstance(search_path.targ,basestring)):
@@ -224,6 +231,7 @@ class SympyEngine(Engine):
            else:
               return None
 
+           #perform unification
            a_single_asgn = Basic(*targ).match(Basic(*templ))
            return a_single_asgn
 
@@ -234,33 +242,36 @@ class SympyEngine(Engine):
               return 1.0;
 
         def unify_and_resolve_exprs(self,ctx,search_path):
-           asgns = SympyResults();
            # add the paths
 
            depth = ctx.depth;
            fanout = ctx.max_depth - ctx.depth + 1;
-           nre = 3
+           n_restricts = 3
            ctx.push(search_path);
+
+           #perform unification
+           new_asgns = SympyResults();
            init_asgn = self.unify_exprs(ctx,search_path)
            ctx.pop();
 
            if init_asgn != None:
-              asgns.join({key.name: val for key,val in init_asgn.items()})
+              new_asgns.join({key.name: val for key,val in init_asgn.items()})
 
            parent = search_path
-           if not (asgns.empty()):
+           if not (new_asgns.empty()):
               # perform more unifications
               for _ in range(0,12*fanout):
-                 all_results = map(lambda x: x.items(),asgns.results)
-                 restricts = reduce(lambda x,lst:x+lst,all_results)
+                 #compute restictions
+                 restricts = new_asgns.flatten_dicts_as_lists()
+                 #compute weights for each of the restrictions
                  weights = map(lambda(v,e): self.restrict_weight(ctx,v,e),restricts)
                  weights_norm = np.array(weights) / np.sum(weights)
+
                  # select a random set of restrictions
-                 nban = min(nre,len(restricts)/2)
+                 nban = min(n_restricts,len(restricts)/2)
                  subset_idx = np.random.choice(range(0,len(restricts)),nban,p=weights_norm,replace=False)
-                 print(subset_idx)
                  subset = map(lambda i : restricts[i], subset_idx)
-                 print(subset)
+
                  # add the restrictions to the child node
                  sibling_node = SympySearchPath().load(parent)
                  sibling_node.add_restricts(subset)
@@ -270,40 +281,40 @@ class SympyEngine(Engine):
                  ctx.pop();
 
                  if new_asgn != None:
-                    asgns.join({key.name: val for key,val in new_asgn.items()})
+                    new_asgns.join({key.name: val for key,val in new_asgn.items()})
 
            results = SympyResults()
            ctx.push(parent);
-           for asgn in asgns.results:
-
-              conflicts = ctx.get_conflicts(asgn)
+           for new_asgn in new_asgns.results:
+              conflicts = ctx.get_conflicts(new_asgn)
+              print("asgns=",new_asgn,"conflict=",conflicts)
               if len(conflicts) > 0:
                  var,expr= conflicts[0] 
 
                  if isinstance(expr,Symbol):
-                    path1 = SympySearchPath().add_assigns(asgn)
+                    path1 = SympySearchPath().add_assigns(new_asgn)
                     path1.set_unify(var,expr.name)
 
-                    path2 = SympySearchPath().add_assigns(asgn)
-                    path2.set_unify(var,expr)
+                    path2 = SympySearchPath().add_assigns(new_asgn)
+                    #path2.set_unify(var,expr)
 
                     results1 = self.unify_and_resolve_exprs(ctx,path1)
-                    results2 = self.unify_and_resolve_exprs(ctx,path2)
+                    #results2 = self.unify_and_resolve_exprs(ctx,path2)
                     results.join_results(results1)
-                    results.join_results(results2)
+                    #results.join_results(results2)
                  else:
-                    path1 = SympySearchPath().add_assigns(asgn)
+                    path1 = SympySearchPath().add_assigns(new_asgn)
                     path1.set_unify(var,expr)
                     results1 = self.unify_and_resolve_exprs(ctx,path1)
                     results.join_results(results1)
 
               else:
                 old_asgns = ctx.assigns.flatten_dicts_as_lists();
-                all_asgns = set(asgn.items() + old_asgns);
+                all_asgns = set(new_asgn.items() + old_asgns);
                 results.join(dict(all_asgns))
                 
-
            ctx.pop();
+           print("-----");
            return results;
              
                 

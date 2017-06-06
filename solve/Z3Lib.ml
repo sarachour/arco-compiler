@@ -365,15 +365,17 @@ struct
     close_out oc;
     print "[Z3]" ("---> Executing SMT Solver prob="^(idx)^"\n");
     z3_print_debug "--->" "Executing SMT Solver\n";
-    flush_all ();
-    begin
+    let cmd = 
       if use_dreal then
-        Sys.command ("./timebomb.sh 'dReal --model "^smtfile^" > "^resfile^"' "^
-                    (string_of_int timeout))
+          "./timebomb.sh 'dReal --model "^smtfile^" > "^resfile^"' "^
+                    (string_of_int timeout)
       else
-        Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
-                    (string_of_int timeout))
-    end;
+          "./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
+                     (string_of_int timeout)
+    in
+    print "[z3]" (cmd^"\n");
+    flush_all ();
+    Sys.command cmd;
     z3_print_debug "--->" "Finished Search\n";
     flush_all ();
     begin
