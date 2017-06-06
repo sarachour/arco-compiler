@@ -16,6 +16,9 @@ apt-get install ocaml opam -y > /dev/null
 
 echo "Install Python"
 apt-get install python python-pip -y > /dev/null
+pip install --upgrade pip
+echo "Install Python Dependencies"
+pip install scipy numpy sympy  > /dev/null
 
 echo "Install DReal"
 apt-get install -y python-software-properties  # only for 12.04 to have add-apt-repository

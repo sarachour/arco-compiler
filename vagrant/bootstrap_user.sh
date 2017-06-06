@@ -8,12 +8,8 @@ eval `opam config env`
 echo "Initializing Opam Dependencies"
 opam install menhir oasis core -y > /dev/null
 
-echo "Install Python Dependencies"
-pip install --upgrade pip
-pip install scipy numpy sympy  > /dev/null
-
-echo eval `source ~/.bashrc.user` >>> .bashrc.user
-echo eval `opam config env` >>> .bashrc.user
+#echo "eval `source ~/.bashrc.user" >>> .bashrc.user
+#echo "eval `opam config env`" >>> .bashrc.user
 
 echo "Install Pycaml"
 cd /deps/symcaml/repo/deps/pycaml
