@@ -3,6 +3,7 @@ open Util
 open Sys
 open Core.Std
 open SymCaml
+open Interactive
 
 exception AlgebraicLib_error of string
 
@@ -310,7 +311,8 @@ struct
                 | [lhs;rhs] ->
                   begin
                     let vr : a = VarMapper.inv_v env.varmap lhs in
-                    let expr : a ast = 
+                    print "[ALG]" rhs;
+                    let expr : a ast =
                       ASTLib.from_symcaml (SymCaml.string_of_repr rhs)
                         (VarMapper.inv_v env.varmap)
                     in

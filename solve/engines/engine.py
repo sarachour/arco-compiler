@@ -116,12 +116,16 @@ class SOEq:
 class Assignment:
         def __init__(self):
                 self.assigns = {};
+                self.is_real = True;
 
         def load_dict(self,asgns):
            for v in asgns:
               self.add(v,asgns[v])
 
         def add(self,v,expr):
+                if expr.is_real = False:
+                        self.is_real = False;
+
                 self.assigns[v] = expr;
 
 
@@ -156,6 +160,9 @@ class Assignments:
                 self.assigns = [];
 
         def add(self,asgn):
+                if asgn.is_real = False:
+                        return False;
+
                 for c_asgn in self.assigns:
                         if c_asgn.equals(asgn):
                                 return False
