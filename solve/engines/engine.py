@@ -123,7 +123,7 @@ class Assignment:
               self.add(v,asgns[v])
 
         def add(self,v,expr):
-                if expr.is_real = False:
+                if sympify(expr).is_real == False:
                         self.is_real = False;
 
                 self.assigns[v] = expr;
@@ -160,7 +160,7 @@ class Assignments:
                 self.assigns = [];
 
         def add(self,asgn):
-                if asgn.is_real = False:
+                if asgn.is_real == False:
                         return False;
 
                 for c_asgn in self.assigns:
