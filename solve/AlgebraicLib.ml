@@ -216,6 +216,10 @@ struct
      let outfile = "unify_"^(string_of_int (REF.dr id))^".out" in
      let fh = open_out file in
      Printf.fprintf fh
+       "import sys\n";
+     Printf.fprintf fh
+       "sys.path.insert(0,'engines')\n";
+     Printf.fprintf fh
        "from engines.sympy_engine import engine\n";
      UnifyEnv.iter_steps prob (fun (step: a UnifyEnv.unify_t) ->
          match step with

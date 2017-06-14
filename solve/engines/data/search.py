@@ -204,8 +204,9 @@ class AssignStats:
     def conflict(self):
         self.conf += 1;
 
-    def weight(self):
-        weight = 1;
+    def grade(self):
+        # if more successes than failures.
+        weight = (self.succ - self.fail)
         return weight
 
     def __repr__(self):
@@ -225,6 +226,10 @@ class RestrictStats:
     def success(self):
         self.succ += 1;
 
+    def grade(self):
+        weight = self.succ - self.fail
+        return weight
+
     def __repr__(self):
         return str(self.succ) +"/"+str(self.fail)
 
@@ -241,7 +246,6 @@ class AssignFreqMap:
     def __init__(self):
         self.data = {};
         self.heuristic = AssignExprHeuristic();
-        self.restrictions = [];
 
     def add(self,v,e):
         if not (v in self.data):
@@ -292,12 +296,14 @@ class RestrictFreqMap:
    def __init__(self):
         self.data = {};
         self.restrict_space = [];
+        self.restrictions = {};
 
    def indices_of_restrict(self,restrict):
         indices = []
         for (v,e) in restrict:
            if not ((v,e) in self.restrict_space):
               self.restrict_space.append((v,e))
+              self.restrictions[(v,e)] = RestrictStats() 
 
            indices.append(self.restrict_space.index((v,e)))
 
@@ -310,9 +316,15 @@ class RestrictFreqMap:
         restricts = map(lambda i : self.restrict_space[i], indices);
         return restricts;
 
+   def has_assign(self,v,e):
+        return (v,e) in self.restrictions
+
    def has(self,restrict):
         indices = self.indices_of_restrict(restrict);
         return indices in self.data
+
+   def get_assign(self,v,e):
+        return self.restrictions[(v,e)]
 
    def get(self,restrict):
         indices = self.indices_of_restrict(restrict)
@@ -328,6 +340,9 @@ class RestrictFreqMap:
         self.add(restrict);
         q = self.get(restrict);
         lamb(q)
+        for (v,e) in restrict:
+           vstats = self.restrictions[(v,e)]
+           lamb(vstats)
 
    def __repr__(self):
         srepr = ""
@@ -336,6 +351,10 @@ class RestrictFreqMap:
            stats = self.data[indices]
            srepr += str(restricts)+":="+str(stats)+ "\n"
 
+        srepr += "--- Individual ---\n"
+        for (v,e) in self.restrictions:
+           stats = self.restrictions[(v,e)]
+           srepr += str(v)+"="+str(e)+"   "+str(stats)+"\n"
         return srepr;
 
 class SearchHistory:
@@ -349,16 +368,22 @@ class SearchHistory:
         options = [];
         weights = [];
         for (v,e) in self.assigns.to_list():
-           stats = self.assigns.get(v,e);
            grade = self.assigns.heuristic.grade(v,e)
+           assign_score = self.assigns.get(v,e).grade();
+           restrict_score = 0
+           if self.restricts.has_assign(v,e):
+              restrict_score = self.restricts.get_assign(v,e).grade()
 
-           score = float(stats.weight())+float(grade)
+           score = max(0.0001,float(restrict_score)-float(assign_score)+float(grade)+1)
            total += score;
            options.append((v,e));
            weights.append(score);
 
         weights_norm = np.array(weights) / total 
         # determine the size of the set of restrictions
+        if len(options)/2 < n:
+           n = len(options)/2
+
         subset_idx = np.random.choice(range(0,len(options)),n,p=weights_norm,replace=False)
         subset = map(lambda i : options[i], subset_idx)
         return subset;
@@ -465,7 +490,6 @@ class SympySlnGenerator:
                 path2.set_unify(var,expr)
 
                 results1 = self.get_sln(path1)
-                self.ctx.pop();
                 results2 = self.get_sln(path2)
                 self.ctx.pop();
                 return results1 + results2;
@@ -474,6 +498,7 @@ class SympySlnGenerator:
                 path1 = SympySearchPath().add_assigns(new_asgn);
                 path1.set_unify(var,expr)
                 results1 = self.get_sln(path1)
+                self.ctx.pop();
                 return results1;
 
         else:
