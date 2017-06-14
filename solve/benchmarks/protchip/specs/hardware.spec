@@ -104,12 +104,18 @@ comp emb
   output Dfree2 {I:uA}
   output Cfree2 {I:uA}
 
-  param A_SW : ? = {0,1}
-  param B_SW : ? = {0,1}
-  param FF_SW1 : ? = {0,1}
-  param FF_SW2 : ? = {0,1}
-  param FF_SW3 : ? = {0,1}
-  param FF_SW4 : ? = {0,1}
+  %param A_SW : ? = {0,1}
+  %param B_SW : ? = {0,1}
+  %param FF_SW1 : ? = {0,1}
+  %param FF_SW2 : ? = {0,1}
+  %param FF_SW3 : ? = {0,1}
+  %param FF_SW4 : ? = {0,1}
+  param A_SW : ? = {1}
+  param B_SW : ? = {0}
+  param FF_SW1 : ? = {0}
+  param FF_SW2 : ? = {0}
+  param FF_SW3 : ? = {1}
+  param FF_SW4 : ? = {0}
 
 
   %must be between these two for stability
@@ -137,7 +143,7 @@ comp emb
   def I(Cfree2) mag = [0.0001,10] uA
 
   rel ddt I(Ctot) = I(kr1)*(I(Cprod) + \
-    	   FF_SW3*( I(Afree)*(( I(Bfree) /I(KDfw))^n)) \ 
+    	FF_SW3*( I(Afree)*(( I(Bfree) /I(KDfw))^n)) \ 
       ) - I(kr2)*( \
         I(Cdeg) + \
     	  I(Cfree)*I(ratC)) \

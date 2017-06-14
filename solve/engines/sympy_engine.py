@@ -1,191 +1,11 @@
 import sympy;
-from engine import * 
-from engine import Assignment,Assignments 
+from data import * 
+from engine import *
 from sympy import *
 import numpy as np
 # a partial configuration is a set of parameter assignments, and
 # initial conditions.
 
-# a search path is a set of assignments
-class SympySearchPath:
-
-        def __init__(self):
-            self.restricts = [];
-            self.assigns = {};
-            self.subs = {};
-            self.templ = None;
-            self.targ = None;
-
-        def add_restricts(self,r):
-            self.restricts += r
-            return self;
-
-        
-        def add_substitutions(self,s):
-           for k in s:
-              self.substitutions[k] = s[k];
-           return self;
-
-        def add_assigns(self,a):
-          for k in a:
-              self.assigns[k] = a[k];
-          return self;
-
-        def set_unify(self,v,e):
-            self.templ = v;
-            self.targ = e;
-            return self
-
-        def load(self, v):
-            self.restricts = list(v.restricts);
-            self.assigns = dict(v.assigns);
-            self.subs = dict(v.subs);
-            self.templ = (v.templ);
-            self.targ = (v.targ);
-            return self
-
-class SympyResults:
-
-        def __init__(self):
-           self.results = [];
-
-        def join(self,assigns):
-           if assigns != None:
-                self.results.append(assigns);
-
-        def pop(self):
-              self.results.pop()
-
-        def last(self):
-              return self.results[len(self.results)-1]
-
-        def join_all(self,assigns):
-           if assigns != None:
-             for r in assigns:
-                self.join(r);
-
-        def join_results(self,other):
-           self.join_all(other.results)
-
-        def get(self):
-           if len(self.results) == 0:
-               return None
-           else:
-               return self.results
-
-        def flatten_dicts_as_lists(self):
-           args = [];
-           for r in self.results:
-              args = args + r.items()
-           return args
-
-        def flatten_lists(self):
-           args = [];
-           for r in self.results:
-              args = args + r 
-           return args
-
-        def flatten_dicts(self):
-           args = {};
-           for rdict in self.results:
-              for k in rdict:
-                if k in args and isinstance(args[k],list):
-                  args[k].append(rdict[k])
-                elif k in args:
-                  args[k] = [args[k],rdict[k]]
-                else:
-                  args[k] = rdict[k]
-
-           return args
-
-        def empty(self):
-           return len(self.results) == 0
-   
-class SympyCtx:
-
-        def __init__(self,templ,targ,cfg):
-           self.restricts = SympyResults();
-           self.assigns = SympyResults();
-           self.subs = SympyResults();
-           self.outputs = SympyResults();
-
-           self.outputs.join(templ.outputs()+[templ.priority])
-           self.targ = targ;
-           self.templ = templ;
-           self.depth = 0;
-           self.max_depth = len(self.outputs.last())
-
-           ns = {};
-           templ.namespace(ns,True);
-           targ.namespace(ns,False);
-           self.ns = ns;
-            
-           self.restricts.join_all(cfg.templ.get_restrictions())
-           self.subs.join(cfg.templ.get_substitutions());
-           self.subs.join(cfg.targ.get_substitutions());
-
-        def push(self,search_path):
-           self.restricts.join(search_path.restricts)
-           init_asgn = {};
-           if isinstance(search_path.targ,basestring):
-              init_asgn[search_path.templ]=Symbol(search_path.targ)
-           else:
-              init_asgn[search_path.templ]=search_path.targ
-           self.assigns.join(search_path.assigns)
-           self.assigns.join(init_asgn)
-
-           #outputs that are still un-unified
-           outs = list(self.outputs.last())
-           outs.remove(search_path.templ)
-           self.outputs.join(outs)
-           self.depth += 1;
-           self.subs.join(search_path.subs)
-
-        def pop(self):
-           self.restricts.pop()
-           self.subs.pop()
-           self.depth -= 1;
-           self.assigns.pop()
-           self.assigns.pop()
-           self.outputs.pop()
-
-        def apply_ctx(self):
-           self._ns = dict(self.ns)
-           subs = self.subs.flatten_dicts();
-           assigns = self.assigns.flatten_dicts();
-
-           restricts = self.restricts.flatten_lists();
-           self.templ.restrict(self._ns,restricts);
-
-           self._subs = {}
-           for (v,e) in subs.items() + assigns.items():
-                if isinstance(e,basestring):
-                   self._subs[self._ns[v]] = sympify(e,locals=self._ns)
-                else:
-                   self._subs[self._ns[v]] = e
-
-
-        def is_output(self,v):
-           return self.outputs.last().count(v) > 0
-
-        
-        def get_conflicts(self,assigns):
-           conflicts = [];
-           all_assigns = dict(self.assigns.flatten_dicts_as_lists() + assigns.items())
-
-           for k in all_assigns:
-              if self.is_output(k):
-                 conflicts.append((k,all_assigns[k]))
-           return conflicts;
-
-
-        def apply_expr(self,e):
-           if isinstance(e,basestring):
-              expr = sympify(e,locals=self._ns)
-           else:
-              expr = e
-           sub_expr = expr.xreplace(self._subs)
-           return sub_expr
 
 class SympyEngine(Engine):
 
@@ -237,9 +57,45 @@ class SympyEngine(Engine):
 
         def restrict_weight(self,ctx,v,e):
            if ctx.is_output(v):
-              return 10.0;
+              return 100.0;
            else:
-              return 1.0;
+              return len(repr(e));
+
+        def generate_restrictions(self,ctx,restrictions):
+           restrict = []
+           weight = []
+
+           for (v,e) in restrictions:
+              if (v,e) in restrict:
+                 idx = restrict.index((v,e));
+                 weight[idx] += 1;
+              else:
+                 weight.append(1);
+                 restrict.append((v,e));
+
+           for idx in range(0,len(restrict)):
+              (v,e) = restrict[idx]
+              weight[idx] = weight[idx]*self.restrict_weight(ctx,v,e)*1.0
+
+           return weight,restrict
+
+        def select_restrictions(self,prev_subsets,restricts,weights,size):
+           weights_norm = np.array(weights) / np.sum(weights)
+           # determine the size of the set of restrictions
+           subset_idx = np.random.choice(range(0,len(restricts)),size,p=weights_norm,replace=False)
+           subset = map(lambda i : restricts[i], subset_idx)
+
+           tries =0
+           while subset in prev_subsets and tries < 12:
+                   subset_idx = np.random.choice(range(0,len(restricts)),size,p=weights_norm,replace=True)
+                   subset = map(lambda i : restricts[i], subset_idx)
+                   tries += 1
+
+           if subset in prev_subsets:
+                   return None;
+
+           print(subset)
+           return subset
 
         def unify_and_resolve_exprs(self,ctx,search_path):
            # add the paths
@@ -255,27 +111,28 @@ class SympyEngine(Engine):
            init_asgn = self.unify_exprs(ctx,search_path)
            ctx.pop();
 
+           generator = SympySlnGenerator(ctx);
+
            if init_asgn != None:
               new_asgns.join({key.name: val for key,val in init_asgn.items()})
 
            parent = search_path
            if not (new_asgns.empty()):
               # perform more unifications
+              prev_subsets = [[]];
               for _ in range(0,restrict_branches*fanout):
                  #compute restictions
                  restricts = new_asgns.flatten_dicts_as_lists()
+                 weights,options = self.generate_restrictions(ctx,restricts);
+                 restrict_set_size = min(restrict_set_size,len(restricts)/2)
+
+                 restrict_set = self.select_restrictions(prev_subsets,options,weights,restrict_set_size)
+                 if restrict_set == None:
+                         continue;
+                 prev_subsets.append(restrict_set);
                  #compute weights for each of the restrictions
-                 weights = map(lambda(v,e): self.restrict_weight(ctx,v,e),restricts)
-                 weights_norm = np.array(weights) / np.sum(weights)
-
-                 # determine the size of the set of restrictions
-                 nban = min(restrict_set_size,len(restricts)/2)
-                 subset_idx = np.random.choice(range(0,len(restricts)),nban,p=weights_norm,replace=False)
-                 subset = map(lambda i : restricts[i], subset_idx)
-
-                 # add the restrictions to the child node
                  sibling_node = SympySearchPath().load(parent)
-                 sibling_node.add_restricts(subset)
+                 sibling_node.add_restricts(restrict_set)
 
                  ctx.push(sibling_node);
                  new_asgn = self.unify_exprs(ctx,sibling_node)
@@ -326,9 +183,20 @@ class SympyEngine(Engine):
            s_templ = self.templ.priority;
            s_targ = self.targ.priority;
            init_path = SympySearchPath().set_unify(s_templ,s_targ)
-           asgns = self.unify_and_resolve_exprs(ctx,init_path)
 
-           return asgns
+           generator = SympySlnGenerator(ctx);
+           generator.get_sln(init_path);
+           #asgns = self.unify_and_resolve_exprs(ctx,init_path)
+
+           for i in range(0,30):
+                   init_path = SympySearchPath().set_unify(s_templ,s_targ)
+                   cstrs = generator.get_constraints(3)
+                   init_path.add_restricts(cstrs);
+                   nslns = generator.get_sln(init_path);
+                   print("# slns:" + str(nslns))
+
+
+           return generator.get_assignments(); 
            
         def solve(self):
            generator = PartialConfigGenerator(self);

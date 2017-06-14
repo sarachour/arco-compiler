@@ -11,10 +11,13 @@ param KDrv : unit = 10
 
 time t : ms 
 
-%monomer, this should map to AFREE
-rel ddt  Adimer = (-1*kr1*Adimer) + (kr1/KDrv)*Amonomer*Amonomer init 0
-def Adimer mag=[0,1] M
 
 %dimer, this should map to CFREE
-rel ddt Amonomer = kr1*Adimer*2 - (kr1/KDrv)*Amonomer*Amonomer*2 init 0
-def Amonomer mag=[0,1] M
+rel ddt  Adimer = (kr1/KDrv)*Amonomer*Amonomer - kr1*Adimer init 5
+def Adimer mag=[0,1] M
+
+%monomer, this should map to AFREE
+%rel ddt Amonomer = 2*kr1*Adimer - 2*(kr1/KDrv)*Amonomer*Amonomer init 0
+%THIS REQUIRES A CLOSED FORM SOLUTION
+rel Amonomer = 0.0 - 2*Adimer
+%def Amonomer mag=[0,1] M
