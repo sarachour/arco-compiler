@@ -42,23 +42,25 @@ class SOEq:
                 self.diffeqns = {};
                 self.priority = None;
 
+        def label_expr(self,e):
+            return sympify(e).subs(self.labels)
+
         def variables(self):
             return self.vrbs
 
         def outputs(self):
-            return self.eqns.keys();
-
-        def diffeq_outputs(self):
-            return self.diffeqns.keys();
+            return self.eqns.keys() + self.diffeqns.keys();
 
 
         def define_variable(self,v):
             self.vrbs.append(v);
 
         def label_variable(self,v,l):
-            self.labels[v] = l;
+            self.labels[v] = Symbol(l);
 
-        
+        def label_param(self,v,l):
+            self.labels[v] = Symbol(l);
+       
         def init_var(self,v,expr):
             if not(v in self.inits):
                 self.inits[v] = [];
@@ -82,9 +84,7 @@ class SOEq:
         def add_ic(self,v,ic):
             self.diffeqns[v].set_ic(ic);
 
-        def label_param(self,v,l):
-            self.labels[v] = l
-
+        
         def define_param(self,v,vals):
             self.pars[v] = vals;
 

@@ -201,6 +201,8 @@ class SympyEngine(Engine):
                    print("# slns:" + str(nslns))
 
 
+           # ASSIGNMENTS
+           generator.print_assignments();
            return generator.get_assignments(); 
            
         def solve(self):

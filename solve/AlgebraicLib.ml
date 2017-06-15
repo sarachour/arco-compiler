@@ -117,11 +117,11 @@ struct
   struct
     exception Varmapper_error of string
 
-    type 'a t = {conv:('a,string) map;inv:(string,'a) map}
+    type 'a t = {conv:('a,string) map;inv:(string,'a) map;to_string:'a->string}
 
-    let init (type a) : unit -> a t=
-      fun () ->
-        {conv=MAP.make();inv=MAP.make()}
+    let init (type a) : (a -> string) -> a t=
+      fun tostr ->
+        {conv=MAP.make();inv=MAP.make();to_string = tostr}
 
     let clear (type a): a t -> unit =
       fun env ->
@@ -147,32 +147,37 @@ struct
 
     let conv_v : 'a t -> 'a -> string =
       fun mp x ->
-        MAP.get mp.conv x
+        if MAP.has mp.conv x then
+          MAP.get mp.conv x
+        else
+          raise (AlgebraicLib_error ("[a->v] variable isn't in varmapper: "^(mp.to_string x)))
 
     let inv_v : 'a t -> string -> 'a =
       fun mp x ->
         if MAP.has mp.inv x then
           MAP.get mp.inv x
         else
-          raise (AlgebraicLib_error ("variable isn't in varmapper: "^x))
+          raise (AlgebraicLib_error ("[v->a] variable isn't in varmapper: "^x))
 
     let conv_e : 'a t -> 'a ast -> string ast =
       fun mp expr ->
-        ASTLib.map expr (fun x -> MAP.get mp.conv x)
+        ASTLib.map expr (fun x ->  conv_v mp x)
 
     let inv_e : 'a t -> string ast -> 'a ast =
       fun mp expr ->
-        ASTLib.map expr (fun x -> MAP.get mp.inv x) 
+        ASTLib.map expr (fun x -> inv_v mp x) 
   end
+
+
   type 'a t = {
     varmap: 'a VarMapper.t;
   }
 
   let id = REF.mk 0
 
-  let init (type a):  unit -> a t =
-    fun () ->
-      {varmap=VarMapper.init()}
+  let init (type a):  (a -> string)-> a t =
+    fun tostr ->
+      {varmap=VarMapper.init(tostr)}
 
   let simplify (type a) (env:a t) (expr: a ast) =
 
@@ -252,7 +257,7 @@ struct
                  "engine.targ.define_variable(\"%s\")\n"
                  (VarMapper.conv_v env.varmap v);
                Printf.fprintf fh
-                 "engine.templ.label_variable(\"%s\",\"%s\")\n"
+                 "engine.targ.label_variable(\"%s\",\"%s\")\n"
                  (VarMapper.conv_v env.varmap v) (prob.to_string v)
              end
 

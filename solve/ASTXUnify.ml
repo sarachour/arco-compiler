@@ -1301,7 +1301,7 @@ struct
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwvar;
         construct_math un_env menv mvar;
-        let alg_env = AlgebraicLib.init () in
+        let alg_env = AlgebraicLib.init (unid2str) in
         let branching = Globals.get_glbl_int "unify-branch" in
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in 
@@ -1319,7 +1319,7 @@ struct
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwvar;
         construct_hw_expr un_env hwenv htargvar hexpr;
-        let alg_env = AlgebraicLib.init () in 
+        let alg_env = AlgebraicLib.init (unid2str) in 
         let asgns = AlgebraicLib.unify alg_env un_env nslns 1 in
         (*asgns to rsteps*)
         List.map (fun asgn -> to_rsteps asgn steps) asgns

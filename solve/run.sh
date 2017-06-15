@@ -75,5 +75,6 @@ mv *.res $EXPDIR/smt
 mv *.model $EXPDIR/smt
 mv unify_*.py $EXPDIR/unify
 mv unify_*.out $EXPDIR/unify
+mv unify_*.log $EXPDIR/unify
 
 mv *.debug.txt $TMPDIR

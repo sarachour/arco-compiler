@@ -105,7 +105,7 @@ class SympyCtx:
            self.subs = SympyResults();
            self.outputs = SympyResults();
 
-           self.outputs.join(templ.outputs()+[templ.priority])
+           self.outputs.join(templ.outputs())
            self.targ = targ;
            self.templ = templ;
            self.depth = 0;
@@ -122,13 +122,16 @@ class SympyCtx:
 
         def push(self,search_path):
            self.restricts.join(search_path.restricts)
-           init_asgn = {};
+           new_asgns = {};
            if isinstance(search_path.targ,basestring):
-              init_asgn[search_path.templ]=Symbol(search_path.targ)
+              new_asgns[search_path.templ]=Symbol(search_path.targ)
            else:
-              init_asgn[search_path.templ]=search_path.targ
-           self.assigns.join(search_path.assigns)
-           self.assigns.join(init_asgn)
+              new_asgns[search_path.templ]=search_path.targ
+
+           for v in search_path.assigns:
+              new_asgns[v] = search_path.assigns[v]
+
+           self.assigns.join(new_asgns)
 
            #outputs that are still un-unified
            outs = list(self.outputs.last())
@@ -136,6 +139,7 @@ class SympyCtx:
                print("Already DNE",self.outputs.results,search_path.templ)
            else:
                outs.remove(search_path.templ)
+
            self.outputs.join(outs)
            self.depth += 1;
            self.subs.join(search_path.subs)
@@ -144,7 +148,6 @@ class SympyCtx:
            self.restricts.pop()
            self.subs.pop()
            self.depth -= 1;
-           self.assigns.pop()
            self.assigns.pop()
            self.outputs.pop()
 
@@ -171,7 +174,6 @@ class SympyCtx:
         def get_conflicts(self,assigns):
            conflicts = [];
            all_assigns = dict(self.assigns.flatten_dicts_as_lists() + assigns.items())
-
            for k in all_assigns:
               if self.is_output(k):
                  conflicts.append((k,all_assigns[k]))
@@ -444,7 +446,7 @@ class SympySlnGenerator:
 
         else:
             targ_expr = Eqn(search_path.targ);
-            
+
         templ = []
         targ = []
         templ.append(ctx.apply_expr(templ_expr.eqn))
@@ -454,7 +456,7 @@ class SympySlnGenerator:
             templ.append(ctx.apply_expr(templ_expr.ic))
             targ.append(ctx.apply_expr(targ_expr.ic))
             
-        elif (not templ_expr.is_diffeq()) and not (targ_expr.is_diffeq()):
+        elif (not templ_expr.is_diffeq()) and (not targ_expr.is_diffeq()):
             ()
         elif (not templ_expr.is_diffeq()) and targ_expr.is_diffeq():
             return None;
@@ -468,7 +470,7 @@ class SympySlnGenerator:
 
     def get_asgn_list(self,latest):
         ctx = self.ctx
-        complete_asgns = ctx.assigns.results[1:]
+        complete_asgns = ctx.assigns.results[:]
         complete_asgns.append(latest)
         indep_asgns = []
         for i in range(0,len(complete_asgns)):
@@ -506,9 +508,9 @@ class SympySlnGenerator:
             return 0;
 
         new_asgn = {key.name: val for key,val in new_asgn_maybe.items()}
-        all_asgns = self.get_asgn_list(new_asgn);
-        conflicts = self.ctx.get_conflicts(dict(all_asgns))
+        conflicts = self.ctx.get_conflicts(new_asgn)
 
+        print("CONFLICT",conflicts)
         if len(conflicts) > 0:
             var, expr = conflicts[0]
             self.history.assigns.update(var,expr,lambda x: x.conflict())
@@ -547,3 +549,12 @@ class SympySlnGenerator:
 
     def get_assignments(self):
         return self.assigns
+
+    def print_assignments(self):
+        for asgns in self.assigns.results:
+           for v in asgns:
+              vr = self.ctx.templ.labels[v]
+              expr = self.ctx.targ.label_expr(asgns[v])
+              print(str(vr)+"="+str(expr))
+
+           print("=======")
