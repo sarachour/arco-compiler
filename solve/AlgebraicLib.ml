@@ -32,11 +32,15 @@ struct
       mutable pats: 'a list;
       mutable sym_pars: 'a list;
       mutable pat_pars: 'a list;
+      to_string: 'a -> string;
+      label: string;
+      
     }
 
-    let init (type a) : unit -> a t =
-      fun () -> {steps=[]; syms=[]; pats=[];
-                 sym_pars=[]; pat_pars=[]}
+    let init (type a) : string -> (a->string) -> a t =
+      fun label tostr -> {steps=[]; syms=[]; pats=[];
+                 sym_pars=[]; pat_pars=[];
+                 to_string=tostr;label=label}
 
     let enq  e s = e.steps <- s::e.steps
 
@@ -147,7 +151,10 @@ struct
 
     let inv_v : 'a t -> string -> 'a =
       fun mp x ->
-        MAP.get mp.inv x
+        if MAP.has mp.inv x then
+          MAP.get mp.inv x
+        else
+          raise (AlgebraicLib_error ("variable isn't in varmapper: "^x))
 
     let conv_e : 'a t -> 'a ast -> string ast =
       fun mp expr ->
@@ -214,6 +221,9 @@ struct
        ) prob.pat_pars;
      let file = "unify_"^(string_of_int (REF.dr id))^".py" in
      let outfile = "unify_"^(string_of_int (REF.dr id))^".out" in
+     let logfile= "unify_"^(string_of_int (REF.dr id))^".log" in
+     print_string ("==== Evaluating <"^file^"> ====\n");
+     REF.upd id (fun x -> x+1);
      let fh = open_out file in
      Printf.fprintf fh
        "import sys\n";
@@ -221,16 +231,30 @@ struct
        "sys.path.insert(0,'engines')\n";
      Printf.fprintf fh
        "from engines.sympy_engine import engine\n";
+     Printf.fprintf fh
+       "engine.label(\"%s\")\n"
+       prob.label;
      UnifyEnv.iter_steps prob (fun (step: a UnifyEnv.unify_t) ->
          match step with
          | DefinePat(v) ->
-           Printf.fprintf fh
-             "engine.templ.define_variable(\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
+           begin
+             Printf.fprintf fh
+               "engine.templ.define_variable(\"%s\")\n"
+               (VarMapper.conv_v env.varmap v);
+             Printf.fprintf fh
+               "engine.templ.label_variable(\"%s\",\"%s\")\n"
+               (VarMapper.conv_v env.varmap v) (prob.to_string v)
+           end
+
          | DefineSym(v) ->
-           Printf.fprintf fh
-             "engine.targ.define_variable(\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
+             begin
+               Printf.fprintf fh
+                 "engine.targ.define_variable(\"%s\")\n"
+                 (VarMapper.conv_v env.varmap v);
+               Printf.fprintf fh
+                 "engine.templ.label_variable(\"%s\",\"%s\")\n"
+                 (VarMapper.conv_v env.varmap v) (prob.to_string v)
+             end
 
          | DefinePatExpr(v,e) ->
            Printf.fprintf fh
@@ -268,15 +292,27 @@ struct
                (ASTLib.ast2str (VarMapper.conv_e env.varmap ic) ident)
            end
          | DefinePatParam(par,vals) ->
-           Printf.fprintf fh
-             "engine.templ.define_param(\"%s\",[%s])\n"
-             (VarMapper.conv_v env.varmap par)
-             (LIST.tostr  string_of_number "," vals)
+           begin
+             Printf.fprintf fh
+              "engine.templ.define_param(\"%s\",[%s])\n"
+              (VarMapper.conv_v env.varmap par)
+              (LIST.tostr  string_of_number "," vals);
+             Printf.fprintf fh
+               "engine.templ.label_param(\"%s\",\"%s\")\n"
+               (VarMapper.conv_v env.varmap par) (prob.to_string par)
+           end
+
          | DefineSymParam(par,vals) ->
-           Printf.fprintf fh
-             "engine.targ.define_param(\"%s\",[%s])\n"
-             (VarMapper.conv_v env.varmap par)
-             (LIST.tostr  string_of_number "," vals)
+           begin
+             Printf.fprintf fh
+               "engine.targ.define_param(\"%s\",[%s])\n"
+               (VarMapper.conv_v env.varmap par)
+               (LIST.tostr  string_of_number "," vals);
+             Printf.fprintf fh
+               "engine.targ.label_param(\"%s\",\"%s\")\n"
+               (VarMapper.conv_v env.varmap par) (prob.to_string par)
+           end
+
          | InitPat(v,e) ->
            Printf.fprintf fh
              "engine.templ.init_var(\"%s\",\"%s\")\n"
@@ -302,7 +338,7 @@ struct
      Printf.fprintf fh
        "engine.write(\"%s\")\n" outfile;
      close_out fh;
-     Sys.command ("python "^file);
+     Sys.command ("python "^file^" > "^logfile);
      let oh = open_in outfile in
      let result : (a*a ast) list list =
        In_channel.fold_lines oh ~init:[]
@@ -314,8 +350,8 @@ struct
                 match args with
                 | [lhs;rhs] ->
                   begin
+                    print "[ALG]" (lhs^"="^rhs);
                     let vr : a = VarMapper.inv_v env.varmap lhs in
-                    print "[ALG]" rhs;
                     let expr : a ast =
                       ASTLib.from_symcaml (SymCaml.string_of_repr rhs)
                         (VarMapper.inv_v env.varmap)

@@ -1133,7 +1133,8 @@ struct
   *)
 
 
-  let construct_hw_comp : unid AlgebraicLib.UnifyEnv.t -> hwvid hwcomp -> hwcompcfg -> int option -> string -> unit =
+  let construct_hw_comp : unid AlgebraicLib.UnifyEnv.t ->
+    hwvid hwcomp -> hwcompcfg -> int option -> string -> unit =
     fun env comp cfg inst_maybe hwvar ->
     (*==== HARDWARE ====*)
       let proc_expr (e:hwvid ast) : unid ast =
@@ -1290,25 +1291,40 @@ struct
       init_steps @ new_steps
 
 
-  let solve_math menv comp cfg inst hwvar mvar steps : rstep list list =
-    let un_env = AlgebraicLib.UnifyEnv.init () in
-    construct_hw_comp un_env comp cfg inst hwvar;
-    construct_math un_env menv mvar;
-    let alg_env = AlgebraicLib.init () in
-    let branching = Globals.get_glbl_int "unify-branch" in
-    let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
-    let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in 
-    List.map (fun asgn -> to_rsteps asgn steps) asgns
+  let solve_math :
+    mid menv -> hwvid hwcomp -> hwcompcfg -> int option -> string -> string ->
+    rstep list -> rstep list list =
+    fun menv comp cfg inst hwvar mvar steps -> 
+      begin
+        let un_env : unid AlgebraicLib.UnifyEnv.t =
+          AlgebraicLib.UnifyEnv.init
+            (HwLib.hwcompname2str comp.name) (unid2str) in
+        construct_hw_comp un_env comp cfg inst hwvar;
+        construct_math un_env menv mvar;
+        let alg_env = AlgebraicLib.init () in
+        let branching = Globals.get_glbl_int "unify-branch" in
+        let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
+        let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in 
+        List.map (fun asgn -> to_rsteps asgn steps) asgns
+      end
 
-  let solve_hw hwenv comp cfg inst hwvar htargvar hexpr steps: rstep list list =
-    let nslns = Globals.get_glbl_int "eqn-unifications" in
-    let un_env = AlgebraicLib.UnifyEnv.init () in
-    construct_hw_comp un_env comp cfg inst hwvar;
-    construct_hw_expr un_env hwenv htargvar hexpr;
-    let alg_env = AlgebraicLib.init () in 
-    let asgns = AlgebraicLib.unify alg_env un_env nslns 1 in
-    (*asgns to rsteps*)
-    List.map (fun asgn -> to_rsteps asgn steps) asgns
+
+  let solve_hw :
+    hwvid hwenv -> hwvid hwcomp -> hwcompcfg -> int option -> string -> hwvid ->
+    unid ast -> rstep list -> rstep list list =
+    fun hwenv comp cfg inst hwvar htargvar hexpr steps ->
+      begin
+        let nslns = Globals.get_glbl_int "eqn-unifications" in
+        let un_env = AlgebraicLib.UnifyEnv.init
+            (HwLib.hwcompname2str comp.name) (unid2str) in
+        construct_hw_comp un_env comp cfg inst hwvar;
+        construct_hw_expr un_env hwenv htargvar hexpr;
+        let alg_env = AlgebraicLib.init () in 
+        let asgns = AlgebraicLib.unify alg_env un_env nslns 1 in
+        (*asgns to rsteps*)
+        List.map (fun asgn -> to_rsteps asgn steps) asgns
+      end
+
 
   (* take the set of assignments, and convert to steps *)
   let get_solutions (env:runify) : (rstep list) list=

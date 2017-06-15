@@ -31,6 +31,7 @@ class SOEq:
                 self.inits = {};
                 self.diffeqns = {};
                 self.priority = None;
+                self.labels = {};
 
         def clear(self):
                 self.vrbs = [];
@@ -54,6 +55,10 @@ class SOEq:
         def define_variable(self,v):
             self.vrbs.append(v);
 
+        def label_variable(self,v,l):
+            self.labels[v] = l;
+
+        
         def init_var(self,v,expr):
             if not(v in self.inits):
                 self.inits[v] = [];
@@ -76,6 +81,9 @@ class SOEq:
 
         def add_ic(self,v,ic):
             self.diffeqns[v].set_ic(ic);
+
+        def label_param(self,v,l):
+            self.labels[v] = l
 
         def define_param(self,v,vals):
             self.pars[v] = vals;

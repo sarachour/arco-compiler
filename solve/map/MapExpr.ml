@@ -237,6 +237,7 @@ struct
     in
     let rec _work e = match e with
       | MEVar(q) -> atoz3 q
+      | MEAdd(MEConst(Integer 0), MEConst(Integer 0)) -> Z3Int 0
       | MEAdd(a,b) -> Z3Plus(_work a, _work b)
       | MESub(a,b) -> Z3Sub(_work a, _work b)
       | MEConst(Integer x) -> Z3Int(x)

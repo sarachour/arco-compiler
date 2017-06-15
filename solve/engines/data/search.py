@@ -206,7 +206,7 @@ class AssignStats:
 
     def grade(self):
         # if more successes than failures.
-        weight = (self.succ - self.fail)
+        weight = (self.succ + self.fail)
         return weight
 
     def __repr__(self):
@@ -239,7 +239,7 @@ class AssignExprHeuristic:
 
     def grade(self,v,e):
         r = srepr(e)
-        print(r);
+        #print(r);
         return 1;
 
 class AssignFreqMap:
@@ -298,13 +298,15 @@ class RestrictFreqMap:
         self.restrict_space = [];
         self.restrictions = {};
 
+   def add_assign(self,v,e):
+        if not ((v,e) in self.restrict_space):
+           self.restrict_space.append((v,e))
+           self.restrictions[(v,e)] = RestrictStats() 
+
    def indices_of_restrict(self,restrict):
         indices = []
         for (v,e) in restrict:
-           if not ((v,e) in self.restrict_space):
-              self.restrict_space.append((v,e))
-              self.restrictions[(v,e)] = RestrictStats() 
-
+           self.add_assign(v,e)
            indices.append(self.restrict_space.index((v,e)))
 
         indices.sort();
@@ -317,14 +319,23 @@ class RestrictFreqMap:
         return restricts;
 
    def has_assign(self,v,e):
-        return (v,e) in self.restrictions
+      for (vc,ec) in self.restrictions:
+         if(vc == v and ec == e):
+            return True
+
+      return False;
 
    def has(self,restrict):
         indices = self.indices_of_restrict(restrict);
         return indices in self.data
 
    def get_assign(self,v,e):
-        return self.restrictions[(v,e)]
+
+        for (vc,ec) in self.restrictions:
+           if(vc == v and ec == e):
+              return self.restrictions[(vc,ec)];
+
+        return None
 
    def get(self,restrict):
         indices = self.indices_of_restrict(restrict)
@@ -341,7 +352,7 @@ class RestrictFreqMap:
         q = self.get(restrict);
         lamb(q)
         for (v,e) in restrict:
-           vstats = self.restrictions[(v,e)]
+           vstats = self.get_assign(v,e);
            lamb(vstats)
 
    def __repr__(self):
@@ -363,18 +374,31 @@ class SearchHistory:
         self.assigns = AssignFreqMap();
         self.restricts = RestrictFreqMap();
 
+   def weight(self,assign,restrict):
+      rest_succ =restrict.succ
+      rest_fail =restrict.fail
+      asgn_succ = assign.succ
+      asgn_fail = assign.fail
+
+      return float(asgn_succ + asgn_fail+1)
+
+   def n_restricts(self):
+        return len(self.restricts.restrict_space)
+
    def select_restricts(self,n):
         total = 0;
         options = [];
         weights = [];
         for (v,e) in self.assigns.to_list():
-           grade = self.assigns.heuristic.grade(v,e)
-           assign_score = self.assigns.get(v,e).grade();
-           restrict_score = 0
-           if self.restricts.has_assign(v,e):
-              restrict_score = self.restricts.get_assign(v,e).grade()
+           if not self.restricts.has_assign(v,e):
+              self.restricts.add_assign(v,e);
 
-           score = max(0.0001,float(restrict_score)-float(assign_score)+float(grade)+1)
+           grade = self.assigns.heuristic.grade(v,e)
+
+           assign_stat = self.assigns.get(v,e);
+           restrict_stat = self.restricts.get_assign(v,e);
+           score = self.weight(assign_stat,restrict_stat)
+
            total += score;
            options.append((v,e));
            weights.append(score);
@@ -382,7 +406,10 @@ class SearchHistory:
         weights_norm = np.array(weights) / total 
         # determine the size of the set of restrictions
         if len(options)/2 < n:
-           n = len(options)/2
+           n = (len(options)+1)/2
+
+        if len(options) == 0:
+           return None
 
         subset_idx = np.random.choice(range(0,len(options)),n,p=weights_norm,replace=False)
         subset = map(lambda i : options[i], subset_idx)
@@ -402,6 +429,9 @@ class SympySlnGenerator:
         self.assigns = SympyResults();
         self.history = SearchHistory();
 
+    def is_var(self,expr):
+       return isinstance(expr,basestring)
+
     # TODO: if eqn on on math side and diffeq on hw side -> eqn to diffeq rewrite
     # TODO: if diffeqn on math side and eq on hw side  -> diffeq to eqn rewrite
     def unify_exprs(self,search_path):
@@ -409,15 +439,12 @@ class SympySlnGenerator:
         ctx.apply_ctx();
         templ_expr = ctx.templ.get_eqn(search_path.templ)
         
-        if(isinstance(search_path.targ,basestring)):
+        if(self.is_var(search_path.targ)):
             targ_expr = ctx.targ.get_eqn(search_path.targ)
-            
-        elif(not templ_expr.is_diffeq()):
+
+        else:
             targ_expr = Eqn(search_path.targ);
             
-        else:
-            return None
-        
         templ = []
         targ = []
         templ.append(ctx.apply_expr(templ_expr.eqn))
@@ -427,10 +454,14 @@ class SympySlnGenerator:
             templ.append(ctx.apply_expr(templ_expr.ic))
             targ.append(ctx.apply_expr(targ_expr.ic))
             
-        elif not templ_expr.is_diffeq() and not targ_expr.is_diffeq():
+        elif (not templ_expr.is_diffeq()) and not (targ_expr.is_diffeq()):
             ()
+        elif (not templ_expr.is_diffeq()) and targ_expr.is_diffeq():
+            return None;
+        elif templ_expr.is_diffeq() and (not targ_expr.is_diffeq()):
+            return None;
         else:
-            return None
+            raise (Exception("unexpected.. covered all cases"))
 
         a_single_asgn = Basic(*targ).match(Basic(*templ))
         return a_single_asgn

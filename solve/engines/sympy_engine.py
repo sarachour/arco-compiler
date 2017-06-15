@@ -188,9 +188,14 @@ class SympyEngine(Engine):
            generator.get_sln(init_path);
            #asgns = self.unify_and_resolve_exprs(ctx,init_path)
 
+
            for i in range(0,100):
                    init_path = SympySearchPath().set_unify(s_templ,s_targ)
-                   cstrs = generator.get_constraints(1)
+                   n_cstrs = generator.history.n_restricts()*0.2
+                   cstrs = generator.get_constraints(1 + int(n_cstrs))
+                   if cstrs == None:
+                      return generator.get_assignments();
+
                    init_path.add_restricts(cstrs);
                    nslns = generator.get_sln(init_path);
                    print("# slns:" + str(nslns))

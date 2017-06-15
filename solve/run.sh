@@ -63,6 +63,7 @@ rm -rf $EXPDIR/*
 
 mkdir -p $EXPDIR
 mkdir -p $EXPDIR/smt
+mkdir -p $EXPDIR/unify
 mkdir -p $TMPDIR
 
 mv error.log $EXPDIR
@@ -72,5 +73,7 @@ mv ckt_* $EXPDIR
 mv *.smt2 $EXPDIR/smt
 mv *.res $EXPDIR/smt
 mv *.model $EXPDIR/smt
+mv unify_*.py $EXPDIR/unify
+mv unify_*.out $EXPDIR/unify
 
 mv *.debug.txt $TMPDIR

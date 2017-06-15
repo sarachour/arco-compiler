@@ -43,7 +43,7 @@ class Engine:
             self.restrict_size = 1;
             self.restrict_branches = 2;
             self.asgns = None
-
+            self.name = "(no label)"
         @property
         def targ(self):
             return self._targ
@@ -94,6 +94,8 @@ class Engine:
           fh.close()
 
 
+        def label(self,label):
+            self.name = label;
 
         def clear(self):
             self._targ.clear()
