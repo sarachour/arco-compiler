@@ -13,7 +13,6 @@ type map_loc_val =
   | SVSymbol of interval
   | SVNumber of number
   | SVZero
-  | SVOne
 
 type map_loc = {
   loc : int;
@@ -34,23 +33,31 @@ type map_params = {
   allow_reflow : bool;
 }
 
+type map_expr =
+  | SEVar of map_var
+  | SENumber of number
+  | SEAdd of map_expr*map_expr
+  | SESub of map_expr*map_expr
+  | SEMult of map_expr*map_expr
+  | SEDiv of map_expr*map_expr
+  | SEPow of map_expr*map_expr
+
 (*get the constraints*)
 type map_result = {
   mutable cstrs: map_cstr list;
-  mutable scale: map_var ast option;
-  mutable offset: map_var ast option;
-  mutable math_interval: interval;
-  mutable hw_interval: interval;
+  mutable scale: map_expr;
+  mutable offset: map_expr;
+  mutable value: map_loc_val;
 }
 
 type linear_transform = {
   mutable scale : float;
   mutable offset: float;
 }
-type map_late_bind = map_loc list ->  map_params -> map_result
+type map_late_bind = map_result list ->  map_params -> map_result
 
 type map_cstr_gen =
-  | SCLateBind of map_late_bind
+  | SCLateBind of map_late_bind*(map_cstr_gen list)
   | SCStaticBind of map_result
 
 type map_comp = {

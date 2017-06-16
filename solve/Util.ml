@@ -182,6 +182,11 @@ struct
   let max numlst = MATH.max (float_list_of_number_list numlst)
   let min numlst = MATH.min (float_list_of_number_list numlst)
 
+  let mult a b = match a, b with
+    | Integer(a),Integer(b) -> Integer(a*b)
+    | Integer(a),Decimal(b) -> Decimal((float_of_int a)*.b)
+    | Decimal(a),Integer(b) -> Decimal((float_of_int b)*.a)
+    | Decimal(a),Decimal(b) -> Decimal(a*.b)
 end
 
 
