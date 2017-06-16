@@ -13,7 +13,7 @@ open SearchData
 
 open IntervalData
 open StochData
-open MapData
+open SMapData
 
 
 (*Unified math and hardware ids*)
@@ -175,5 +175,5 @@ type gltbl = {
   mutable goals : (int,goal) map;
   mutable search: (sstep,gltbl) ssearch;
 
-  mutable map_ctx : map_port map_ctx;
+  mutable map_ctx : map_hw_spec;
 }

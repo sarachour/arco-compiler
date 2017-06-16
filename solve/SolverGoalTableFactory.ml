@@ -18,7 +18,7 @@ open SymCamlData
 open SearchData
 open Search 
 
-open MapMain
+open SMapMain
 
 open SolverData
 open SolverUtil
@@ -54,7 +54,7 @@ struct
         comp_ctx=compctxtbl;
         sln_ctx=sln;
         search=search;
-        map_ctx=MapMain.mkctx env.hw (comptbl);
+        map_ctx=SMapMain.mkctx env.hw (comptbl);
       } in
     tbl
 

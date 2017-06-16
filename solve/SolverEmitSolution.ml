@@ -29,8 +29,8 @@ open HWConnRslvr
 open SolverCompLib
 open Simulink
 
-open MapMain 
-open MapUtil
+open SMapMain 
+open SMapUtil
 (*
 A solution is a set of connections  and components. A solution
 may additionally contain any pertinent error and magnitude mappings
@@ -91,7 +91,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Concrete slntbl ---";
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
-  let mappings = MapMain.infer slntbl in
+  let mappings = SMapMain.infer slntbl in
   (*MapMain.save_z3_problem slntbl out i;*)
   to_mat_file slntbl out i SFCircMapSDE mappings;
   to_mat_file slntbl out i SFCircMapODE mappings;
@@ -101,7 +101,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
     match mappings with
     | Some(mappings) ->
       begin
-        let map_sum = MapUtil.string_of_mappings mappings in
+        let map_sum = "MapUtil.string_of_mappings: unimpl" in
         IO.save (out^"_"^(string_of_int i)^"_map.sum") map_sum
       end
 

@@ -600,9 +600,11 @@ struct
           begin
 
             let offsetvar = (MPVOffset(cmp,port)) in
-              add_cstr (MSVarHasCstr(offsetvar,
+            (*
+               add_cstr (MSVarHasCstr(offsetvar,
                   MCEQ(offsetvar,
                        MEConst(Integer 0))));
+            *)
             {
               scale=MEVar(MPVScale(cmp,port));
               offset=MEVar(MPVOffset(cmp,port))

@@ -30,8 +30,6 @@ open HWConnRslvr
 open SolverCompLib
 open Simulink
 
-open MapMain 
-open MapUtil
 (*
 A solution is a set of connections  and components. A solution
 may additionally contain any pertinent error and magnitude mappings

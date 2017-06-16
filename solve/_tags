@@ -1,7 +1,7 @@
 true: package(threads,core,pycaml,str,camlp4,symcaml)
 true: thread,debug
 <symcaml>: include
-<map>: include
+<mapv2>: include
 <pyenv>: -traverse
 
 "interval": include

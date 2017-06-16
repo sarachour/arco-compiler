@@ -11,9 +11,9 @@ open SolverCompLib
 open SlnLib
 
 
-open MapUtil
-open MapData
-open MapIntervalCompute
+open SMapUtil
+open SMapData
+open SMapIntervalCompute
 
 open Interactive
 
@@ -717,7 +717,7 @@ struct
     ()
 
 
-  let create_linmap q namespace (mp:hw_mapping) (inverse:bool) =
+  let create_linmap q namespace (mp:linear_transform) (inverse:bool) =
     let id = symtbl_size () in
     let offloc = SIMBlock(namespace,"lmap_ofs_"^(string_of_int id)) in
     let scloc = SIMBlock(namespace,"lmap_sc_"^(string_of_int id)) in
@@ -1041,12 +1041,12 @@ struct
     if MAP.has mappings wire then
       MAP.get mappings wire
     else
-      let mapstr : string= MapUtil.string_of_mappings mappings in
+      let mapstr : string= "unimpl:transform to string" in
       warn "get_mapping" mapstr;
       error "get_mapping" ("mapping for wire "^(SlnLib.wireid2str wire)^" does not exist:\n"^mapstr)
 
 
-  let create_circuit (tbl) namespace (mappings:(wireid,hw_mapping) map) =
+  let create_circuit (tbl) namespace (mappings:(wireid,linear_transform) map) =
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
     let qs x = noop (QUEUE.enqueue_all stmtq x) in
@@ -1231,7 +1231,7 @@ struct
     QUEUE.destroy stmtq;
     stmts
 
- let to_simulink (tbl:gltbl) (mappings:(wireid,hw_mapping) map) (name:string) (form:simulink_format) =
+ let to_simulink (tbl:gltbl) (mappings:(wireid,linear_transform) map) (name:string) (form:simulink_format) =
     clear_tbl();
     upd_format form;
     let hw = tbl.env.hw in

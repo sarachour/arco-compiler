@@ -21,7 +21,8 @@ open SolverData
 open SolverUtil
 open SolverRslv
 
-open MapMain
+(* Mapping *)
+open SMapMain
 
 open SolverSearch 
 open GoalLib 
@@ -85,12 +86,12 @@ struct
       else if STRING.startswith inp "m" then
         begin
           Printf.printf ("---- Inferring ------\n");
-          noop (MapMain.infer v)
+          noop (SMapMain.infer v)
         end
       else if STRING.startswith inp "x" then
         begin
           Printf.printf ("---- Summarizing Heuristics------\n");
-          noop (MapMain.infer_feasible v);
+          noop (SMapMain.infer_feasible v);
         end
       else if STRING.startswith inp "g" then
         let _ = Printf.printf "==== Goals ===\n" in
@@ -132,7 +133,7 @@ struct
     let mint,musr= mkmenu tbl None in
     let jaunt_enabled = Globals.get_glbl_bool "enable-jaunt" in
     if jaunt_enabled  = false ||
-       (jaunt_enabled = true && MapMain.infer_feasible tbl) then
+       (jaunt_enabled = true && SMapMain.infer_feasible tbl) then
       begin
         debug ("<<< SAT => VALID >>");
         musr();
