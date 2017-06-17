@@ -4,9 +4,9 @@ open IntervalData;;
 open HWData;;
 
 type map_var =
-  | SMOffset of int
-  | SMScale of int
-  | SMFreeVar of int
+  | SMOffset of string 
+  | SMScale of string 
+  | SMFreeVar of int 
 
 (*a value into a port*)
 type map_loc_val =
@@ -54,15 +54,20 @@ type linear_transform = {
   mutable scale : float;
   mutable offset: float;
 }
-type map_late_bind = map_result list ->  map_params -> map_result
+
+
+(*information on what is bound*)
+type map_ctx = unit
+
+type map_late_bind = map_ctx -> map_result list ->  map_params -> map_result
 
 type map_cstr_gen =
   | SCLateBind of map_late_bind*(map_cstr_gen list)
   | SCStaticBind of map_result
 
 type map_comp = {
-
-  subproblem: (int,map_cstr_gen) map;
+  inputs: (string,map_cstr_gen) map;
+  outputs: (string,map_cstr_gen) map;
 }
 type map_hw_spec = {
   comps : (hwcompname,map_comp) map;

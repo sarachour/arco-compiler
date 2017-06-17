@@ -27,10 +27,10 @@ module SMapMain = struct
       MAP.iter cmptbl (fun name comp ->
           print ("> MAKE "^(HwLib.hwcompname2str name)^"\n");
           let hwcomp = comp.d in
-          let stmts : map_comp = 
+          let mapcomp : map_comp = 
             SMapHwSpecGen.build_comp hwenv hwcomp
           in
-          raise (SMapMain_error "unimpl")
+          MAP.put env.comps name mapcomp;
           () 
         );
       REF.upd _ctx (fun _ -> Some env);
