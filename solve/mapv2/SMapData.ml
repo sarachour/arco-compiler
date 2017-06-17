@@ -8,11 +8,17 @@ type map_var =
   | SMScale of string 
   | SMFreeVar of int 
 
+
 (*a value into a port*)
 type map_loc_val =
   | SVSymbol of interval
   | SVNumber of number
   | SVZero
+
+type map_comp_ctx = {
+    ports : (string, map_loc_val) map;
+    params: (string, number) map;
+}
 
 type map_loc = {
   loc : int;

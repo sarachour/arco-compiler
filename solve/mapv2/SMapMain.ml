@@ -71,7 +71,7 @@ module SMapMain = struct
 
   let infer_best : (gltbl) -> (wireid,linear_transform) map option =
     fun tbl ->
-      let prob_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl false in
+      let prob_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl in
       match prob_opt with
       | Some(prob) ->
         let mappings = SMapSolver.compute_transform tbl prob 120 in
