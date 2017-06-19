@@ -78,6 +78,47 @@ let freevar_idx = REF.mk 0;;
     {cstrs=cstrs;scale=scale;offset=offset;value}
 
 
+  let rec mk_not_equal : map_expr -> number -> map_cstr =
+    fun a n ->
+      match a with
+      | SENumber(m) -> if n = m then SCFalse else SCTrue
+      | SEVar(a) -> SCVarNeqConst(a,n)
+      | expr -> SCExprNeqConst(expr,n)
+
+  let rec mk_equal : map_expr -> map_expr -> map_cstr =
+    fun mapexpr1 mapexpr2 ->
+      match mapexpr1,mapexpr2 with
+      | SENumber(a), SENumber(b) ->
+        if a = b then SCTrue else SCFalse
+      | SEVar(a), SEVar(b) ->
+        if a = b then SCTrue else SCVarEqVar(a,b)
+      | SEVar(a), SENumber(n) ->
+        SCVarEqConst(a,n)
+      | SENumber(n), SEVar(a) ->
+        mk_equal mapexpr2 mapexpr1
+      | SEVar(a), expr ->
+        SCVarEqExpr(a,expr)
+      | expr, SEVar(a) ->
+        mk_equal mapexpr2 mapexpr1
+      | expr1, SENumber(n) ->
+        SCExprEqConst(expr1,n)
+      | SENumber(n), expr1 ->
+        mk_equal mapexpr2 mapexpr1
+      | expr1, expr2 -> 
+        SCExprEqExpr(expr1,expr2)
+
+  let mk_equal0 : map_expr -> map_cstr =
+    fun x -> mk_equal x (SENumber (Integer 0))
+
+  let mk_not_equal0 : map_expr -> map_cstr =
+    fun x -> mk_not_equal x ((Integer 0))
+
+  let mk_equal1 : map_expr -> map_cstr =
+    fun x -> mk_equal x (SENumber (Integer 0))
+
+  let mk_not_equal1 : map_expr -> map_cstr =
+    fun x -> mk_not_equal x ((Integer 0))
+
   (*process the bounds over the variable.*)
   let port_val_to_port_cstrs: string -> map_loc_val -> map_loc_val*(map_cstr list) =
     fun port_name port_val ->
@@ -89,17 +130,17 @@ let freevar_idx = REF.mk 0;;
               SVZero,[]
             else
               (SVNumber (Decimal(IntervalLib.get_value interval))),
-                [SCNonZero(SEVar(SMScale(port_name)))]
+                [mk_not_equal0 (SEVar(SMScale(port_name)))]
           end
         else
           SVSymbol(interval),
-          [SCNonZero(SEVar(SMScale(port_name)))]
+                [mk_not_equal0 (SEVar(SMScale(port_name)))]
       | SVNumber(n) ->
         if NUMBER.is_zero n then
           SVZero,[]
         else
           (SVNumber(n)),
-          [SCNonZero(SEVar(SMScale(port_name)))]
+                [mk_not_equal0 (SEVar(SMScale(port_name)))]
       | SVZero ->
         SVZero, []
 
@@ -197,7 +238,7 @@ let freevar_idx = REF.mk 0;;
             SEMult(res1.offset,res2.offset)
           )
         in
-        let value = SVSymbol(a) in
+        let value = SVSymbol(IntervalLib.mult a (IntervalLib.num m)) in
         let cstrs = [] in
         mkresult scale offset value cstrs
 
@@ -207,10 +248,10 @@ let freevar_idx = REF.mk 0;;
       | SVSymbol(s1), SVSymbol(s2) ->
         let scale = SEMult(res1.scale,res2.scale) in
         let offset = SENumber(Integer 0) in
-        let value = SVSymbol (s1) in
+        let value = SVSymbol (IntervalLib.mult s1 s2) in
         let cstrs = [
-          SCIsZero(res1.offset);
-          SCIsZero(res2.offset);
+          mk_equal0 (res1.offset) ;
+          mk_equal0 (res2.offset) ;
         ]
         in
         mkresult scale offset value cstrs 
@@ -223,8 +264,50 @@ let freevar_idx = REF.mk 0;;
   let late_bind_pow (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
 
-  let late_bind_add2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecLateBind_error "unimpl:process_ast add2")
+  let rec late_bind_add2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
+    match res1.value, res2.value with
+    | SVZero,SVZero ->
+      let scale = SEVar(get_freevar()) in
+      let offset = SEAdd(res1.offset, res2.offset) in
+      let value = SVZero in
+      let cstrs = [] in
+      mkresult scale offset value cstrs
+    | SVZero, SVNumber(n) ->
+      let scale = res2.scale in
+      let offset = SEAdd(res1.offset, res2.offset) in
+      let value = SVNumber(n) in
+      let cstrs = [] in
+      mkresult scale offset value cstrs
+    | SVNumber(_), SVZero ->
+      late_bind_add2 ctx res2 res1
+    | SVNumber(n), SVNumber(m) ->
+      let scale = res1.scale in
+      let offset = SEAdd(res1.offset, res2.offset) in
+      let value = SVNumber(NUMBER.add n m) in
+      let cstrs = [mk_equal res1.scale res2.scale] in
+      mkresult scale offset value cstrs
+    | SVSymbol(a), SVZero ->
+      let scale = res1.scale in
+      let offset = SEAdd(res1.offset, res2.offset) in
+      let value = SVSymbol(a) in
+      mkresult scale offset value []
+    | SVZero, SVSymbol(_) ->
+       late_bind_add2 ctx res2 res1 
+    | SVSymbol(a), SVNumber(m) ->
+      let scale = res1.scale in
+      let offset = SEAdd(res1.offset, res2.offset) in
+      let value = SVSymbol(IntervalLib.add a (IntervalLib.num m)) in
+      let cstrs = [mk_equal res1.scale res2.scale] in
+      mkresult scale offset value []
+    | SVNumber(_), SVSymbol(_) ->
+      late_bind_add2 ctx res2 res1
+    | SVSymbol(a), SVSymbol(b) ->
+      let scale = res1.scale in
+      let offset = SEAdd(res1.offset, res2.offset) in
+      let value = SVSymbol(IntervalLib.add a b) in
+      let cstrs = [mk_equal res1.scale res2.scale] in
+      mkresult scale offset value []
+
 
   let late_bind_sub2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     raise (SMapHwSpecLateBind_error "unimpl:process_ast sub2")

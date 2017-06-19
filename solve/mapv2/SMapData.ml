@@ -45,8 +45,16 @@ type map_expr =
   | SEPow of map_expr*map_expr
 
 type map_cstr =
-  | SCNonZero of map_expr 
-  | SCIsZero of map_expr 
+  | SCFalse
+  | SCTrue
+  | SCExprEqExpr of map_expr*map_expr
+  | SCExprEqConst of map_expr*number
+  | SCExprNeqConst of map_expr*number
+
+  | SCVarEqVar of map_var*map_var
+  | SCVarEqExpr of map_var*map_expr 
+  | SCVarEqConst of map_var*number
+  | SCVarNeqConst of map_var*number
 
 (*get the constraints*)
 type map_result = {

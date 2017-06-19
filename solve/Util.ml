@@ -188,6 +188,12 @@ struct
     | Decimal(a),Integer(b) -> Decimal((float_of_int b)*.a)
     | Decimal(a),Decimal(b) -> Decimal(a*.b)
 
+  let add a b = match a, b with
+    | Integer(a),Integer(b) -> Integer(a+b)
+    | Integer(a),Decimal(b) -> Decimal((float_of_int a)+.b)
+    | Decimal(a),Integer(b) -> Decimal((float_of_int b)+.a)
+    | Decimal(a),Decimal(b) -> Decimal(a+.b)
+
   let is_zero x = match x with
     | Integer(0) -> true
     | Decimal(0.0) -> true

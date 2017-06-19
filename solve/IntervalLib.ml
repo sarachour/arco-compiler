@@ -661,7 +661,18 @@ struct
   let rule_exp (a:interval) : interval =
     error "rule" "exp unimplemented"
 
-  let add (a:interval) (b:interval) = rule_sum a b
+  let num (a:number) : interval =
+    Interval({
+        min=BNDNum(float_of_number a);
+        max=BNDNum(float_of_number a)
+      })
+
+  let add (a:interval) (b:interval) : interval  = rule_sum a b
+  let mult (a:interval) (b:interval) : interval = rule_prod a b
+  let div (a:interval) (b:interval) : interval= rule_div a b
+  let sub (a:interval) (b:interval) : interval= rule_sub a b
+  let pow (a:interval) (b:interval) : interval= rule_power a b
+  let exp (a:interval) (b:interval) : interval= rule_exp a 
 
 
   let rule_neg (a:interval)  : interval = _compute_interval1 a bound_neg
