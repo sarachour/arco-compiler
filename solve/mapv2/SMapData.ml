@@ -63,7 +63,7 @@ type linear_transform = {
 
 
 (*information on what is bound*)
-type map_ctx = unit
+type map_ctx = map_comp_ctx 
 
 type map_late_bind = map_ctx -> map_result list ->  map_params -> map_result
 

@@ -7,21 +7,36 @@ open AST;;
 open IntervalData;;
 
 
-exception SMapHwSpecGen_error of string
+exception SMapHwSpec_error of string
 
 module SMapHwSpec =
 struct
-  let get_comp : map_hw_spec -> string -> map_comp =
-    fun ctx compname ->
-      raise (SMapHwSpecGen_error "unimpl: get comp")
+  let get_comp : map_hw_spec -> hwcompname -> map_comp =
+    fun spec compname ->
+      let comp = MAP.get spec.comps compname in
+      comp
 
-  let get_port : map_hw_spec -> string -> string -> map_cstr_gen =
-    fun ctx compname portname ->
-      raise (SMapHwSpecGen_error "unimpl: get port")
+  let get_port : map_hw_spec -> hwcompname -> string -> map_cstr_gen =
+    fun spec compname port->
+      let comp : map_comp = get_comp spec compname in
+      if MAP.has comp.inputs port then
+        MAP.get comp.inputs port
+      else if MAP.has comp.outputs port then
+        MAP.get comp.outputs port
+      else
+        raise (SMapHwSpec_error "port DNE")
 
-
+  let rec evaluate : map_ctx -> map_params -> map_cstr_gen -> map_result = 
+    fun ctx pars gen -> match gen with
+      | SCLateBind(fxn,args) ->
+        let r_args =
+          List.map (fun x -> evaluate ctx pars x) args
+        in
+        fxn ctx r_args pars
+      | SCStaticBind(res) -> res
 end
 
+exception SMapHwSpecGen_error of string
 module SMapHwSpecGen =
 struct
 

@@ -96,10 +96,18 @@ struct
       GRAPH.mkedge ctx.bins bin1 bin2 ();
       ()
 
-  let evaluate : map_comp_ctx -> map_hw_spec -> string -> string -> map_result =
-    fun mapcompcfg mapspec comp port ->
-      let mapcomp : map_cstr_gen = SMapHwSpec.get_port mapspec comp port in
-      raise (SMapHwConfigGen_error "unimpl")
+  let evaluate : map_comp_ctx -> map_hw_spec -> hwcompname -> string -> map_result =
+    fun comp_ctx mapspec comp port ->
+      let cstr_generator : map_cstr_gen =
+        SMapHwSpec.get_port mapspec comp port
+      in
+      let cstr_gen_params : map_params =
+        {allow_reflow = false}
+      in
+      let result : map_result =
+        SMapHwSpec.evaluate comp_ctx cstr_gen_params  cstr_generator 
+      in
+      result
 
   let build_config : map_hw_spec -> gltbl ->  map_hw_config option =
     fun tblspec tbl ->
@@ -150,9 +158,8 @@ struct
       (*evaluate components to get results*)
       MAP.iter ctx.insts (fun (inst:hwcompinst) (inst_data:map_comp_ctx) ->
           MAP.iter inst_data.ports (fun (port:string) (port_data:map_loc_val) ->
-              let compname = HwLib.hwcompname2str inst.name in
               let result : map_result =
-                evaluate inst_data tblspec compname port
+                evaluate inst_data tblspec inst.name port
               in
               let wire :wireid = {comp=inst; port=port} in
               MAP.put ctx.results wire result;
