@@ -46,7 +46,7 @@ module SMapMain = struct
   (*build a macro-component from building blocks.*)
   let infer : (gltbl) -> (wireid,linear_transform) map option=
     fun tbl ->
-      let problem_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl false in
+      let problem_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl in
       match problem_opt with
       | Some(problem) ->
         let mappings : 'a option = SMapSolver.compute_transform tbl problem 60 in
@@ -55,7 +55,7 @@ module SMapMain = struct
 
   let infer_feasible : gltbl -> bool =
     fun tbl ->
-      let prob_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl true in
+      let prob_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl in
       let timeout = Globals.get_glbl_int "map-infer-feasible-timeout" in
       match prob_opt with
       | Some(prob) ->

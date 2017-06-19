@@ -6,7 +6,20 @@ open SolverData;;
 open AST;;
 open IntervalData;;
 
+
 exception SMapHwSpecGen_error of string
+
+module SMapHwSpec =
+struct
+  let get_comp : map_hw_spec -> string -> map_comp =
+    raise (SMapHwSpecGen_error "unimpl: get comp")
+
+  let get_port : map_hw_spec -> string -> string -> map_cstr_gen =
+    raise (SMapHwSpecGen_error "unimpl: get port")
+
+
+end
+
 module SMapHwSpecGen =
 struct
 
@@ -199,6 +212,7 @@ struct
         raise (SMapHwSpecGen_error "unimpl: unknown term")
 
 
+  
   let build_comp : hwvid hwenv -> hwvid hwcomp -> map_comp =
     fun henv comp ->
       let mapcomp : map_comp =

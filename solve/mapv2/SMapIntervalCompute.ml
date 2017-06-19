@@ -36,7 +36,7 @@ let debug = print_debug 4 "map-ival"
 let error n m = raise (MapIntervalComputeError (n^":"^m))
 
 
-module IntervalCompute =
+module SMapIntervalCompute =
 struct
   let compute_mid_interval tbl (id:mid) = match id with
       |MNVar(MInput,v) ->

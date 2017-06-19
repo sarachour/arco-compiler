@@ -1068,7 +1068,7 @@ struct
             match cloc with
               | ClampFxn(SIMBlock(templ_ns,clampname)) ->
                 begin
-                  let ival = IntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname in
+                  let ival = SMapIntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname in
                   let min,max = IntervalLib.interval2numbounds ival in 
                   let newblock = SIMBlock(circ_ns@[HwLib.hwcompinst2str inst],clampname) in
                   update_clamp q newblock min max
@@ -1078,10 +1078,10 @@ struct
               | ClampDeriv(SIMBlock(stvar_ns,stvar_clampname),SIMBlock(deriv_ns,deriv_clampname)) ->
                 begin
                   let stvar_ival =
-                    IntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
+                    SMapIntervalCompute.compute_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
                   in
                   let deriv_ival =
-                    IntervalCompute.compute_deriv_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
+                    SMapIntervalCompute.compute_deriv_hwport_interval tbl ccomp.d ccomp.inst ccomp.cfg portname
                   in
                   let smin,smax = IntervalLib.interval2numbounds stvar_ival in
                   let dmin,dmax = IntervalLib.interval2numbounds deriv_ival in

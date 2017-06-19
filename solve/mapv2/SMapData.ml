@@ -83,5 +83,26 @@ type map_hw_config = {
   mutable cstrs: map_cstr list;
 }
 
+module SMapVar =
+struct
+
+  exception SMapVar_error of string
+  let to_string : map_var -> string =
+    fun v ->
+      raise (SMapVar_error "smapvar.to_string")
+
+end
+
+module SMapExpr =
+struct
+  exception SMapExpr_error of string
+  let to_string : map_expr -> string =
+    fun expr ->
+      raise (SMapExpr_error "smapexpr.to_string unimpl")
+
+end
+
+
+
 
   
