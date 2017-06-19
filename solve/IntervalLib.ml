@@ -672,7 +672,8 @@ struct
   let div (a:interval) (b:interval) : interval= rule_div a b
   let sub (a:interval) (b:interval) : interval= rule_sub a b
   let pow (a:interval) (b:interval) : interval= rule_power a b
-  let exp (a:interval) (b:interval) : interval= rule_exp a 
+  let exp (a:interval)  : interval= rule_exp a 
+  let neg (a:interval)  : interval= rule_sub (num (Integer 0)) a 
 
 
   let rule_neg (a:interval)  : interval = _compute_interval1 a bound_neg

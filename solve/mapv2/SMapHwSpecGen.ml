@@ -310,7 +310,60 @@ let freevar_idx = REF.mk 0;;
 
 
   let late_bind_sub2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecLateBind_error "unimpl:process_ast sub2")
+    match res1.value, res2.value with
+    | SVZero,SVZero ->
+      let scale = SEVar(get_freevar()) in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVZero in
+      let cstrs = [] in
+      mkresult scale offset value cstrs
+    | SVZero, SVNumber(n) ->
+      let scale = res2.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVNumber(n) in
+      let cstrs = [] in
+      mkresult scale offset value cstrs
+    | SVNumber(n), SVZero ->
+      let scale = res2.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVNumber(n) in
+      let cstrs = [] in
+      mkresult scale offset value cstrs
+    | SVNumber(n), SVNumber(m) ->
+      let scale = res1.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVNumber(NUMBER.sub n m) in
+      let cstrs = [mk_equal res1.scale res2.scale] in
+      mkresult scale offset value cstrs
+    | SVSymbol(a), SVZero ->
+      let scale = res1.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVSymbol(a) in
+      mkresult scale offset value []
+    | SVZero, SVSymbol(a) ->
+      let scale = res2.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVSymbol(IntervalLib.neg a) in
+      mkresult scale offset value []
+    | SVSymbol(a), SVNumber(m) ->
+      let scale = res1.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVSymbol(IntervalLib.sub a (IntervalLib.num m)) in
+      let cstrs = [mk_equal res1.scale res2.scale] in
+      mkresult scale offset value []
+    | SVNumber(m), SVSymbol(a) ->
+      let scale = res1.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVSymbol(IntervalLib.sub (IntervalLib.num m) a) in
+      let cstrs = [mk_equal res1.scale res2.scale] in
+      mkresult scale offset value []
+    | SVSymbol(a), SVSymbol(b) ->
+      let scale = res1.scale in
+      let offset = SESub(res1.offset, res2.offset) in
+      let value = SVSymbol(IntervalLib.sub a b) in
+      let cstrs = [mk_equal res1.scale res2.scale] in
+      mkresult scale offset value []
+
 
   let late_bind_neg1 (ctx:map_ctx) (res1:map_result) : map_result = 
     raise (SMapHwSpecLateBind_error "unimpl:process_ast neg")

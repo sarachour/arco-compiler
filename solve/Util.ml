@@ -191,8 +191,14 @@ struct
   let add a b = match a, b with
     | Integer(a),Integer(b) -> Integer(a+b)
     | Integer(a),Decimal(b) -> Decimal((float_of_int a)+.b)
-    | Decimal(a),Integer(b) -> Decimal((float_of_int b)+.a)
+    | Decimal(a),Integer(b) -> Decimal(a+.(float_of_int b))
     | Decimal(a),Decimal(b) -> Decimal(a+.b)
+
+  let sub a b = match a, b with
+    | Integer(a),Integer(b) -> Integer(a-b)
+    | Integer(a),Decimal(b) -> Decimal((float_of_int a)-.b)
+    | Decimal(a),Integer(b) -> Decimal(a-.(float_of_int b))
+    | Decimal(a),Decimal(b) -> Decimal(a-.b)
 
   let is_zero x = match x with
     | Integer(0) -> true
