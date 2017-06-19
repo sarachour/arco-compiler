@@ -59,7 +59,6 @@ struct
     fun gltbl ctx lbls infxn outfxn localfxn exprfxn numfxn ->
       begin
         (*bind values*)
-        raise (SMapHwConfigGen_error "find the function for getting var intervals");
         let interval_of_expr : mid ast -> interval =
           fun expr ->
             SMapIntervalCompute.compute_mexpr_interval gltbl expr
