@@ -91,6 +91,21 @@ struct
       end
 
 
+  
+  let bind_numbers_to_params : gltbl -> cfggen_ctx -> unit =
+    fun tbl ctx ->
+      MAP.iter tbl.comp_ctx (fun (compname:hwcompname) compctx ->
+          MAP.iter compctx.insts (fun (compinst:int) (conccomp:ucomp_conc) ->
+              let inst : hwcompinst = {name=compname; inst=compinst} in
+              let map_inst = MAP.get ctx.insts inst in
+              MAP.iter conccomp.cfg.pars (
+                fun (param_name:string) (param_val:number) ->
+                  MAP.put map_inst.params param_name param_val;
+                  ()
+              );
+          )
+        )
+
   let connect_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> unit =
     fun ctx bin1 bin2 ->
       GRAPH.mkedge ctx.bins bin1 bin2 ();
@@ -144,6 +159,7 @@ struct
         (fun expr interval -> SVSymbol(interval) )
         (fun number -> SVNumber(number) )
       ;
+      bind_numbers_to_params tbl ctx;
       (*Add connections *)
       MAP.iter sln.conns.src2dest (fun (src:wireid) (dests:wireid set) ->
           SET.iter dests (fun (dest:wireid) ->

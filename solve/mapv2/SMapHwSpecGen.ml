@@ -5,10 +5,36 @@ open Util;;
 open SolverData;;
 open AST;;
 open IntervalData;;
+open IntervalLib;;
+
+exception SMapCompCtx_error of string
+
+module SMapCompCtx =
+struct
+
+  let get_port : map_comp_ctx -> string -> map_loc_val =
+    fun ctx port ->
+      if MAP.has ctx.ports port then
+        MAP.get ctx.ports port
+      else
+        (*if configuration doesn't have a port mapped,
+        give it the most flexible value since it's a don't care.
+        The value can be scaled by anything and offset by anything
+        *)
+        SVZero
+
+
+  let get_param : map_comp_ctx -> string -> number =
+    fun ctx param ->
+      if MAP.has ctx.params param then
+        MAP.get ctx.params param
+      else
+        raise (SMapCompCtx_error "does not have param")
+
+end
 
 
 exception SMapHwSpec_error of string
-
 module SMapHwSpec =
 struct
   let get_comp : map_hw_spec -> hwcompname -> map_comp =
@@ -51,43 +77,145 @@ let freevar_idx = REF.mk 0;;
     fun scale offset value cstrs ->
     {cstrs=cstrs;scale=scale;offset=offset;value}
 
-  let rec late_bind_mult2 (ctx:map_ctx) (res1:map_result) (res2:map_result) : map_result =
-    match res1.value, res2.value with
-    | SVZero,SVZero ->
-      let scale = SEVar (get_freevar()) in 
-      let offset = SEMult(res1.offset, res2.offset) in
-      let value = SVZero in
-      mkresult scale offset value []
-    | SVZero, SVNumber(n) ->
-      let scale = SEVar (get_freevar()) in
-      let offset =
-        SEAdd(SEMult(SEMult(res1.scale,SENumber(n)),res2.offset),
-              SEMult(res1.offset,res2.offset))
+
+  (*process the bounds over the variable.*)
+  let port_val_to_port_cstrs: string -> map_loc_val -> map_loc_val*(map_cstr list) =
+    fun port_name port_val ->
+      match port_val with
+      | SVSymbol(interval) ->
+        if IntervalLib.is_value interval then
+          begin
+            if IntervalLib.is_zero interval then
+              SVZero,[]
+            else
+              (SVNumber (Decimal(IntervalLib.get_value interval))),
+                [SCNonZero(SEVar(SMScale(port_name)))]
+          end
+        else
+          SVSymbol(interval),
+          [SCNonZero(SEVar(SMScale(port_name)))]
+      | SVNumber(n) ->
+        if NUMBER.is_zero n then
+          SVZero,[]
+        else
+          (SVNumber(n)),
+          [SCNonZero(SEVar(SMScale(port_name)))]
+      | SVZero ->
+        SVZero, []
+
+  let late_bind_input: string -> map_ctx -> map_result=
+    fun port_name ctx ->
+      let port_val = SMapCompCtx.get_port ctx port_name in
+      let new_port_val, port_cstrs =
+        port_val_to_port_cstrs port_name port_val
       in
-      let value = SVZero in
-      mkresult scale offset value []
+      mkresult
+        (SEVar(SMScale(port_name)))
+        (SEVar(SMOffset(port_name)))
+        new_port_val
+        port_cstrs
 
-    | SVNumber(n),SVZero ->
-      late_bind_mult2 ctx res2 res1
 
-    | SVZero,SVSymbol(ival) ->
-      let scale = SEVar (SMFreeVar(0)) in
-      let offset = SEMult(res1.offset,res2.offset) in
-      let value = SVZero in
-      mkresult scale offset value []
 
-    | SVNumber(n),SVNumber(m)->
-      let scale = SEMult(res1.scale,res2.scale) in
-      let offset =
-        SEAdd(SEMult(SEMult(res1.scale,SENumber(n)),res2.offset),
-        SEAdd(SEMult(SEMult(res2.scale,SENumber(m)),res1.offset),
-              SEMult(res1.offset,res2.offset)))
+  let late_bind_output: string -> map_ctx -> map_result=
+      fun port_name ctx ->
+        let port_val = SMapCompCtx.get_port ctx port_name in
+        let new_port_val, port_cstrs =
+          port_val_to_port_cstrs port_name port_val
+        in
+        mkresult
+        (SEVar(SMScale(port_name)))
+        (SEVar(SMOffset(port_name)))
+        new_port_val
+        port_cstrs
+
+
+  let late_bind_param: string -> map_ctx -> map_result=
+    fun param_name ctx ->
+      let param_val : number = SMapCompCtx.get_param ctx param_name in
+      let new_port_val, scale_var  =
+        if NUMBER.is_zero param_val then
+          SVZero, (SEVar (get_freevar()))
+        else
+          SVNumber(param_val), (SENumber(Integer 1))
       in
-      let value = SVNumber(NUMBER.mult n m) in
-      mkresult scale offset value []
+      mkresult
+        scale_var 
+        (SENumber(Integer 0))
+        new_port_val
+        []
 
-    | _ ->
-      raise (SMapHwSpecLateBind_error "unimpl case")
+  let rec late_bind_mult2 : map_ctx -> map_result -> map_result -> map_result =
+    fun ctx res1 res2 ->
+      match res1.value, res2.value with
+      | SVZero,SVZero ->
+        let scale = SEVar (get_freevar()) in 
+        let offset = SEMult(res1.offset, res2.offset) in
+        let value = SVZero in
+        mkresult scale offset value []
+      | SVZero, SVNumber(n) ->
+        let scale = SEVar (get_freevar()) in
+        let offset =
+          SEAdd(SEMult(SEMult(res1.scale,SENumber(n)),res2.offset),
+                SEMult(res1.offset,res2.offset))
+        in
+        let value = SVZero in
+        mkresult scale offset value []
+
+      | SVNumber(n),SVZero ->
+        late_bind_mult2 ctx res2 res1
+
+      | SVZero,SVSymbol(ival) ->
+        let scale = SEVar (SMFreeVar(0)) in
+        let offset = SEMult(res1.offset,res2.offset) in
+        let value = SVZero in
+        mkresult scale offset value []
+
+      | SVSymbol(ival), SVZero ->
+        late_bind_mult2 ctx res2 res1
+
+      | SVNumber(n),SVNumber(m)->
+        let scale = SEMult(res1.scale,res2.scale) in
+        let offset =
+          SEAdd(SEMult(SEMult(res1.scale,SENumber(n)),res2.offset),
+          SEAdd(SEMult(SEMult(res2.scale,SENumber(m)),res1.offset),
+                SEMult(res1.offset,res2.offset)))
+        in
+        let value = SVNumber(NUMBER.mult n m) in
+        mkresult scale offset value []
+
+      | SVSymbol(a), SVNumber(m) ->
+        let scale =
+          SEAdd(
+            SEMult(res1.scale,res2.scale),
+            SEDiv(SEMult(res1.scale,res2.offset),SENumber(m))
+          )
+        in
+        let offset =
+          SEAdd(
+            SEMult(SEMult(res2.scale,res1.offset),SENumber(m)),
+            SEMult(res1.offset,res2.offset)
+          )
+        in
+        let value = SVSymbol(a) in
+        let cstrs = [] in
+        mkresult scale offset value cstrs
+
+      | SVNumber(m), SVSymbol(a) ->
+        late_bind_mult2 ctx res2 res1
+
+      | SVSymbol(s1), SVSymbol(s2) ->
+        let scale = SEMult(res1.scale,res2.scale) in
+        let offset = SENumber(Integer 0) in
+        let value = SVSymbol (s1) in
+        let cstrs = [
+          SCIsZero(res1.offset);
+          SCIsZero(res2.offset);
+        ]
+        in
+        mkresult scale offset value cstrs 
+      | _ ->
+        raise (SMapHwSpecLateBind_error "mult.unimpl case")
 
   let late_bind_div (ctx:map_ctx) (res1:map_result) (res2:map_result) : map_result =
     raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
@@ -115,18 +243,7 @@ let freevar_idx = REF.mk 0;;
     fun port_interval port_name is_deriv ctx res  ->
       raise (SMapHwSpecLateBind_error "unimpl:late bind within interval.")
 
-  let late_bind_input: string -> map_ctx -> map_result=
-    fun port_name ctx ->
-      raise (SMapHwSpecLateBind_error "unimpl:late bind input.")
-
-  let late_bind_output: string -> map_ctx -> map_result=
-      fun port_name ctx ->
-        raise (SMapHwSpecLateBind_error "unimpl:late bind output.")
-
-  let late_bind_param: string -> map_ctx -> map_result=
-      fun port_name ctx ->
-        raise (SMapHwSpecLateBind_error "unimpl:late bind param.")
-
+  
   let late_bind_exp : map_ctx -> map_result -> map_result =
     fun port_name ctx ->
         raise (SMapHwSpecLateBind_error "unimpl:late bind exp.")

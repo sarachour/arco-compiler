@@ -26,11 +26,7 @@ type map_loc = {
 }
 
 (*remap a value along a wire to a different number*)
-type map_cstr =
-  | SCReflowValue of int*number
-  | SCEquality of (map_var ast)*(map_var ast)
-  | SCUnifyVars of map_var*map_var
-  | SCUnifyVarConst of map_var*number
+
 (*
 reflow is when you alter a numerical value to increase
 the freedom of the scale, offset variables.
@@ -47,6 +43,10 @@ type map_expr =
   | SEMult of map_expr*map_expr
   | SEDiv of map_expr*map_expr
   | SEPow of map_expr*map_expr
+
+type map_cstr =
+  | SCNonZero of map_expr 
+  | SCIsZero of map_expr 
 
 (*get the constraints*)
 type map_result = {

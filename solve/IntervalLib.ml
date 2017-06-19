@@ -35,6 +35,40 @@ struct
     let mmax = (x.max-.offset)/. scale in
     {min=MATH.min [mmin;mmax];max=MATH.max [mmin;mmax]}
 
+  let is_value (x:interval) = match x with
+    | Interval(i) ->
+      begin
+        match i.min, i.max with
+        | BNDNum(min),BNDNum(max) -> min = max
+        | _ -> false
+      end
+
+    | _ -> false
+
+  let get_value (x:interval) = match x with
+    | Interval(i) ->
+      begin
+        match i.min, i.max with
+        | BNDNum(min),BNDNum(max) ->
+          if min = max then min else
+            raise (IntervalLibError "interval isn't single point.")
+
+        | _ ->
+          raise (IntervalLibError "interval isn't single point.")
+      end
+
+    | _ ->
+        raise (IntervalLibError "interval isn't single point.")
+
+  let is_zero (x:interval) = match x with
+    | Interval(i) ->
+      begin
+        match i.min, i.max with
+        | BNDNum(min),BNDNum(max) -> min = max && min = 0.0
+        | _ -> false
+      end
+                                      
+    | _ -> false
 
   let covergap2str gap =
     "<"^(string_of_float gap.left)^","^(string_of_float gap.right)^">"

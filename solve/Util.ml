@@ -187,6 +187,11 @@ struct
     | Integer(a),Decimal(b) -> Decimal((float_of_int a)*.b)
     | Decimal(a),Integer(b) -> Decimal((float_of_int b)*.a)
     | Decimal(a),Decimal(b) -> Decimal(a*.b)
+
+  let is_zero x = match x with
+    | Integer(0) -> true
+    | Decimal(0.0) -> true
+    | _ -> false
 end
 
 
