@@ -89,17 +89,28 @@ struct
   exception SMapVar_error of string
   let to_string : map_var -> string =
     fun v ->
-      raise (SMapVar_error "smapvar.to_string")
+      match v with
+      |SMFreeVar(id) -> "f."^(string_of_int id) 
+      |SMScale(name) -> "sc."^name
+      |SMOffset(name) -> "of"^name
 
 end
 
 module SMapExpr =
 struct
-  exception SMapExpr_error of string
-  let to_string : map_expr -> string =
-    fun expr ->
-      raise (SMapExpr_error "smapexpr.to_string unimpl")
+  exception SMapExpr_error of string;;
 
+  let rec to_string : map_expr -> string =
+    fun expr ->
+      match expr with
+      | SEVar(v) -> SMapVar.to_string v
+      | SENumber(n) -> string_of_number n
+      | SEAdd(a,b) -> "("^(to_string a)^"+"^(to_string b)^")"
+      | SEMult(a,b) -> "("^(to_string a)^"*"^(to_string b)^")"
+      | SESub(a,b) -> "("^(to_string a)^"-"^(to_string b)^")"
+      | SEPow(a,b) -> "("^(to_string a)^"^"^(to_string b)^")"
+      | SEDiv(a,b) -> "("^(to_string a)^"/"^(to_string b)^")"
+      | _ -> "unimpl"
 end
 
 
