@@ -36,11 +36,11 @@ struct
       | SCStaticBind(res) -> res
 end
 
-exception SMapHwSpecGen_error of string
-module SMapHwSpecGen =
-struct
+exception SMapHwSpecLateBind_error of string;;
 
-  let freevar_idx = REF.mk 0;;
+module SMapHwSpecLateBind =
+struct
+let freevar_idx = REF.mk 0;;
 
   let get_freevar () =
     let v = SMFreeVar(REF.dr freevar_idx) in
@@ -87,27 +87,64 @@ struct
       mkresult scale offset value []
 
     | _ ->
-      raise (SMapHwSpecGen_error "unimpl case")
+      raise (SMapHwSpecLateBind_error "unimpl case")
 
   let late_bind_div (ctx:map_ctx) (res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecGen_error "unimpl:process_ast div")
+    raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
 
   let late_bind_pow (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecGen_error "unimpl:process_ast div")
+    raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
 
   let late_bind_add2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecGen_error "unimpl:process_ast add2")
+    raise (SMapHwSpecLateBind_error "unimpl:process_ast add2")
 
   let late_bind_sub2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecGen_error "unimpl:process_ast sub2")
+    raise (SMapHwSpecLateBind_error "unimpl:process_ast sub2")
 
   let late_bind_neg1 (ctx:map_ctx) (res1:map_result) : map_result = 
-    raise (SMapHwSpecGen_error "unimpl:process_ast neg")
+    raise (SMapHwSpecLateBind_error "unimpl:process_ast neg")
 
   let late_bind_exp (ctx:map_ctx) (res1:map_result) : map_result =
-    raise (SMapHwSpecGen_error "unimpl:process_ast neg")
+    raise (SMapHwSpecLateBind_error "unimpl:process_ast neg")
 
-  let interp_arg2 : (map_ctx -> map_result -> map_result -> map_result) -> (map_late_bind)=
+  
+  let late_bind_deriv (ctx:map_ctx) (res1:map_result) (res2:map_result) : map_result =
+    raise (SMapHwSpecLateBind_error "unimpl:late bind deriv.")
+
+  let late_bind_within_interval : interval -> string -> bool -> map_ctx -> map_result -> map_result =
+    fun port_interval port_name is_deriv ctx res  ->
+      raise (SMapHwSpecLateBind_error "unimpl:late bind within interval.")
+
+  let late_bind_input: string -> map_ctx -> map_result=
+    fun port_name ctx ->
+      raise (SMapHwSpecLateBind_error "unimpl:late bind input.")
+
+  let late_bind_output: string -> map_ctx -> map_result=
+      fun port_name ctx ->
+        raise (SMapHwSpecLateBind_error "unimpl:late bind output.")
+
+  let late_bind_param: string -> map_ctx -> map_result=
+      fun port_name ctx ->
+        raise (SMapHwSpecLateBind_error "unimpl:late bind param.")
+
+  let late_bind_exp : map_ctx -> map_result -> map_result =
+    fun port_name ctx ->
+        raise (SMapHwSpecLateBind_error "unimpl:late bind exp.")
+
+  let late_bind_neg : map_ctx -> map_result -> map_result =
+    fun port_name ctx ->
+        raise (SMapHwSpecLateBind_error "unimpl:late bind neg.")
+
+
+end
+
+exception SMapHwSpecGen_error of string;;
+
+module SMapHwSpecGen =
+struct
+
+  let interp_arg2 :
+    (map_ctx -> map_result -> map_result -> map_result) -> (map_late_bind)=
     fun fxn ->
       (
         fun (ctx:map_ctx) (res:map_result list) (pars:map_params) -> match res with
@@ -115,7 +152,8 @@ struct
           | _ -> raise (SMapHwSpecGen_error "expected two arguments")
       )
 
-  let interp_arg1 : (map_ctx -> map_result -> map_result) -> (map_late_bind)=
+  let interp_arg1 :
+    (map_ctx -> map_result -> map_result) -> (map_late_bind)=
     fun fxn ->
       (
         fun (ctx:map_ctx) (res:map_result list) (pars:map_params) -> match res with
@@ -123,7 +161,8 @@ struct
           | _ -> raise (SMapHwSpecGen_error "expected one arguments")
       )
 
-  let interp_arg0: (map_ctx -> map_result) -> (map_late_bind)=
+  let interp_arg0:
+    (map_ctx -> map_result) -> (map_late_bind)=
     fun fxn ->
       (
         fun (ctx:map_ctx) (res:map_result list) (pars:map_params) -> match res with
@@ -131,46 +170,20 @@ struct
           | _ -> raise (SMapHwSpecGen_error "expected one arguments")
       )
 
-  let late_bind_deriv (ctx:map_ctx) (res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecGen_error "unimpl:late bind deriv.")
-
-  let late_bind_within_interval : interval -> string -> bool -> map_ctx -> map_result -> map_result =
-    fun port_interval port_name is_deriv ctx res  ->
-      raise (SMapHwSpecGen_error "unimpl:late bind within interval.")
-
-  let late_bind_input: string -> map_ctx -> map_result=
-    fun port_name ctx ->
-      raise (SMapHwSpecGen_error "unimpl:late bind input.")
-
-  let late_bind_output: string -> map_ctx -> map_result=
-      fun port_name ctx ->
-        raise (SMapHwSpecGen_error "unimpl:late bind output.")
-
-  let late_bind_param: string -> map_ctx -> map_result=
-      fun port_name ctx ->
-        raise (SMapHwSpecGen_error "unimpl:late bind param.")
-
-  let late_bind_exp : map_ctx -> map_result -> map_result =
-    fun port_name ctx ->
-        raise (SMapHwSpecGen_error "unimpl:late bind exp.")
-
-  let late_bind_neg : map_ctx -> map_result -> map_result =
-    fun port_name ctx ->
-        raise (SMapHwSpecGen_error "unimpl:late bind neg.")
-
   let rec process_ast : (hwvid ast) -> map_cstr_gen =
     fun expr ->
       match expr with
       | Term(HNPort(HWKOutput,HCMLocal(cmp),port,prop)) ->
-        let fxn = late_bind_output port in
+        let fxn = SMapHwSpecLateBind.late_bind_output port in
         SCLateBind(interp_arg0 fxn,[])
 
       | Term(HNPort(HWKInput,HCMLocal(cmp),port,prop)) ->
-        let fxn = late_bind_input port in
+        let fxn = SMapHwSpecLateBind.late_bind_input port in
         SCLateBind(interp_arg0 fxn,[])
 
       | OpN(opn,args) ->
-        let proc_n : hwvid ast list -> (map_late_bind) -> map_cstr_gen=
+        let proc_n :
+          hwvid ast list -> (map_late_bind) -> map_cstr_gen=
           fun args fxn ->
             match args with
             | h::t -> List.fold_left (fun (rest:map_cstr_gen) (arg:hwvid ast) ->
@@ -181,47 +194,49 @@ struct
         begin
           match opn with
           | Mult ->
-            proc_n args (interp_arg2 late_bind_mult2) 
+            proc_n args (interp_arg2 SMapHwSpecLateBind.late_bind_mult2) 
           | Add ->
-            proc_n args (interp_arg2 late_bind_add2) 
+            proc_n args (interp_arg2 SMapHwSpecLateBind.late_bind_add2) 
           | Sub ->
-            proc_n args (interp_arg2 late_bind_sub2) 
+            proc_n args (interp_arg2 SMapHwSpecLateBind.late_bind_sub2) 
         end
       | Term(HNParam(cmp,name)) ->
-        let fxn = late_bind_param name in
+        let fxn = SMapHwSpecLateBind.late_bind_param name in
         SCLateBind(interp_arg0 fxn,[])
 
       | Op2(Div,numer,denom) ->
         let map_numer = process_ast numer in
         let map_denom = process_ast denom in
-        let fxn = interp_arg2 (late_bind_div) in
+        let fxn = interp_arg2 (SMapHwSpecLateBind.late_bind_div) in
         SCLateBind(fxn,[map_numer;map_denom])
 
       | Op2(Power,base,exp) ->
         let map_base = process_ast base in
         let map_exp = process_ast exp in
-        let fxn = interp_arg2 (late_bind_pow) in
+        let fxn = interp_arg2 (SMapHwSpecLateBind.late_bind_pow) in
         SCLateBind(fxn,[map_exp;map_base])
 
       | Op1(Exp,exp) ->
         let map_exp = process_ast exp in
-        let fxn = interp_arg1 (late_bind_exp) in
+        let fxn = interp_arg1 (SMapHwSpecLateBind.late_bind_exp) in
         SCLateBind(fxn,[map_exp])
 
       | Op1(Neg,expr) ->
         let map_expr = process_ast expr in
-        let fxn = interp_arg1 (late_bind_neg) in
+        let fxn = interp_arg1 (SMapHwSpecLateBind.late_bind_neg) in
         SCLateBind(fxn,[map_expr])
 
       | Integer(i) ->
         let data =
-          mkresult (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Integer i)) []
+          SMapHwSpecLateBind.mkresult
+            (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Integer i)) []
         in
         SCStaticBind(data)
 
       | Decimal(i) ->
         let data =
-          mkresult (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Decimal i)) []
+          SMapHwSpecLateBind.mkresult
+            (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Decimal i)) []
         in
         SCStaticBind(data);
 
@@ -250,17 +265,17 @@ struct
           (*ADC*)
           | HWBDigital(bhvr),HWDAnalog(defs) ->
             let gen : map_cstr_gen = process_ast bhvr.rhs in
-            SCLateBind(interp_arg1 (late_bind_within_interval defs.ival name false),[gen])
+            SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.ival name false),[gen])
 
           
           (*DAC*)
           | HWBAnalog(bhvr), HWDDigital(defs) ->
             let gen : map_cstr_gen = process_ast bhvr.rhs in
-            SCLateBind(interp_arg1 (late_bind_within_interval defs.ival name false),[gen])
+            SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.ival name false),[gen])
 
           | HWBAnalog(bhvr), HWDAnalog(defs) ->
             let gen : map_cstr_gen = process_ast bhvr.rhs in
-            SCLateBind(interp_arg1 (late_bind_within_interval defs.ival name false),[gen])
+            SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.ival name false),[gen])
 
           | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
             let icport, icprop = bhvr.ic in
@@ -270,13 +285,13 @@ struct
             let rhsgen : map_cstr_gen = process_ast bhvr.rhs in
             let icgen : map_cstr_gen = process_ast (Term icvar) in 
             let total_gen : map_cstr_gen =
-              SCLateBind(interp_arg2 late_bind_deriv, [rhsgen;icgen])
+              SCLateBind(interp_arg2 SMapHwSpecLateBind.late_bind_deriv, [rhsgen;icgen])
             in
             let total_gen_1 =
-              SCLateBind(interp_arg1 (late_bind_within_interval defs.deriv.ival name false),[total_gen])
+              SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.deriv.ival name false),[total_gen])
             in
             let total_gen_2 =
-              SCLateBind(interp_arg1 (late_bind_within_interval defs.stvar.ival name true),[total_gen_1])
+              SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.stvar.ival name true),[total_gen_1])
             in
             total_gen_2
           in
