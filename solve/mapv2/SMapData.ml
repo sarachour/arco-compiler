@@ -47,10 +47,13 @@ type map_expr =
 type map_cstr =
   | SCFalse
   | SCTrue
+  (*cover constraint*)
+  | SCCoverInterval of interval*interval*map_expr*map_expr
+  (*expr constraints*)
   | SCExprEqExpr of map_expr*map_expr
   | SCExprEqConst of map_expr*number
   | SCExprNeqConst of map_expr*number
-
+  (*var constraints*)
   | SCVarEqVar of map_var*map_var
   | SCVarEqExpr of map_var*map_expr 
   | SCVarEqConst of map_var*number

@@ -1,8 +1,8 @@
 PKG core
 S .
 S symcaml/
-S map/
+S mapv2/
 B _build 
 B _build/symcaml
-B _build/map
+B _build/mapv2
 

@@ -66,16 +66,19 @@ exception SMapHwSpecLateBind_error of string;;
 
 module SMapHwSpecLateBind =
 struct
-let freevar_idx = REF.mk 0;;
+  let freevar_idx = REF.mk 0;;
 
   let get_freevar () =
     let v = SMFreeVar(REF.dr freevar_idx) in
     REF.upd freevar_idx (fun x -> x + 1);
     v
 
-  let mkresult : map_expr -> map_expr -> map_loc_val -> map_cstr list -> map_result =
-    fun scale offset value cstrs ->
-    {cstrs=cstrs;scale=scale;offset=offset;value}
+  let mkresult : map_result list -> map_expr -> map_expr -> map_loc_val -> map_cstr list -> map_result =
+    fun args scale offset value cstrs ->
+      let all_cstrs : map_cstr list = List.fold_left
+          (fun (r:map_cstr list) (x:map_result) -> x.cstrs @ r) cstrs (args)
+      in
+      {cstrs=all_cstrs;scale=scale;offset=offset;value}
 
 
   let rec mk_not_equal : map_expr -> number -> map_cstr =
@@ -151,6 +154,7 @@ let freevar_idx = REF.mk 0;;
         port_val_to_port_cstrs port_name port_val
       in
       mkresult
+        []
         (SEVar(SMScale(port_name)))
         (SEVar(SMOffset(port_name)))
         new_port_val
@@ -165,6 +169,7 @@ let freevar_idx = REF.mk 0;;
           port_val_to_port_cstrs port_name port_val
         in
         mkresult
+        []
         (SEVar(SMScale(port_name)))
         (SEVar(SMOffset(port_name)))
         new_port_val
@@ -181,6 +186,7 @@ let freevar_idx = REF.mk 0;;
           SVNumber(param_val), (SENumber(Integer 1))
       in
       mkresult
+        []
         scale_var 
         (SENumber(Integer 0))
         new_port_val
@@ -188,12 +194,13 @@ let freevar_idx = REF.mk 0;;
 
   let rec late_bind_mult2 : map_ctx -> map_result -> map_result -> map_result =
     fun ctx res1 res2 ->
+      let args = [res1;res2] in
       match res1.value, res2.value with
       | SVZero,SVZero ->
         let scale = SEVar (get_freevar()) in 
         let offset = SEMult(res1.offset, res2.offset) in
         let value = SVZero in
-        mkresult scale offset value []
+        mkresult args scale offset value []
       | SVZero, SVNumber(n) ->
         let scale = SEVar (get_freevar()) in
         let offset =
@@ -201,7 +208,7 @@ let freevar_idx = REF.mk 0;;
                 SEMult(res1.offset,res2.offset))
         in
         let value = SVZero in
-        mkresult scale offset value []
+        mkresult args scale offset value []
 
       | SVNumber(n),SVZero ->
         late_bind_mult2 ctx res2 res1
@@ -210,7 +217,7 @@ let freevar_idx = REF.mk 0;;
         let scale = SEVar (SMFreeVar(0)) in
         let offset = SEMult(res1.offset,res2.offset) in
         let value = SVZero in
-        mkresult scale offset value []
+        mkresult args scale offset value []
 
       | SVSymbol(ival), SVZero ->
         late_bind_mult2 ctx res2 res1
@@ -223,7 +230,7 @@ let freevar_idx = REF.mk 0;;
                 SEMult(res1.offset,res2.offset)))
         in
         let value = SVNumber(NUMBER.mult n m) in
-        mkresult scale offset value []
+        mkresult args scale offset value []
 
       | SVSymbol(a), SVNumber(m) ->
         let scale =
@@ -240,7 +247,7 @@ let freevar_idx = REF.mk 0;;
         in
         let value = SVSymbol(IntervalLib.mult a (IntervalLib.num m)) in
         let cstrs = [] in
-        mkresult scale offset value cstrs
+        mkresult args scale offset value cstrs
 
       | SVNumber(m), SVSymbol(a) ->
         late_bind_mult2 ctx res2 res1
@@ -254,7 +261,7 @@ let freevar_idx = REF.mk 0;;
           mk_equal0 (res2.offset) ;
         ]
         in
-        mkresult scale offset value cstrs 
+        mkresult args scale offset value cstrs 
       | _ ->
         raise (SMapHwSpecLateBind_error "mult.unimpl case")
 
@@ -265,19 +272,20 @@ let freevar_idx = REF.mk 0;;
     raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
 
   let rec late_bind_add2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
+    let args = [res1;res2] in
     match res1.value, res2.value with
     | SVZero,SVZero ->
       let scale = SEVar(get_freevar()) in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVZero in
       let cstrs = [] in
-      mkresult scale offset value cstrs
+      mkresult args scale offset value cstrs
     | SVZero, SVNumber(n) ->
       let scale = res2.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVNumber(n) in
       let cstrs = [] in
-      mkresult scale offset value cstrs
+      mkresult args scale offset value cstrs
     | SVNumber(_), SVZero ->
       late_bind_add2 ctx res2 res1
     | SVNumber(n), SVNumber(m) ->
@@ -285,12 +293,12 @@ let freevar_idx = REF.mk 0;;
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVNumber(NUMBER.add n m) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult scale offset value cstrs
+      mkresult args scale offset value cstrs
     | SVSymbol(a), SVZero ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVSymbol(a) in
-      mkresult scale offset value []
+      mkresult args scale offset value []
     | SVZero, SVSymbol(_) ->
        late_bind_add2 ctx res2 res1 
     | SVSymbol(a), SVNumber(m) ->
@@ -298,7 +306,7 @@ let freevar_idx = REF.mk 0;;
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.add a (IntervalLib.num m)) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult scale offset value []
+      mkresult args scale offset value []
     | SVNumber(_), SVSymbol(_) ->
       late_bind_add2 ctx res2 res1
     | SVSymbol(a), SVSymbol(b) ->
@@ -306,63 +314,64 @@ let freevar_idx = REF.mk 0;;
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.add a b) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult scale offset value []
+      mkresult args scale offset value []
 
 
   let late_bind_sub2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
+    let args = [res1;res2] in
     match res1.value, res2.value with
     | SVZero,SVZero ->
       let scale = SEVar(get_freevar()) in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVZero in
       let cstrs = [] in
-      mkresult scale offset value cstrs
+      mkresult args scale offset value cstrs
     | SVZero, SVNumber(n) ->
       let scale = res2.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVNumber(n) in
       let cstrs = [] in
-      mkresult scale offset value cstrs
+      mkresult args scale offset value cstrs
     | SVNumber(n), SVZero ->
       let scale = res2.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVNumber(n) in
       let cstrs = [] in
-      mkresult scale offset value cstrs
+      mkresult args scale offset value cstrs
     | SVNumber(n), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVNumber(NUMBER.sub n m) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult scale offset value cstrs
+      mkresult args scale offset value cstrs
     | SVSymbol(a), SVZero ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(a) in
-      mkresult scale offset value []
+      mkresult args scale offset value []
     | SVZero, SVSymbol(a) ->
       let scale = res2.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.neg a) in
-      mkresult scale offset value []
+      mkresult args scale offset value []
     | SVSymbol(a), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.sub a (IntervalLib.num m)) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult scale offset value []
+      mkresult args scale offset value []
     | SVNumber(m), SVSymbol(a) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.sub (IntervalLib.num m) a) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult scale offset value []
+      mkresult args scale offset value []
     | SVSymbol(a), SVSymbol(b) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.sub a b) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult scale offset value []
+      mkresult args scale offset value []
 
 
   let late_bind_neg1 (ctx:map_ctx) (res1:map_result) : map_result = 
@@ -371,14 +380,45 @@ let freevar_idx = REF.mk 0;;
   let late_bind_exp (ctx:map_ctx) (res1:map_result) : map_result =
     raise (SMapHwSpecLateBind_error "unimpl:process_ast neg")
 
-  
-  let late_bind_deriv (ctx:map_ctx) (res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecLateBind_error "unimpl:late bind deriv.")
 
-  let late_bind_within_interval : interval -> string -> bool -> map_ctx -> map_result -> map_result =
-    fun port_interval port_name is_deriv ctx res  ->
-      raise (SMapHwSpecLateBind_error "unimpl:late bind within interval.")
+  let late_bind_eqn (ctx:map_ctx) (lhs:map_result) (rhs:map_result) : map_result =
+    let scale = lhs.scale in
+    let offset = lhs.offset in
+    let value = lhs.value in
+    let cstr = [
+      mk_equal lhs.scale rhs.scale;
+      mk_equal lhs.offset rhs.offset;
+    ] in
+    mkresult [lhs;rhs] scale offset value cstr
 
+  let late_bind_deriv (ctx:map_ctx) (lhs:map_result) (rhs:map_result) (ic:map_result): map_result =
+    let scale = lhs.scale in
+    let offset = SENumber (Integer 0) in
+    let value = lhs.value in
+    let cstr = [
+      mk_equal lhs.scale rhs.scale;
+      mk_equal lhs.scale ic.scale;
+      mk_equal0 lhs.offset;
+      mk_equal0 rhs.offset;
+      mk_equal0 ic.offset;
+    ]
+    in
+    mkresult [lhs;rhs;ic] scale offset value cstr 
+
+  let interval_of_map_loc_val (v:map_loc_val) = match v with
+    | SVSymbol(i) -> i
+    | SVNumber(n) -> IntervalLib.num n
+    | SVZero -> IntervalLib.num (Integer 0)
+
+  let late_bind_cover : interval -> map_ctx -> map_result -> map_result =
+    fun port_interval ctx res  ->
+      let scale = res.scale in
+      let offset = res.offset in
+      let value = res.value in
+      let cstrs = [
+        SCCoverInterval(port_interval, interval_of_map_loc_val value, scale, offset);
+      ] in
+      mkresult [res] scale offset value cstrs 
   
   let late_bind_exp : map_ctx -> map_result -> map_result =
     fun port_name ctx ->
@@ -395,6 +435,15 @@ exception SMapHwSpecGen_error of string;;
 
 module SMapHwSpecGen =
 struct
+
+  let interp_arg3 :
+    (map_ctx -> map_result -> map_result -> map_result -> map_result) -> (map_late_bind)=
+    fun fxn ->
+      (
+        fun (ctx:map_ctx) (res:map_result list) (pars:map_params) -> match res with
+          | [h;h2;h3] -> fxn ctx h h2 h3
+          | _ -> raise (SMapHwSpecGen_error "expected two arguments")
+      )
 
   let interp_arg2 :
     (map_ctx -> map_result -> map_result -> map_result) -> (map_late_bind)=
@@ -482,14 +531,14 @@ struct
       | Integer(i) ->
         let data =
           SMapHwSpecLateBind.mkresult
-            (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Integer i)) []
+            [] (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Integer i)) []
         in
         SCStaticBind(data)
 
       | Decimal(i) ->
         let data =
           SMapHwSpecLateBind.mkresult
-            (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Decimal i)) []
+            [] (SENumber(Integer 1)) (SENumber(Integer 0)) (SVNumber(Decimal i)) []
         in
         SCStaticBind(data);
 
@@ -508,45 +557,98 @@ struct
           let hwid =
             HwLib.port2hwid data.knd comp.name data.port data.prop data.typ
           in
-          let gen = process_ast (Term hwid) in
+          let gen = match data.defs with
+            | HWDAnalog(defs) ->
+              SCLateBind (interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                          [process_ast (Term hwid)])
+            | HWDDigital(defs) ->
+              SCLateBind (interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                         [process_ast (Term hwid)]) 
+          in
           MAP.put mapcomp.inputs name gen;
           ()
         );
       (*create constraints for each component*)
       MAP.iter comp.outs (fun name (data:hwvid hwportvar) ->
-          let gen = match data.bhvr,data.defs with
-          (*ADC*)
-          | HWBDigital(bhvr),HWDAnalog(defs) ->
-            let gen : map_cstr_gen = process_ast bhvr.rhs in
-            SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.ival name false),[gen])
+          let lhs_id =
+            HwLib.port2hwid data.knd comp.name data.port data.prop data.typ
+          in
+          let gen =
+            match data.bhvr,data.defs with
+            (*ADC*)
+            | HWBDigital(bhvr),HWDAnalog(defs) ->
+              begin
+                let rhs : map_cstr_gen =
+                  SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                               [process_ast bhvr.rhs])
+                in
+                let lhs : map_cstr_gen =
+                  SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                               [process_ast (Term(lhs_id))])
+                in
+                let eqn : map_cstr_gen =
+                  SCLateBind(interp_arg2 (SMapHwSpecLateBind.late_bind_eqn), [lhs;rhs])
+                in
+                eqn
+              end
 
           
           (*DAC*)
           | HWBAnalog(bhvr), HWDDigital(defs) ->
-            let gen : map_cstr_gen = process_ast bhvr.rhs in
-            SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.ival name false),[gen])
+            begin
+              let rhs : map_cstr_gen =
+                SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                             [process_ast bhvr.rhs])
+              in
+              let lhs : map_cstr_gen =
+                SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                             [process_ast (Term(lhs_id))])
+              in
+              let eqn : map_cstr_gen =
+                SCLateBind(interp_arg2 (SMapHwSpecLateBind.late_bind_eqn), [lhs;rhs])
+              in
+              eqn
+            end
 
           | HWBAnalog(bhvr), HWDAnalog(defs) ->
-            let gen : map_cstr_gen = process_ast bhvr.rhs in
-            SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.ival name false),[gen])
-
+            begin
+              let rhs : map_cstr_gen =
+                SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                             [process_ast bhvr.rhs])
+              in
+              let lhs : map_cstr_gen =
+                SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.ival),
+                             [process_ast (Term(lhs_id))])
+              in
+              let eqn : map_cstr_gen =
+                SCLateBind(interp_arg2 (SMapHwSpecLateBind.late_bind_eqn), [lhs;rhs])
+              in
+              eqn
+            end
+            
           | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
-            let icport, icprop = bhvr.ic in
-            let icvar =
-              HwLib.port2hwid HWKInput comp.name icport icprop data.typ
-            in
-            let rhsgen : map_cstr_gen = process_ast bhvr.rhs in
-            let icgen : map_cstr_gen = process_ast (Term icvar) in 
-            let total_gen : map_cstr_gen =
-              SCLateBind(interp_arg2 SMapHwSpecLateBind.late_bind_deriv, [rhsgen;icgen])
-            in
-            let total_gen_1 =
-              SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.deriv.ival name false),[total_gen])
-            in
-            let total_gen_2 =
-              SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_within_interval defs.stvar.ival name true),[total_gen_1])
-            in
-            total_gen_2
+            begin
+              let icport, icprop = bhvr.ic in
+              let ic_id =
+                HwLib.port2hwid HWKInput comp.name icport icprop data.typ
+              in
+              let ic : map_cstr_gen =
+                SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.stvar.ival),
+                             [process_ast (Term(ic_id))])
+              in
+              let rhs : map_cstr_gen =
+                SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.deriv.ival),
+                             [process_ast bhvr.rhs])
+              in
+              let lhs : map_cstr_gen =
+                SCLateBind(interp_arg1 (SMapHwSpecLateBind.late_bind_cover defs.stvar.ival),
+                             [process_ast (Term(lhs_id))])
+              in
+              let steqn : map_cstr_gen =
+                SCLateBind(interp_arg3 (SMapHwSpecLateBind.late_bind_deriv), [lhs;rhs;ic])
+              in
+              steqn
+            end
           in
           MAP.put mapcomp.outputs name (gen);
           ()
