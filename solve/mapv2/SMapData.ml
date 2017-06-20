@@ -90,9 +90,7 @@ type map_hw_spec = {
   comps : (hwcompname,map_comp) map;
 }
 
-type map_hw_config = {
-  mutable cstrs: map_cstr list;
-}
+
 
 module SMapVar =
 struct

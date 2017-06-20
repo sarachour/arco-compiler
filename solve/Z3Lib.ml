@@ -261,6 +261,9 @@ struct
   let eq_all (x) =
     fn_all x (fun x r -> Z3Eq(x,r))
 
+  let and_all (x) =
+    fn_all x (fun x r -> Z3And(x,r))
+
 
   let sum_all (x) =
     fn_all x (fun x r -> Z3Plus(x,r))

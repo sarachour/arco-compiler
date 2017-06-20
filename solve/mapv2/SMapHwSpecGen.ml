@@ -494,6 +494,7 @@ struct
               ) (process_ast h) t
         in
         begin
+          (*TODO: order the terms for associative expressions to maximize usage.*)
           match opn with
           | Mult ->
             proc_n args (interp_arg2 SMapHwSpecLateBind.late_bind_mult2) 

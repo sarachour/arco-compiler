@@ -155,6 +155,17 @@ struct
     | 0 -> ()
     | x -> fxn x; countdown (x-1) fxn
 
+  let countto (n:int) (fxn: int -> unit) : unit =
+    let rec _work x =
+      if x = n then ()
+      else
+        begin
+          fxn x;
+          _work (x+1) 
+        end
+    in
+    _work 0
+
 
   let max (a:float list) =
     match a with
@@ -1337,25 +1348,25 @@ struct
   
   (*get disjoint graph nodes*)
   let disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =
-    let rec get_subset (s:a set) (n:a) : a set =
-      let conn = connected g n in
-      let nconn = List.filter (fun x -> SET.has s x = false) conn in
-      if List.length nconn = 0 then s else
-        let _ = SET.add_all s nconn in
-        let nset = List.fold_right (fun x ns -> get_subset ns x) nconn s in
+    let rec get_subset (members:a set) (currnode:a) : a set =
+      noop (SET.add members currnode);
+      let conn = connected g currnode in
+      let conn_nonmembers = List.filter (fun x -> SET.has members x = false) conn in
+      if List.length conn_nonmembers = 0 then members else
+        let nset = List.fold_right (fun x ns -> get_subset ns x) conn_nonmembers members in
         nset
     in
     (*all the nodes *)
-    let remaining_nodes : a set = SET.add_all (SET.make_dflt ()) (getnodes g (fun x -> true)) in
     let rec build_subset (remaining:a set) : (a set) list =
       if SET.empty remaining then [] else
       let rand_node = SET.rand remaining in
-      let subst = get_subset (SET.make_dflt ()) rand_node in
+      let subgraph = get_subset (SET.make_dflt ()) rand_node in
       (*update remaining nodes*)
-      let remaining = SET.sub remaining subst in
-      subst::(build_subset remaining)
+      let independent = SET.sub remaining subgraph in
+      subgraph::(build_subset independent)
     in
-    let disj = build_subset remaining_nodes in
+    let all_nodes : a set = SET.add_all (SET.make_dflt ()) (getnodes g (fun x -> true)) in
+    let disj = build_subset all_nodes in
     disj
    
   let reachable (type a) (type b) (g:(a,b) graph) (src:a) (dest:a) (nhops:int) : bool = 
