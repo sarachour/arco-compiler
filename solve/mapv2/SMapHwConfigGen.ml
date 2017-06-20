@@ -20,7 +20,7 @@ struct
 
   
   type cfggen_bin =
-    | SMBMapExpr of map_expr
+    | SMBMapExpr of hwcompinst*map_expr
     | SMBValue of number
     | SMBMapVar of hwcompinst*map_var
 
@@ -31,7 +31,7 @@ struct
   }
 
   let string_of_bin (b:cfggen_bin) = match b with
-    | SMBMapExpr(e) -> SMapExpr.to_string e
+    | SMBMapExpr(inst,e) -> SMapExpr.to_string e
     | SMBValue(n) -> string_of_number n
     | SMBMapVar(inst,v) ->
       (HwLib.hwcompinst2str inst)^"."^
@@ -108,8 +108,18 @@ struct
 
   let connect_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> unit =
     fun ctx bin1 bin2 ->
-      GRAPH.mkedge ctx.bins bin1 bin2 ();
+      GRAPH.mkedge ctx.bins bin1 bin2;
       ()
+
+  let connect_bins_by_cstr :cfggen_ctx -> hwcompinst -> map_cstr -> unit =
+    fun ctx inst cstr ->
+      match cstr with
+      | SCVarEqVar(mv1,mv2) -> connect_bins ctx (SMBMapVar(inst,mv1)) (SMBMapVar(inst,mv2))
+      | SCVarEqConst(mv1,n) -> connect_bins ctx (SMBMapVar(inst,mv1)) (SMBValue n)
+      | SCVarEqExpr(mv1,me1) -> connect_bins ctx (SMBMapVar(inst,mv1)) (SMBMapExpr(inst,me1))
+      | SCExprEqExpr(me1,me2) -> connect_bins ctx (SMBMapExpr(inst,me1)) (SMBMapExpr(inst,me2))
+      | SCExprEqConst(me1,n) -> connect_bins ctx (SMBMapExpr(inst,me1)) (SMBValue n)
+      | _ -> () 
 
   let evaluate : map_comp_ctx -> map_hw_spec -> hwcompname -> string -> map_result =
     fun comp_ctx mapspec comp port ->
@@ -124,9 +134,15 @@ struct
       in
       result
 
+  let cfggen_ctx_to_buckets : cfggen_ctx -> unit =
+    fun ctx ->
+      let sets : cfggen_bin set list = GRAPH.disjoint ctx.bins in
+      Printf.printf "# true variables: %d\n" (List.length sets);
+      ()
+
   let build_config : map_hw_spec -> gltbl ->  map_hw_config option =
     fun tblspec tbl ->
-      let ctx = {insts = MAP.make();
+      let ctx : cfggen_ctx = {insts = MAP.make();
                  bins=GRAPH.make
                      (fun a b -> a = b)
                      (fun bin -> string_of_bin bin)
@@ -135,7 +151,6 @@ struct
                 }
       in
       let sln : (string,mid) sln = tbl.sln_ctx in
-      
       SET.iter sln.comps (fun (inst:hwcompinst) ->
           let data : map_comp_ctx =
             {ports = MAP.make(); params = MAP.make()}
@@ -170,7 +185,8 @@ struct
                 (SMBMapVar(src.comp,SMOffset(src.port)))
                 (SMBMapVar(src.comp,SMOffset(src.port)));
            )
-      );
+        );
+      let config_success = REF.mk true in
       (*evaluate components to get results*)
       MAP.iter ctx.insts (fun (inst:hwcompinst) (inst_data:map_comp_ctx) ->
           MAP.iter inst_data.ports (fun (port:string) (port_data:map_loc_val) ->
@@ -178,17 +194,31 @@ struct
                 evaluate inst_data tblspec inst.name port
               in
               let wire :wireid = {comp=inst; port=port} in
+              List.iter (fun (cstr:map_cstr) -> connect_bins_by_cstr ctx inst cstr) result.cstrs;
+              (*if any of the constraints are false, terminate early during sunthesis process*)
+              REF.upd config_success (fun is_succ -> is_succ && (not (LIST.has result.cstrs SCFalse))); 
               MAP.put ctx.results wire result;
               ()
             )
         );
-      raise (SMapHwConfigGen_error "unimpl: connect constraints. This should remove all equivalence constraints and stick them in the graph.");
-      raise (SMapHwConfigGen_error "unimpl: get final equivalences. An equivalence with the number should replace that variable with a number. ");
-      raise (SMapHwConfigGen_error "rewrite map expressions to use bin variable number");
-      raise (SMapHwConfigGen_error "perform term rewriting.");
-      raise (SMapHwConfigGen_error "emit problem");
-      None
+      (*found a trivially false clause*)
+      if REF.dr config_success = false then
+        None
+      (*otherwise, flatten graph into buckets*)
+      else
+        begin
+          let buckets = cfggen_ctx_to_buckets ctx in 
+        raise (SMapHwConfigGen_error "rewrite results to be in terms of variables.");
+              raise (SMapHwConfigGen_error "unimpl: get final equivalences. An equivalence with the number should replace that variable with a number. ");
+              raise (SMapHwConfigGen_error "rewrite map expressions to use bin variable number");
+              raise (SMapHwConfigGen_error "perform term rewriting.");
+              raise (SMapHwConfigGen_error "emit problem");
+              None
 
+
+        end
+
+      
       
 
 end
