@@ -151,14 +151,13 @@ struct
   type cfggen_prob = {
     (*xid to map vars / exprs*)
     xid_to_number : (int,number) map;
-    xid_to_mapvar : (int,hwcompinst*map_var) map;
-    (* map vars / exprs to xid*)
+    (* map vars / exprs to xid *)
     mapvar_to_xid : (hwcompinst*map_var,int) map;
     mapexpr_to_xid : (hwcompinst*map_expr,int) map;
     (*inequality constraints*)
     xid_neq_number : (int,number set) map;
     (*coverage constraints*)
-    xid_cover : (int*int,(interval*interval) set) map;
+    xid_cover : (int*int,(map_range*map_range) set) map;
     (*number of variables*)
     mutable n : int;
     mutable success: bool;
@@ -166,7 +165,6 @@ struct
 
   let insert_map_var_to_xid_mapping : cfggen_prob -> int -> hwcompinst -> map_var -> unit =
         fun prob xvar inst mapvar ->
-          MAP.put prob.xid_to_mapvar xvar (inst,mapvar);
           MAP.put prob.mapvar_to_xid (inst,mapvar) xvar;
           ()
 
@@ -228,11 +226,11 @@ struct
         SET.add neq_nums num;
         ()
 
-  let insert_xid_cstr_cover : cfggen_prob -> int -> int -> interval -> interval -> unit =
+  let insert_xid_cstr_cover : cfggen_prob -> int -> int -> map_range-> map_range-> unit =
     fun prob xscale xoff hwival mival -> 
       if MAP.has prob.xid_cover (xscale,xoff) then
         begin
-          let ivals : (interval*interval) set =
+          let ivals : (map_range*map_range) set =
             MAP.get prob.xid_cover (xscale,xoff)
           in
           SET.add ivals (hwival, mival);
@@ -301,7 +299,6 @@ struct
       Printf.printf "====GRAPH====\n%s\n" (GRAPH.tostr ctx.bins);
       let sets : cfggen_bin set list = GRAPH.disjoint ctx.bins in
       let prob = {
-        xid_to_mapvar=MAP.make();
         xid_to_number=MAP.make();
         (*rewrite expressions / variables*)
         mapexpr_to_xid=MAP.make();

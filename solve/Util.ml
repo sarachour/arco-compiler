@@ -136,6 +136,11 @@ struct
   let round_up x : float = 
     ceil x 
 
+  let mean : float list -> float=
+    fun vals ->
+      let total = List.fold_right (fun v s -> v +. s) vals 0. in
+      total /. (float_of_int (List.length vals ))
+
   let float_is_int (x:float) =
     let xt : float = round x in
     let diff : float = abs_float(x-.xt) in

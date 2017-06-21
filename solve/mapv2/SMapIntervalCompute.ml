@@ -198,11 +198,11 @@ struct
       compute_hwexpr_interval comp inst cfg bhvr.rhs
     | _ -> error "compute_deriv_hw_interval" "unexpected bhvr/defs match"
    
-  let compute_wire_interval tbl (wire:wireid) =
+  let compute_wire_interval tbl (wire:wireid) : map_range =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in
     let ival = compute_hwport_interval tbl ccomp.d wire.comp.inst ccomp.cfg wire.port in
     let min,max = IntervalLib.interval2numbounds ival in
-    {min=min;max=max}
+    {min=Decimal min;max= Decimal max}
 
   let get_wire_label_expr (tbl) (wire:wireid) : mid ast option =
     let ccomp = SolverCompLib.get_conc_comp tbl wire.comp in

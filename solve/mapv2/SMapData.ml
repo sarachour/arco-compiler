@@ -25,6 +25,10 @@ type map_loc = {
   value : map_loc_val;
 }
 
+type map_range = {
+  min : number;
+  max : number;
+}
 (*remap a value along a wire to a different number*)
 
 (*
@@ -48,7 +52,7 @@ type map_cstr =
   | SCFalse
   | SCTrue
   (*cover constraint*)
-  | SCCoverInterval of interval*interval*map_expr*map_expr
+  | SCCoverInterval of map_range*map_range*map_expr*map_expr
   (*expr constraints*)
   | SCExprEqExpr of map_expr*map_expr
   | SCExprEqConst of map_expr*number
