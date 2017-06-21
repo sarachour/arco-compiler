@@ -131,6 +131,7 @@ struct
                 MAP.put xid_to_val xid (Integer 0)
               | Z3QInterval(Z3QInfinite(_)) ->
                 MAP.put xid_to_val xid (Integer 0)
+              (*if the interval has a lower or upper bound, set value to lower or upper bound*)
               | Z3QInterval(Z3QLowerBound(b)) ->
                 MAP.put xid_to_val xid (Decimal b)
               | Z3QInterval(Z3QUpperBound(b)) ->
@@ -144,11 +145,17 @@ struct
       let wire_to_mapping : (wireid,linear_transform) map = MAP.make () in
       let add_mapping : hwcompinst -> string -> unit =
         fun inst port ->
+          let get_val inst map_var =
+            if MAP.has port.mapvar_to_xid (inst,map_var) then
+              let xid = MAP.get port.map_to_xid (inst,map_var) in
+              MAP.get xid_to_val xid 
+            else
+              raise (SMapSolver_error ("cannot find xid for "^(MapVar.to_string map_var)))
+          in
+
           let wire : wireid = {comp=inst;port=port} in
-          let scid:int = MAP.get prob.mapvar_to_xid (inst,SMScale port) in
-          let ofid:int = MAP.get prob.mapvar_to_xid (inst,SMOffset port) in
-          let scval = MAP.get xid_to_val scid in
-          let ofval = MAP.get xid_to_val ofid in
+          let scval:int = get_val inst (SMScale port) in
+          let ofval:int = get_val inst (SMOffset port) in
           let linear_trans : linear_transform = 
             {scale=float_of_number scval; offset=float_of_number ofval}
           in
