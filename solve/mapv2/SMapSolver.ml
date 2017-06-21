@@ -146,18 +146,24 @@ struct
       let add_mapping : hwcompinst -> string -> unit =
         fun inst port ->
           let get_val inst map_var =
-            if MAP.has port.mapvar_to_xid (inst,map_var) then
-              let xid = MAP.get port.map_to_xid (inst,map_var) in
-              MAP.get xid_to_val xid 
+            if MAP.has prob.mapvar_to_xid (inst,map_var) then
+              let xid = MAP.get prob.mapvar_to_xid (inst,map_var) in
+              if MAP.has xid_to_val xid then
+                MAP.get xid_to_val xid
+              (* if unset, it doesn't matter and is given a value of zero.*)
+              else
+                Integer 0 
             else
-              raise (SMapSolver_error ("cannot find xid for "^(MapVar.to_string map_var)))
+              raise (SMapSolver_error ("cannot find xid for "^(SMapVar.to_string map_var)))
           in
-
           let wire : wireid = {comp=inst;port=port} in
-          let scval:int = get_val inst (SMScale port) in
-          let ofval:int = get_val inst (SMOffset port) in
+          let scval:number= get_val inst (SMScale port) in
+          let ofval:number = get_val inst (SMOffset port) in
           let linear_trans : linear_transform = 
-            {scale=float_of_number scval; offset=float_of_number ofval}
+            {
+              scale=float_of_number scval;
+              offset=float_of_number ofval
+            }
           in
           noop (MAP.put wire_to_mapping wire linear_trans)
       in
@@ -170,6 +176,8 @@ struct
               add_mapping inst port
             )
         );
+      Printf.printf "=== Mappings ===\n%s\n=======\n"
+        (SMapUtil.string_of_mappings wire_to_mapping);
       wire_to_mapping
 
   let compute_transform : gltbl ->  map_problem -> int ->

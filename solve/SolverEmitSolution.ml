@@ -101,7 +101,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
     match mappings with
     | Some(mappings) ->
       begin
-        let map_sum = "MapUtil.string_of_mappings: unimpl" in
+        let map_sum = SMapUtil.string_of_mappings mappings in
         IO.save (out^"_"^(string_of_int i)^"_map.sum") map_sum
       end
 
