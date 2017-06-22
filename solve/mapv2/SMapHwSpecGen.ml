@@ -34,6 +34,20 @@ struct
       else
         raise (SMapCompCtx_error "does not have param")
 
+  let get_max_sample_period : map_comp_ctx-> string -> number option =
+    fun ctx name ->
+      if MAP.has ctx.sample name then
+        Some (MAP.get ctx.sample name)
+      else
+        None
+
+  let get_min_speed : map_comp_ctx -> string -> number option =
+    fun ctx name ->
+      if MAP.has ctx.speed name then
+        Some (MAP.get ctx.speed name)
+      else
+        None
+
 end
 
 
@@ -67,6 +81,7 @@ struct
     let v = SMFreeVar(REF.dr freevar_idx) in
     REF.upd freevar_idx (fun x -> x + 1);
     v
+
 
   let mkresult : map_result list -> map_expr -> map_expr -> map_loc_val -> map_cstr list -> map_result =
     fun args scale offset value cstrs ->
@@ -349,6 +364,7 @@ struct
       mk_equal0 lhs.offset;
       mk_equal0 rhs.offset;
       mk_equal0 ic.offset;
+      mk_equal lhs.scale (SEVar SMTimeConstant);
     ]
     in
     mkresult [lhs;rhs;ic] scale offset value cstr 
@@ -397,6 +413,27 @@ struct
       match map_range_of_interval port_interval with
       | Some(port_range) -> late_bind_cover port_range
       | None -> late_bind_noop 
+
+  let late_bind_sample: string -> number -> map_ctx -> map_result -> map_result =
+    fun port hw_sample_period ctx result ->
+      let cstrs = 
+        match SMapCompCtx.get_max_sample_period ctx port, SMapCompCtx.get_min_speed ctx port with
+        | Some(min_sample_period),Some(min_speed) ->
+          let max_speed = NUMBER.div min_sample_period (hw_sample_period) in
+          [SCCoverTime(Some min_speed,Some max_speed)]
+        | None,Some(min_speed) -> 
+          [SCCoverTime(Some min_speed,None)]
+        | Some(min_sample_period),None -> 
+          let max_speed = NUMBER.div min_sample_period (hw_sample_period) in
+          [SCCoverTime(None,Some max_speed)]
+        | None,None ->[] 
+      in
+      mkresult [result] result.scale result.offset result.value cstrs
+      
+
+  let create_late_bind_sample : string -> number -> (map_ctx -> map_result -> map_result) =
+    fun name hw_sample_rate ->
+      late_bind_sample name hw_sample_rate
 
   let late_bind_exp : map_ctx -> map_result -> map_result =
     fun port_name ctx ->
@@ -589,8 +626,14 @@ struct
               SCLateBind (interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
                           [process_ast (Term hwid)])
             | HWDDigital(defs) ->
-              SCLateBind (interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
-                         [process_ast (Term hwid)]) 
+              let sample_period, _ = defs.sample in
+              SCLateBind(
+                interp_arg1 (SMapHwSpecLateBind.create_late_bind_sample name sample_period),
+                [
+                  SCLateBind (interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
+                              [process_ast (Term hwid)])
+                ]
+              )
           in
           MAP.put mapcomp.inputs name gen;
           ()
@@ -610,7 +653,7 @@ struct
                                [process_ast bhvr.rhs])
                 in
                 let lhs : map_cstr_gen =
-                  SCLateBind(interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
+                    SCLateBind(interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
                                [process_ast (Term(lhs_id))])
                 in
                 let eqn : map_cstr_gen =
@@ -627,9 +670,15 @@ struct
                 SCLateBind(interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
                              [process_ast bhvr.rhs])
               in
+              let sample_period,_ = defs.sample in
               let lhs : map_cstr_gen =
-                SCLateBind(interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
-                             [process_ast (Term(lhs_id))])
+                SCLateBind(
+                  interp_arg1 (SMapHwSpecLateBind.create_late_bind_sample name sample_period),
+                  [
+                    SCLateBind(interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
+                              [process_ast (Term(lhs_id))])
+                  ]
+                )
               in
               let eqn : map_cstr_gen =
                 SCLateBind(interp_arg2 (SMapHwSpecLateBind.late_bind_eqn), [lhs;rhs])

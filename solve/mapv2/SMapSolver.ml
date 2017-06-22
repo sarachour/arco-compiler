@@ -20,7 +20,7 @@ struct
 
   type map_problem = SMapHwConfigGen.cfggen_prob
 
-  let vmax = 1e306;;
+  let vmax = 1e6;;
   let vmin = 0. -. vmax;;
 
   let rec xid_to_z3_var : int -> string =
@@ -76,7 +76,13 @@ struct
       let decls : z3st list = List.fold_right (fun (idx:int) (stmts:z3st list) ->
           let varname = xid_to_z3_var idx in
           let decl = Z3ConstDecl(varname , Z3Real) in
-          decl::stmts 
+          let sane =
+            Z3Assert(Z3And(
+                Z3LTE(Z3Var varname,Z3Real vmax),
+                Z3GTE(Z3Var varname,Z3Real vmin)
+              ))
+          in
+          decl::sane::stmts
         ) (LIST.mkrange 0 prob.n) []
       in
       (*TODO: perform ordering and simplifications here*)
@@ -110,8 +116,30 @@ struct
             ) cover_cstrs
         ) []
       in
+      let time_const_stmts :z3st list = match prob.tc_to_xid with
+        | Some(tc_xid) ->
+          let tc_var = Z3Var (xid_to_z3_var tc_xid) in
+          SET.fold prob.xid_time (fun (tmin_maybe,tmax_maybe) asserts ->
+              match tmin_maybe, tmax_maybe with
+              | Some(tmin),Some(tmax) ->
+                  Z3Assert(Z3LTE(tc_var,number_to_z3_expr tmax))::
+                  Z3Assert(Z3LTE(number_to_z3_expr tmin,tc_var))::
+                  asserts
+
+              | Some(tmin),None ->
+                  Z3Assert(Z3LTE(number_to_z3_expr tmin,tc_var))::
+                  asserts
+
+              | None,Some(tmax) ->
+                  Z3Assert(Z3LTE(tc_var,number_to_z3_expr tmax))::
+                  asserts
+
+              | _ -> asserts
+            ) []
+        | None -> []
+      in
       (*TODO: speed statement, sampling statement, diffeq synchro statement, coverage*)
-      decls @ eq_stmts @ neq_stmts @ cover_stmts 
+      decls @ eq_stmts @ neq_stmts @ cover_stmts @ time_const_stmts 
         
 
   let parse_sln : (string,mid) sln -> map_hw_spec -> map_problem -> z3assign list -> (wireid, linear_transform) map =

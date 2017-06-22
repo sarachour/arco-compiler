@@ -9,7 +9,7 @@ type map_var =
   | SMOffset of string 
   | SMScale of string 
   | SMFreeVar of int 
-
+  | SMTimeConstant 
 
 (*a value into a port*)
 type map_loc_val =
@@ -20,6 +20,8 @@ type map_loc_val =
 type map_comp_ctx = {
     ports : (string, map_loc_val) map;
     params: (string, number) map;
+    sample: (string,number) map;
+    speed: (string,number) map;
 }
 
 type map_loc = {
@@ -55,6 +57,7 @@ type map_cstr =
   | SCTrue
   (*cover constraint*)
   | SCCoverInterval of map_range*map_range*map_expr*map_expr
+  | SCCoverTime of number option*number option
   (*expr constraints*)
   | SCExprEqExpr of map_expr*map_expr
   | SCExprEqConst of map_expr*number
@@ -123,8 +126,8 @@ struct
       match v with
       |SMFreeVar(id) -> "f."^(string_of_int id) 
       |SMScale(name) -> "sc."^name
-      |SMOffset(name) -> "of"^name
-
+      |SMOffset(name) -> "of."^name
+      |SMTimeConstant -> "tau"
 end
 
 module SMapExpr =
@@ -175,7 +178,8 @@ struct
       | SCCoverInterval(hwrng,mrng,sc,off) ->
         (SMapExpr.to_string sc)^"*"^(SMapRange.to_string mrng)^"+"^(SMapExpr.to_string off)^" \\in "^
         (SMapRange.to_string hwrng)
-
+      | SCCoverTime(min,max) ->
+        (OPTION.tostr min string_of_number)^" <= tau <= "^(OPTION.tostr max string_of_number)
 
 end
 

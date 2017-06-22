@@ -106,6 +106,12 @@ struct
       MAP.get (e.vars) name
 
 
+  let var_gettimecstr (e:'a menv) (name:string) =
+    let v : 'a mvar = getvar e name in
+    match v.defs with
+    | MDefStVar(def) -> def.sample,def.speed
+    | _ -> None,None
+
   let isvar (e:'a menv) (name:string) =
     MAP.has e.vars name 
 

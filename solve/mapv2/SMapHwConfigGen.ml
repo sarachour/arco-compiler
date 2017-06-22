@@ -24,6 +24,7 @@ struct
   type cfggen_bin =
     | SMBMapExpr of hwcompinst*map_expr
     | SMBNumber of number
+    | SMBTimeConstant
     | SMBMapVar of hwcompinst*map_var
 
   type cfggen_ctx = {
@@ -36,6 +37,7 @@ struct
   let string_of_bin (b:cfggen_bin) = match b with
     | SMBMapExpr(inst,e) -> SMapExpr.to_string e
     | SMBNumber(n) -> string_of_number n
+    | SMBTimeConstant -> "tau"
     | SMBMapVar(inst,v) ->
       (HwLib.hwcompinst2str inst)^"."^
       (SMapVar.to_string v)
@@ -74,6 +76,10 @@ struct
       Printf.printf " : interval.v %s : %s\n" (MathLib.mid2str id) (IntervalLib.interval2str ival);
       ival
 
+  let time_constraints_of_var : gltbl ->  string -> number option*number option =
+    fun gltbl mvar ->
+      let sample,speed = MathLib.var_gettimecstr gltbl.env.math mvar in
+      sample,speed
   (*
      Given a label conversion algorithm that converts labels to map values
      and a wire conversion algorithm that returns the set of wires to apply the label to given
@@ -110,6 +116,46 @@ struct
           );
         ()
       end
+
+  let bind_time_cstrs_to_wire: cfggen_ctx -> number option -> number option -> wireid -> unit=
+    fun ctx sample_maybe speed_maybe wire ->
+      let cmp : map_comp_ctx = MAP.get ctx.insts wire.comp in
+      begin
+        match sample_maybe with
+        | Some(sample) -> noop (MAP.put cmp.sample wire.port sample)
+        | _ -> ()
+      end;
+      begin
+        match speed_maybe with
+        | Some(speed) -> noop (MAP.put cmp.speed wire.port speed)
+        | _ -> ()
+      end;
+      ()
+
+  let bind_time_cstrs_to_wire_collection: cfggen_ctx -> number option -> number option -> wire_coll -> unit =
+    fun ctx sample speed wires ->
+        match wires with
+          | WCollOne(wid) ->
+            bind_time_cstrs_to_wire ctx sample speed wid
+          | WCollMany(wlist) ->
+            List.iter (fun wire -> bind_time_cstrs_to_wire ctx sample speed wire) wlist
+        | WCollEmpty -> ()
+
+  let bind_time_constraints_to_wires : gltbl -> cfggen_ctx -> (string,mid) labels -> unit =
+    fun gltbl ctx lbls ->
+      MAP.iter lbls.outs (fun name wire_coll ->
+          let min_sample_period,max_speed= time_constraints_of_var gltbl name in
+          bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
+        );
+      MAP.iter lbls.ins (fun name wire_coll ->
+          let min_sample_period,max_speed= time_constraints_of_var gltbl name in
+          bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
+        );
+      MAP.iter lbls.locals (fun name wire_coll ->
+          let min_sample_period,max_speed= time_constraints_of_var gltbl name in
+          bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
+        );
+      ()
 
 
   
@@ -175,8 +221,10 @@ struct
     xid_neq_number : (int,number set) map;
     (*coverage constraints*)
     xid_cover : (int*int,(map_range*map_range) set) map;
+    xid_time : (number option*number option) set;
     (*number of variables*)
     mutable n : int;
+    mutable tc_to_xid : int option;
     mutable success: bool;
   }
 
@@ -185,6 +233,12 @@ struct
           MAP.put prob.mapvar_to_xid (inst,mapvar) xvar;
           ()
 
+
+  let insert_time_constant_to_xid_mapping : cfggen_prob -> int -> unit =
+    fun prob xvar ->
+      match prob.tc_to_xid with
+      | Some (_) -> raise (SMapHwConfigGen_error "unexpected: cannot remap time constant")
+      | None -> prob.tc_to_xid <- Some xvar 
 
   let insert_number_to_xid_mapping : cfggen_prob -> int -> number -> unit =
     fun prob xvar num ->
@@ -257,7 +311,22 @@ struct
           let ivals = SET.make_dflt () in
           SET.add ivals (hwival,mival);
           noop (MAP.put prob.xid_cover (xscale,xoff) ivals)
-         end 
+        end
+
+  let insert_xid_cstr_time : cfggen_prob -> number option -> number option -> unit =
+    fun prob min max ->
+      begin
+        match prob.tc_to_xid with
+        | Some(xid) ->() 
+        | None ->
+          begin
+            let xid = prob.n in
+            prob.n <- prob.n + 1
+          end
+      end;
+      SET.add prob.xid_time (min,max);
+      ()
+
 
 
   
@@ -308,6 +377,9 @@ struct
 
       | SCTrue -> ()
 
+      | SCCoverTime(min,max) ->
+        insert_xid_cstr_time prob min max
+
       | _ -> raise (SMapHwConfigGen_error "cannot have an equality constraint.")
 
   let cfggen_ctx_to_map_problem: cfggen_ctx -> cfggen_prob =
@@ -318,9 +390,11 @@ struct
         (*rewrite expressions / variables*)
         mapexpr_to_xid=MAP.make();
         mapvar_to_xid=MAP.make();
+        tc_to_xid = None;
         (*determine if xid maps to numbers *)
         xid_neq_number=MAP.make();
         xid_cover=MAP.make();
+        xid_time=SET.make_dflt();
         (*number of variables*)
         n=List.length sets;
         success=true;
@@ -338,6 +412,7 @@ struct
               | SMBMapVar(inst,mv1) -> insert_map_var_to_xid_mapping prob xid inst mv1
               | SMBMapExpr(inst,me1) -> insert_map_expr_to_xid_mapping prob xid inst me1
               | SMBNumber(n) -> insert_number_to_xid_mapping prob xid n
+              | SMBTimeConstant -> insert_time_constant_to_xid_mapping prob xid 
             )
         ) sets;
       (*add constraints*)
@@ -361,9 +436,13 @@ struct
       }
       in
       let sln : (string,mid) sln = tbl.sln_ctx in
+      make_bin ctx (SMBTimeConstant);
       SET.iter sln.comps (fun (inst:hwcompinst) ->
           let data : map_comp_ctx =
-            {ports = MAP.make(); params = MAP.make()}
+            {
+              ports = MAP.make(); params = MAP.make();
+              sample = MAP.make(); speed = MAP.make();
+            }
           in
           let spec : map_comp = MAP.get tblspec.comps inst.name in
           MAP.iter spec.inputs (fun port _ ->
@@ -413,6 +492,8 @@ struct
         (fun expr interval -> interval_to_val interval )
         (fun number -> SVNumber(number) )
       ;
+      bind_time_constraints_to_wires tbl ctx sln.generate;
+      bind_time_constraints_to_wires tbl ctx sln.route;
       bind_numbers_to_params tbl ctx;
       (* Merge variables joined through a connection *)
       MAP.iter sln.conns.src2dest (fun (src:wireid) (dests:wireid set) ->
