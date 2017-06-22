@@ -21,7 +21,8 @@ struct
         give it the most flexible value since it's a don't care.
         The value can be scaled by anything and offset by anything
         *)
-        SVZero
+        (*SVZero*)
+        raise (SMapCompCtx_error ("does not have port:"^port))
 
 
   let get_param : map_comp_ctx -> string -> number =
@@ -125,6 +126,7 @@ struct
   (*process the bounds over the variable.*)
   let port_val_to_port_cstrs: string -> map_loc_val -> map_loc_val*(map_cstr list) =
     fun port_name port_val ->
+      (*Printf.printf "value[%s] : %s\n" port_name (SMapLocVal.to_string port_val);*)
       match port_val with
       | SVSymbol(interval) ->
         if IntervalLib.is_value interval then
@@ -230,7 +232,8 @@ struct
                 SEMult(res1.offset,res2.offset)))
         in
         let value = SVNumber(NUMBER.mult n m) in
-        mkresult args scale offset value []
+        let cstrs = [] in
+        mkresult args scale offset value cstrs
 
       | SVSymbol(a), SVNumber(m) ->
         let scale =
@@ -280,41 +283,50 @@ struct
       let value = SVZero in
       let cstrs = [] in
       mkresult args scale offset value cstrs
+
     | SVZero, SVNumber(n) ->
       let scale = res2.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVNumber(n) in
       let cstrs = [] in
       mkresult args scale offset value cstrs
+
     | SVNumber(_), SVZero ->
       late_bind_add2 ctx res2 res1
+
     | SVNumber(n), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVNumber(NUMBER.add n m) in
       let cstrs = [mk_equal res1.scale res2.scale] in
       mkresult args scale offset value cstrs
+
     | SVSymbol(a), SVZero ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVSymbol(a) in
-      mkresult args scale offset value []
+      let cstrs = [] in
+      mkresult args scale offset value cstrs
+
     | SVZero, SVSymbol(_) ->
        late_bind_add2 ctx res2 res1 
+
     | SVSymbol(a), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.add a (IntervalLib.num m)) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value []
+      mkresult args scale offset value cstrs
+
     | SVNumber(_), SVSymbol(_) ->
       late_bind_add2 ctx res2 res1
+
     | SVSymbol(a), SVSymbol(b) ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.add a b) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value []
+      mkresult args scale offset value cstrs
 
 
   let late_bind_sub2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
@@ -326,52 +338,62 @@ struct
       let value = SVZero in
       let cstrs = [] in
       mkresult args scale offset value cstrs
+
     | SVZero, SVNumber(n) ->
       let scale = res2.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVNumber(n) in
       let cstrs = [] in
       mkresult args scale offset value cstrs
+
     | SVNumber(n), SVZero ->
       let scale = res2.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVNumber(n) in
       let cstrs = [] in
       mkresult args scale offset value cstrs
+
     | SVNumber(n), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVNumber(NUMBER.sub n m) in
       let cstrs = [mk_equal res1.scale res2.scale] in
       mkresult args scale offset value cstrs
+
     | SVSymbol(a), SVZero ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(a) in
-      mkresult args scale offset value []
+      let cstrs = [] in
+      mkresult args scale offset value cstrs
+
     | SVZero, SVSymbol(a) ->
       let scale = res2.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.neg a) in
-      mkresult args scale offset value []
+      let cstrs = [] in
+      mkresult args scale offset value cstrs
+
     | SVSymbol(a), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.sub a (IntervalLib.num m)) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value []
+      mkresult args scale offset value cstrs
+
     | SVNumber(m), SVSymbol(a) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.sub (IntervalLib.num m) a) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value []
+      mkresult args scale offset value cstrs
+
     | SVSymbol(a), SVSymbol(b) ->
       let scale = res1.scale in
       let offset = SESub(res1.offset, res2.offset) in
       let value = SVSymbol(IntervalLib.sub a b) in
       let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value []
+      mkresult args scale offset value cstrs
 
 
   let late_bind_neg1 (ctx:map_ctx) (res1:map_result) : map_result = 
@@ -458,6 +480,8 @@ struct
     fun port_name ctx ->
         raise (SMapHwSpecLateBind_error "unimpl:late bind neg.")
 
+
+  let late_bind_assoc : map_ctx -> map_result list -> map_result =
 
 end
 
@@ -671,6 +695,7 @@ struct
                 SCLateBind(interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.deriv.ival),
                              [process_ast bhvr.rhs])
               in
+              let rhs : map_cstr_gen = process_ast bhvr.rhs in
               let lhs : map_cstr_gen =
                 SCLateBind(interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.stvar.ival),
                              [process_ast (Term(lhs_id))])

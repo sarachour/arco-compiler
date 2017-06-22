@@ -7,6 +7,8 @@ open MathLib;;
 
 
 open IntervalData;;
+open IntervalLib;;
+
 open AST;;
 
 open SMapData;;
@@ -30,6 +32,7 @@ struct
     bins : (cfggen_bin,unit) graph;
   }
 
+
   let string_of_bin (b:cfggen_bin) = match b with
     | SMBMapExpr(inst,e) -> SMapExpr.to_string e
     | SMBNumber(n) -> string_of_number n
@@ -50,6 +53,21 @@ struct
         | WCollMany(wlist) -> List.iter (fun wid -> bind_val_to_wire ctx v wid) wlist
         | WCollEmpty -> ()
 
+  (*get range of expression*)
+  let interval_of_expr : gltbl -> mid ast -> interval =
+    fun tbl expr ->
+      let ival = SMapIntervalCompute.compute_mexpr_interval tbl expr in
+      Printf.printf " : interval.e %s : %s\n" (MathLib.mast2str expr) (IntervalLib.interval2str ival);
+      ival
+
+  (*get range of variable*)
+  let interval_of_var : gltbl -> mkind -> string -> interval =
+    fun tbl knd name ->
+      let id = MNVar(knd,name) in
+      let ival = SMapIntervalCompute.compute_mid_interval tbl id in
+      Printf.printf " : interval.v %s : %s\n" (MathLib.mid2str id) (IntervalLib.interval2str ival);
+      ival
+
   let bind_labels_to_wires : gltbl -> cfggen_ctx -> (string,mid) labels->
     (string->interval->map_loc_val) ->
     (string->interval->map_loc_val) ->
@@ -58,29 +76,20 @@ struct
     (number -> map_loc_val) -> unit =
     fun gltbl ctx lbls infxn outfxn localfxn exprfxn numfxn ->
       begin
-        (*bind values*)
-        let interval_of_expr : mid ast -> interval =
-          fun expr ->
-            SMapIntervalCompute.compute_mexpr_interval gltbl expr
-        in
-        let interval_of_var : mkind -> string -> interval =
-          fun knd name ->
-            interval_of_expr (Term(MNVar(MOutput, name)))  
-        in
         MAP.iter lbls.outs (fun name wire_coll ->
-            let ival : interval = interval_of_var MOutput name in
+            let ival : interval = interval_of_var gltbl MOutput name in
             bind_val_to_wire_collection ctx (outfxn name ival)  wire_coll
           );
         MAP.iter lbls.ins (fun name wire_coll ->
-            let ival : interval = interval_of_var MInput name in
+            let ival : interval = interval_of_var gltbl MInput name in
             bind_val_to_wire_collection ctx (infxn name ival) wire_coll
           );
         MAP.iter lbls.locals (fun name wire_coll ->
-            let ival : interval = interval_of_var MLocal name in
+            let ival : interval = interval_of_var gltbl MLocal name in
             bind_val_to_wire_collection ctx (localfxn name ival)  wire_coll
           );
         MAP.iter lbls.exprs (fun (expr:mid ast) (wire_coll) ->
-            let ival : interval = interval_of_expr expr in
+            let ival : interval = interval_of_expr gltbl expr in
             bind_val_to_wire_collection ctx (exprfxn expr ival)  wire_coll
           );
         MAP.iter lbls.vals (fun (num:number) (wire_coll) ->
@@ -137,14 +146,10 @@ struct
 
   let evaluate : map_comp_ctx -> map_hw_spec -> hwcompname -> string -> map_result =
     fun comp_ctx mapspec comp port ->
-      let cstr_generator : map_cstr_gen =
-        SMapHwSpec.get_port mapspec comp port
-      in
-      let cstr_gen_params : map_params =
-        {allow_reflow = false}
-      in
+      let cstr_generator : map_cstr_gen = SMapHwSpec.get_port mapspec comp port in
+      let cstr_gen_params : map_params = {allow_reflow = false} in
       let result : map_result =
-        SMapHwSpec.evaluate comp_ctx cstr_gen_params  cstr_generator 
+        SMapHwSpec.evaluate comp_ctx cstr_gen_params cstr_generator 
       in
       result
 
@@ -214,17 +219,16 @@ struct
 
   let insert_xid_cstr_neq_number : cfggen_prob -> int -> number -> unit =
     fun prob xvar num ->
+      if MAP.has prob.xid_neq_number xvar = false then
+        noop (MAP.put prob.xid_neq_number xvar (SET.make_dflt ()));
+      let neq_nums = MAP.get prob.xid_neq_number xvar in
+      SET.add neq_nums num;
+      (* determine if we are claiming xid = v && xid != v *)
       if MAP.has prob.xid_to_number xvar then
-        let cnum = MAP.get prob.xid_to_number xvar in
-        if cnum = num then prob.success <- false;
-        let neq_nums =
-          if MAP.has prob.xid_neq_number xvar then
-            MAP.get prob.xid_neq_number xvar
-          else
-            SET.make_dflt ()
-        in
-        SET.add neq_nums num;
+        let xvar_val = MAP.get prob.xid_to_number xvar in
+        if xvar_val = num then prob.success <- false;
         ()
+
 
   let insert_xid_cstr_cover : cfggen_prob -> int -> int -> map_range-> map_range-> unit =
     fun prob xscale xoff hwival mival -> 
@@ -296,7 +300,6 @@ struct
 
   let cfggen_ctx_to_map_problem: cfggen_ctx -> cfggen_prob =
     fun ctx ->
-      Printf.printf "====GRAPH====\n%s\n" (GRAPH.tostr ctx.bins);
       let sets : cfggen_bin set list = GRAPH.disjoint ctx.bins in
       let prob = {
         xid_to_number=MAP.make();
@@ -316,7 +319,10 @@ struct
       Printf.printf "# true variables: %d\n" (List.length sets);
       List.iteri (fun (i:int) (bin_set:cfggen_bin set) ->
           let xid = i in
-          SET.iter bin_set (fun (bin:cfggen_bin) -> match bin with
+          Printf.printf "=== Variable %d === \n" xid;
+          SET.iter bin_set (fun (bin:cfggen_bin) ->
+              Printf.printf "   %s\n" (string_of_bin bin);
+              match bin with
               | SMBMapVar(inst,mv1) -> insert_map_var_to_xid_mapping prob xid inst mv1
               | SMBMapExpr(inst,me1) -> insert_map_expr_to_xid_mapping prob xid inst me1
               | SMBNumber(n) -> insert_number_to_xid_mapping prob xid n
@@ -325,7 +331,9 @@ struct
       (*add constraints*)
       Printf.printf "==== Processing assertions\n";
       MAP.iter ctx.cstrs (fun (wire:wireid) (cstrs:map_cstr list) ->
-          List.iter (fun cstr -> map_cstr_to_xid_cstr prob wire.comp cstr) cstrs
+          List.iter (fun cstr ->
+              map_cstr_to_xid_cstr prob wire.comp cstr
+            ) cstrs
         );
       prob
 
@@ -359,24 +367,33 @@ struct
           MAP.put ctx.insts inst data;
           ()
         );
-      (*map routes*)
+      let interval_to_val : interval -> map_loc_val =
+        fun interval ->
+          if IntervalLib.is_value interval then
+            let num = IntervalLib.get_value interval in
+            if num = 0.0 then SVZero
+            else SVNumber(Decimal num)
+          else
+            SVSymbol(interval)
+      in
+      (*bind route values to the ports in each inst.*)
       bind_labels_to_wires tbl ctx sln.route
-        (fun (port:string) (interval:interval) -> SVSymbol(interval) )
-        (fun (port:string) (interval:interval) -> SVSymbol(interval) )
-        (fun (port:string) (interval:interval) -> SVSymbol(interval) )
-        (fun expr interval -> SVSymbol(interval) )
+        (fun (port:string) (interval:interval) -> interval_to_val interval)
+        (fun (port:string) (interval:interval) -> interval_to_val interval )
+        (fun (port:string) (interval:interval) -> interval_to_val interval )
+        (fun expr interval -> interval_to_val interval )
         (fun number -> SVNumber(number) )
       ;
-      (*map generates*)
+      (*map generate values to the ports in each inst*)
       bind_labels_to_wires tbl ctx sln.generate
-        (fun (port:string) (interval:interval) -> SVSymbol(interval) )
-        (fun (port:string) (interval:interval) -> SVSymbol(interval) )
-        (fun (port:string) (interval:interval) -> SVSymbol(interval) )
-        (fun expr interval -> SVSymbol(interval) )
+        (fun (port:string) (interval:interval) -> interval_to_val interval )
+        (fun (port:string) (interval:interval) -> interval_to_val interval )
+        (fun (port:string) (interval:interval) -> interval_to_val interval )
+        (fun expr interval -> interval_to_val interval )
         (fun number -> SVNumber(number) )
       ;
       bind_numbers_to_params tbl ctx;
-      (*Add connections *)
+      (* Merge variables joined through a connection *)
       MAP.iter sln.conns.src2dest (fun (src:wireid) (dests:wireid set) ->
           SET.iter dests (fun (dest:wireid) ->
               connect_bins ctx
@@ -387,24 +404,35 @@ struct
                 (SMBMapVar(dest.comp,SMOffset(dest.port)));
            )
         );
+      (* begin evaluation process *)
       let config_success = REF.mk true in
+      let evaluate_port : hwcompinst -> map_comp_ctx -> string -> unit =
+        fun inst comp_ctx port ->
+          let wire :wireid = {comp=inst; port=port} in
+          let result : map_result = evaluate comp_ctx tblspec inst.name port in
+          let remaining_cstrs : map_cstr list =
+            List.filter (fun (cstr:map_cstr) ->
+                Printf.printf "  -> cstr %s\n" (SMapCstr.to_string cstr);
+                (connect_bins_by_cstr ctx inst cstr)=false)
+              result.cstrs
+          in
+          (*if any of the constraints are false, terminate early during sunthesis process*)
+          REF.upd config_success
+            (fun is_succ -> is_succ && (not (LIST.has result.cstrs SCFalse)));
+          MAP.put ctx.cstrs wire remaining_cstrs;
+          ()
+      in
       (*evaluate components to get results*)
       MAP.iter ctx.insts (fun (inst:hwcompinst) (inst_data:map_comp_ctx) ->
-          MAP.iter inst_data.ports (fun (port:string) (port_data:map_loc_val) ->
-              let result : map_result =
-                evaluate inst_data tblspec inst.name port
-              in
-              let wire :wireid = {comp=inst; port=port} in
-              let remaining_cstrs : map_cstr list =
-                List.filter (fun (cstr:map_cstr) ->
-                    (connect_bins_by_cstr ctx inst cstr)=false)
-                  result.cstrs
-              in
-                (*if any of the constraints are false, terminate early during sunthesis process*)
-                REF.upd config_success (fun is_succ -> is_succ && (not (LIST.has result.cstrs SCFalse))); 
-                MAP.put ctx.cstrs wire remaining_cstrs;
-                ()
-            )
+          let spec : map_comp = MAP.get tblspec.comps inst.name in
+          MAP.iter spec.inputs (fun (port:string) _ ->
+              Printf.printf "-> evaluate input <%s>\n" port;
+              evaluate_port inst inst_data port 
+            );
+          MAP.iter spec.outputs (fun (port:string) _ ->
+              Printf.printf "-> evaluate output <%s>\n" port;
+              evaluate_port inst inst_data port 
+          )
         );
       (*found a trivially false clause*)
       if REF.dr config_success = false then

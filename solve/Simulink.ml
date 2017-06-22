@@ -11,7 +11,6 @@ open SolverCompLib
 open SlnLib
 
 
-open SMapUtil
 open SMapData
 open SMapIntervalCompute
 

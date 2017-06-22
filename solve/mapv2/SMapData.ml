@@ -1,7 +1,9 @@
 open Util;;
 open AST;;
 open IntervalData;;
+open IntervalLib;;
 open HWData;;
+open HWLib;;
 
 type map_var =
   | SMOffset of string 
@@ -94,6 +96,17 @@ type map_hw_spec = {
   comps : (hwcompname,map_comp) map;
 }
 
+module SMapLocVal =
+struct
+
+  let to_string : map_loc_val -> string =
+    fun lv ->
+      match lv with
+      | SVSymbol(interval) -> IntervalLib.interval2str interval
+      | SVNumber(number) -> string_of_number number
+      | SVZero -> "zero"
+
+end
 
 
 module SMapVar =
@@ -126,6 +139,55 @@ struct
       | _ -> "unimpl"
 end
 
+module SMapRange =
+struct
+
+  let to_string : map_range -> string =
+  fun range ->
+      "["^(string_of_number range.min)^","^(string_of_number range.max)^"]"
+
+end
+
+
+module SMapCstr =
+struct
+  exception SMapCstr_error of string;;
+
+  let to_string : map_cstr -> string =
+    fun cstr ->
+      match cstr with
+      | SCFalse -> "assert(false)"
+      | SCTrue -> "assert(true)"
+      | SCExprEqExpr(e1,e2) -> (SMapExpr.to_string e1)^"="^(SMapExpr.to_string e2)^" (e.e)"
+      | SCExprEqConst(e1,n) -> (SMapExpr.to_string e1)^"="^(string_of_number n)^" (e.n)"
+      | SCExprNeqConst(e1,n) -> (SMapExpr.to_string e1)^"!="^(string_of_number n)^" (e.n)"
+
+      | SCVarEqExpr(v1,e2) -> (SMapVar.to_string v1)^"="^(SMapExpr.to_string e2)^" (v.e)"
+      | SCVarEqVar(v1,v2) -> (SMapVar.to_string v1)^"="^(SMapVar.to_string v2)^" (v.v)"
+      | SCVarEqConst(v1,n) -> (SMapVar.to_string v1)^"="^(string_of_number n)^" (v.n)"
+      | SCVarNeqConst(v1,n)-> (SMapVar.to_string v1)^"!="^(string_of_number n)^" (v.n)"
+
+      | SCCoverInterval(hwrng,mrng,sc,off) ->
+        (SMapExpr.to_string sc)^"*"^(SMapRange.to_string mrng)^"+"^(SMapExpr.to_string off)^" \\in "^
+        (SMapRange.to_string hwrng)
+
+
+end
+
+
+module SLinearTransform =
+struct
+
+  
+  let to_string : linear_transform -> string =
+    fun trans ->
+      (string_of_float trans.scale)^"@"^"+"^(string_of_float trans.offset)^"->"
+
+  let map_to_string : (wireid,linear_transform) map -> string =
+    fun maps ->
+      MAP.str maps HwLib.wireid2str to_string
+
+end
 
 
 

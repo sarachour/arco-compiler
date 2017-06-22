@@ -23,7 +23,6 @@ open StochData
 open StochLib
 
 open SMapData
-open SMapUtil
 
 
 
@@ -87,17 +86,17 @@ struct
       begin
         match vr.defs with
         | MDefStVar(defs) -> defs.stvar.ival
-        | _ -> error "compute_mexpr_interval_deriv" "must be state variable"
+        | _ -> error "compute_mexpr_interval_stvar" "must be state variable"
       end
     | Term(MNVar(MLocal,v)) ->
       let vr = MathLib.getvar tbl.env.math v in
       begin
         match vr.defs with
         | MDefStVar(defs) -> defs.stvar.ival
-        | _ -> error "compute_mexpr_interval_deriv" "must be state variable"
+        | _ -> error "compute_mexpr_interval_stvar" "must be state variable"
       end
-    | Term(_) -> error "compute_mexpr_interval_deriv" "cannot be input or parameter"
-    | (_) -> error "compute_mexpr_interval_deriv" "cannot be expression"
+    | Term(_) -> error "compute_mexpr_interval_stvar" "cannot be input or parameter"
+    | (_) -> error "compute_mexpr_interval_stvar" "cannot be expression"
 
 
   let compute_mexpr_interval_deriv (tbl:gltbl) (uast:mid ast) : interval =

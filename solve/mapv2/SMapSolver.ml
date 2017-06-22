@@ -177,7 +177,7 @@ struct
             )
         );
       Printf.printf "=== Mappings ===\n%s\n=======\n"
-        (SMapUtil.string_of_mappings wire_to_mapping);
+        (SLinearTransform.map_to_string wire_to_mapping);
       wire_to_mapping
 
   let compute_transform : gltbl ->  map_problem -> int ->
