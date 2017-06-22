@@ -216,6 +216,10 @@ struct
     | Decimal(a),Integer(b) -> Decimal(a-.(float_of_int b))
     | Decimal(a),Decimal(b) -> Decimal(a-.b)
 
+  let neg a  = match a with
+    | Integer(a) -> Integer(0-a)
+    | Decimal(a) -> Decimal(0. -. a)
+
   let is_zero x = match x with
     | Integer(0) -> true
     | Decimal(0.0) -> true

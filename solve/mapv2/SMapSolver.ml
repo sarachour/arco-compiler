@@ -20,7 +20,9 @@ struct
 
   type map_problem = SMapHwConfigGen.cfggen_prob
 
-  
+  let vmax = 1e306;;
+  let vmin = 0. -. vmax;;
+
   let rec xid_to_z3_var : int -> string =
     fun idx ->
       "x"^(string_of_int idx)
@@ -129,8 +131,10 @@ struct
               (*anything with infinity is basically a don't care.*)
               | Z3QInterval(Z3QAny) ->
                 MAP.put xid_to_val xid (Integer 0)
-              | Z3QInterval(Z3QInfinite(_)) ->
-                MAP.put xid_to_val xid (Integer 0)
+              | Z3QInterval(Z3QInfinite(QDNegative)) ->
+                MAP.put xid_to_val xid (Decimal vmin)
+              | Z3QInterval(Z3QInfinite(QDPositive)) ->
+                MAP.put xid_to_val xid (Decimal vmax)
               (*if the interval has a lower or upper bound, set value to lower or upper bound*)
               | Z3QInterval(Z3QLowerBound(b)) ->
                 MAP.put xid_to_val xid (Decimal b)

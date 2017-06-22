@@ -46,11 +46,17 @@ struct
       MAP.put cmp.ports wire.port v;
       ()
 
-  let bind_val_to_wire_collection: cfggen_ctx -> map_loc_val -> wire_coll -> unit =
-    fun ctx v wires ->
+  let bind_val_to_wire_collection: cfggen_ctx -> map_loc_val -> (wireid->wireid list) -> wire_coll -> unit =
+    fun ctx v wirefxn wires ->
         match wires with
-        | WCollOne(wid) -> bind_val_to_wire ctx v wid
-        | WCollMany(wlist) -> List.iter (fun wid -> bind_val_to_wire ctx v wid) wlist
+          | WCollOne(wid) ->
+            List.iter (fun wire -> bind_val_to_wire ctx v wire) (wirefxn wid)
+          | WCollMany(wlist) ->
+            List.iter (fun wid ->
+                List.iter
+                  (fun wire -> bind_val_to_wire ctx v wire)
+                  (wirefxn wid)
+              ) wlist
         | WCollEmpty -> ()
 
   (*get range of expression*)
@@ -68,33 +74,39 @@ struct
       Printf.printf " : interval.v %s : %s\n" (MathLib.mid2str id) (IntervalLib.interval2str ival);
       ival
 
+  (*
+     Given a label conversion algorithm that converts labels to map values
+     and a wire conversion algorithm that returns the set of wires to apply the label to given
+      a wire
+  *)
   let bind_labels_to_wires : gltbl -> cfggen_ctx -> (string,mid) labels->
+    (wireid->wireid list) ->
     (string->interval->map_loc_val) ->
     (string->interval->map_loc_val) ->
     (string->interval->map_loc_val) ->
     (mid ast -> interval -> map_loc_val) -> 
     (number -> map_loc_val) -> unit =
-    fun gltbl ctx lbls infxn outfxn localfxn exprfxn numfxn ->
+    fun gltbl ctx lbls wirefxn infxn outfxn localfxn exprfxn numfxn ->
       begin
         MAP.iter lbls.outs (fun name wire_coll ->
             let ival : interval = interval_of_var gltbl MOutput name in
-            bind_val_to_wire_collection ctx (outfxn name ival)  wire_coll
+            bind_val_to_wire_collection ctx (outfxn name ival) wirefxn wire_coll 
           );
         MAP.iter lbls.ins (fun name wire_coll ->
             let ival : interval = interval_of_var gltbl MInput name in
-            bind_val_to_wire_collection ctx (infxn name ival) wire_coll
+            bind_val_to_wire_collection ctx (infxn name ival) wirefxn wire_coll
           );
         MAP.iter lbls.locals (fun name wire_coll ->
             let ival : interval = interval_of_var gltbl MLocal name in
-            bind_val_to_wire_collection ctx (localfxn name ival)  wire_coll
+            bind_val_to_wire_collection ctx (localfxn name ival)  wirefxn wire_coll
           );
         MAP.iter lbls.exprs (fun (expr:mid ast) (wire_coll) ->
             let ival : interval = interval_of_expr gltbl expr in
-            bind_val_to_wire_collection ctx (exprfxn expr ival)  wire_coll
+            bind_val_to_wire_collection ctx (exprfxn expr ival)  wirefxn wire_coll
           );
         MAP.iter lbls.vals (fun (num:number) (wire_coll) ->
             (*TODO: if input number then transformable. Otherwise not. *)
-            bind_val_to_wire_collection ctx (numfxn num)  wire_coll
+            bind_val_to_wire_collection ctx (numfxn num)  wirefxn wire_coll
           );
         ()
       end
@@ -149,7 +161,7 @@ struct
       let cstr_generator : map_cstr_gen = SMapHwSpec.get_port mapspec comp port in
       let cstr_gen_params : map_params = {allow_reflow = false} in
       let result : map_result =
-        SMapHwSpec.evaluate comp_ctx cstr_gen_params cstr_generator 
+        SMapHwSpecLateBind.evaluate comp_ctx cstr_gen_params cstr_generator 
       in
       result
 
@@ -378,14 +390,23 @@ struct
       in
       (*bind route values to the ports in each inst.*)
       bind_labels_to_wires tbl ctx sln.route
+        (fun (wire:wireid) -> [wire])
         (fun (port:string) (interval:interval) -> interval_to_val interval)
         (fun (port:string) (interval:interval) -> interval_to_val interval )
         (fun (port:string) (interval:interval) -> interval_to_val interval )
         (fun expr interval -> interval_to_val interval )
         (fun number -> SVNumber(number) )
       ;
-      (*map generate values to the ports in each inst*)
+      (*map generate values to the ports in each inst. Also map the value to each
+      sink the generate port feeds into.*)
       bind_labels_to_wires tbl ctx sln.generate
+        (fun (wire:wireid) ->
+           if MAP.has sln.conns.src2dest wire then
+             let sinks = MAP.get sln.conns.src2dest wire in
+             wire::(SET.to_list sinks)
+           else
+             [wire]
+        )
         (fun (port:string) (interval:interval) -> interval_to_val interval )
         (fun (port:string) (interval:interval) -> interval_to_val interval )
         (fun (port:string) (interval:interval) -> interval_to_val interval )

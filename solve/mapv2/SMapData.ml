@@ -84,8 +84,13 @@ type map_ctx = map_comp_ctx
 
 type map_late_bind = map_ctx -> map_result list ->  map_params -> map_result
 
+type map_assoc =
+  | MAssocAdd
+  | MAssocMult
+
 type map_cstr_gen =
   | SCLateBind of map_late_bind*(map_cstr_gen list)
+  | SCAssoc of map_assoc*map_cstr_gen list
   | SCStaticBind of map_result
 
 type map_comp = {

@@ -21,8 +21,10 @@ struct
         give it the most flexible value since it's a don't care.
         The value can be scaled by anything and offset by anything
         *)
-        (*SVZero*)
-        raise (SMapCompCtx_error ("does not have port:"^port))
+        begin
+          Printf.printf "[WARN] does not have value for port %s\n" port;
+          SVZero
+        end
 
 
   let get_param : map_comp_ctx -> string -> number =
@@ -53,14 +55,6 @@ struct
       else
         raise (SMapHwSpec_error "port DNE")
 
-  let rec evaluate : map_ctx -> map_params -> map_cstr_gen -> map_result = 
-    fun ctx pars gen -> match gen with
-      | SCLateBind(fxn,args) ->
-        let r_args =
-          List.map (fun x -> evaluate ctx pars x) args
-        in
-        fxn ctx r_args pars
-      | SCStaticBind(res) -> res
 end
 
 exception SMapHwSpecLateBind_error of string;;
@@ -268,9 +262,7 @@ struct
       | _ ->
         raise (SMapHwSpecLateBind_error "mult.unimpl case")
 
-  let late_bind_div (ctx:map_ctx) (res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
-
+  
   let late_bind_pow (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
 
@@ -329,78 +321,12 @@ struct
       mkresult args scale offset value cstrs
 
 
-  let late_bind_sub2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
-    let args = [res1;res2] in
-    match res1.value, res2.value with
-    | SVZero,SVZero ->
-      let scale = SEVar(get_freevar()) in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVZero in
-      let cstrs = [] in
-      mkresult args scale offset value cstrs
 
-    | SVZero, SVNumber(n) ->
-      let scale = res2.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVNumber(n) in
-      let cstrs = [] in
-      mkresult args scale offset value cstrs
-
-    | SVNumber(n), SVZero ->
-      let scale = res2.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVNumber(n) in
-      let cstrs = [] in
-      mkresult args scale offset value cstrs
-
-    | SVNumber(n), SVNumber(m) ->
-      let scale = res1.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVNumber(NUMBER.sub n m) in
-      let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value cstrs
-
-    | SVSymbol(a), SVZero ->
-      let scale = res1.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVSymbol(a) in
-      let cstrs = [] in
-      mkresult args scale offset value cstrs
-
-    | SVZero, SVSymbol(a) ->
-      let scale = res2.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVSymbol(IntervalLib.neg a) in
-      let cstrs = [] in
-      mkresult args scale offset value cstrs
-
-    | SVSymbol(a), SVNumber(m) ->
-      let scale = res1.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVSymbol(IntervalLib.sub a (IntervalLib.num m)) in
-      let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value cstrs
-
-    | SVNumber(m), SVSymbol(a) ->
-      let scale = res1.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVSymbol(IntervalLib.sub (IntervalLib.num m) a) in
-      let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value cstrs
-
-    | SVSymbol(a), SVSymbol(b) ->
-      let scale = res1.scale in
-      let offset = SESub(res1.offset, res2.offset) in
-      let value = SVSymbol(IntervalLib.sub a b) in
-      let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset value cstrs
-
-
-  let late_bind_neg1 (ctx:map_ctx) (res1:map_result) : map_result = 
-    raise (SMapHwSpecLateBind_error "unimpl:process_ast neg")
-
+  
   let late_bind_exp (ctx:map_ctx) (res1:map_result) : map_result =
-    raise (SMapHwSpecLateBind_error "unimpl:process_ast neg")
+    let e = SVNumber(Decimal 2.718281828459045235360287471352) in
+    let base = mkresult [] (SENumber(Integer 1)) (SENumber(Integer 0)) e [] in
+    late_bind_pow ctx base res1 
 
 
   let late_bind_eqn (ctx:map_ctx) (lhs:map_result) (rhs:map_result) : map_result =
@@ -477,11 +403,44 @@ struct
         raise (SMapHwSpecLateBind_error "unimpl:late bind exp.")
 
   let late_bind_neg : map_ctx -> map_result -> map_result =
-    fun port_name ctx ->
-        raise (SMapHwSpecLateBind_error "unimpl:late bind neg.")
+    fun ctx arg0 ->
+      let scale = arg0.scale in
+      let offset = SESub(SENumber(Integer 0), arg0.offset) in
+      let value = match arg0.value with
+        | SVZero -> SVZero | SVNumber(x) -> SVNumber(NUMBER.neg x)
+        | SVSymbol(ival) -> SVSymbol(IntervalLib.neg ival)
+      in
+      let cstrs = [] in
+      mkresult [arg0] scale offset value cstrs
 
+  let late_bind_assoc : map_ctx -> map_assoc -> map_result list -> map_result =
+    fun ctx assoc args ->
+      (*TODO: actually implement sorting*)
+      let args_sorted = args in
+      let late_bind = match assoc with
+        | MAssocAdd -> late_bind_add2
+        | MAssocMult -> late_bind_mult2
+      in
+      match args_sorted with
+      | h::t ->
+        List.fold_right (fun result arg_i -> late_bind ctx result arg_i) t h
+      | [h] ->
+        h
 
-  let late_bind_assoc : map_ctx -> map_result list -> map_result =
+  let rec evaluate : map_ctx -> map_params -> map_cstr_gen -> map_result = 
+    fun ctx pars gen -> match gen with
+      | SCLateBind(fxn,args) ->
+        let r_args =
+          List.map (fun x -> evaluate ctx pars x) args
+        in
+        fxn ctx r_args pars
+      | SCAssoc(assoc,args) ->
+        let r_args =
+          List.map (fun x -> evaluate ctx pars x) args
+        in
+        late_bind_assoc ctx assoc r_args
+
+      | SCStaticBind(res) -> res
 
 end
 
@@ -526,6 +485,18 @@ struct
           | _ -> raise (SMapHwSpecGen_error "expected one arguments")
       )
 
+  let rec pull_down_assoc : map_assoc -> map_cstr_gen list -> map_cstr_gen list =
+    fun assoc args ->
+      List.fold_left (fun (new_args:map_cstr_gen list) (gen:map_cstr_gen)  ->
+          match gen with
+          | SCAssoc(knd,sub_args) -> if knd = assoc then
+              (pull_down_assoc assoc sub_args) @ new_args
+            else
+              SCAssoc(knd,sub_args)::new_args
+          | other -> other::new_args 
+
+      ) args [] 
+
   let rec process_ast : (hwvid ast) -> map_cstr_gen =
     fun expr ->
       match expr with
@@ -537,36 +508,37 @@ struct
         let fxn = SMapHwSpecLateBind.late_bind_input port in
         SCLateBind(interp_arg0 fxn,[])
 
-      | OpN(opn,args) ->
-        let proc_n :
-          hwvid ast list -> (map_late_bind) -> map_cstr_gen=
-          fun args fxn ->
-            match args with
-            | h::t -> List.fold_left (fun (rest:map_cstr_gen) (arg:hwvid ast) ->
-                let newv = process_ast arg in
-                SCLateBind(fxn,[newv;rest])  
-              ) (process_ast h) t
-        in
+      | OpN(opn,h::t) ->
         begin
+          
           (*TODO: order the terms for associative expressions to maximize usage.*)
           match opn with
           | Mult ->
-            proc_n args (interp_arg2 SMapHwSpecLateBind.late_bind_mult2) 
+            let args = List.map (fun x -> process_ast x) (h::t) in
+            SCAssoc(MAssocMult,pull_down_assoc MAssocMult (args))
+
           | Add ->
-            proc_n args (interp_arg2 SMapHwSpecLateBind.late_bind_add2) 
+            let args = List.map (fun x -> process_ast x) (h::t) in
+            SCAssoc(MAssocAdd,pull_down_assoc MAssocAdd (args))
+
           | Sub ->
-            proc_n args (interp_arg2 SMapHwSpecLateBind.late_bind_sub2) 
+            let pos_arg = process_ast h in
+            let neg_args = List.map (fun x -> process_ast (Op1(Neg,x))) t in
+            SCAssoc(MAssocAdd,pull_down_assoc MAssocAdd (pos_arg::neg_args))
         end
+      | OpN(opn,[h]) ->
+        let map_expr = process_ast h in
+        map_expr
+
       | Term(HNParam(cmp,name)) ->
         let fxn = SMapHwSpecLateBind.late_bind_param name in
         SCLateBind(interp_arg0 fxn,[])
 
       | Op2(Div,numer,denom) ->
         let map_numer = process_ast numer in
-        let map_denom = process_ast denom in
-        let fxn = interp_arg2 (SMapHwSpecLateBind.late_bind_div) in
-        SCLateBind(fxn,[map_numer;map_denom])
-
+        let map_denom = process_ast (Op2(Power,denom,Integer(-1))) in
+        SCAssoc(MAssocMult,pull_down_assoc MAssocMult [map_numer;map_denom])
+        
       | Op2(Power,base,exp) ->
         let map_base = process_ast base in
         let map_exp = process_ast exp in
