@@ -480,7 +480,6 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
         | RAddInAssign(v,cfg) -> ASTLib.has_var cfg.expr tempid 
         | RAddOutAssign(v,cfg)-> ASTLib.has_var cfg.expr tempid 
         | RAddParAssign(v,cfg)-> false 
-        | RDisableAssign(v,cfg) -> false 
       ) in
     let normal_ssteps = rsteps_to_ssteps tbl comp normal_rsteps ssteps false in
     let uproxy = mast2uast proxy in
@@ -543,7 +542,8 @@ let passthru_rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) 
     let mkrstep (sel:string) rest (x:hwvid) = match x with
       | HNPort(_,_,port,_) ->
         if port != sel then
-          RDisableAssign(port,expr.expr)::rest
+          rest
+          (*RDisableAssign(port,expr.expr)::rest*)
         else
           rest
       | _ -> error "pass_through_unify" "a parameter is not a viable input port"

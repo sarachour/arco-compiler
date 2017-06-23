@@ -16,8 +16,6 @@ type rstep =
         | RAddInAssign of string*hwvarcfg
         | RAddOutAssign of string*hwvarcfg
         | RAddParAssign of string*number
-        (*ban an assignment*)
-        | RDisableAssign of string*(unid ast)
         
 
 

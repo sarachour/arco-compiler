@@ -350,7 +350,8 @@ struct
       if MAP.has prob.mapexpr_to_xid (inst,expr) then
         MAP.get prob.mapexpr_to_xid (inst,expr)
       else
-        raise (SMapHwConfigGen_error "unexpected: cannot implicitly insert map expressions.")
+        raise (SMapHwConfigGen_error "unexpected: cannot implicitly insert map expressions:"^
+              (MapExpr.to_string expr))
 
 
   let xid_mapping_of_map_expr_or_var : cfggen_prob -> hwcompinst -> map_expr -> int =
