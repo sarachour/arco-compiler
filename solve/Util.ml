@@ -1468,8 +1468,14 @@ struct
         error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
       else if hasnode g b = false then
         error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
-      else if hasedge g a b = true  && getedge g a b <> Some v then
-        error "mkedge" ("edge "^(g.node2str a)^"->"^(g.node2str b)^":"^(g.val2str v)^" already exists in graph.")
+      else if hasedge g a b = true then
+        match getedge g a b with
+        | Some(value) ->
+          if value = v then g
+          else
+            error "mkedge" ("edge "^(g.node2str a)^"->"^(g.node2str b)^":"^(g.val2str v)^" already exists in graph.")
+        | None ->
+          error "mkedge" "cannot have no value assigned if edge exists"
       else
         error "mkedge" "unknown"
 
