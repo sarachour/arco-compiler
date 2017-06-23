@@ -217,6 +217,7 @@ struct
     (* map vars / exprs to xid *)
     mapvar_to_xid : (hwcompinst*map_var,int) map;
     mapexpr_to_xid : (hwcompinst*map_expr,int) map;
+    number_to_xid : (number,int) map;
     (*inequality constraints*)
     xid_neq_number : (int,number set) map;
     (*coverage constraints*)
@@ -256,7 +257,17 @@ struct
         end
 
       else
-        noop (MAP.put prob.xid_to_number xvar num)
+        begin
+          match MAP.ifget prob.number_to_xid num with
+          | Some(id) -> if id = xvar then () else
+              raise (SMapHwConfigGen_error "unexpected: different vars must map to same number")
+          | None ->
+            begin
+              noop (MAP.put prob.number_to_xid num xvar);
+              noop (MAP.put prob.xid_to_number xvar num)
+            end
+
+        end
 
   let insert_map_expr_to_xid_mapping :cfggen_prob -> int -> hwcompinst -> map_expr -> unit=
     fun prob xvar inst expr ->
@@ -350,13 +361,23 @@ struct
       if MAP.has prob.mapexpr_to_xid (inst,expr) then
         MAP.get prob.mapexpr_to_xid (inst,expr)
       else
-        raise (SMapHwConfigGen_error "unexpected: cannot implicitly insert map expressions:"^
-              (MapExpr.to_string expr))
+        raise (SMapHwConfigGen_error ("unexpected: cannot implicitly insert map expressions:"^
+              (SMapExpr.to_string expr)))
+
+
+  let xid_mapping_of_number :cfggen_prob -> number -> int =
+    fun prob num ->
+      if MAP.has prob.number_to_xid num then
+        MAP.get prob.number_to_xid num
+      else
+        raise (SMapHwConfigGen_error ("unexpected: cannot implicitly insert map number:"^
+                                      (string_of_number num)))
 
 
   let xid_mapping_of_map_expr_or_var : cfggen_prob -> hwcompinst -> map_expr -> int =
     fun prob inst expr -> match expr with
       | SEVar(v) -> xid_mapping_of_map_var prob inst v
+      | SENumber(n) -> xid_mapping_of_number prob n
       | _ -> xid_mapping_of_map_expr prob inst expr
 
   let map_cstr_to_xid_cstr : cfggen_prob -> hwcompinst -> map_cstr -> unit =
@@ -391,6 +412,7 @@ struct
         (*rewrite expressions / variables*)
         mapexpr_to_xid=MAP.make();
         mapvar_to_xid=MAP.make();
+        number_to_xid=MAP.make();
         tc_to_xid = None;
         (*determine if xid maps to numbers *)
         xid_neq_number=MAP.make();

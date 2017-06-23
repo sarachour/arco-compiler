@@ -16,7 +16,7 @@ type rstep =
         | RAddInAssign of string*hwvarcfg
         | RAddOutAssign of string*hwvarcfg
         | RAddParAssign of string*number
-        
+        | RConnectOutput of string*wireid
 
 
 

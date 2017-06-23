@@ -54,7 +54,8 @@ struct
     fun env comp cfg inst_maybe hwvar ->
     (*==== HARDWARE ====*)
       let proc_expr (e:hwvid ast) : unid ast =
-        hwast2uast (ASTLib.map e (HwLib.try_toglbl inst_maybe))  in
+        hwast2uast (ASTLib.map e (HwLib.try_toglbl inst_maybe))
+      in
       let proc_var (e:hwvid) =
         HwId (HwLib.try_toglbl inst_maybe e)
       in
@@ -175,6 +176,12 @@ struct
       AlgebraicLib.UnifyEnv.sym_prioritize env (HwId hwtargvar);
       ()
 
+  let force_assign : unid AlgebraicLib.UnifyEnv.t -> hwvid hwcomp -> hwcompcfg -> int option ->
+    string -> unid ast -> unit =
+    fun env inport expr ->
+      (*AlgebraicLib.UnifyEnv.init_pat invar expr*)
+      raise (ASTUnifier_error "unimpl force_assign")
+
   (*
      this is the math expression.
   *)
@@ -218,15 +225,19 @@ struct
         ()
 
 
-  let to_rsteps : (unid*unid ast) list -> rstep list
+  let to_rsteps : string -> (unid*unid ast) list -> rstep list
     -> rstep list =
-    fun asgns init_steps ->
+    fun patport asgns init_steps ->
       print_string "--------\n";
       let all_steps = LIST.fold asgns (fun (v,e) (steps:rstep list)  ->
           begin
             match e with
             (*the connection unification can be ignored*)
-            | Term(HwId(_)) -> steps
+            | Term(HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop))) ->
+              let dest : wireid = {comp=compinst;port=port} in
+              RConnectOutput(patport,dest)::steps
+            | Term(HwId(_)) ->
+              raise (ASTUnifier_error "unexpected hardware id. It's an output or param, or local")
             | _ ->
               begin
                 let cfg = {expr=e} in
@@ -267,27 +278,46 @@ struct
         let branching = Globals.get_glbl_int "unify-branch" in
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in 
-        List.map (fun asgn -> to_rsteps asgn steps) asgns
+        List.map (fun asgn -> to_rsteps hwvar asgn steps) asgns
       end
 
 
   let solve_hw :
     mid menv -> hwvid hwenv -> hwvid hwcomp -> hwcompcfg -> int option -> string -> hwvid ->
     unid ast -> rstep list -> rstep list list =
-    fun menv hwenv comp cfg inst hwvar htargvar hexpr steps ->
+    fun menv hwenv comp cfg inst hwpatvar htargvar hexpr steps ->
       begin
         let un_env = AlgebraicLib.UnifyEnv.init
             (HwLib.hwcompname2str comp.name) (unid2str) in
-        construct_hw_comp un_env comp cfg inst hwvar;
+        construct_hw_comp un_env comp cfg inst hwpatvar;
         construct_hw_expr un_env hwenv menv htargvar hexpr;
         let alg_env = AlgebraicLib.init (unid2str) in
         let branching = Globals.get_glbl_int "unify-branch" in
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in
         (*asgns to rsteps*)
-        List.map (fun asgn -> to_rsteps asgn steps) asgns
+        List.map (fun asgn -> to_rsteps hwpatvar asgn steps) asgns
       end
 
+  let solve_hw_passthru :
+    mid menv -> hwvid hwenv -> hwvid hwcomp -> hwcompcfg -> int option -> string -> string -> hwvid ->
+    unid ast -> rstep list -> rstep list list =
+    fun menv hwenv comp cfg inst hwpatoutput hwpatinput htargvar hexpr steps ->
+      begin
+        let un_env = AlgebraicLib.UnifyEnv.init
+            (HwLib.hwcompname2str comp.name) (unid2str) in
+        construct_hw_comp un_env comp cfg inst hwpatoutput;
+        construct_hw_expr un_env hwenv menv htargvar hexpr;
+        force_assign un_env comp cfg inst hwpatinput hexpr;
+        (*TODO: foreach other input, don't allow this assignment*)
+        (*restrict_assign un_env comp cfg inst otherpatinput hexpr;*)
+        let alg_env = AlgebraicLib.init (unid2str) in
+        let branching = Globals.get_glbl_int "unify-branch" in
+        let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
+        let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in
+        (*asgns to rsteps*)
+        List.map (fun asgn -> to_rsteps hwpatoutput asgn steps) asgns
+      end
 
   (* take the set of assignments, and convert to steps *)
   let get_solutions (env:runify) : (rstep list) list=
@@ -299,11 +329,15 @@ struct
         LIST.uniq steps
       ) results
 
-  
+  let unify_comp_with_hwvar_passthrough (hwenv:hwvid hwenv) (menv:mid menv)
+      (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
+      (hpatoutport:string) (hpatinport:string)(hwtargvar:hwvid) (hexpr:unid ast) (steps:rstep list) =
+    solve_hw_passthru menv hwenv comp cfg inst hpatoutport hpatinport hwtargvar hexpr steps 
+ 
   let unify_comp_with_hwvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)
-      (hvar:string) (hwtargvar:hwvid) (hexpr:unid ast) (steps:rstep list) =
-    solve_hw menv hwenv comp cfg inst hvar hwtargvar hexpr steps 
+      (hpatvar:string) (hwtargvar:hwvid) (hexpr:unid ast) (steps:rstep list) =
+    solve_hw menv hwenv comp cfg inst hpatvar hwtargvar hexpr steps 
 
   let unify_comp_with_mvar (hwenv:hwvid hwenv) (menv:mid menv)
       (comp:hwvid hwcomp) (cfg:hwcompcfg) (inst:int option)

@@ -67,6 +67,15 @@ let str_of_float f =
   let s : string = Printf.sprintf "%8.8f" f in
   s
 
+module BOOLEAN =
+struct
+  let both : (bool->unit) -> unit =
+    fun fxn ->
+      fxn true;
+      fxn false
+
+end
+
 module OPTION =
 struct
   let tostr (type a) (f:a option) (ts:a->string) = match f with
