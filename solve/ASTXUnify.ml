@@ -309,6 +309,7 @@ struct
         construct_hw_comp un_env comp cfg inst hwpatoutput;
         construct_hw_expr un_env hwenv menv htargvar hexpr;
         force_assign un_env comp cfg inst hwpatinput hexpr;
+        raise (ASTUnifier_error "for passhthrough, disallow expression for other input ports.");
         (*TODO: foreach other input, don't allow this assignment*)
         (*restrict_assign un_env comp cfg inst otherpatinput hexpr;*)
         let alg_env = AlgebraicLib.init (unid2str) in
