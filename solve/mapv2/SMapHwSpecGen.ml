@@ -225,7 +225,7 @@ struct
         late_bind_mult2 ctx res2 res1
 
       | SVZero,SVSymbol(ival) ->
-        let scale = SEVar (SMFreeVar(0)) in
+        let scale = SEVar (get_freevar()) in
         let offset = SEMult(res1.offset,res2.offset) in
         let value = SVZero in
         mkresult args scale offset value []
@@ -279,7 +279,77 @@ struct
 
   
   let late_bind_pow (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
-    raise (SMapHwSpecLateBind_error "unimpl:process_ast div")
+    match res1.value, res2.value with
+    | SVZero, SVZero -> raise (SMapHwSpecLateBind_error "0^0... undefined")
+
+    | SVNumber(n),SVZero ->
+      let scale =
+        SEPow(SEAdd(SEMult(res1.scale,SENumber n),res1.offset),res2.offset)
+      in
+      let offset = SENumber(Integer 0) in
+      let value = SVNumber(Integer 1) in
+      let cstrs = [] in
+      mkresult [res1;res2] scale offset value cstrs
+
+    | SVZero,SVNumber(n) ->
+      let scale = SEVar (get_freevar()) in
+      let offset = SENumber (Integer 0) in
+      let value = SVZero in
+      let cstrs = [] in
+      mkresult [res1;res2] scale offset value cstrs
+
+    | SVNumber(n),SVNumber(m) ->
+      let offset = SENumber(Integer 0) in
+      let value = NUMBER.pow n m in
+      let scale =
+        SEDiv(SEMult(
+            SEPow(SEMult(res1.scale,SENumber n),SEMult(res2.scale,SENumber m)),
+            SEPow(SEMult(res1.scale,SENumber n),res2.offset)
+          ),SENumber(value))
+      in
+      let cstrs = [mk_equal0 res1.offset] in
+      mkresult [res1;res2] scale offset (SVNumber value) cstrs
+
+    | SVSymbol(x), SVNumber(m) ->
+      let offset = SENumber(Integer 0) in
+      let cstrs = [
+        mk_equal0 res1.offset;
+        mk_equal (SENumber m) (SEAdd(SEMult(res2.scale,SENumber m),res2.offset))
+      ]
+      in
+      let scale = SEPow(res1.scale,SENumber m) in
+      let value = SVSymbol(IntervalLib.pow x (IntervalLib.num m)) in
+      mkresult [res1;res2] scale offset value cstrs
+
+    | SVNumber(n), SVSymbol(x) ->
+      let offset = SENumber(Integer 0) in
+      let cstrs= [
+        mk_equal0 res1.offset;
+        mk_equal (SENumber n) (SEPow(SEMult(res1.scale,SENumber n),res2.scale))
+      ]
+      in
+      let scale = SEPow(SEMult(res1.scale,SENumber n),res2.offset) in
+      let value = SVSymbol(IntervalLib.pow (IntervalLib.num n) x) in
+      mkresult [res1;res2] scale offset value cstrs
+
+    | SVSymbol(x), SVSymbol(y) ->
+      let offset = SENumber(Integer 0) in
+      let scale = SENumber(Integer 0) in
+      let cstrs = [
+        mk_equal0 res1.offset; mk_equal0 res2.offset;
+        mk_equal1 res1.scale; mk_equal1 res2.scale
+      ] in
+      let value = SVSymbol(IntervalLib.pow x y) in
+      mkresult [res1;res2] scale offset value cstrs
+
+    | SVZero, SVSymbol(y) ->
+      raise (SMapHwSpecLateBind_error "unimpl: 0**x")
+
+    | SVSymbol(y), SVZero ->
+      raise (SMapHwSpecLateBind_error "unimpl: x**0")
+
+    | _ ->
+    raise (SMapHwSpecLateBind_error "unimpl:process_ast pow")
 
   let rec late_bind_add2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     let args = [res1;res2] in

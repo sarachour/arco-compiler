@@ -204,6 +204,12 @@ struct
     | Decimal(a),Integer(b) -> Decimal((float_of_int b)/.a)
     | Decimal(a),Decimal(b) -> Decimal(a/.b)
 
+  let pow a b = match a, b with
+    | Integer(a),Integer(b) -> Decimal((float_of_int a)**(float_of_int b))
+    | Integer(a),Decimal(b) -> Decimal((float_of_int a)**b)
+    | Decimal(a),Integer(b) -> Decimal((float_of_int b)**a)
+    | Decimal(a),Decimal(b) -> Decimal(a**b)
+
   let mult a b = match a, b with
     | Integer(a),Integer(b) -> Integer(a*b)
     | Integer(a),Decimal(b) -> Decimal((float_of_int a)*.b)
@@ -1462,7 +1468,7 @@ struct
         error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
       else if hasnode g b = false then
         error "mkedge" ("node "^(g.node2str a)^" does not exist in graph.")
-      else if hasedge g a b = true then
+      else if hasedge g a b = true  && getedge g a b <> Some v then
         error "mkedge" ("edge "^(g.node2str a)^"->"^(g.node2str b)^":"^(g.val2str v)^" already exists in graph.")
       else
         error "mkedge" "unknown"
