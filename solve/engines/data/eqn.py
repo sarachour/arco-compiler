@@ -29,6 +29,7 @@ class SOEq:
                 self.pars = {};
                 self.eqns = {};
                 self.inits = {};
+                self.restricts = {};
                 self.diffeqns = {};
                 self.priority = None;
                 self.labels = {};
@@ -39,6 +40,7 @@ class SOEq:
                 self.pars = {};
                 self.eqns = {};
                 self.inits = {};
+                self.restricts = {};
                 self.diffeqns = {};
                 self.priority = None;
 
@@ -60,7 +62,19 @@ class SOEq:
 
         def label_param(self,v,l):
             self.labels[v] = Symbol(l);
-       
+
+        def restrict_var(self,v,expr):
+            if not(v in self.restricts):
+                self.restricts[v] = [];
+
+            self.restricts[v].append(expr);
+
+        def get_restricts(self,v):
+            if not(v in self.restricts):
+               return []
+
+            return self.restricts[v]
+
         def init_var(self,v,expr):
             if not(v in self.inits):
                 self.inits[v] = [];
@@ -100,7 +114,7 @@ class SOEq:
 
             for r in tmp:
                if isinstance(ns[r], Wild):
-                  exc = list(set(tmp[r]))
+                  exc = list(set(tmp[r] + self.get_restricts(r)))
                   ns[r] = Wild(r,exclude=exc)
 
         

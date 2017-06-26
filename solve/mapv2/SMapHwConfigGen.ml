@@ -478,6 +478,10 @@ struct
               make_bin ctx (SMBMapVar(inst,SMOffset(port)));
               ()
             );
+          (*all the component time constants are the same*)
+          make_bin ctx (SMBMapVar(inst,SMTimeConstant));
+          connect_bins ctx
+            SMBTimeConstant (SMBMapVar(inst,SMTimeConstant));
           MAP.put ctx.insts inst data;
           ()
         );

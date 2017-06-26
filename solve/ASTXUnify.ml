@@ -178,10 +178,19 @@ struct
 
   let force_assign : unid AlgebraicLib.UnifyEnv.t -> hwvid hwcomp -> hwcompcfg -> int option ->
     string -> unid ast -> unit =
-    fun env inport expr ->
-      (*AlgebraicLib.UnifyEnv.init_pat invar expr*)
-      raise (ASTUnifier_error "unimpl force_assign")
+    fun uenv comp cfg inst inport expr ->
+      MAP.iter comp.ins (fun (port:string) (hvar:hwvid hwportvar) ->
+          let hwid : hwvid =
+            HwLib.port2hwid hvar.knd hvar.comp hvar.port hvar.prop hvar.typ
+          in
+          if inport = port then
+            AlgebraicLib.UnifyEnv.init_pat uenv (HwId hwid) expr
+          else
+            AlgebraicLib.UnifyEnv.restrict_pat uenv (HwId hwid) expr
+        );
+      ()
 
+  
   (*
      this is the math expression.
   *)
@@ -225,9 +234,9 @@ struct
         ()
 
 
-  let to_rsteps : string -> (unid*unid ast) list -> rstep list
+  let to_rsteps : string -> unid ast option -> (unid*unid ast) list -> rstep list
     -> rstep list =
-    fun patport asgns init_steps ->
+    fun patport targexpr asgns init_steps ->
       print_string "--------\n";
       let all_steps = LIST.fold asgns (fun (v,e) (steps:rstep list)  ->
           begin
@@ -235,7 +244,12 @@ struct
             (*the connection unification can be ignored*)
             | Term(HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop))) ->
               let dest : wireid = {comp=compinst;port=port} in
-              RConnectOutput(patport,dest)::steps
+              begin
+                match targexpr with
+                | Some(expr) -> RConnectOutput(patport,dest,{expr=expr})::steps
+                | None -> raise (ASTUnifier_error "unexpected: cannot have connection for math unify")
+              end
+
             | Term(HwId(_)) ->
               raise (ASTUnifier_error "unexpected hardware id. It's an output or param, or local")
             | _ ->
@@ -278,7 +292,7 @@ struct
         let branching = Globals.get_glbl_int "unify-branch" in
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in 
-        List.map (fun asgn -> to_rsteps hwvar asgn steps) asgns
+        List.map (fun asgn -> to_rsteps hwvar (None) asgn steps) asgns
       end
 
 
@@ -296,7 +310,7 @@ struct
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in
         (*asgns to rsteps*)
-        List.map (fun asgn -> to_rsteps hwpatvar asgn steps) asgns
+        List.map (fun asgn -> to_rsteps hwpatvar (Some hexpr) asgn steps) asgns
       end
 
   let solve_hw_passthru :
@@ -309,7 +323,6 @@ struct
         construct_hw_comp un_env comp cfg inst hwpatoutput;
         construct_hw_expr un_env hwenv menv htargvar hexpr;
         force_assign un_env comp cfg inst hwpatinput hexpr;
-        raise (ASTUnifier_error "for passhthrough, disallow expression for other input ports.");
         (*TODO: foreach other input, don't allow this assignment*)
         (*restrict_assign un_env comp cfg inst otherpatinput hexpr;*)
         let alg_env = AlgebraicLib.init (unid2str) in
@@ -317,7 +330,7 @@ struct
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in
         (*asgns to rsteps*)
-        List.map (fun asgn -> to_rsteps hwpatoutput asgn steps) asgns
+        List.map (fun asgn -> to_rsteps hwpatoutput (Some hexpr) asgn steps) asgns
       end
 
   (* take the set of assignments, and convert to steps *)

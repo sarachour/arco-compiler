@@ -18,6 +18,7 @@ struct
       | DefineSym of 'a
       | DefinePatExpr of 'a*'a ast
       | DefinePatDerivExpr of 'a*'a ast*'a ast
+      | RestrictPat of 'a*'a ast
       | DefineSymExpr of 'a*'a ast
       | DefineSymDerivExpr of 'a*'a ast*'a ast
       | InitPat of 'a*'a ast
@@ -56,6 +57,11 @@ struct
         enq env (DefinePat(var));
         if LIST.has env.pats var = false then
           env.pats <- var::env.pats;
+        ()
+
+    let restrict_pat (type a) : a t -> a -> a ast -> unit =
+      fun env var expr ->
+        enq env (RestrictPat(var,expr));
         ()
 
     let init_pat (type a) : a t -> a -> a ast -> unit =
@@ -323,7 +329,13 @@ struct
              "engine.templ.init_var(\"%s\",\"%s\")\n"
              (VarMapper.conv_v env.varmap v)
              (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
-             
+         | RestrictPat(v,e) ->
+           Printf.fprintf fh
+             "engine.templ.restrict_var(\"%s\",\"%s\")\n"
+             (VarMapper.conv_v env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+
+
          | SymPrioritize(v) ->
            Printf.fprintf fh
              "engine.targ.prioritize(\"%s\")\n"

@@ -280,7 +280,8 @@ struct
   
   let late_bind_pow (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     match res1.value, res2.value with
-    | SVZero, SVZero -> raise (SMapHwSpecLateBind_error "0^0... undefined")
+    | SVZero, SVZero ->
+      raise (SMapHwSpecLateBind_error "0^0... undefined")
 
     | SVNumber(n),SVZero ->
       let scale =

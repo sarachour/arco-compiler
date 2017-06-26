@@ -395,7 +395,6 @@ struct
         expr_is_stvar menv expr || has_stvar
       ) false
 
-  let is_input_expr (a:mid ast) = false
 
   let inference (e:'a menv) (cnv:'a -> mid) =
     print_string "======== Infer Math Vars =============\n";

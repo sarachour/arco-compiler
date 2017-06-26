@@ -102,8 +102,10 @@ struct
   (*assign an instance to each variable*)
   let inst2smt (e:hwinst_coll) (v:string) : z3expr = match e with
   | HCCAll -> (Z3Bool(true))
-  | HCCRange(low,hi) -> Z3And(Z3LT(Z3Var(v),Z3Int(hi)), Z3GTE(Z3Var(v),Z3Int(low)))
-  | HCCIndiv(i) -> Z3Eq(Z3Int(i),Z3Var(v))
+  | HCCRange(low,hi) ->
+    Z3And(Z3LT(Z3Var(v),Z3Number(Integer hi)),
+          Z3GTE(Z3Var(v),Z3Number(Integer low)))
+  | HCCIndiv(i) -> Z3Eq(Z3Number(Integer i),Z3Var(v))
 
 
   let to_smt_prob (gltbl:gltbl) =

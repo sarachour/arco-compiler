@@ -1,12 +1,14 @@
 open IntervalData
+open Util
+
+type z3number = number
 
 type z3expr =
   | Z3And of z3expr*z3expr
   | Z3Or of z3expr*z3expr
   | Z3Mult of z3expr*z3expr
   | Z3Var of string
-  | Z3Int of int
-  | Z3Real of float
+  | Z3Number of z3number 
   | Z3Not of z3expr
   | Z3Plus of z3expr*z3expr
   | Z3Bool of bool

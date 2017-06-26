@@ -245,6 +245,10 @@ struct
     | Integer(0) -> true
     | Decimal(0.0) -> true
     | _ -> false
+
+  let eq_int x i = match x with
+    | Integer(j) -> i = j
+    | Decimal(j) -> (float_of_int i) = j 
 end
 
 

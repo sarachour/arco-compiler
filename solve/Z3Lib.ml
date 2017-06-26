@@ -40,7 +40,7 @@ struct
     | Z3GT(a,b) -> "(> "^(_s a)^" "^(_s b)^")"
     | Z3LTE(a,b) -> "(<= "^(_s a)^" "^(_s b)^")"
     | Z3GTE(a,b) -> "(>= "^(_s a)^" "^(_s b)^")"
-    | Z3Int(i) -> string_of_int i
+    | Z3Number(i) -> string_of_number i
     | Z3Bool(true) -> "true"
     | Z3Bool(false) -> "false"
     | _ -> error "z3" "unexpected"
@@ -196,8 +196,7 @@ struct
         _s v;
         os ")"
       end
-    | Z3Int(i) -> os (string_of_int i)
-    | Z3Real(i) -> os (string_of_float i)
+    | Z3Number(i) -> os (string_of_number i)
     | Z3Bool(true) -> os "true"
     | Z3Bool(false) -> os "false"
     | _ -> error "z3" "unexpected term when writing to buf"
@@ -287,8 +286,8 @@ struct
       | Op2(Div,arg1,arg2) -> Z3Div(_ast2z3 arg1,_ast2z3 arg2)
       | Op2(Power,arg1,arg2) -> Z3Power(_ast2z3 arg1,_ast2z3 arg2)
       | Op1(Neg,arg) -> Z3Neg(_ast2z3 arg)
-      | Integer(i) -> Z3Int(i)
-      | Decimal(d) -> Z3Real(d)
+      | Integer(i) -> Z3Number(Integer i)
+      | Decimal(d) -> Z3Number(Decimal d)
       | OpN(_) -> error "ast2z3" "opn unsupported"
       | Op2(_) -> error "ast2z3" "op2 unsupported"
       | Op1(_) -> error "ast2z3" "op1 unsupported"
@@ -314,6 +313,100 @@ struct
     in
     sat^"\n\n"^mdl
 
+
+  (*perform some basic simplifications. no associativity *)
+  let rec simplify :z3expr -> z3expr =
+    fun x ->  match x with
+      (*propagate without simplification  *)
+      | Z3Power(a,b) ->
+        begin
+          let ar = simplify a in
+          let br = simplify b in
+          match ar,br with
+          | Z3Number(x),Z3Number(y) -> Z3Number(NUMBER.pow x y)
+          | Z3Number(b),term ->
+            if NUMBER.eq_int b 0 then
+              Z3Number(Integer 0)
+            else if NUMBER.eq_int b 1 then
+              Z3Number(Integer 1)
+            else
+              Z3Power(ar,br)
+
+          | term,Z3Number(x) ->
+            if NUMBER.eq_int x 0 then
+              Z3Number(Integer 1)
+            else if NUMBER.eq_int x 1 then
+              term
+            else
+              Z3Power(ar,br)
+          | _ -> Z3Power(ar, br)
+        end
+
+      | Z3Plus(a,b) ->
+        begin
+          let ar = simplify a in
+          let br = simplify b in
+          match ar,br with
+          | Z3Number(x),Z3Number(y) -> Z3Number(NUMBER.add x y)
+          | Z3Number(x),expr ->
+            if NUMBER.eq_int x 0 then expr
+            else Z3Plus(ar,br)
+          | expr, Z3Number(x) -> simplify (Z3Plus(br,ar))
+          | _ -> Z3Plus(ar,br)
+        end
+
+      | Z3Mult(a,b) ->
+        begin
+          let ar = simplify a in
+          let br = simplify b in
+          match ar,br with
+          | Z3Number(x), Z3Number(y) -> Z3Number(NUMBER.mult x y)
+          | Z3Number(x), expr ->
+            if NUMBER.eq_int x 1 then expr
+            else if NUMBER.eq_int x 0 then Z3Number(Integer 0)
+            else Z3Mult(ar,br)
+          | expr,Z3Number(x) -> simplify (Z3Mult(br,ar))
+          | _ -> Z3Mult(ar,br)
+        end
+
+      | Z3Sub(a,b) ->
+        begin
+          let ar = simplify a in
+          let br = simplify b in
+          match ar,br with
+          | Z3Number(x),Z3Number(y) -> Z3Number(NUMBER.sub x y)
+          | _ -> Z3Sub(ar,br)
+        end
+
+      | Z3Div(a,b) ->
+        begin
+          let ar = simplify a in
+          let br = simplify b in
+          match ar,br with
+          | Z3Number(x),Z3Number(y) -> Z3Number(NUMBER.div x y)
+          | Z3Number(x),expr ->
+            if NUMBER.eq_int x 0 then Z3Number(Integer 0)
+            else Z3Div(ar,br)
+
+          | expr,Z3Number(x) ->
+            if NUMBER.eq_int x 1 then expr
+            else Z3Div(ar,br)
+
+          | _ -> Z3Div(ar,br)
+        end
+
+
+      | Z3Neg(a) ->
+        Z3Neg(simplify a)
+
+      | Z3Var(x) ->
+        Z3Var x
+
+      | Z3Number(a) ->
+        Z3Number(a)
+
+      | Z3Bool(a) ->
+        Z3Bool(a)
   
   let sat (root:string) (stmts:z3st list) timeout use_dreal : bool =
     let stmts =
@@ -468,7 +561,9 @@ struct
             (*compute using the midpoint as a bound*)
             log "minimize" (">>> DReal running with max minval = "^(string_of_float target_val));
             let result: z3sln =
-                let min_expr = Z3Assert(Z3LT(Z3Var(minvar),Z3Real(target_val))) in
+              let min_expr =
+                Z3Assert(Z3LT(Z3Var(minvar),Z3Number(Decimal target_val)))
+              in
                 exec root ((min_decl::stmts)@[min_stmt;min_expr]) timeout use_dreal 
             in
             match has_solution result with

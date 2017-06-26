@@ -327,7 +327,7 @@ struct
     iter_routes sln fn;
     iter_generates sln fn
 
-  let wire2labels (sln:usln) (wire:wireid) =
+  let wire2labels (sln:usln) (wire:wireid) : ulabel list=
     let matches : ulabel set = SET.make () in
     iter_routes sln (fun (x:ulabel) wires ->
         if (label2wire x) = wire
