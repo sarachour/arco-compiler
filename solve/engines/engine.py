@@ -13,27 +13,6 @@ def get_key_value_pairs(dictarr):
 
 
 
-class LearnAssignments:
-        def __init__(self):
-           self.positive = Assignments();
-           self.negative = Assignments();
-
-        def add_negative(self,asgn):
-           self.negative.add(asgn);
-
-        def add_positive(self,asgn):
-           self.positive.add(asgn);
-
-
-        def restrict(self,size,number,exclude):
-           pos = self.positive.all_assigns(exclude)
-           neg = self.negative.all_assigns(exclude)
-           choices = set(neg).union(set(pos))
-           restricts = [];
-           all_restricts= itertools.combinations(choices,size);
-           prob = number/(comb(len(choices),size));
-           sel=filter(lambda x : random.random() <= prob,all_restricts);
-           return map(lambda x: list(x),sel)
 
 class Engine:
 
@@ -118,14 +97,28 @@ class PartialConfigGenerator:
                vals = self.prob.targ.pars[p]
                choices.append(map(lambda v:("vp",p,v),vals))
 
-            for o in self.prob.templ.inits:
-               vals = self.prob.templ.inits[o]
-               choices.append(map(lambda v:("x",o,v),vals))
-
-            for o in self.prob.targ.inits:
-               vals = self.prob.targ.inits[o]
-               choices.append(map(lambda v:("v",o,v),vals))
-  
-            
             configs = itertools.product(*choices);
             return configs;
+
+class LearnAssignments:
+        def __init__(self):
+           self.positive = Assignments();
+           self.negative = Assignments();
+
+        def add_negative(self,asgn):
+           self.negative.add(asgn);
+
+        def add_positive(self,asgn):
+           self.positive.add(asgn);
+
+
+        def restrict(self,size,number,exclude):
+           pos = self.positive.all_assigns(exclude)
+           neg = self.negative.all_assigns(exclude)
+           choices = set(neg).union(set(pos))
+           restricts = [];
+           all_restricts= itertools.combinations(choices,size);
+           prob = number/(comb(len(choices),size));
+           sel=filter(lambda x : random.random() <= prob,all_restricts);
+           return map(lambda x: list(x),sel)
+

@@ -232,7 +232,8 @@ class SympyEngine(Engine):
                  asgns.add(assignment)
                  k += 1;
               print(" ->"+str(k)+" solutions.")
-              i += 1;  
+              i += 1;
+
            self.asgns = asgns;
             
 

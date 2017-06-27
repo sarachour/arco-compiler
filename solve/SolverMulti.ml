@@ -471,7 +471,8 @@ struct
             glblctx_add_ch ctx inpblock_steps;
             glblctx_commit_chblock ctx
           | MExprLabel(_) ->
-            error "create_global_context" "route-config should not be possible icomplete configuration"
+            error "create_global_context"
+              "route-config should not be possible incomplete configuration"
         end
       );
     debug ("==== GENERATES =====");

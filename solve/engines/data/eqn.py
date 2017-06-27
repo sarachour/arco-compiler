@@ -75,12 +75,26 @@ class SOEq:
 
             return self.restricts[v]
 
+
+        def get_inits(self):
+            return self.inits
+
+        # remove initial assigns from assign list
+        def new_assigns(self,asgns):
+            novel_asgns = {}
+            for v in asgns:
+               e = asgns[v]
+               if v in self.inits:
+                  e2 = self.inits[v]
+                  assert(e != e2)
+               else:
+                  novel_asgns[v] =e
+
+            return novel_asgns
+ 
         def init_var(self,v,expr):
-            if not(v in self.inits):
-                self.inits[v] = [];
-
-            self.inits[v].append(v);
-
+            self.inits[v] = expr
+            
         def get_eqn(self,v):
             if v in self.eqns:
                 return self.eqns[v]

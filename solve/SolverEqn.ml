@@ -426,7 +426,15 @@ struct
       let labels: ulabel list = SlnLib.wire2labels tbl.sln_ctx wire in
       match labels with
       | [h] -> SModSln(SSlnRmRoute(h))
-      | _ -> raise (SolverEqnError "mk_remove_route_step: cannot have multiple labels.")
+      | _ ->
+        begin
+          let label_str : string = LIST.tostr 
+              (fun (lbl:ulabel) -> SlnLib.ulabel2str lbl) "\n" labels in
+          Printf.printf ("== Labels for <%s> ==\n%s\n")
+            (HwLib.wireid2str wire) label_str;
+          raise (SolverEqnError "mk_remove_route_step: cannot have multiple labels.")
+        end
+
     in
     let matched_goals : (int*goal) list=
       GoalLib.find_goals tbl (GUnifiable(unifiable_goal)) in
@@ -566,7 +574,12 @@ struct
     in
     __unify_goal_with_comp tbl ucomp.d ucomp.cfg (Some ucomp.inst) hwvar g initialize
 
+
+
+
   type slvr_cmp_kind = HWCompNew of hwcompname | HWCompExisting of hwcompinst
+
+
 
   let solve_unifiable_goal (tbl:gltbl) (g:unifiable_goal) =
       (* make a priority queue that grades the component outputs for the goal*)

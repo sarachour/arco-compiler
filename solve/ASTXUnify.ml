@@ -234,43 +234,65 @@ struct
         ()
 
 
+  (*given an assignment*)
   let to_rsteps : string -> unid ast option -> (unid*unid ast) list -> rstep list
     -> rstep list =
     fun patport targexpr asgns init_steps ->
-      print_string "--------\n";
-      let all_steps = LIST.fold asgns (fun (v,e) (steps:rstep list)  ->
+      let to_assign_rstep : unid -> unid ast -> rstep =
+        fun vrb expr ->
+          let cfg = {expr=expr} in
+          print_string ((unid2str vrb)^"="^(uast2str expr)^"\n");
+          match vrb with
+          | HwId(HNPort(HWKInput,cmp,port,prop)) ->
+            RAddInAssign(port,cfg)
+          | HwId(HNPort(HWKOutput,cmp,port,prop)) ->
+            RAddOutAssign(port,cfg)
+          | HwId(HNParam(cmp,param)) ->
+            begin
+              match expr with
+              | Integer(i) ->
+                RAddParAssign(param,Integer i)
+              | Decimal(d) ->
+                RAddParAssign(param,Decimal d)
+            end
+      in
+      (*generate a connection from the target hardware port to the port in another component*)
+      let to_connect_rstep : hwcompinst -> string -> rstep =
+        fun compinst port ->
           begin
-            match e with
-            (*the connection unification can be ignored*)
-            | Term(HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop))) ->
-              let dest : wireid = {comp=compinst;port=port} in
-              begin
-                match targexpr with
-                | Some(expr) -> RConnectOutput(patport,dest,{expr=expr})::steps
-                | None -> raise (ASTUnifier_error "unexpected: cannot have connection for math unify")
-              end
-
-            | Term(HwId(_)) ->
-              raise (ASTUnifier_error "unexpected hardware id. It's an output or param, or local")
-            | _ ->
-              begin
-                let cfg = {expr=e} in
-                print_string ((unid2str v)^"="^(uast2str e)^"\n");
-                match v with
-                | HwId(HNPort(HWKInput,cmp,port,prop)) ->
-                  RAddInAssign(port,cfg)::steps
-                | HwId(HNPort(HWKOutput,cmp,port,prop)) ->
-                  RAddOutAssign(port,cfg)::steps
-                | HwId(HNParam(cmp,param)) ->
-                  begin
-                    match e with
-                    | Integer(i) ->
-                      RAddParAssign(param,Integer i)::steps
-                    | Decimal(d) ->
-                      RAddParAssign(param,Decimal d)::steps
-                  end
-              end
+            let dest : wireid = {comp=compinst;port=port} in
+            match targexpr with
+            | Some(expr) ->
+              RConnectOutput(patport,dest,{expr=expr})
+            | None ->
+              raise (ASTUnifier_error
+                       "unexpected: cannot have connection for math unify")
           end
+      in
+      let all_steps = LIST.fold asgns (fun (v,e) (steps:rstep list)  ->
+          match e with
+          (*the connection unification can be ignored*)
+          | Term(variable) ->
+            begin
+              (*if this is a reflexive assignment, move on*)
+              if v = variable then steps else
+                (*this is not a reflexive assignment. Generate a connection or mapping*)
+                begin
+                  match variable with
+                  (*we're connecting hardware ports*)
+                  | HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop)) ->
+                    (to_connect_rstep compinst port)::steps
+                  | HwId(_) ->
+                    raise (ASTUnifier_error
+                             "unexpected hardware id. It's an output or param, or local")
+                  (*this is a typical assignment*)
+                  | MathId(_) ->
+                    (to_assign_rstep v e )::steps
+                end
+            end
+            
+          | _ ->
+            (to_assign_rstep v e)::steps
 
 
         ) init_steps 

@@ -123,15 +123,26 @@ struct
   struct
     exception Varmapper_error of string
 
-    type 'a t = {conv:('a,string) map;inv:(string,'a) map;to_string:'a->string}
+    type 'a t = {
+      sym_conv:('a,string) map;
+      pat_conv:('a,string) map;
+      inv:(string,'a) map;
+      to_string:'a->string
+    }
 
     let init (type a) : (a -> string) -> a t=
       fun tostr ->
-        {conv=MAP.make();inv=MAP.make();to_string = tostr}
+        {
+          sym_conv=MAP.make();
+          pat_conv=MAP.make();
+          inv=MAP.make();
+          to_string = tostr
+        }
 
     let clear (type a): a t -> unit =
       fun env ->
-        MAP.clear env.conv;
+        MAP.clear env.sym_conv;
+        MAP.clear env.pat_conv;
         MAP.clear env.inv;
         ()
 
@@ -139,10 +150,10 @@ struct
       fun el ->
         ()
 
-    let map : 'a t -> 'a -> string -> unit =
-      fun mp (v:'a) (s:string) ->
-        if MAP.has mp.conv v then
-          let xs = MAP.get mp.conv v in
+    let _map :  ('a,string) map ->  'a t ->'a -> string -> unit =
+      fun conv mp (v:'a) (s:string) ->
+        if MAP.has conv v then
+          let xs = MAP.get conv v in
           raise (Varmapper_error
                    ("cannot map to <"^s^"> variable mapping <"^
                     (mp.to_string v)^"> -> <"^
@@ -151,16 +162,29 @@ struct
           raise (Varmapper_error ("variable <"^s^"> already exists:"))
         else
           begin
-            noop (MAP.put mp.conv v s);
+            noop (MAP.put conv v s);
             noop (MAP.put mp.inv s v)
           end
 
-    let conv_v : 'a t -> 'a -> string =
-      fun mp x ->
-        if MAP.has mp.conv x then
-          MAP.get mp.conv x
+    let map_sym : 'a t -> 'a -> string -> unit =
+      fun mp -> _map mp.sym_conv mp
+
+    let map_pat: 'a t -> 'a -> string -> unit =
+      fun mp -> _map mp.pat_conv mp
+
+    let _conv : ('a,string) map -> 'a t -> 'a -> string =
+      fun conv mp x ->
+        if MAP.has conv x then
+          MAP.get conv x
         else
           raise (AlgebraicLib_error ("[a->v] variable isn't in varmapper: "^(mp.to_string x)))
+
+    let conv_sym : 'a t -> 'a -> string =
+      fun mp -> _conv mp.sym_conv mp
+
+
+    let conv_pat : 'a t -> 'a -> string =
+      fun mp -> _conv mp.pat_conv mp
 
     let inv_v : 'a t -> string -> 'a =
       fun mp x ->
@@ -169,9 +193,13 @@ struct
         else
           raise (AlgebraicLib_error ("[v->a] variable isn't in varmapper: "^x))
 
-    let conv_e : 'a t -> 'a ast -> string ast =
+    let conv_sym_e : 'a t -> 'a ast -> string ast =
       fun mp expr ->
-        ASTLib.map expr (fun x ->  conv_v mp x)
+        ASTLib.map expr (fun x ->  conv_sym mp x)
+
+    let conv_pat_e : 'a t -> 'a ast -> string ast =
+      fun mp expr ->
+        ASTLib.map expr (fun x ->  conv_pat mp x)
 
     let inv_e : 'a t -> string ast -> 'a ast =
       fun mp expr ->
@@ -193,46 +221,23 @@ struct
 
       ()
 
-  let write_var (type a) : out_channel -> string -> a t -> a -> a ast -> a ast option  -> unit=
-    fun fh soeq env v e ic_maybe -> 
-      let varb :string = VarMapper.conv_v env.varmap v in
-      let defn =
-        Printf.fprintf fh
-          "engine.%s.define_variable(\"%s\")\n" soeq varb 
-      in
-      match ic_maybe with
-      | Some(ic) ->
-        begin
-          Printf.fprintf fh
-            "engine.%s.add_diff_eqn(%s,%s)\n"
-            soeq varb (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident);
-          Printf.fprintf fh
-            "engine.%s.add_ic(%s,%s\n)\n"
-            soeq varb (ASTLib.ast2str (VarMapper.conv_e env.varmap ic) ident);
-          ()
-        end
-
-        | None ->
-          Printf.fprintf fh
-              "engine.%s.add_eqn(%s,%s)\n"
-              soeq varb (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
-
+  
   
    let unify (type a) (env:a t) (prob:a UnifyEnv.t) (n) (size) =
      VarMapper.clear env.varmap;
      print_string "=== SYMS ====\n";
      List.iteri ~f:(fun i (v:a) ->
-         VarMapper.map env.varmap v ("v"^(string_of_int i))
+         VarMapper.map_sym env.varmap v ("v"^(string_of_int i))
        ) prob.syms;
      List.iteri ~f:(fun i (v:a) ->
-         VarMapper.map env.varmap v ("pv"^(string_of_int i))
+         VarMapper.map_sym env.varmap v ("pv"^(string_of_int i))
        ) prob.sym_pars;
      print_string "=== PATS ====\n";
      List.iteri ~f:(fun i (v:a) ->
-         VarMapper.map env.varmap v ("x"^(string_of_int i))
+         VarMapper.map_pat env.varmap v ("x"^(string_of_int i))
        ) prob.pats;
      List.iteri ~f:(fun i (v:a) ->
-         VarMapper.map env.varmap v ("px"^(string_of_int i))
+         VarMapper.map_pat env.varmap v ("px"^(string_of_int i))
        ) prob.pat_pars;
      let file = "unify_"^(string_of_int (REF.dr id))^".py" in
      let outfile = "unify_"^(string_of_int (REF.dr id))^".out" in
@@ -255,99 +260,101 @@ struct
            begin
              Printf.fprintf fh
                "engine.templ.define_variable(\"%s\")\n"
-               (VarMapper.conv_v env.varmap v);
+               (VarMapper.conv_pat env.varmap v);
              Printf.fprintf fh
                "engine.templ.label_variable(\"%s\",\"%s\")\n"
-               (VarMapper.conv_v env.varmap v) (prob.to_string v)
+               (VarMapper.conv_pat env.varmap v) (prob.to_string v)
            end
 
          | DefineSym(v) ->
              begin
                Printf.fprintf fh
                  "engine.targ.define_variable(\"%s\")\n"
-                 (VarMapper.conv_v env.varmap v);
+                 (VarMapper.conv_sym env.varmap v);
                Printf.fprintf fh
                  "engine.targ.label_variable(\"%s\",\"%s\")\n"
-                 (VarMapper.conv_v env.varmap v) (prob.to_string v)
+                 (VarMapper.conv_sym env.varmap v) (prob.to_string v)
              end
 
          | DefinePatExpr(v,e) ->
            Printf.fprintf fh
              "engine.templ.add_eqn(\"%s\",\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
-             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+             (VarMapper.conv_pat env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_pat_e env.varmap e) ident)
 
          | DefineSymExpr(v,e) ->
            Printf.fprintf fh
              "engine.targ.add_eqn(\"%s\",\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
-             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+             (VarMapper.conv_sym env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_sym_e env.varmap e) ident)
 
          | DefinePatDerivExpr(v,e,ic) ->
            begin
              Printf.fprintf fh
                ("engine.templ.add_diff_eqn(\"%s\",\"%s\")\n")
-               (VarMapper.conv_v env.varmap v)
-               (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident);
+               (VarMapper.conv_pat env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_pat_e env.varmap e) ident);
              Printf.fprintf fh
                ("engine.templ.add_ic(\"%s\",\"%s\")\n")
-               (VarMapper.conv_v env.varmap v)
-               (ASTLib.ast2str (VarMapper.conv_e env.varmap ic) ident)
+               (VarMapper.conv_pat env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_pat_e env.varmap ic) ident)
            end
 
          | DefineSymDerivExpr(v,e,ic) ->
            begin
              Printf.fprintf fh
                ("engine.targ.add_diff_eqn(\"%s\",\"%s\")\n")
-               (VarMapper.conv_v env.varmap v)
-               (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident);
+               (VarMapper.conv_sym env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_sym_e env.varmap e) ident);
              Printf.fprintf fh
                ("engine.targ.add_ic(\"%s\",\"%s\")\n")
-               (VarMapper.conv_v env.varmap v)
-               (ASTLib.ast2str (VarMapper.conv_e env.varmap ic) ident)
+               (VarMapper.conv_sym env.varmap v)
+               (ASTLib.ast2str (VarMapper.conv_sym_e env.varmap ic) ident)
            end
          | DefinePatParam(par,vals) ->
            begin
              Printf.fprintf fh
               "engine.templ.define_param(\"%s\",[%s])\n"
-              (VarMapper.conv_v env.varmap par)
+              (VarMapper.conv_pat env.varmap par)
               (LIST.tostr  string_of_number "," vals);
              Printf.fprintf fh
                "engine.templ.label_param(\"%s\",\"%s\")\n"
-               (VarMapper.conv_v env.varmap par) (prob.to_string par)
+               (VarMapper.conv_pat env.varmap par) (prob.to_string par)
            end
 
          | DefineSymParam(par,vals) ->
            begin
              Printf.fprintf fh
                "engine.targ.define_param(\"%s\",[%s])\n"
-               (VarMapper.conv_v env.varmap par)
+               (VarMapper.conv_sym env.varmap par)
                (LIST.tostr  string_of_number "," vals);
              Printf.fprintf fh
                "engine.targ.label_param(\"%s\",\"%s\")\n"
-               (VarMapper.conv_v env.varmap par) (prob.to_string par)
+               (VarMapper.conv_sym env.varmap par) (prob.to_string par)
            end
 
          | InitPat(v,e) ->
            Printf.fprintf fh
              "engine.templ.init_var(\"%s\",\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
-             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+             (VarMapper.conv_pat env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_sym_e env.varmap e) ident)
+
          | RestrictPat(v,e) ->
            Printf.fprintf fh
              "engine.templ.restrict_var(\"%s\",\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
-             (ASTLib.ast2str (VarMapper.conv_e env.varmap e) ident)
+             (VarMapper.conv_pat env.varmap v)
+             (ASTLib.ast2str (VarMapper.conv_sym_e env.varmap e) ident)
 
 
          | SymPrioritize(v) ->
            Printf.fprintf fh
              "engine.targ.prioritize(\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
+             (VarMapper.conv_sym env.varmap v)
+
          | PatPrioritize(v) ->
            Printf.fprintf fh
              "engine.templ.prioritize(\"%s\")\n"
-             (VarMapper.conv_v env.varmap v)
+             (VarMapper.conv_pat env.varmap v)
 
        );
      Printf.fprintf fh

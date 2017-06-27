@@ -119,6 +119,8 @@ class SympyCtx:
            self.restricts.join_all(cfg.templ.get_restrictions())
            self.subs.join(cfg.templ.get_substitutions());
            self.subs.join(cfg.targ.get_substitutions());
+           self.subs.join(templ.get_inits());
+           self.subs.join(targ.get_inits())
 
         def push(self,search_path):
            self.restricts.join(search_path.restricts)
