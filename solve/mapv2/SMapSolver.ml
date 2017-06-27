@@ -351,8 +351,18 @@ struct
               and hmax = number_to_z3_expr hwival.max in
               let mmin =  number_to_z3_expr mival.min
               and mmax = number_to_z3_expr mival.max in
-              let max_cover = Z3LTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmax) in
-              let min_cover = Z3GTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmin) in
+              let max_cover =
+                Z3And(
+                  Z3LTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmax),
+                  Z3GTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmin)
+                )
+              in
+              let min_cover =
+                Z3And(
+                  Z3GTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmin),
+                  Z3LTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmax)
+                ) 
+              in
               Z3Assert(min_cover)::Z3Assert(max_cover)::cstrs
             ) cover_cstrs
         ) []

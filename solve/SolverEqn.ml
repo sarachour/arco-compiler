@@ -724,7 +724,7 @@ struct
       let currslns = SearchLib.num_solutions tbl.search (Some root) in 
       if currslns >= nslns then
         begin
-         debug "[search_tree] Found enough solutions";
+         Printf.printf "[search_tree] Found %d/%d solutions" currslns nslns;
          musr ();
          ()
         end
@@ -756,7 +756,7 @@ struct
                   begin
                     if currslns >= nslns then
                       begin
-                        debug "[search_tree] Found enough solutions";
+                        Printf.printf "[search_tree] Found %d/%d solutions" currslns nslns;
                         musr ();
                         ()
                       end

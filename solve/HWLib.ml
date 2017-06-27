@@ -32,34 +32,24 @@ struct
 
   
   let hwid2port hwid = match hwid with
-  | HNPort(k,HCMGlobal(c),n,p) -> k,c.name,n,p,Some(c.inst)
-  | HNPort(k,HCMLocal(c),n,p) -> k,c,n,p,None
-  | _ -> error "hwid2port" "only works for port hwids"
+    | HNPort(k,HCMGlobal(c),n,p) -> k,c.name,n,p,Some(c.inst)
+    | HNPort(k,HCMLocal(c),n,p) -> k,c,n,p,None
+    | _ -> error "hwid2port" "only works for port hwids"
 
   let port2hwid k cname pname prop un =
     HNPort(k, HCMLocal(cname),pname,prop)
 
   let compid2str c = match c with
-  | HCMGlobal(n) -> n.name
-  | HCMLocal(n) -> n
+    | HCMGlobal(n) -> n.name
+    | HCMLocal(n) -> n
 
   let tolcl x = match x with
-  | HNPort(k,HCMGlobal(c),x,p) ->
-    HNPort(k,HCMLocal(c.name),x,p)
-  | _ -> x
-  let try_toglbl i_maybe x =
-    match x,i_maybe with
-    | HNPort(k,HCMLocal(c),x,p),Some(i) ->
-      HNPort(k,HCMGlobal({name=c;inst=i}),x,p)
-    | HNPort(k,HCMGlobal(c),x,p),Some(i) ->
-      error "try_toglbl" "already a global var"
-    | HNParam(HCMLocal(c),p),Some(i) ->
-      HNParam(HCMGlobal({name=c;inst=i}),p)
-    | HNParam(HCMGlobal(c),p),Some(i) ->
-      error "try_toglbl" "param already global"
-    | HNTime,Some(_) -> HNTime 
-    | _,None -> x
+    | HNPort(k,HCMGlobal(c),x,p) ->
+      HNPort(k,HCMLocal(c.name),x,p)
+    | _ -> x
 
+
+  
   let hwid_map_comp x fn = match x with
     | HNPort(x1,c,x2,x3) -> HNPort(x1,fn c,x2,x3)
     | HNParam(c,x1) -> HNParam(fn c,x1)
@@ -85,6 +75,38 @@ struct
     | HNPort(_,c,v,prop) ->(c2str c)^prop^"{"^v^"}:"
     | HNParam(c,v) -> (c2str c)^v
     | HNTime -> "t"
+
+  let try_toglbl i_maybe x =
+    match x,i_maybe with
+    | HNPort(k,HCMLocal(c),p,pr),Some(i) ->
+      begin
+        HNPort(k,HCMGlobal({name=c;inst=i}),p,pr)
+      end
+
+    | HNPort(k,HCMGlobal(c),p,pr),Some(i) ->
+      begin
+        if c.inst = i then HNPort(k,HCMGlobal(c),p,pr) else
+          error "try_toglbl"
+            ("port: conflicting instances. "^(hwvid2str x)^" is not "^
+             "inst "^(string_of_int i)^" of hardware")
+      end
+
+    | HNParam(HCMLocal(c),p),Some(i) ->
+      begin
+        HNParam(HCMGlobal({name=c;inst=i}),p)
+      end
+
+    | HNParam(HCMGlobal(c),p),Some(i) ->
+      begin
+        if c.inst = i then HNParam(HCMGlobal(c),p) else
+          error "try_toglbl"
+            ("param: conflicting instances. "^(hwvid2str x)^" is not "^
+             "inst "^(string_of_int i)^" of hardware")
+      end
+
+    | HNTime,Some(_) -> HNTime 
+    | _,None -> x
+
 
  let kind2str v =
     match v with

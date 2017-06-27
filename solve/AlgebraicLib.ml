@@ -142,9 +142,13 @@ struct
     let map : 'a t -> 'a -> string -> unit =
       fun mp (v:'a) (s:string) ->
         if MAP.has mp.conv v then
-          raise (Varmapper_error "variable ident already exists")
+          let xs = MAP.get mp.conv v in
+          raise (Varmapper_error
+                   ("cannot map to <"^s^"> variable mapping <"^
+                    (mp.to_string v)^"> -> <"^
+                    xs^">already exists"))
         else if MAP.has mp.inv s  then
-          raise (Varmapper_error ("variable str already exists:"^s))
+          raise (Varmapper_error ("variable <"^s^"> already exists:"))
         else
           begin
             noop (MAP.put mp.conv v s);

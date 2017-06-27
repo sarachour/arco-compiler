@@ -622,18 +622,27 @@ struct
     (*find the global steps *)
     let rec _find_global_solution () : sstep snode list option = 
       (*the initial set of results*)
-      let results : sstep snode list option =  SolverEqn.solve tbl nsols depth in
+      let results : sstep snode list option =
+        SolverEqn.solve tbl nsols depth in
+      debug "==== Finished Global Sln Search ===";
       musr();
       match results with
       | Some(sln_list) ->
         begin
+          let n_candidate = List.length sln_list in
+          Printf.printf " > Found %d Candidate Solns\n" n_candidate;
           (*iterate over each result and see if the configuration is still partial*)
           let complete_sln_steps = OPTION.conc_list (List.map (fun sln ->
               complete_sln ms tbl sln
             ) sln_list)
           in
+          let n_complete = List.length complete_sln_steps in
+          Printf.printf "> %d/%d Candidate Solutions are Complete\n"
+            (List.length complete_sln_steps)
+            (List.length sln_list);
+          musr();
           (*if there are some incomplete solutions*)
-          if List.length sln_list > List.length complete_sln_steps then
+          if n_candidate > n_complete then
             _find_global_solution ()
           else
             begin
@@ -645,7 +654,11 @@ struct
             end
         end
       | None ->
-        None
+        begin
+          debug " > Found No Solutions";
+          None
+        end
+
     in
     _find_global_solution ()
 
@@ -691,39 +704,53 @@ struct
     (*TODO: why isn't there a root*)
     match mk_partial_tbl ms pvar with
         | Some(ptbl) ->
-          let currsols : int = SearchLib.num_solutions ptbl.search None in
-          (*original solution set*)
-          let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
           begin
+            let currsols : int = SearchLib.num_solutions ptbl.search None in
+            (*original solution set*)
+            let orig : (sstep snode) list= SearchLib.get_solutions ptbl.search None in
             let is_new (q:sstep snode) =
               List.length (LIST.filter (fun (x:sstep snode) -> q.id = x.id) orig) = 0
             in
             let depth = get_glbl_int "slvr-partial-depth" in
-            debug "find a partial solution";
-            debug "== Finding Local Solution ==";
-            debug ("== Current # Solutions: "^(string_of_int currsols));
-            debug ("== # New Solutions To Find: "^(string_of_int nslns));
+            debug "== Finding Partial Solution ==";
+            debug (" > Current # Solutions: "^(string_of_int currsols));
+            debug (" > # New Solutions To Find: "^(string_of_int nslns));
             musr ();
-            let maybe_results : ((sstep snode) list) option = SolverEqn.solve ptbl (nslns+currsols) depth in
-            SearchLib.clear_cursor ptbl.search;
-            debug "=== returned from partial search ===";
-            musr();
-            match maybe_results with
-            | None ->
-              debug ">>> No Partial Results Found <<<";
-              None
-            | Some(results) ->
-              debug ">>> Partial Results Found <<<";
-              let new_results :(sstep snode) list = List.filter (fun result -> is_new result) results in
-              begin
-                match new_results with
-                | [] -> None
-                | lst -> Some(lst)
-              end
+            let maybe_results : ((sstep snode) list) option =
+              SolverEqn.solve ptbl (nslns+currsols) depth
+            in
+            begin
+              debug "==== Finished Partial Sln Search ===";
+              SearchLib.clear_cursor ptbl.search;
+              musr();
+              match maybe_results with
+              | None ->
+                begin
+                  debug ">>> No Partial Results Found <<<";
+                  None
+                end
+                
+              | Some(results) ->
+                begin
+                  debug ">>> Partial Results Found <<<";
+                  let new_results :(sstep snode) list =
+                    List.filter (fun result -> is_new result) results
+                  in
+                  begin
+                    match new_results with
+                    | [] -> None
+                    | lst -> Some(lst)
+                  end
+                end
+            end
           end
+        (* no goal table was constructed*)
         | None ->
-          warn "find_partial_solution" "nowhere left to search.";
-          None
+          begin
+            warn "find_partial_solution" "nowhere left to search.";
+            None
+          end
+          
 
 
 (*get the existing global solution*)
@@ -810,6 +837,7 @@ struct
       let mint,musr = mkmenu ms in
       let curs = SearchLib.cursor ms.search in
       let nglbl = Globals.get_glbl_int "multi-num-global-solutions" in
+      (*add a global solution from the generate sln. *)
       let add_glbl_sln (curs:mustep snode) (node:sstep snode)  = 
         let key = (set2key ms.state.local) and ident = node.id in
         let steps = [MSGlobalApp({mvr_seq=key;ident=ident})] in
