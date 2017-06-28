@@ -480,7 +480,6 @@ struct
             hwvar hgoal.wire hgoal.prop
         in
         begin
-          force (fun () -> musr());
           (*for each feasible port the expression can be forced through to connect to an input,
             ensure that the expression is passed through*)
           List.iter (fun (port_in_var:hwvid) ->
@@ -509,7 +508,6 @@ struct
                     )
                 )
             ) port_in_vars; 
-          force (fun () -> musr());
         end
 
         
@@ -526,7 +524,6 @@ struct
             port_out_portvar conn_start_wire hgoal.prop
         in
         begin
-          force (fun () -> musr());
           LIST.iter (fun (port_in_var:hwvid) ->
               let port_in_portname = HwLib.hwid2portname port_in_var in
               (*the inpurt must equal the expr*)
@@ -553,7 +550,6 @@ struct
                     )
                 )
             ) port_in_vars;
-          force (fun () -> musr())
         end
 
         
@@ -579,7 +575,6 @@ struct
             ConcCompLib.newcfg port_out_portvar conn_start_wire prop
         in
         begin
-          force (fun () -> musr());
           (*for each possible input that can be extended that belongs to component comp*)
           LIST.iter (fun (port_in_var:hwvid) ->
               let port_in_name : string = HwLib.hwid2portname port_in_var in
@@ -611,7 +606,6 @@ struct
                     )
                 )
             ) port_input_vars;
-          force (fun () -> musr());
         end
     end;
     REF.dr nslns
@@ -744,10 +738,28 @@ struct
       SModSln(SSlnAddConn({src=conn.src;dst=conn.dst}));
       SModSln(SSlnRmRoute(get_label_of_input_wire conn.dst))
     ] @ rm_goal_steps in
+    Printf.printf "%s\n" (LIST.tostr SlvrSearchLib.step2str "\n" steps);
     steps
 
 
+  let trivial_inblock_to_steps (tbl:gltbl) (ioblock:goal_ioblock) : sstep list =
+    let matched_goals : (int*goal) list=
+      GoalLib.find_goals tbl (GUnifiable(GUHWConnInBlock(ioblock))) in
+    let rm_goal_steps :sstep list=
+      List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
+    in
+    let steps = [] @ rm_goal_steps in
+    steps
 
+
+  let trivial_outblock_to_steps (tbl:gltbl) (ioblock:goal_ioblock) : sstep list =
+    let matched_goals : (int*goal) list=
+      GoalLib.find_goals tbl (GUnifiable(GUHWConnOutBlock(ioblock))) in
+    let rm_goal_steps :sstep list=
+      List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
+    in
+    let steps = [] @ rm_goal_steps in
+    steps
 
   let get_trivial_connections (tbl) : goal_data list =
     let active_goals = GoalLib.get_active_goals tbl in
@@ -771,6 +783,7 @@ struct
 
 
   let solve_trivial_connections (tbl) =
+    let mint,musr = mkmenu tbl (None) in
     let conns = get_trivial_connections tbl in
     let stepq = QUEUE.make () in
     let enq lst  =
@@ -783,9 +796,16 @@ struct
             enq (trivial_connection_to_steps tbl conn)
           end
         | GUnifiable(GUHWConnInBlock(conn)) ->
-          error "solve_trivial_connections" "inblock.unimpl trivial resolution"
+          begin
+            SlvrSearchLib.decrease_goal_weight tbl.search (GUnifiable(GUHWConnInBlock(conn))) 1.;
+            enq (trivial_inblock_to_steps tbl conn)
+          end
+
         | GUnifiable(GUHWConnOutBlock(conn)) ->
-          error "solve_trivial_connections" "outblock.unimpl trivial resolution"
+          begin
+            SlvrSearchLib.decrease_goal_weight tbl.search (GUnifiable(GUHWConnOutBlock(conn))) 1.;
+            enq (trivial_outblock_to_steps tbl conn)
+          end
 
         | _ -> ()
       ) conns;
@@ -928,7 +948,6 @@ struct
     | SolverCompLibError(e) ->
       begin
         warn "[SOLVE][EXCEPTION]" e;
-        force (fun () -> musr());
         force (fun () -> musr());
         raise (SolverCompLibError e)
       end
