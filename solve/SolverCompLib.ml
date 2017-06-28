@@ -248,6 +248,7 @@ struct
 
   let get_extendable_inputs_for_conn_goal env cfg hv (dest_wire:wireid) (prop:string) =
     let test_input (vport:string) (vprop:string) =
+      (*TODO: filter to ensure there is a valid path*)
       true
     in
     get_extendable_inputs env cfg hv test_input

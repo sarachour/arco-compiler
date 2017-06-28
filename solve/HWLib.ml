@@ -36,8 +36,28 @@ struct
     | HNPort(k,HCMLocal(c),n,p) -> k,c,n,p,None
     | _ -> error "hwid2port" "only works for port hwids"
 
+  let hwid2portname hwid =
+    let _,_,p,_,_ = hwid2port hwid in
+    p
+
   let port2hwid k cname pname prop un =
     HNPort(k, HCMLocal(cname),pname,prop)
+
+  let portvar2hwid (x:'a hwportvar) (inst:int option)=
+    match inst with
+    | Some(i)-> HNPort(x.knd, HCMGlobal({name=x.comp;inst=i}),x.port,x.prop)
+    | None -> HNPort(x.knd, HCMLocal(x.comp),x.port,x.prop)
+
+  let hwid2wireid (x:hwvid) (inst:int) : wireid =
+    match x with
+    | HNPort(_,HCMGlobal(c),n,_) ->
+      begin
+        assert(c.inst = inst);
+        {comp=c;port=n}
+      end
+
+    | HNPort(_,HCMLocal(c),n,_) -> {comp={name=c;inst=inst};port=n}
+    | _ -> error "hwid2wireid" "unexpected"
 
   let compid2str c = match c with
     | HCMGlobal(n) -> n.name

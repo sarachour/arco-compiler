@@ -162,6 +162,7 @@ struct
           raise (Varmapper_error ("variable <"^s^"> already exists:"))
         else
           begin
+            Printf.printf "map %s -> %s\n" (mp.to_string v) s;
             noop (MAP.put conv v s);
             noop (MAP.put mp.inv s v)
           end
