@@ -70,9 +70,6 @@ struct
     in
     let goal : goal_data = GUnifiable(GUHWInExprGoal(data)) in
     mk_goal tbl goal
-      
-
-
 
   let _get_goal (type a) (tbl:gltbl) (filter:goal_data->bool) : goal option =
     let results =
@@ -105,6 +102,13 @@ struct
     match _get_goal tbl filter with
     | Some(g) -> g
     | _ -> error "get_math_goal" "goal doesn't exist"
+
+  let try_get_math_goal (type a) (tbl:gltbl) (targ:string) : goal option=
+    let filter g = match g with
+      | GUnifiable(GUMathGoal(v)) -> v.d.name = targ
+      | _ -> false
+    in
+    _get_goal tbl filter 
 
   let has_hwexpr_goal (type a) (tbl:gltbl) (wire:wireid) =
     let filter g = match g with

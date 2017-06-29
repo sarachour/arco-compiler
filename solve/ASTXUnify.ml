@@ -265,13 +265,25 @@ struct
             end
       in
       (*generate a connection from the target hardware port to the port in another component*)
-      let to_connect_rstep : hwcompinst -> string -> rstep =
-        fun compinst port ->
+      let to_connect_output_rstep : string -> hwcompinst -> string -> rstep =
+        fun outport compinst port ->
           begin
             let dest : wireid = {comp=compinst;port=port} in
             match targexpr with
             | Some(expr) ->
-              RConnectOutput(patport,dest,{expr=expr})
+              RConnectOutput(outport,dest,{expr=expr})
+            | None ->
+              raise (ASTUnifier_error
+                       "unexpected: cannot have connection for math unify")
+          end
+      in
+      let to_connect_input_rstep : string -> hwcompinst -> string -> rstep =
+        fun inport compinst port ->
+          begin
+            let dest : wireid = {comp=compinst;port=port} in
+            match targexpr with
+            | Some(expr) ->
+              RConnectInput(inport,dest,{expr=expr})
             | None ->
               raise (ASTUnifier_error
                        "unexpected: cannot have connection for math unify")
@@ -286,15 +298,33 @@ struct
               if v = variable then steps else
                 (*this is not a reflexive assignment. Generate a connection or mapping*)
                 begin
-                  match variable with
+                  match v,variable with
                   (*we're connecting hardware ports*)
-                  | HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop)) ->
-                    (to_connect_rstep compinst port)::steps
-                  | HwId(_) ->
-                    raise (ASTUnifier_error
-                             "unexpected hardware id. It's an output or param, or local")
+                  | HwId(HNPort(HWKOutput,_,outport,_)),HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop)) ->
+                    (to_connect_output_rstep outport compinst port)::steps
+
+                  | HwId(HNPort(HWKInput,_,inport,_)),HwId(HNPort(HWKOutput,HCMGlobal(compinst),port,prop)) ->
+                    (to_connect_input_rstep inport compinst port)::steps
+
+                  | HwId(HNPort(_)),HwId(HNPort(_)) ->
+                    begin
+                      Printf.printf "Assignment %s = %s\n"
+                        (unid2str v)
+                        (uast2str e);
+                      raise (ASTUnifier_error "cannot connect input<->input, or output<->output")
+                    end
+
+                  | HwId(_),HwId(_) ->
+                    begin
+                      Printf.printf "Assignment %s = %s\n"
+                        (unid2str v)
+                        (uast2str e);
+                      raise (ASTUnifier_error
+                               "unexpected hardware id. It's an output or param, or local")
+                    end
+
                   (*this is a typical assignment*)
-                  | MathId(_) ->
+                  | HwId(_),MathId(_) ->
                     (to_assign_rstep v e )::steps
                 end
             end
@@ -353,6 +383,7 @@ struct
         let un_env = AlgebraicLib.UnifyEnv.init
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwpatoutput;
+        construct_math un_env menv false;
         construct_hw_expr un_env hwenv menv htargvar hexpr;
         force_assign un_env comp cfg inst hwpatinput hexpr;
         (*TODO: foreach other input, don't allow this assignment*)

@@ -378,7 +378,6 @@ struct
           List.iter (fun gen_wire ->
               let goal = GoalLib.mk_conn_goal tbl gen_wire routewire expr in
               glblctx_add_ch ctx ([
-                  SModSln(SSlnRmRoute(routelbl));
                   SModGoalCtx(SGAddGoal(goal))
                 ]);
           ) generates;
@@ -510,12 +509,13 @@ struct
                 glblctx_commit_chblock ctx
 
               | MInLabel(_) ->
-                error "create_global_context" "dont do anything special for input propagate"
+                ()
               | MLocalLabel(_) ->
                 ()
-              | MExprLabel(_) -> ()
+              | MExprLabel(_) ->
+                ()
               | ValueLabel(_) ->
-                error "create_global_context" "dont do anything special for value"
+                ()
             end
       );
     let node_steps = glblctx_mk_nodes ctx in

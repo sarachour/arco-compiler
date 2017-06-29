@@ -213,7 +213,7 @@ struct
       if is_valid = false then
         false
       (*TODO: only check nodes in end. If search becomes sufficiently fast, change*)
-      else if true || test_node_map_cons tbl node then
+      else if test_node_map_cons tbl node then
         true
       else
         begin
@@ -357,29 +357,41 @@ struct
         
     | Term(MNVar(MOutput,name)) ->
         (*this is a generator for an output. remove the math goal*)
-      let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
       enq (SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire}))));
-      enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
       let conn_outblock_goal = GoalLib.mk_outblock_goal tbl wire (uast2mast cfg.expr) in
-      enq (SModGoalCtx(SGAddGoal(conn_outblock_goal)))
-        
+      enq (SModGoalCtx(SGAddGoal(conn_outblock_goal)));
+      let goal_to_remove_opt : goal option = GoalLib.try_get_math_goal tbl name in
+      begin
+        match goal_to_remove_opt with
+        | Some(goal_to_remove) ->
+          enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
+        | None -> ()
+      end
+
     | Term(MNVar(MLocal,name)) ->
-      let goal_to_remove : goal= GoalLib.get_math_goal tbl name in
       enq (SModSln(SSlnAddGen(MLocalLabel({var=name;wire=wire}))));
-      enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)))
+      let goal_to_remove_opt : goal option = GoalLib.try_get_math_goal tbl name in
+      begin
+        match goal_to_remove_opt with
+        | Some(goal_to_remove) ->
+          enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
+        | None -> ()
+      end
 
     (*if we found a connection*)
     | Term((MNParam(_))) ->
       error "rstep_to_goal" "not expecting param"
 
     | Integer(i) ->
-      enq (SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))))
+      enq (SModSln(SSlnAddGen(ValueLabel({value=Integer i;wire=wire}))))
 
     | Decimal(d)->
-      enq (SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))))
+      enq (SModSln(SSlnAddGen(ValueLabel({value=Decimal d;wire=wire}))))
 
     | expr ->
       enq (SModSln(SSlnAddGen(MExprLabel({expr=expr;wire=wire}))))
+
+
 
   let rsteps_to_ssteps (tbl:gltbl) (comp:ucomp_conc) (rsteps:rstep list) (ssteps:sstep list)
     (force_passthrough: bool)=
@@ -403,6 +415,15 @@ struct
 
           | RConnectOutput(src,destwire,cfg) ->
             let srcwire : wireid = {comp={name=comp.d.name; inst=comp.inst}; port=src} in
+            let conn_goal = GoalLib.mk_conn_goal tbl
+                srcwire destwire (uast2mast cfg.expr)
+            in
+            begin
+              enq (SModGoalCtx(SGAddGoal(conn_goal)));
+              rassign_output_port_to_goal sstepq tbl comp src cfg
+            end
+          | RConnectInput(src,srcwire,cfg) ->
+            let destwire : wireid = {comp={name=comp.d.name; inst=comp.inst}; port=src} in
             let conn_goal = GoalLib.mk_conn_goal tbl
                 srcwire destwire (uast2mast cfg.expr)
             in
@@ -709,12 +730,18 @@ struct
 
   let trivial_connection_to_steps (tbl:gltbl) (conn:goal_conn) : sstep list =
     debug "connection is trivial.";
+    let mint,musr = mkmenu tbl (None) in
     let get_label_of_input_wire (wire:wireid) : ulabel =
       let labels: ulabel list = SlnLib.wire2labels tbl.sln_ctx wire in
       match labels with
       | [h] -> h
-      | [] ->  
+      | [] -> 
+        begin
+          Printf.printf "=== Error (%s) ===\n" (HwLib.wireid2str wire);
+          force (fun () -> musr());
           raise (SolverEqnError "get_label_of_input_wire: no labels .")
+        end
+
       | _ ->
         begin
           let label_str : string = LIST.tostr 

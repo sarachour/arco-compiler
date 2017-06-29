@@ -124,8 +124,8 @@ struct
     exception Varmapper_error of string
 
     type 'a t = {
-      sym_conv:('a,string) map;
-      pat_conv:('a,string) map;
+      sym_conv:(string,string) map;
+      pat_conv:(string,string) map;
       inv:(string,'a) map;
       to_string:'a->string
     }
@@ -150,20 +150,19 @@ struct
       fun el ->
         ()
 
-    let _map :  ('a,string) map ->  'a t ->'a -> string -> unit =
+    let _map :  (string,string) map ->  'a t ->'a -> string -> unit =
       fun conv mp (v:'a) (s:string) ->
-        if MAP.has conv v then
-          let xs = MAP.get conv v in
-          raise (Varmapper_error
-                   ("cannot map to <"^s^"> variable mapping <"^
-                    (mp.to_string v)^"> -> <"^
-                    xs^">already exists"))
-        else if MAP.has mp.inv s  then
-          raise (Varmapper_error ("variable <"^s^"> already exists:"))
+        let vstr = mp.to_string v in
+        if MAP.has conv vstr then
+          let xs = MAP.get conv vstr in
+          Printf.printf "cannot map <%s> variable mapping <%s>-><%s>\n exists\n"
+            (s) (vstr) (xs);
+          ()
+          
         else
           begin
             Printf.printf "map %s -> %s\n" (mp.to_string v) s;
-            noop (MAP.put conv v s);
+            noop (MAP.put conv vstr s);
             noop (MAP.put mp.inv s v)
           end
 
@@ -173,10 +172,11 @@ struct
     let map_pat: 'a t -> 'a -> string -> unit =
       fun mp -> _map mp.pat_conv mp
 
-    let _conv : ('a,string) map -> 'a t -> 'a -> string =
+    let _conv : (string,string) map -> 'a t -> 'a -> string =
       fun conv mp x ->
-        if MAP.has conv x then
-          MAP.get conv x
+        let xstr = mp.to_string x in
+        if MAP.has conv xstr then
+          MAP.get conv xstr
         else
           raise (AlgebraicLib_error ("[a->v] variable isn't in varmapper: "^(mp.to_string x)))
 

@@ -83,12 +83,16 @@ struct
     v
 
 
-  let mkresult : map_result list -> map_expr -> map_expr -> map_loc_val -> map_cstr list -> map_result =
+  let mkfailure : unit -> map_result =
+    fun () ->
+      {cstrs=[SCFalse];scale=SEVar(SMFreeVar 0); offset=SEVar(SMFreeVar 0); value=SVZero;}
+
+  let mkresult : map_result list -> map_expr -> map_expr -> map_loc_val -> map_cstr list ->  map_result =
     fun args scale offset value cstrs ->
       let all_cstrs : map_cstr list = List.fold_left
           (fun (r:map_cstr list) (x:map_result) -> x.cstrs @ r) cstrs (args)
       in
-      {cstrs=all_cstrs;scale=scale;offset=offset;value}
+      {cstrs=all_cstrs;scale=scale;offset=offset;value=value}
 
 
   let rec mk_not_equal : map_expr -> number -> map_cstr =
@@ -172,7 +176,6 @@ struct
         port_cstrs
 
 
-
   let late_bind_output: string -> map_ctx -> map_result=
       fun port_name ctx ->
         let port_val = SMapCompCtx.get_port ctx port_name in
@@ -185,7 +188,6 @@ struct
         (SEVar(SMOffset(port_name)))
         new_port_val
         port_cstrs
-
 
   let late_bind_param: string -> map_ctx -> map_result=
     fun param_name ctx ->
@@ -219,7 +221,7 @@ struct
                 SEMult(res1.offset,res2.offset))
         in
         let value = SVZero in
-        mkresult args scale offset value []
+        mkresult args scale offset value [] 
 
       | SVNumber(n),SVZero ->
         late_bind_mult2 ctx res2 res1
@@ -228,7 +230,7 @@ struct
         let scale = SEVar (get_freevar()) in
         let offset = SEMult(res1.offset,res2.offset) in
         let value = SVZero in
-        mkresult args scale offset value []
+        mkresult args scale offset value [] 
 
       | SVSymbol(ival), SVZero ->
         late_bind_mult2 ctx res2 res1
@@ -242,7 +244,7 @@ struct
         in
         let value = SVNumber(NUMBER.mult n m) in
         let cstrs = [] in
-        mkresult args scale offset value cstrs
+        mkresult args scale offset value cstrs 
 
       | SVSymbol(a), SVNumber(m) ->
         let scale =
@@ -259,7 +261,7 @@ struct
         in
         let value = SVSymbol(IntervalLib.mult a (IntervalLib.num m)) in
         let cstrs = [] in
-        mkresult args scale offset value cstrs
+        mkresult args scale offset value cstrs 
 
       | SVNumber(m), SVSymbol(a) ->
         late_bind_mult2 ctx res2 res1
@@ -281,7 +283,7 @@ struct
   let late_bind_pow (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     match res1.value, res2.value with
     | SVZero, SVZero ->
-      raise (SMapHwSpecLateBind_error "0^0... undefined")
+      mkfailure ()
 
     | SVNumber(n),SVZero ->
       let scale =
