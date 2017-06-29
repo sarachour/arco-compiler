@@ -246,9 +246,9 @@ struct
 
   let apply_sln_step (tbl:gltbl) (s:sslnctx) : unit = match s with
     | SSlnAddConn(conn) -> SlnLib.add_conn tbl.sln_ctx conn 
-    | SSlnAddGen(label) -> SlnLib.add_generate tbl.sln_ctx label
-    | SSlnAddRoute(label) -> SlnLib.add_route tbl.sln_ctx label
-    | SSlnRmRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
+    | SSlnAddGen(label) -> SlnLib.add_generate tbl.sln_ctx label ident mid2str
+    | SSlnAddRoute(label) -> SlnLib.add_route tbl.sln_ctx label ident mid2str
+    | SSlnRmRoute(label) -> SlnLib.rm_route tbl.sln_ctx label ident mid2str
     | SSlnAddComp(compinst) -> SlnLib.add_comp tbl.sln_ctx compinst
   
   let apply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
@@ -297,9 +297,9 @@ struct
 
   let unapply_sln_step (tbl:gltbl) (s:sslnctx) : unit = match s with
     | SSlnAddConn(conn) -> SlnLib.rm_conn tbl.sln_ctx conn 
-    | SSlnAddGen(label) -> SlnLib.rm_generate tbl.sln_ctx label
-    | SSlnAddRoute(label) -> SlnLib.rm_route tbl.sln_ctx label
-    | SSlnRmRoute(label) -> SlnLib.add_route tbl.sln_ctx label
+    | SSlnAddGen(label) -> SlnLib.rm_generate tbl.sln_ctx label ident mid2str 
+    | SSlnAddRoute(label) -> SlnLib.rm_route tbl.sln_ctx label ident mid2str 
+    | SSlnRmRoute(label) -> SlnLib.add_route tbl.sln_ctx label ident mid2str
     | SSlnAddComp(compinst) -> SlnLib.rm_comp tbl.sln_ctx compinst
     | _ -> error "unapply_sln_step" "handler for step casedoes not exist"
 

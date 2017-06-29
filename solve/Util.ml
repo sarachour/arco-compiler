@@ -558,6 +558,30 @@ struct
   let exclude lst v =
     List.filter (fun x -> x <> v) lst
 
+
+
+  let diag_fold (lst:'a list) (fxn: 'a -> 'a -> 'c -> 'c) (c0:'c) : 'c =
+    let rec _work rest ci = match rest with
+      | h::t ->
+        let row = List.fold_right (fun el cij -> fxn h el cij) t ci in
+        _work t row 
+      | [] -> ci
+    in
+    _work lst c0
+
+
+  (*makes a list of tuples that is the product of the two lists*)
+  let prod_fold (a:'a list) (b:'b list) (fxn:'a -> 'b -> 'c -> 'c) (c0:'c): 'c =
+    let prod_sc a x =
+      List.fold_right (fun r rest -> fxn a r rest) x
+    in
+    let rec _prod x ci=
+      match x with
+      | h::t -> _prod t (prod_sc h b ci)
+      | [] -> ci
+    in
+    _prod a c0
+
   (*makes a list of tuples that is the product of the two lists*)
   let prod (a:'a list) (b:'b list) : ('a*'b) list =
     let prod_sc a x =

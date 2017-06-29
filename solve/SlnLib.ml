@@ -5,7 +5,7 @@ open HWData
 open HWLib
 open MathLib
 open Unit
-
+open SolverUtil
 open MathData
 
 open AST
@@ -169,30 +169,33 @@ struct
     | WCollOne(wire) -> [wire]
     | WCollMany(wires) -> wires
 
-  let _add_wire_to_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
-    if MAP.has m key then
-      let ncoll = match MAP.get m key with
-      | WCollEmpty -> WCollOne(wire)
-      | WCollOne(wire2) ->
-        if wire2 != wire
-        then WCollMany([wire2;wire]) else WCollOne(wire2)
-      | WCollMany(wires) ->
-        if LIST.has wires wire = false then
-          WCollMany(wire::wires)
-        else
-          WCollMany(wires)
-      in
-      return (MAP.put m key ncoll) wire
-    else
-      return (MAP.put m key (WCollOne(wire))) wire
+  let _add_wire_to_label (type c) test_eq (m:(c,wire_coll) map) (key:c) (wire:wireid) =
+    let matches = MAP.filter m (fun other_key other_coll -> test_eq other_key key) in
+    LIST.iter (fun (key,coll) ->
+          let ncoll = match coll with
+            | WCollEmpty -> WCollOne(wire)
+            | WCollOne(wire2) ->
+              if wire2 != wire
+              then WCollMany([wire2;wire]) else WCollOne(wire2)
+            | WCollMany(wires) ->
+              if LIST.has wires wire = false then
+                WCollMany(wire::wires)
+              else
+                WCollMany(wires)
+          in
+          noop (MAP.put m key ncoll) 
+      ) matches;
+    if List.length matches = 0 then
+      noop (MAP.put m key (WCollOne(wire)));
+    wire
 
-
-  let _rm_wire_from_label (type c) (m:(c,wire_coll) map) (key:c) (wire:wireid) =
-    if MAP.has m key then
-      let ncoll = match MAP.get m key with
-      | WCollEmpty -> WCollEmpty
-      | WCollOne(cwire) ->
-        if cwire = wire
+  let _rm_wire_from_label (type c) test_eq (m:(c,wire_coll) map) (key:c)  (wire:wireid) =
+    let matches = MAP.filter m (fun other_key other_coll -> test_eq other_key key) in
+    LIST.iter (fun (key,coll) ->
+      let ncoll = match coll with
+        | WCollEmpty -> WCollEmpty
+        | WCollOne(cwire) ->
+          if cwire = wire
           then  WCollEmpty
           else
             begin
@@ -201,92 +204,104 @@ struct
               WCollOne(cwire)
             end
 
-      | WCollMany(h::t) ->
-        if LIST.has (h::t) wire
-        then
-          match List.filter (fun x -> x != wire) (h::t) with
-          | [] -> WCollEmpty
-          | [h] -> WCollOne(h)
-          | h::t -> WCollMany(h::t)
-        else
-          begin
-            error "rm_wire_from_label" ("[LAX-ERROR] wire "^
-                                        (wireid2str wire)^" does not belong to ["
-                                       ^(LIST.tostr wireid2str "," (h::t))^"]");
-            WCollMany(h::t)
-          end
-      | WCollMany([]) -> error "rm_wire_from_label" "cannot have no elements in many cllection"
+        | WCollMany(h::t) ->
+          if LIST.has (h::t) wire
+          then
+            match List.filter (fun x -> x != wire) (h::t) with
+            | [] -> WCollEmpty
+            | [h] -> WCollOne(h)
+            | h::t -> WCollMany(h::t)
+          else
+            begin
+              error "rm_wire_from_label" ("[LAX-ERROR] wire "^
+                                          (wireid2str wire)^" does not belong to ["
+                                          ^(LIST.tostr wireid2str "," (h::t))^"]");
+              WCollMany(h::t)
+            end
+        | WCollMany([]) -> error "rm_wire_from_label" "cannot have no elements in many cllection"
       in
       if WCollEmpty = ncoll then
-        return (MAP.rm m key) wire
+        noop (MAP.rm m key) 
       else
-        return (MAP.put m key ncoll) wire
-    else
-      wire
+        noop (MAP.put m key ncoll) 
 
+      ) matches;
+    wire
 
-  let add_route (type a) (type b) (sln:(a,b)sln) (albl:(a,b)label) =
-    let wire =
-      match albl with
-      | MInLabel(lbl) ->
-        _add_wire_to_label sln.route.ins lbl.var lbl.wire; 
-      | MOutLabel(lbl) ->
-        _add_wire_to_label sln.route.outs lbl.var lbl.wire
-      | MLocalLabel(lbl) ->
-        _add_wire_to_label sln.route.locals lbl.var lbl.wire
-      | ValueLabel(lbl) ->      
-        _add_wire_to_label sln.route.vals lbl.value lbl.wire
-      | MExprLabel(lbl) ->
-        _add_wire_to_label sln.route.exprs lbl.expr lbl.wire
-    in
-    ()
+  let std_eq : 'a -> 'a -> bool =
+    fun x y -> (x = y)
 
-  let add_generate (type a) (type b) (sln:(a,b) sln) (albl: (a,b) label) =
-    let wire =
-      match albl with
-      | MInLabel(lbl) ->
-        _add_wire_to_label sln.generate.ins lbl.var lbl.wire
-      | MOutLabel(lbl) ->
-        _add_wire_to_label sln.generate.outs lbl.var lbl.wire
-      | MLocalLabel(lbl) ->
-        _add_wire_to_label sln.generate.locals lbl.var lbl.wire
-      | ValueLabel(lbl) ->      
-        _add_wire_to_label sln.generate.vals lbl.value lbl.wire
-      | MExprLabel(lbl) ->
-        _add_wire_to_label sln.generate.exprs lbl.expr lbl.wire
-    in
-    ()
+  let expr_eq (type a): (a->string) -> a ast -> a ast -> bool =
+    fun fn x y ->
+      (ASTLib.ast2str x fn) = (ASTLib.ast2str y fn)
 
-  let rm_generate (type a) (type b) (sln:(a,b) sln) (albl: (a,b) label)  = 
-    let wire =
-      match albl with
-      | MInLabel(lbl) ->
-        _rm_wire_from_label sln.generate.ins lbl.var lbl.wire
-      | MOutLabel(lbl) ->
-        _rm_wire_from_label sln.generate.outs lbl.var lbl.wire
-      | MLocalLabel(lbl) ->
-        _rm_wire_from_label sln.generate.locals lbl.var lbl.wire
-      | ValueLabel(lbl) ->      
-        _rm_wire_from_label sln.generate.vals lbl.value lbl.wire
-      | MExprLabel(lbl) ->
-        _rm_wire_from_label sln.generate.exprs lbl.expr lbl.wire
-    in
-    ()
+                   
+  let add_route (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+    fun sln albl f g ->
+      let wire =
+        match albl with
+        | MInLabel(lbl) ->
+          _add_wire_to_label std_eq sln.route.ins lbl.var lbl.wire; 
+        | MOutLabel(lbl) ->
+          _add_wire_to_label std_eq sln.route.outs lbl.var lbl.wire
+        | MLocalLabel(lbl) ->
+          _add_wire_to_label std_eq sln.route.locals lbl.var lbl.wire
+        | ValueLabel(lbl) ->      
+          _add_wire_to_label std_eq sln.route.vals lbl.value lbl.wire
+        | MExprLabel(lbl) ->
+          _add_wire_to_label (expr_eq g) sln.route.exprs lbl.expr lbl.wire
+      in
+      ()
 
-  let rm_route (type a) (type b) (sln:(a,b) sln) (albl: (a,b) label)  = 
-    let wire = match albl with
-      | MInLabel(lbl) ->
-        _rm_wire_from_label sln.route.ins lbl.var lbl.wire
-      | MOutLabel(lbl) ->
-        _rm_wire_from_label sln.route.outs lbl.var lbl.wire
-      | MLocalLabel(lbl) ->
-        _rm_wire_from_label sln.route.locals lbl.var lbl.wire
-      | ValueLabel(lbl) ->      
-        _rm_wire_from_label sln.route.vals lbl.value lbl.wire
-      | MExprLabel(lbl) ->
-        _rm_wire_from_label sln.route.exprs lbl.expr lbl.wire
-    in
-    ()
+  let add_generate (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+      fun sln albl f g ->
+        let wire =
+          match albl with
+          | MInLabel(lbl) ->
+            _add_wire_to_label std_eq sln.generate.ins lbl.var lbl.wire
+          | MOutLabel(lbl) ->
+            _add_wire_to_label std_eq sln.generate.outs lbl.var lbl.wire
+          | MLocalLabel(lbl) ->
+            _add_wire_to_label std_eq sln.generate.locals lbl.var lbl.wire
+          | ValueLabel(lbl) ->      
+            _add_wire_to_label std_eq sln.generate.vals lbl.value lbl.wire
+          | MExprLabel(lbl) ->
+            _add_wire_to_label (expr_eq g) sln.generate.exprs lbl.expr lbl.wire
+        in
+        ()
+
+  let rm_generate (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+    fun sln albl f g ->
+      let wire =
+        match albl with
+        | MInLabel(lbl) ->
+          _rm_wire_from_label (std_eq) sln.generate.ins lbl.var lbl.wire
+        | MOutLabel(lbl) ->
+          _rm_wire_from_label (std_eq) sln.generate.outs lbl.var lbl.wire
+        | MLocalLabel(lbl) ->
+          _rm_wire_from_label (std_eq) sln.generate.locals lbl.var lbl.wire
+        | ValueLabel(lbl) ->      
+          _rm_wire_from_label (std_eq) sln.generate.vals lbl.value lbl.wire
+        | MExprLabel(lbl) ->
+          _rm_wire_from_label (expr_eq g) sln.generate.exprs lbl.expr lbl.wire
+      in
+      ()
+
+  let rm_route (type a) (type b): (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+    fun sln albl f g ->
+      let wire = match albl with
+        | MInLabel(lbl) ->
+          _rm_wire_from_label (std_eq) sln.route.ins lbl.var lbl.wire
+        | MOutLabel(lbl) ->
+          _rm_wire_from_label (std_eq) sln.route.outs lbl.var lbl.wire
+        | MLocalLabel(lbl) ->
+          _rm_wire_from_label (std_eq) sln.route.locals lbl.var lbl.wire
+        | ValueLabel(lbl) ->      
+          _rm_wire_from_label (std_eq) sln.route.vals lbl.value lbl.wire
+        | MExprLabel(lbl) ->
+          _rm_wire_from_label (expr_eq g) sln.route.exprs lbl.expr lbl.wire
+      in
+      ()
  
 
   let iter_insts (sln:usln) fn : unit =

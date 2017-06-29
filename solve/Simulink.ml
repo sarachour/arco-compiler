@@ -741,9 +741,10 @@ struct
     let id = symtbl_size () in
     let offloc = SIMBlock(namespace,"lmap_ofs_"^(string_of_int id)) in
     let scloc = SIMBlock(namespace,"lmap_sc_"^(string_of_int id)) in
-    let scaling_fact = if inverse then 1.0 /. mp.scale else mp.scale in
+    let scaling_fact =
+      if inverse then 1.0 /. mp.scale else mp.scale in
     let offset_fact =
-      if inverse then 0. -. mp.offset /. mp.scale else mp.offset
+      if inverse then 0. -. mp.offset else mp.offset
     in
     declare_vars [offloc;scloc];
     let scfact_out = create_const q namespace scaling_fact in
@@ -759,10 +760,21 @@ struct
     let add_in2 = mk_sim_in offloc "I2" in
     let add_out = mk_sim_out offloc "O" in
     declare_vars [mul_in1;mul_in2;mul_out;add_in1;add_in2;add_out];
-    q (add_route_line scfact_out mul_in2);
-    q (add_route_line offfact_out add_in2);
-    q (add_route_line mul_out add_in1);
-    mul_in1,add_out
+    if inverse then
+      begin
+        q (add_route_line offfact_out add_in2);
+        q (add_route_line scfact_out mul_in2);
+        q (add_route_line add_out mul_in1);
+        add_in1,mul_out
+      end
+    else
+      begin
+        q (add_route_line scfact_out mul_in2);
+        q (add_route_line offfact_out add_in2);
+        q (add_route_line mul_out add_in1);
+        mul_in1,add_out
+      end
+
 
   let expr2blockdiag (q:matst->unit) (namespace:simns)  (expr:hwvid ast)  =
     let cmp = LIST.last namespace in

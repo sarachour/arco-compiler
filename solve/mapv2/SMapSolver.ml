@@ -228,22 +228,31 @@ struct
           in
           match sexpr with
           | SZ3Equiv(h::h2::t) ->
-            List.map  (fun x ->
-                match pred_expr_maybe with
-                | Some(pred_expr) ->
-                  Z3Assert(
-                    Z3IfThenElse(
-                      pred_expr,
-                      Z3Eq(h,x),
-                      Z3Bool(true)
-                    )
-                  )
-                  | None -> Z3Assert(Z3Eq(h,x))
-              )(h2::t)
+            let lst = h::h2::t in
+            LIST.diag_fold lst (fun expr1 expr2 rest ->
+                if expr1 != expr2 then
+                  begin
+                    match pred_expr_maybe with
+                    | Some(pred_expr) ->
+                      Z3Assert(Z3IfThenElse(
+                          pred_expr,
+                          Z3Eq(expr1,expr2),
+                          Z3Bool(true)
+                        ))::rest
+
+                    | None ->
+                      Z3Assert(Z3Eq(expr1,expr2))::rest
+                  end
+                else
+                  rest
+              ) []
+
           | SZ3Equiv([h]) ->
             []
+
           | SZ3And(e1,e2) ->
             (_work preds e1) @ (_work preds e2)
+
           | SZ3Predicate(p,e1,e2) ->
             (_work (p::preds) e1) @ (_work (Z3Not(p)::preds) e2)
         
