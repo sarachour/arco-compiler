@@ -404,7 +404,7 @@ struct
       let goal : goal = GoalLib.mk_conn_goal tbl ccblk_out wire expr in
       let wrap_varcfg lbl = {expr=mast2uast (SlnLib.ulabel2mexpr lbl)} in
       let steps = [
-        SModSln(SSlnRmRoute(lbl));
+        (*SModSln(SSlnRmRoute(lbl));*)
         SModSln(SSlnAddComp(ccblk_inst));
         SModSln(SSlnAddRoute(SlnLib.xchg_wire lbl ccblk_in));
         SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_out));
@@ -433,6 +433,7 @@ struct
       let wrap_varcfg lbl = {expr=mast2uast (SlnLib.ulabel2mexpr lbl)} in
       let steps = [
         SModSln(SSlnAddComp(ccblk_inst));
+        SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_in));
         SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_out));
         SModCompCtx(SCMakeConcComp(ccblk));
         SModCompCtx(SCAddInCfg(ccblk_inst,ccblk_in.port,wrap_varcfg lbl));
@@ -471,8 +472,13 @@ struct
             glblctx_add_ch ctx inpblock_steps;
             glblctx_commit_chblock ctx
           | MExprLabel(_) ->
-            error "create_global_context"
-              "route-config should not be possible incomplete configuration"
+            begin
+              let mint,musr = SolverEqn.mkmenu tbl None in
+              force (fun() -> musr());
+              error "create_global_context"
+                "route-config should not be possible incomplete configuration"
+            end
+
         end
       );
     debug ("==== GENERATES =====");

@@ -212,7 +212,8 @@ struct
       in
       if is_valid = false then
         false
-      else if test_node_map_cons tbl node then
+      (*TODO: only check nodes in end. If search becomes sufficiently fast, change*)
+      else if true || test_node_map_cons tbl node then
         true
       else
         begin
@@ -315,12 +316,24 @@ struct
 
 
     | Integer(i) ->
-      enq (SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))))
+      begin
+        let goal = GoalLib.mk_inblock_goal tbl wire (uast2mast cfg.expr) in
+        enq (SModGoalCtx(SGAddGoal(goal)));
+        enq (SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))))
+      end
 
     | Decimal(d)->
-      enq (SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))))
+      begin
+        let goal = GoalLib.mk_inblock_goal tbl wire (uast2mast cfg.expr) in
+        enq (SModGoalCtx(SGAddGoal(goal)));
+        enq (SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))))
+      end
 
-    | Term(MNParam(_)) -> error "rstep_to_goal" "not expecting param"
+    | Term(MNParam(_)) ->
+      error "rstep_to_goal" "not expecting param"
+
+    | Term(_) ->
+      error "rstep_to_goal" "variable should be covered."
 
     (*assignment over inputs to output*)
     | expr ->
@@ -358,6 +371,12 @@ struct
     (*if we found a connection*)
     | Term((MNParam(_))) ->
       error "rstep_to_goal" "not expecting param"
+
+    | Integer(i) ->
+      enq (SModSln(SSlnAddRoute(ValueLabel({value=Integer i;wire=wire}))))
+
+    | Decimal(d)->
+      enq (SModSln(SSlnAddRoute(ValueLabel({value=Decimal d;wire=wire}))))
 
     | expr ->
       enq (SModSln(SSlnAddGen(MExprLabel({expr=expr;wire=wire}))))
@@ -457,11 +476,6 @@ struct
         begin
           BOOLEAN.both(fun force_passthrough ->
               commit_results results rm_goal_steps (fun ccomp rsteps inits ->
-                  let port_out_wire : wireid = HwLib.hwid2wireid port_out_var ccomp.inst in
-                  let connect_out = GoalLib.mk_conn_goal tbl
-                      port_out_wire conn_end_wire hgoal.expr
-                  in
-                  SModGoalCtx(SGAddGoal(connect_out))::
                   (rsteps_to_ssteps tbl ccomp rsteps inits force_passthrough)
                 )
             )
@@ -494,16 +508,6 @@ struct
               in
               BOOLEAN.both (fun force_passthrough ->
                   commit_results results rm_goal_steps (fun ccomp rsteps inits ->
-                      let port_out_wire : wireid = HwLib.hwid2wireid port_out_var ccomp.inst in
-                      let port_in_wire : wireid = HwLib.hwid2wireid port_in_var ccomp.inst in
-                      let connect_end = GoalLib.mk_conn_goal tbl
-                          port_out_wire conn_end_wire hgoal.expr
-                      in
-                      let connect_in_block = GoalLib.mk_inblock_goal tbl
-                          port_in_wire hgoal.expr
-                      in
-                      SModGoalCtx(SGAddGoal(connect_end))::
-                      SModGoalCtx(SGAddGoal(connect_in_block))::
                       (rsteps_to_ssteps tbl ccomp rsteps inits force_passthrough)
                     )
                 )
@@ -536,16 +540,6 @@ struct
               in
               BOOLEAN.both (fun force_passthrough ->
                   commit_results results rm_goal_steps (fun ccomp rsteps inits ->
-                      let port_out_wire : wireid = HwLib.hwid2wireid port_out_var ccomp.inst in
-                      let port_in_wire : wireid = HwLib.hwid2wireid port_in_var ccomp.inst in
-                      let connect_start = GoalLib.mk_conn_goal tbl
-                          conn_start_wire port_in_wire hgoal.expr
-                      in
-                      let connect_out_block = GoalLib.mk_outblock_goal tbl
-                          port_out_wire hgoal.expr
-                      in
-                      SModGoalCtx(SGAddGoal(connect_start))::
-                      SModGoalCtx(SGAddGoal(connect_out_block))::
                       (rsteps_to_ssteps tbl ccomp rsteps inits force_passthrough)
                     )
                 )
@@ -719,13 +713,15 @@ struct
       let labels: ulabel list = SlnLib.wire2labels tbl.sln_ctx wire in
       match labels with
       | [h] -> h
+      | [] ->  
+          raise (SolverEqnError "get_label_of_input_wire: no labels .")
       | _ ->
         begin
           let label_str : string = LIST.tostr 
               (fun (lbl:ulabel) -> SlnLib.ulabel2str lbl) "\n" labels in
           Printf.printf ("== Labels for <%s> ==\n%s\n")
             (HwLib.wireid2str wire) label_str;
-          raise (SolverEqnError "mk_remove_route_step: cannot have multiple labels.")
+          raise (SolverEqnError "get_label_of_input_wire: cannot have multiple labels.")
         end
 
     in
@@ -899,11 +895,15 @@ struct
                   end
 
                 | None ->
-                  debug ("[TERMINATE] found "^
-                         (string_of_int currslns)^" / "^(string_of_int nslns));
-                  debug "[TERMINATE] could not find another node";
-                  musr();
-                  ()
+                  begin
+                    let currslns = SearchLib.num_solutions tbl.search (Some root) in
+                    debug ("[TERMINATE] found "^
+                           (string_of_int currslns)^" / "^(string_of_int nslns));
+                    debug "[TERMINATE] could not find another node";
+                    musr();
+                    ()
+                  end
+
               end
           end
 

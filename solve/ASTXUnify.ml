@@ -74,9 +74,9 @@ struct
           end
         | Some(expr) ->
             begin
-            AlgebraicLib.UnifyEnv.define_pat env portid;
-            AlgebraicLib.UnifyEnv.init_pat env portid 
-              (expr);
+              AlgebraicLib.UnifyEnv.define_pat env portid;
+              AlgebraicLib.UnifyEnv.init_pat env portid 
+                (expr);
             ()
           end
       );
@@ -139,6 +139,7 @@ struct
       (*define the symbols*)
       let vars : unid list = ASTLib.get_vars hexpr in
       (*variables unification depends on*)
+      (*
       List.iter (fun (uvar:unid) -> match uvar with
           | MathId(MNVar(_,name)) ->
             begin
@@ -156,7 +157,6 @@ struct
               | MBhvStateVar(bhv) ->
                 begin
                   (*TODO: add derivative if unmodelled *)
-                  AlgebraicLib.UnifyEnv.define_sym_expr env (uvar) (Term (uvar))
                 end
                 
             end
@@ -170,6 +170,7 @@ struct
             raise (ASTUnifier_error "hwid not expected in assignment goal.")
           
         ) vars;
+      *)
       (*actual unification*)
       AlgebraicLib.UnifyEnv.define_sym env (HwId hwtargvar);
       AlgebraicLib.UnifyEnv.define_sym_expr env (HwId hwtargvar) hexpr;
@@ -194,22 +195,22 @@ struct
   (*
      this is the math expression.
   *)
-  let construct_math : unid AlgebraicLib.UnifyEnv.t -> mid menv -> 
-    string -> unit
+  let construct_math : unid AlgebraicLib.UnifyEnv.t -> mid menv ->  bool -> unit
     =
-      fun (env) (menv) mname ->
-        let mid = MathLib.str2mid menv mname in
-        AlgebraicLib.UnifyEnv.define_sym env (MathId mid);
+      fun (env) (menv) model_derivs ->
         MathLib.iter_vars menv (fun mvar ->
             let mid : mid = MathLib.var2mid mvar in
             AlgebraicLib.UnifyEnv.define_sym env (MathId mid); 
             match mvar.bhvr with
             | MBhvStateVar(bhv) ->
               begin
-                AlgebraicLib.UnifyEnv.define_sym_deriv_expr env
-                  (MathId mid) (mast2uast bhv.rhs)
-                  (ASTLib.number2ast bhv.ic);
-                ()
+                if model_derivs  then
+                  AlgebraicLib.UnifyEnv.define_sym_deriv_expr env
+                    (MathId mid) (mast2uast bhv.rhs)
+                    (ASTLib.number2ast bhv.ic)
+                else
+                  AlgebraicLib.UnifyEnv.define_sym_expr env
+                    (MathId mid) (Term (MathId mid))
               end
             | MBhvVar(bhv) ->
               begin
@@ -230,14 +231,21 @@ struct
             AlgebraicLib.UnifyEnv.define_sym_param env
               (MathId paramid) [mparam.value]
           );
-        AlgebraicLib.UnifyEnv.sym_prioritize env (MathId mid);
         ()
 
+
+  let prioritize_math : unid AlgebraicLib.UnifyEnv.t -> mid menv -> string -> unit
+    =
+    fun env menv mname ->
+      let mid = MathLib.str2mid menv mname in
+      AlgebraicLib.UnifyEnv.sym_prioritize env (MathId mid);
+      ()
 
   (*given an assignment*)
   let to_rsteps : string -> unid ast option -> (unid*unid ast) list -> rstep list
     -> rstep list =
     fun patport targexpr asgns init_steps ->
+      (*convert an assignment to variable*)
       let to_assign_rstep : unid -> unid ast -> rstep =
         fun vrb expr ->
           let cfg = {expr=expr} in
@@ -309,7 +317,8 @@ struct
           AlgebraicLib.UnifyEnv.init
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwvar;
-        construct_math un_env menv mvar;
+        construct_math un_env menv true;
+        prioritize_math un_env menv mvar;
         let alg_env = AlgebraicLib.init (unid2str) in
         let branching = Globals.get_glbl_int "unify-branch" in
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
@@ -326,6 +335,7 @@ struct
         let un_env = AlgebraicLib.UnifyEnv.init
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwpatvar;
+        construct_math un_env menv false;
         construct_hw_expr un_env hwenv menv htargvar hexpr;
         let alg_env = AlgebraicLib.init (unid2str) in
         let branching = Globals.get_glbl_int "unify-branch" in

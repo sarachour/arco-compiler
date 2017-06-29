@@ -196,7 +196,7 @@ struct
           then  WCollEmpty
           else
             begin
-              warn "rm_wire_from_label"
+              error "rm_wire_from_label"
               ("[LAX-ERROR] this wire is not assigned to the variable:"^(wireid2str wire)^"!=@"^(wireid2str cwire));
               WCollOne(cwire)
             end
@@ -210,7 +210,7 @@ struct
           | h::t -> WCollMany(h::t)
         else
           begin
-            warn "rm_wire_from_label" ("[LAX-ERROR] wire "^
+            error "rm_wire_from_label" ("[LAX-ERROR] wire "^
                                         (wireid2str wire)^" does not belong to ["
                                        ^(LIST.tostr wireid2str "," (h::t))^"]");
             WCollMany(h::t)
