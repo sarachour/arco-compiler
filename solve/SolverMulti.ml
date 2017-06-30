@@ -318,8 +318,9 @@ struct
     let steps = QUEUE.to_list stepq in
     (*TODO: test if exceeded maximum number of components*)
     QUEUE.destroy stepq;
-    debug ("# partial ids = "^(string_of_int (SET.size ids)));
-    debug (SearchLib.steps2str 1 (partial_id_to_tree ms (SET.nth ids 0)) steps);
+    Printf.printf "=== PARTIAL STEPS (#=%d)===\n%s\n======\n\n"
+      (SET.size ids)
+      (SearchLib.steps2str 1 (partial_id_to_tree ms (SET.nth ids 0)) steps);
     steps
 (*
     let _ = _print_debug ("Number of partials applied: "^(string_of_int (SET.size ids))) in
@@ -432,7 +433,7 @@ struct
       let wrap_varcfg lbl = {expr=mast2uast (SlnLib.ulabel2mexpr lbl)} in
       let steps = [
         SModSln(SSlnAddComp(ccblk_inst));
-        SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_in));
+        SModSln(SSlnAddRoute(SlnLib.xchg_wire lbl ccblk_in));
         SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_out));
         SModCompCtx(SCMakeConcComp(ccblk));
         SModCompCtx(SCAddInCfg(ccblk_inst,ccblk_in.port,wrap_varcfg lbl));

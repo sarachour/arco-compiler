@@ -191,6 +191,7 @@ struct
 
   let _rm_wire_from_label (type c) test_eq (m:(c,wire_coll) map) (key:c)  (wire:wireid) =
     let matches = MAP.filter m (fun other_key other_coll -> test_eq other_key key) in
+    Printf.printf "    -> # matches = %d\n" (List.length matches);
     LIST.iter (fun (key,coll) ->
       let ncoll = match coll with
         | WCollEmpty -> WCollEmpty
@@ -205,26 +206,19 @@ struct
             end
 
         | WCollMany(h::t) ->
-          if LIST.has (h::t) wire
-          then
-            match List.filter (fun x -> x != wire) (h::t) with
+          let other_labels = List.filter (fun x -> x <> wire) (h::t) in
+          begin
+            match other_labels  with
             | [] -> WCollEmpty
-            | [h] -> WCollOne(h)
-            | h::t -> WCollMany(h::t)
-          else
-            begin
-              error "rm_wire_from_label" ("[LAX-ERROR] wire "^
-                                          (wireid2str wire)^" does not belong to ["
-                                          ^(LIST.tostr wireid2str "," (h::t))^"]");
-              WCollMany(h::t)
-            end
+            | [x] -> WCollOne(x)
+            | x::y -> WCollMany(x::y)
+          end
+
         | WCollMany([]) -> error "rm_wire_from_label" "cannot have no elements in many cllection"
       in
-      if WCollEmpty = ncoll then
-        noop (MAP.rm m key) 
-      else
+      noop (MAP.rm m key);
+      if WCollEmpty <> ncoll then
         noop (MAP.put m key ncoll) 
-
       ) matches;
     wire
 
@@ -239,6 +233,7 @@ struct
   let add_route (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
       let wire =
+      Printf.printf "-> add route %s\n" (label2str albl f g);
         match albl with
         | MInLabel(lbl) ->
           _add_wire_to_label std_eq sln.route.ins lbl.var lbl.wire; 
@@ -255,6 +250,7 @@ struct
 
   let add_generate (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
       fun sln albl f g ->
+        Printf.printf "-> add generate %s\n" (label2str albl f g);
         let wire =
           match albl with
           | MInLabel(lbl) ->
@@ -272,6 +268,7 @@ struct
 
   let rm_generate (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
+      Printf.printf "-> remove generate %s\n" (label2str albl f g);
       let wire =
         match albl with
         | MInLabel(lbl) ->
@@ -289,6 +286,7 @@ struct
 
   let rm_route (type a) (type b): (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
+      Printf.printf "-> remove route %s\n" (label2str albl f g);
       let wire = match albl with
         | MInLabel(lbl) ->
           _rm_wire_from_label (std_eq) sln.route.ins lbl.var lbl.wire

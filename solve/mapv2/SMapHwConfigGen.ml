@@ -167,11 +167,15 @@ struct
               let map_inst = MAP.get ctx.insts inst in
               MAP.iter conccomp.cfg.pars (
                 fun (param_name:string) (param_val:number) ->
+                  Printf.printf "par: %s[%d].%s = %s\n"
+                    (HwLib.hwcompname2str compname) compinst 
+                    (param_name) (string_of_number param_val);
                   MAP.put map_inst.params param_name param_val;
                   ()
               );
           )
         )
+
   let make_bin : cfggen_ctx -> cfggen_bin -> unit =
     fun ctx bin1 ->
       if GRAPH.hasnode ctx.bins bin1 = false then
@@ -554,6 +558,8 @@ struct
       (*evaluate components to get results*)
       MAP.iter ctx.insts (fun (inst:hwcompinst) (inst_data:map_comp_ctx) ->
           let spec : map_comp = MAP.get tblspec.comps inst.name in
+          Printf.printf "=== Component %s.%d ===\n"
+            (HwLib.hwcompname2str inst.name) inst.inst;
           MAP.iter spec.inputs (fun (port:string) _ ->
               Printf.printf "-> evaluate input <%s>\n" port;
               evaluate_port inst inst_data port 
