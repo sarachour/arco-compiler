@@ -32,7 +32,7 @@ struct
       if MAP.has ctx.params param then
         MAP.get ctx.params param
       else
-        raise (SMapCompCtx_error "does not have param")
+        raise (SMapCompCtx_error ("does not have param:"^param))
 
   let get_max_sample_period : map_comp_ctx-> string -> number option =
     fun ctx name ->

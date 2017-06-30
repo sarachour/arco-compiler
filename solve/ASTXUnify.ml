@@ -182,7 +182,7 @@ struct
     fun uenv comp cfg inst inport expr ->
       MAP.iter comp.ins (fun (port:string) (hvar:hwvid hwportvar) ->
           let hwid : hwvid =
-            HwLib.port2hwid hvar.knd hvar.comp hvar.port hvar.prop hvar.typ
+            HwLib.portvar2hwid hvar inst
           in
           if inport = port then
             AlgebraicLib.UnifyEnv.init_pat uenv (HwId hwid) expr
