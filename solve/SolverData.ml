@@ -131,6 +131,9 @@ type sslnctx =
   | SSlnRmRoute of ulabel
   | SSlnAddGen of ulabel
   | SSlnAddComp of hwcompinst
+  | SSlnAddProducer of ulabel 
+  | SSlnAddConsumer of ulabel 
+  | SSlnRmConsumer of ulabel 
 
 type sgoalctx =
   | SGAddGoal of goal

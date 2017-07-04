@@ -510,13 +510,7 @@ struct
       (*map generate values to the ports in each inst. Also map the value to each
       sink the generate port feeds into.*)
       bind_labels_to_wires tbl ctx sln.generate
-        (fun (wire:wireid) ->
-           if MAP.has sln.conns.src2dest wire then
-             let sinks = MAP.get sln.conns.src2dest wire in
-             wire::(SET.to_list sinks)
-           else
-             [wire]
-        )
+        (fun (wire:wireid) -> [wire] )
         (fun (port:string) (interval:interval) -> interval_to_val interval )
         (fun (port:string) (interval:interval) -> interval_to_val interval )
         (fun (port:string) (interval:interval) -> interval_to_val interval )

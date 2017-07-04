@@ -371,17 +371,18 @@ struct
   let create_global_context (ms:musearch) (tbl:gltbl) : sstep list list =
     let ctx = glblctx_mk () in
     (*pull partial solution route to a goal*)
-    let _conn_generate_to_route routelbl routewire generates expr =
+    let conn_producer_to_consumer consume_lbl (consume_wire:wireid) producers expr =
       debug "   - connecting generates to routes.";
-      if LIST.empty generates = false then
+      if LIST.empty producers = false then
         begin
           glblctx_mk_chblock ctx;
-          List.iter (fun gen_wire ->
-              let goal = GoalLib.mk_conn_goal tbl gen_wire routewire expr in
+          List.iter (fun (produce_wire:wireid) ->
+              let goal = GoalLib.mk_conn_goal tbl produce_wire consume_wire expr in
               glblctx_add_ch ctx ([
-                  SModGoalCtx(SGAddGoal(goal))
+                  SModGoalCtx(SGAddGoal(goal));
+                  SModSln(SSlnRmConsumer(consume_lbl));
                 ]);
-          ) generates;
+          ) producers;
           glblctx_commit_chblock ctx;
         end
       else
@@ -408,6 +409,7 @@ struct
         SModSln(SSlnAddComp(ccblk_inst));
         SModSln(SSlnAddRoute(SlnLib.xchg_wire lbl ccblk_in));
         SModSln(SSlnAddGen(SlnLib.xchg_wire lbl ccblk_out));
+        SModSln(SSlnRmConsumer(SlnLib.xchg_wire lbl wire));
         SModCompCtx(SCMakeConcComp(ccblk));
         SModCompCtx(SCAddInCfg(ccblk_inst,ccblk_in.port,wrap_varcfg lbl));
         SModCompCtx(SCAddOutCfg(ccblk_inst,ccblk_out.port,wrap_varcfg lbl));
@@ -443,82 +445,52 @@ struct
       steps 
     in
     (*these are routes that require you plug in a generate*)
-    debug ("==== ROUTES =====");
-    SlnLib.iter_routes tbl.sln_ctx (fun (route:('a,'b) label) (generates:wireid list) ->
-        debug ("> "^(SlnLib.ulabel2str route));
-        let wire = SlnLib.label2wire route in
-        match wire.comp.name with
-        | HWCmOutput(_) ->
-          error "mk_glbl_ctx" "unexpected route to HWCMOutput"
-        | HWCmInput(_) ->
-          debug "    - ignoring route to input block."
-        | HWCmCopy(_) ->
-          error "mk_glbl_ctx" "unexpected route to HWCopy"
-        | HWCmComp(_) ->
+    debug ("==== CONSUMERS =====");
+    SlnLib.iter_consumers tbl.sln_ctx (fun (consumer:('a,'b) label)  ->
+        match consumer with
+        | MInLabel(data) ->
           begin
-          match route with
-          | MInLabel(lbl)->
-            let inpblock_steps = mk_input_block route lbl.wire (SlnLib.ulabel2mexpr route) in
+            let inpblock_steps = mk_input_block consumer data.wire (SlnLib.ulabel2mexpr consumer) in
             glblctx_mk_chblock ctx;
             glblctx_add_ch ctx inpblock_steps;
             glblctx_commit_chblock ctx
-          | MOutLabel(lbl) ->
-            _conn_generate_to_route route lbl.wire generates (SlnLib.ulabel2mexpr route) 
-          | MLocalLabel(lbl)->
-            _conn_generate_to_route route lbl.wire generates (SlnLib.ulabel2mexpr route) 
-          | ValueLabel(lbl)->
-            let inpblock_steps = mk_input_block route lbl.wire (SlnLib.ulabel2mexpr route) in
+          end
+
+        | ValueLabel(data) ->
+          begin
+            let inpblock_steps = mk_input_block consumer data.wire (SlnLib.ulabel2mexpr consumer) in
             glblctx_mk_chblock ctx;
             glblctx_add_ch ctx inpblock_steps;
             glblctx_commit_chblock ctx
-          | MExprLabel(_) ->
-            begin
-              let mint,musr = SolverEqn.mkmenu tbl None in
-              force (fun() -> musr());
-              error "create_global_context"
-                "route-config should not be possible incomplete configuration"
-            end
+          end
 
-        end
-      );
-    debug ("==== GENERATES =====");
-    SlnLib.iter_generates tbl.sln_ctx (fun (generate:('a,'b) label) (route:wireid list) ->
-        debug ("> "^(SlnLib.ulabel2str generate));
-        let wire = SlnLib.label2wire generate in
-        match wire.comp.name with
-        | HWCmOutput(_) ->
-          debug "    - ignoring generate to output block."
-        | HWCmInput(_) ->
-          debug "    - ignoring generate to input block."
-        | HWCmCopy(_) ->
-          error "mk_glbl_ctx" "copy unexpected for generatre"
-        | HWCmComp(_) ->
-          if SlnLib.connected_to_outblock tbl.sln_ctx wire
-          then
-            begin
-              debug "    - ignoring connected output block";
-              ()
-            end
-          else
-            begin
-              match generate with
-              | MOutLabel(lbl) ->
-                (*create a new label*)
-                let outblock_steps = mk_output_block generate lbl.wire (SlnLib.ulabel2mexpr generate) in
-                glblctx_mk_chblock ctx;
-                glblctx_add_ch ctx outblock_steps;
-                glblctx_commit_chblock ctx
+        | MOutLabel(data) ->
+          begin
+            let producers = SlnLib.ulabel_get_producer_wires tbl.sln_ctx consumer in
+            conn_producer_to_consumer consumer data.wire producers (SlnLib.ulabel2mexpr consumer) 
 
-              | MInLabel(_) ->
-                ()
-              | MLocalLabel(_) ->
-                ()
-              | MExprLabel(_) ->
-                ()
-              | ValueLabel(_) ->
-                ()
-            end
+          end
+        | MLocalLabel(data) ->
+          begin
+            let producers = SlnLib.ulabel_get_producer_wires tbl.sln_ctx consumer in
+            conn_producer_to_consumer consumer data.wire producers (SlnLib.ulabel2mexpr consumer) 
+          end
       );
+    debug ("==== PRODUCERS =====");
+    SlnLib.iter_producers tbl.sln_ctx (fun (producer:('a,'b) label) ->
+        match producer with
+        | MOutLabel(data) ->
+          (*create a new label*)
+          let outblock_steps =
+            mk_output_block producer data.wire (SlnLib.ulabel2mexpr producer)
+          in
+          glblctx_mk_chblock ctx;
+          glblctx_add_ch ctx outblock_steps;
+          glblctx_commit_chblock ctx
+        | MLocalLabel(_) -> ()
+
+      );
+
     let node_steps = glblctx_mk_nodes ctx in
     node_steps
 
@@ -571,30 +543,9 @@ struct
   (*a solution is complete if all the routing connections are on inputs*)
   let is_complete_sln ms (tbl:gltbl) =
     let valid = REF.mk true in
-    SlnLib.iter_routes tbl.sln_ctx (fun (route:ulabel) generates ->
-        let wire : wireid= SlnLib.label2wire route in
-        match wire.comp.name with
-        | HWCmComp(cmp) ->
-          begin
-            match route with
-              | MInLabel(_) -> REF.upd valid (fun x -> false)
-              | ValueLabel(_) -> REF.upd valid (fun x -> false)
-              | MOutLabel(lbl) ->
-                if is_var_solved ms lbl.var
-                then REF.upd valid (fun x -> false)
-              | MLocalLabel(lbl) ->
-                if is_var_solved ms lbl.var
-                then REF.upd valid (fun x -> false)
-              | MExprLabel(x) ->
-                error "is_complete_solution" "not expecting an expression."
-          end
-
-        | HWCmInput(cmp) ->
-          ()
-        | _ ->
-          warn "is_complete_sln" "not expected an output or a conn route"
-
-    );
+    SlnLib.iter_consumers tbl.sln_ctx (fun (consumer:ulabel) ->
+        REF.upd valid (fun x -> false)
+      );
     REF.dr valid
 
   (*determine if the solution is complete or not and augment tree*)

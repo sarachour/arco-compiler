@@ -31,7 +31,13 @@ struct
     {src2dest=MAP.make(); dest2src=MAP.make()}
 
   let mksln () : ('a,'b) sln =
-    {comps=SET.make_dflt();conns=mkconns(); route=mklabels(); generate=mklabels()}
+    {comps=SET.make_dflt();
+     conns=mkconns();
+     route=mklabels();
+     produce=mklabels();
+     consume=mklabels();
+     generate=mklabels()
+    }
 
   let mkdflt_wire () : wireid =
     {comp={name=HWCmComp("?");inst=0};port="?"}
@@ -161,6 +167,7 @@ struct
     WCollEmpty
 
 
+      
 
 
 
@@ -168,6 +175,10 @@ struct
     | WCollEmpty -> []
     | WCollOne(wire) -> [wire]
     | WCollMany(wires) -> wires
+
+  let expr_eq (type a): (a->string) -> a ast -> a ast -> bool =
+    fun fn x y ->
+      (ASTLib.ast2str x fn) = (ASTLib.ast2str y fn)
 
   let _add_wire_to_label (type c) test_eq (m:(c,wire_coll) map) (key:c) (wire:wireid) =
     let matches = MAP.filter m (fun other_key other_coll -> test_eq other_key key) in
@@ -189,6 +200,28 @@ struct
       noop (MAP.put m key (WCollOne(wire)));
     wire
 
+  let _get_label_wires (type a) (type b) : (a,b) labels -> (a,b) label -> (a->string) -> (b->string) -> wireid list =
+    fun labels lbl a_str b_str->
+      let a_cmp x y = (a_str x) = (a_str y) in 
+      let b_cmp x y = expr_eq b_str x y in 
+      let matches m key test_eq =
+        MAP.filter_values m (fun other_key other_coll -> test_eq other_key key)
+      in
+      let wcolls : wire_coll list = match lbl with
+        | MInLabel(lbl) ->
+          matches labels.ins lbl.var a_cmp
+        | MOutLabel(lbl) -> 
+          matches labels.outs lbl.var a_cmp
+        | MLocalLabel(lbl) ->
+          matches labels.locals lbl.var a_cmp
+        | ValueLabel(lbl) ->
+          matches labels.vals lbl.value NUMBER.eq
+        | MExprLabel(lbl) ->
+          matches labels.exprs lbl.expr b_cmp
+      in
+      LIST.fold wcolls (fun w rest -> rest @ (wirecoll2list w)) []
+
+
   let _rm_wire_from_label (type c) test_eq (m:(c,wire_coll) map) (key:c)  (wire:wireid) =
     let matches = MAP.filter m (fun other_key other_coll -> test_eq other_key key) in
     Printf.printf "    -> # matches = %d\n" (List.length matches);
@@ -200,8 +233,8 @@ struct
           then  WCollEmpty
           else
             begin
-              error "rm_wire_from_label"
-              ("[LAX-ERROR] this wire is not assigned to the variable:"^(wireid2str wire)^"!=@"^(wireid2str cwire));
+              warn "rm_wire_from_label"
+              ("[LAX-WARN] this wire is not assigned to the variable:"^(wireid2str wire)^"!=@"^(wireid2str cwire));
               WCollOne(cwire)
             end
 
@@ -225,10 +258,7 @@ struct
   let std_eq : 'a -> 'a -> bool =
     fun x y -> (x = y)
 
-  let expr_eq (type a): (a->string) -> a ast -> a ast -> bool =
-    fun fn x y ->
-      (ASTLib.ast2str x fn) = (ASTLib.ast2str y fn)
-
+  
                    
   let add_route (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
@@ -266,6 +296,38 @@ struct
         in
         ()
 
+  let add_consumer (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+    fun sln label f g ->
+      let wire =
+        match label with
+        | MInLabel(lbl) ->
+            _add_wire_to_label std_eq sln.consume.ins lbl.var lbl.wire
+        | MOutLabel(lbl) ->
+            _add_wire_to_label std_eq sln.consume.outs lbl.var lbl.wire
+        | MLocalLabel(lbl) ->
+            _add_wire_to_label std_eq sln.consume.locals lbl.var lbl.wire
+        | ValueLabel(lbl) ->
+          _add_wire_to_label std_eq sln.consume.vals lbl.value lbl.wire
+        | _ ->
+          error "add_consumer" "cannot consume an expression."
+      in
+      ()
+
+  let add_producer (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+    fun sln label f g ->
+      let wire =
+        match label with
+        | MOutLabel(lbl) ->
+            _add_wire_to_label std_eq sln.produce.outs lbl.var lbl.wire
+        | MLocalLabel(lbl) ->
+            _add_wire_to_label std_eq sln.produce.locals lbl.var lbl.wire
+        | ValueLabel(lbl) ->
+          error "add_consumer" "cannot produce an value."
+        | _ ->
+          error "add_consumer" "cannot produce an expression."
+      in
+      ()
+
   let rm_generate (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
       Printf.printf "-> remove generate %s\n" (label2str albl f g);
@@ -300,8 +362,41 @@ struct
           _rm_wire_from_label (expr_eq g) sln.route.exprs lbl.expr lbl.wire
       in
       ()
- 
 
+  let rm_consumer (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+    fun sln label f g ->
+      let wire =
+        match label with
+        | MInLabel(lbl) ->
+            _rm_wire_from_label std_eq sln.consume.ins lbl.var lbl.wire
+        | MOutLabel(lbl) ->
+            _rm_wire_from_label std_eq sln.consume.outs lbl.var lbl.wire
+        | MLocalLabel(lbl) ->
+            _rm_wire_from_label std_eq sln.consume.locals lbl.var lbl.wire
+        | ValueLabel(lbl) ->
+          _rm_wire_from_label std_eq sln.consume.vals lbl.value lbl.wire
+        | _ ->
+          error "rm_consumer" "cannot consume an expression."
+      in
+      ()
+
+  let rm_producer (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
+    fun sln label f g ->
+      let wire =
+        match label with
+        | MOutLabel(lbl) ->
+            _rm_wire_from_label std_eq sln.produce.outs lbl.var lbl.wire
+        | MLocalLabel(lbl) ->
+            _rm_wire_from_label std_eq sln.produce.locals lbl.var lbl.wire
+        | ValueLabel(lbl) ->
+          error "rm_consumer" "cannot produce an value."
+        | _ ->
+          error "rm_consumer" "cannot produce an expression."
+      in
+      ()
+
+  
+   
   let iter_insts (sln:usln) fn : unit =
     SET.iter sln.comps (fun inst -> fn inst)
   
@@ -312,59 +407,97 @@ struct
           ) 
       )
 
-  let _iter_labels (type a) (type b) (trg:(a,b) labels) (othr:(a,b) labels)
-      (fn:(a,b) label -> wireid list -> unit) : unit =
-    let traverse tmap omap flbl =
-      MAP.iter tmap (fun vr (this_coll:wire_coll) ->
-          let other_coll : wireid list =
-            wirecoll2list (MAP.get_dflt omap vr WCollEmpty)
-          in
-          List.iter (fun (wire:wireid) ->
-            let lbl = flbl wire vr in
-            fn lbl other_coll
-            ) (wirecoll2list this_coll)
-        )
-    in
-    traverse trg.ins othr.ins (fun wire v -> MInLabel({wire=wire;var=v}));
-    traverse trg.outs othr.outs (fun wire v -> MOutLabel({wire=wire;var=v}));
-    traverse trg.locals othr.locals (fun wire v -> MLocalLabel({wire=wire;var=v}));
-    traverse trg.vals othr.vals (fun wire v -> ValueLabel({wire=wire;value=v}));
-    traverse trg.exprs othr.exprs (fun wire v -> MExprLabel({wire=wire;expr=v}));
-    ()
+  let _iter_labels (type a) (type b) : (a,b) labels -> ((a,b) label -> unit) -> unit =
+    fun trg fn ->
+      let traverse tmap flbl =
+        MAP.iter tmap (fun vr (this_coll:wire_coll) ->
+            List.iter (fun (wire:wireid) ->
+                let lbl = flbl wire vr in
+                fn lbl 
+              ) (wirecoll2list this_coll)
+          )
+      in
+      traverse trg.ins (fun wire v -> MInLabel({wire=wire;var=v}));
+      traverse trg.outs (fun wire v -> MOutLabel({wire=wire;var=v}));
+      traverse trg.locals (fun wire v -> MLocalLabel({wire=wire;var=v}));
+      traverse trg.vals (fun wire v -> ValueLabel({wire=wire;value=v}));
+      traverse trg.exprs (fun wire v -> MExprLabel({wire=wire;expr=v}));
+      ()
 
-  let iter_routes (sln:usln) fn : unit =
-    _iter_labels sln.route sln.generate fn
+  let iter_routes (type a) (type b): (a,b) sln -> ((a,b) label -> unit) -> unit =
+    fun sln fn  ->
+      _iter_labels sln.route fn
 
-  let iter_generates (sln:usln) fn: unit =
-    _iter_labels sln.generate sln.route fn
+  let iter_generates (type a) (type b): (a,b) sln -> ((a,b) label -> unit) -> unit =
+    fun sln fn ->
+      _iter_labels sln.generate fn 
 
+  let iter_consumers (type a) (type b) : (a,b) sln -> ((a,b) label-> unit) -> unit =
+    fun sln fn ->
+      _iter_labels sln.consume fn 
 
-  let iter_labels (sln:usln) fn: unit =
-    iter_routes sln fn;
-    iter_generates sln fn
+  let iter_producers (type a) (type b) : (a,b) sln -> ((a,b) label -> unit) -> unit =
+    fun sln fn ->
+      _iter_labels sln.produce fn 
 
-  let wire2labels (sln:usln) (wire:wireid) : ulabel list=
-    let matches : ulabel set = SET.make () in
-    iter_routes sln (fun (x:ulabel) wires ->
-        if (label2wire x) = wire
+  let get_producer_wires (type a) (type b): (a,b) sln -> (a,b) label ->
+    (a->string) -> (b->string) -> wireid list =
+    fun sln lbl a_str b_str ->
+      _get_label_wires sln.produce lbl a_str b_str
+
+  let ulabel_get_producer_wires : usln -> ulabel -> wireid list =
+    fun sln lbl ->
+      get_producer_wires sln lbl ident mid2str
+
+  let iter_labels (type a) (type b): (a,b) sln -> ((a,b) label -> unit) -> unit =
+    fun sln fn ->
+      iter_routes sln fn;
+      iter_generates sln fn
+
+  let wire2producer (type a) (type b) : (a,b) sln -> wireid -> (a,b) label option =
+    fun sln wire ->
+      error "wire2producer" "unimplemented";
+      None
+
+  let wire2consumer (type a) (type b) : (a,b) sln -> wireid -> (a,b) label option =
+    fun sln wire ->
+      error "wire2producer" "unimplemented";
+      None
+
+  let wire2ulabel : wireid -> mid ast -> ulabel =
+    fun wire mexpr ->
+       match mexpr with
+          |Term(MNVar(MOutput,s)) -> MOutLabel({var=s;wire=wire})
+          |Term(MNVar(MInput,s)) -> MInLabel({var=s;wire=wire})
+          |Term(MNVar(MLocal,s)) -> MLocalLabel({var=s;wire=wire})
+          |Integer(i) -> ValueLabel({wire=wire;value=Integer i})
+          |Decimal(i) -> ValueLabel({wire=wire;value=Decimal i})
+          |expr -> MExprLabel({wire=wire;expr=expr})
+
+  let wire2labels (type a) (type b) : (a,b) sln -> wireid -> (a,b) label list =
+    fun sln wire ->
+      let matches : (a,b) label set = SET.make () in
+      iter_routes sln (fun (x:(a,b) label) ->
+          if (label2wire x) = wire
+          then noop (SET.add matches x) else ()
+        );
+      iter_generates sln (fun (x:(a,b) label)  ->
+          if (label2wire x) =  wire
         then noop (SET.add matches x) else ()
-      );
-    iter_generates sln (fun (x:ulabel) (wires:wireid list) ->
-        if (label2wire x) =  wire
-        then noop (SET.add matches x) else ()
-      );
-    let result =  SET.to_list matches in
-    SET.destroy(matches);
-    result
+        );
+      let result =  SET.to_list matches in
+      SET.destroy(matches);
+      result
 
-  let connected_to_outblock (sln:usln) (w:wireid) =
-    if MAP.has sln.conns.src2dest w = false then false else
-      let dests = MAP.get sln.conns.src2dest w in
-      let outs = SET.filter dests (fun (x:wireid) -> match x.comp.name with
-          | HWCmOutput(_) -> true
-          | _ -> false
-        ) in
-      List.length outs > 0
+  let connected_to_outblock (type a) (type b) : (a,b) sln -> wireid -> bool =
+    fun sln wire ->
+      if MAP.has sln.conns.src2dest wire = false then false else
+        let dests = MAP.get sln.conns.src2dest wire in
+        let outs = SET.filter dests (fun (x:wireid) -> match x.comp.name with
+            | HWCmOutput(_) -> true
+            | _ -> false
+          ) in
+        List.length outs > 0
 
   let wirecoll2str (a:wire_coll) = match a with
     | WCollEmpty -> "{}"
@@ -401,12 +534,18 @@ struct
       ) ""
 
   let sln2str (s:('a,'b) sln) (f:'a -> string) (g:'b->string) : string=
-    let str = "\n=== Route ===\n"^
-              (labels2str s.route f g)^
-              "\n=== Generate ===\n"^
-              (labels2str s.generate f g)^
-              "\n=== Connect ===\n"^
-              (conns2str s)
+    let str =
+      "\n--- Consume ---\n"^
+      (labels2str s.consume f g)^
+      "\n--- Produce ---\n"^
+      (labels2str s.produce f g)^
+      "\n"^
+      "\n=== Route ===\n"^
+      (labels2str s.route f g)^
+      "\n=== Generate ===\n"^
+      (labels2str s.generate f g)^
+      "\n=== Connect ===\n"^
+      (conns2str s)
     in
     str
 

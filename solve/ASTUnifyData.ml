@@ -13,12 +13,15 @@ assignments. we will add interval information *)
 
 
 type rstep =
+        (*the port models.*)
         | RAddInAssign of string*hwvarcfg
         | RAddOutAssign of string*hwvarcfg
         | RAddParAssign of string*number
+        (*the port is a connection*)
         | RConnectOutput of string*wireid*hwvarcfg
         | RConnectInput of string*wireid*hwvarcfg
-
+        (*the port actually solves an output*)
+        | RSolveMathVar of string*mid
 
 
 

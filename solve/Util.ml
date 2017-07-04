@@ -246,6 +246,12 @@ struct
     | Decimal(0.0) -> true
     | _ -> false
 
+  let eq a b = match a,b with
+    | Integer(x),Integer(y) -> x = y
+    | Decimal(x),Decimal(y) -> x = y
+    | Integer(x),Decimal(y) -> float_of_int x = y
+    | Decimal(x),Integer(y) -> float_of_int y = x
+
   let eq_int x i = match x with
     | Integer(j) -> i = j
     | Decimal(j) -> (float_of_int i) = j 
@@ -1084,6 +1090,12 @@ struct
 
   let filter (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
     fold x (fun q v k -> if f q v then (q,v)::k else k) []
+
+  let filter_values (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (b) list =
+    fold x (fun q v k -> if f q v then (v)::k else k) []
+
+  let filter_keys (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (a) list =
+    fold x (fun q v k -> if f q v then (q)::k else k) []
 
    let to_list (type a) (type b) (x:(a,b) map) : (a*b) list =
     fold x (fun q v k -> (q,v)::k) []

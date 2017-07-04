@@ -284,7 +284,7 @@ struct
 
   (*=========== RSTEP to SSTEP Conversion ==================*)
   (* handle an assignment to an input port*)
-  let rassign_input_port_to_goal (stepq:sstep queue) (tbl:gltbl) (comp:ucomp_conc)
+  let rstep_assign_input_port_to_ssteps(stepq:sstep queue) (tbl:gltbl) (comp:ucomp_conc)
       (v:string) (cfg:hwvarcfg) (force_passthrough:bool) : unit =
     let enq s = noop (QUEUE.enqueue stepq s) in
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
@@ -304,6 +304,8 @@ struct
         if force_passthrough then
           let goal = GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr) in
           enq (SModGoalCtx(SGAddGoal(goal)))
+        else
+          enq (SModSln(SSlnAddConsumer(MLocalLabel({var=name;wire=wire}))));
       end
 
     | Term(MNVar(MOutput,name)) ->
@@ -312,6 +314,8 @@ struct
         if force_passthrough then
           let goal = GoalLib.mk_hexpr_goal tbl wire (uast2mast cfg.expr) in
           enq (SModGoalCtx(SGAddGoal(goal)))
+        else
+          enq (SModSln(SSlnAddConsumer(MOutLabel({var=name;wire=wire}))));
       end
 
 
@@ -347,7 +351,7 @@ struct
 
 
   (*resolve output port assignments*)
-  let rassign_output_port_to_goal (stepq:sstep queue )(tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) :
+  let rstep_assign_output_port_to_gen (stepq:sstep queue )(tbl:gltbl) (comp:ucomp_conc) (v:string) (cfg:hwvarcfg) :
     unit =
     let enq s = noop (QUEUE.enqueue stepq s) in
     let wire = SlnLib.mkwire comp.d.name comp.inst v in
@@ -357,27 +361,12 @@ struct
         
     | Term(MNVar(MOutput,name)) ->
         (*this is a generator for an output. remove the math goal*)
-      enq (SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire}))));
-      let conn_outblock_goal = GoalLib.mk_outblock_goal tbl wire (uast2mast cfg.expr) in
-      enq (SModGoalCtx(SGAddGoal(conn_outblock_goal)));
-      let goal_to_remove_opt : goal option = GoalLib.try_get_math_goal tbl name in
-      begin
-        match goal_to_remove_opt with
-        | Some(goal_to_remove) ->
-          enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
-        | None -> ()
-      end
+      enq (SModSln(SSlnAddGen(MOutLabel({var=name;wire=wire}))))
+            
 
     | Term(MNVar(MLocal,name)) ->
-      enq (SModSln(SSlnAddGen(MLocalLabel({var=name;wire=wire}))));
-      let goal_to_remove_opt : goal option = GoalLib.try_get_math_goal tbl name in
-      begin
-        match goal_to_remove_opt with
-        | Some(goal_to_remove) ->
-          enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
-        | None -> ()
-      end
-
+      enq (SModSln(SSlnAddGen(MLocalLabel({var=name;wire=wire}))))
+      
     (*if we found a connection*)
     | Term((MNParam(_))) ->
       error "rstep_to_goal" "not expecting param"
@@ -403,12 +392,12 @@ struct
           (*input assignments become goals*)
           | RAddInAssign(v,cfg) ->
             enq (SModCompCtx(SCAddInCfg(compid,v,cfg)));
-            rassign_input_port_to_goal sstepq tbl comp v cfg force_passthrough
+            rstep_assign_input_port_to_ssteps sstepq tbl comp v cfg force_passthrough
 
           (*out assignments are already satisfied*)
           | RAddOutAssign(v,cfg) ->
             enq (SModCompCtx(SCAddOutCfg(compid,v,cfg)));
-            rassign_output_port_to_goal sstepq tbl comp v cfg
+            rstep_assign_output_port_to_gen sstepq tbl comp v cfg
 
           | RAddParAssign(v,cfg) ->
             enq (SModCompCtx(SCAddParCfg(compid,v,cfg)))
@@ -420,8 +409,9 @@ struct
             in
             begin
               enq (SModGoalCtx(SGAddGoal(conn_goal)));
-              rassign_output_port_to_goal sstepq tbl comp src cfg
+              rstep_assign_output_port_to_gen sstepq tbl comp src cfg
             end
+
           | RConnectInput(src,srcwire,cfg) ->
             let destwire : wireid = {comp={name=comp.d.name; inst=comp.inst}; port=src} in
             let conn_goal = GoalLib.mk_conn_goal tbl
@@ -429,7 +419,37 @@ struct
             in
             begin
               enq (SModGoalCtx(SGAddGoal(conn_goal)));
-              rassign_output_port_to_goal sstepq tbl comp src cfg
+              rstep_assign_output_port_to_gen sstepq tbl comp src cfg
+            end
+
+          | RSolveMathVar(src,MNVar(MOutput,name)) ->
+            begin
+              let srcwire : wireid = {comp={name=comp.d.name; inst=comp.inst}; port=src} in
+              enq (SModSln(SSlnAddProducer(MOutLabel({var=name;wire=srcwire}))));
+              let goal_to_remove_opt : goal option = GoalLib.try_get_math_goal tbl name in
+              begin
+                match goal_to_remove_opt with
+                | Some(goal_to_remove) ->
+                  enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
+                | None -> ()
+              end;
+              let conn_outblock_goal = GoalLib.mk_outblock_goal tbl srcwire
+                  (Term (MNVar(MOutput,name)))
+              in
+              enq (SModGoalCtx(SGAddGoal(conn_outblock_goal)))
+            end
+
+          | RSolveMathVar(src,MNVar(MLocal,name)) ->
+            begin
+              let srcwire : wireid = {comp={name=comp.d.name; inst=comp.inst}; port=src} in
+              enq (SModSln(SSlnAddProducer(MLocalLabel({var=name;wire=srcwire}))));
+              let goal_to_remove_opt : goal option = GoalLib.try_get_math_goal tbl name in
+              begin
+                match goal_to_remove_opt with
+                | Some(goal_to_remove) ->
+                  enq (SModGoalCtx(SGRemoveGoal(goal_to_remove)));
+                | None -> ()
+              end
             end
 
     in
@@ -548,6 +568,7 @@ struct
           SolverCompLib.get_extendable_inputs_for_outblock_goal tbl.env.hw ConcCompLib.newcfg
             port_out_portvar conn_start_wire hgoal.prop
         in
+        let conn_start_label = SlnLib.wire2producer tbl.sln_ctx conn_start_wire in
         begin
           LIST.iter (fun (port_in_var:hwvid) ->
               let port_in_portname = HwLib.hwid2portname port_in_var in
@@ -561,7 +582,17 @@ struct
               in
               BOOLEAN.both (fun force_passthrough ->
                   commit_results results rm_goal_steps (fun ccomp rsteps inits ->
-                      (rsteps_to_ssteps tbl ccomp rsteps inits force_passthrough)
+                      let port_out_wire = mkwire ccomp.d.name ccomp.inst port_out_portvar.port in
+                      match conn_start_label with
+                      | Some(label) ->
+                        let new_label =
+                          SlnLib.xchg_wire label port_out_wire
+                        in
+                        SModSln(SSlnAddProducer(new_label))::
+                        (rsteps_to_ssteps tbl ccomp rsteps inits force_passthrough)
+
+                      | None ->
+                        rsteps_to_ssteps tbl ccomp rsteps inits force_passthrough
                     )
                 )
             ) port_in_vars;
@@ -759,7 +790,6 @@ struct
     in
     let steps = [
       SModSln(SSlnAddConn({src=conn.src;dst=conn.dst}));
-      SModSln(SSlnRmRoute(get_label_of_input_wire conn.dst))
     ] @ rm_goal_steps in
     Printf.printf "%s\n" (LIST.tostr SlvrSearchLib.step2str "\n" steps);
     steps
@@ -767,11 +797,17 @@ struct
 
   let trivial_inblock_to_steps (tbl:gltbl) (ioblock:goal_ioblock) : sstep list =
     let matched_goals : (int*goal) list=
-      GoalLib.find_goals tbl (GUnifiable(GUHWConnInBlock(ioblock))) in
+      GoalLib.find_goals tbl (GUnifiable(GUHWConnInBlock(ioblock)))
+    in
     let rm_goal_steps :sstep list=
       List.map (fun (i,x) -> SModGoalCtx(SGRemoveGoal(x))) matched_goals
     in
-    let steps = [] @ rm_goal_steps in
+    let label = SlnLib.wire2ulabel ioblock.wire ioblock.expr in
+    (*connect to an input block.*)
+    let steps = [
+      SModSln(SSlnAddConsumer(label))
+    ] @ rm_goal_steps
+    in
     steps
 
 

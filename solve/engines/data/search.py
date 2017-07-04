@@ -8,6 +8,7 @@ class SympySearchPath:
         def __init__(self):
             self.restricts = [];
             self.assigns = {};
+            self.solved = None;
             self.subs = {};
             self.templ = None;
             self.targ = None;
@@ -27,6 +28,12 @@ class SympySearchPath:
               self.assigns[k] = a[k];
           return self;
 
+        def set_solved(self,v):
+          if v != None:
+            v1,v2 = v         
+            self.solved = (v1,v2)
+          return self;
+
         def set_unify(self,v,e):
             self.templ = v;
             self.targ = e;
@@ -38,15 +45,18 @@ class SympySearchPath:
             self.subs = dict(v.subs);
             self.templ = (v.templ);
             self.targ = (v.targ);
+            self.solved = (v.solved);
             return self
+
 
 class SympyResults:
 
-        def __init__(self):
+        def __init__(self,remove_none=True):
            self.results = [];
+           self._remove_none = remove_none;
 
         def join(self,assigns):
-           if assigns != None:
+           if assigns != None or not self._remove_none:
                 self.results.append(assigns);
 
         def pop(self):
@@ -96,12 +106,14 @@ class SympyResults:
 
         def empty(self):
            return len(self.results) == 0
-   
+
+
 class SympyCtx:
 
         def __init__(self,templ,targ,cfg):
            self.restricts = SympyResults();
            self.assigns = SympyResults();
+           self.solved = SympyResults(false);
            self.subs = SympyResults();
            self.outputs = SympyResults();
 
@@ -123,7 +135,7 @@ class SympyCtx:
            self.subs.join(targ.get_inits())
 
         def push(self,search_path):
-           self.restricts.join(search_path.restricts)
+
            new_asgns = {};
            if isinstance(search_path.targ,basestring):
               new_asgns[search_path.templ]=Symbol(search_path.targ)
@@ -133,7 +145,8 @@ class SympyCtx:
            for v in search_path.assigns:
               new_asgns[v] = search_path.assigns[v]
 
-           self.assigns.join(new_asgns)
+                      
+        
 
            #outputs that are still un-unified
            outs = list(self.outputs.last())
@@ -142,15 +155,23 @@ class SympyCtx:
            else:
                outs.remove(search_path.templ)
 
+           self.restricts.join(search_path.restricts)
+           self.assigns.join(new_asgns)
+           self.solved.join(search_path.solved)
            self.outputs.join(outs)
-           self.depth += 1;
            self.subs.join(search_path.subs)
+           self.depth += 1;
 
         def pop(self):
+           self.depth -= 1;
+           print(self.depth);
+           print(self.solved.results)
+           print(self.subs.results)
+           print(self.assigns.results)
            self.restricts.pop()
            self.subs.pop()
-           self.depth -= 1;
            self.assigns.pop()
+           self.solved.pop()
            self.outputs.pop()
 
         def apply_ctx(self):
@@ -431,6 +452,7 @@ class SympySlnGenerator:
     def __init__(self,ctx):
         self.ctx = ctx;
         self.assigns = SympyResults();
+        self.solved = SympyResults();
         self.history = SearchHistory();
 
     def is_var(self,expr):
@@ -444,9 +466,11 @@ class SympySlnGenerator:
         templ_expr = ctx.templ.get_eqn(search_path.templ)
         
         if(self.is_var(search_path.targ)):
+            solved = (search_path.templ,search_path.targ);
             targ_expr = ctx.targ.get_eqn(search_path.targ)
 
         else:
+            solved = None;
             targ_expr = Eqn(search_path.targ);
 
         templ = []
@@ -461,14 +485,14 @@ class SympySlnGenerator:
         elif (not templ_expr.is_diffeq()) and (not targ_expr.is_diffeq()):
             ()
         elif (not templ_expr.is_diffeq()) and targ_expr.is_diffeq():
-            return None;
+            return solved,None;
         elif templ_expr.is_diffeq() and (not targ_expr.is_diffeq()):
-            return None;
+            return solved,None;
         else:
             raise (Exception("unexpected.. covered all cases"))
 
         a_single_asgn = Basic(*targ).match(Basic(*templ))
-        return a_single_asgn
+        return solved,a_single_asgn
 
     def get_asgn_list(self,latest):
         ctx = self.ctx
@@ -482,12 +506,26 @@ class SympySlnGenerator:
     def get_restrict_list(self):
         return self.ctx.restricts.flatten_lists()
 
-    def add_sln(self,new_asgns):
+    def get_solved_list(self,latest):
+        ctx = self.ctx
+        complete_solved = ctx.solved.results[:]
+        complete_solved.append(latest);
+        indep_solved = []
+        for i in range(0,len(complete_solved)):
+           if complete_solved[i] != None:
+              indep_solved.append(complete_solved[i])
+
+        return indep_solved
+
+    def add_sln(self,new_asgns,new_solved):
         indep_asgns = self.get_asgn_list(new_asgns);
+        indep_solved = self.get_solved_list(new_solved);
         print("succ",indep_asgns)
         #mark sln as great
         self.history.assigns.update_list(indep_asgns,lambda x: x.success())
         self.assigns.join(dict(indep_asgns));
+        print(indep_solved)
+        self.solved.join(dict(indep_solved));
         restricts = self.get_restrict_list()
         self.history.restricts.update(restricts,lambda x: x.success())
 
@@ -502,7 +540,7 @@ class SympySlnGenerator:
     def get_sln(self,search_path):
 
         self.ctx.push(search_path);
-        new_asgn_maybe = self.unify_exprs(search_path)
+        solved,new_asgn_maybe = self.unify_exprs(search_path)
 
         if new_asgn_maybe == None:
             self.ctx.pop()
@@ -512,7 +550,8 @@ class SympySlnGenerator:
         new_asgn = {key.name: val for key,val in new_asgn_maybe.items()}
         conflicts = self.ctx.get_conflicts(new_asgn)
 
-        print("CONFLICT",conflicts)
+        print("-> Solved",solved)
+        print("-> Conflicts",conflicts)
         if len(conflicts) > 0:
             var, expr = conflicts[0]
             self.history.assigns.update(var,expr,lambda x: x.conflict())
@@ -521,8 +560,8 @@ class SympySlnGenerator:
                 path1 = SympySearchPath().add_assigns(new_asgn)
                 path2 = SympySearchPath().add_assigns(new_asgn)
 
-                path1.set_unify(var,expr.name);
-                path2.set_unify(var,expr)
+                path1.set_unify(var,expr.name).set_solved(solved)
+                path2.set_unify(var,expr).set_solved(solved)
 
                 results1 = self.get_sln(path1)
                 results2 = self.get_sln(path2)
@@ -531,13 +570,13 @@ class SympySlnGenerator:
 
             else:
                 path1 = SympySearchPath().add_assigns(new_asgn);
-                path1.set_unify(var,expr)
+                path1.set_unify(var,expr).set_solved(solved)
                 results1 = self.get_sln(path1)
                 self.ctx.pop();
                 return results1;
 
         else:
-            self.add_sln(new_asgn);
+            self.add_sln(new_asgn,solved);
             self.ctx.pop()
             return 1;
 
@@ -550,7 +589,10 @@ class SympySlnGenerator:
         return restricts
 
     def get_assignments(self):
-        return self.assigns
+        return self.assigns.results
+
+    def get_solved(self):
+        return self.solved.results
 
     def print_assignments(self):
         for asgns in self.assigns.results:

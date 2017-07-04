@@ -152,6 +152,8 @@ type ('a,'b) sln = {
   mutable conns: conn_env;
   generate: ('a,'b) labels;
   route: ('a,'b) labels;
+  produce: ('a,'b) labels;
+  consume: ('a,'b) labels;
   mutable comps: hwcompinst set;
 }
 

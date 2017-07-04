@@ -16,6 +16,7 @@ struct
     type 'a unify_t =
       | DefinePat of 'a
       | DefineSym of 'a
+      | DefineSymUnmodelled of 'a
       | DefinePatExpr of 'a*'a ast
       | DefinePatDerivExpr of 'a*'a ast*'a ast
       | RestrictPat of 'a*'a ast
@@ -44,6 +45,10 @@ struct
                  to_string=tostr;label=label}
 
     let enq  e s = e.steps <- s::e.steps
+
+    let define_sym_unmodelled (type a) : a t -> a -> unit =
+      fun env var ->
+        enq env (DefineSymUnmodelled(var))
 
     let define_sym (type a) : a t -> a -> unit =
       fun env var ->
@@ -219,12 +224,14 @@ struct
       {varmap=VarMapper.init(tostr)}
 
   let simplify (type a) (env:a t) (expr: a ast) =
-
       ()
 
+  type 'a result = {
+     assigns: ('a*'a ast) list;
+     solved: ('a*'a) list;
+   }
   
-  
-   let unify (type a) (env:a t) (prob:a UnifyEnv.t) (n) (size) =
+   let unify (type a) (env:a t) (prob:a UnifyEnv.t) (n) (size) : a result list =
      VarMapper.clear env.varmap;
      print_string "=== SYMS ====\n";
      List.iteri ~f:(fun i (v:a) ->
@@ -268,14 +275,21 @@ struct
            end
 
          | DefineSym(v) ->
-             begin
-               Printf.fprintf fh
-                 "engine.targ.define_variable(\"%s\")\n"
-                 (VarMapper.conv_sym env.varmap v);
-               Printf.fprintf fh
-                 "engine.targ.label_variable(\"%s\",\"%s\")\n"
-                 (VarMapper.conv_sym env.varmap v) (prob.to_string v)
-             end
+           begin
+             Printf.fprintf fh
+               "engine.targ.define_variable(\"%s\")\n"
+               (VarMapper.conv_sym env.varmap v);
+             Printf.fprintf fh
+               "engine.targ.label_variable(\"%s\",\"%s\")\n"
+               (VarMapper.conv_sym env.varmap v) (prob.to_string v)
+           end
+
+         | DefineSymUnmodelled(v) ->
+           begin
+             Printf.fprintf fh
+               "engine.targ.add_unmodelled(\"%s\")\n"
+               (VarMapper.conv_sym env.varmap v)
+           end
 
          | DefinePatExpr(v,e) ->
            Printf.fprintf fh
@@ -369,28 +383,46 @@ struct
      close_out fh;
      Sys.command ("python "^file^" > "^logfile);
      let oh = open_in outfile in
-     let result : (a*a ast) list list =
+   
+     let result : a result list =
        In_channel.fold_lines oh ~init:[]
-        ~f:(fun (slns: (a*a ast) list list) (line:string)->
-          let terms = STRING.split line "|" in
-          let sln : (a*a ast) list = List.map ~f:(
-              fun (term:string) ->
-                let args = String.split term '$' in
-                match args with
-                | [lhs;rhs] ->
-                  begin
-                    print "[ALG]" (lhs^"="^rhs);
-                    let vr : a = VarMapper.inv_v env.varmap lhs in
-                    let expr : a ast =
-                      ASTLib.from_symcaml (SymCaml.string_of_repr rhs)
-                        (VarMapper.inv_v env.varmap)
-                    in
-                    (vr,expr)
-                  end
-                | _ -> raise (AlgebraicLib_error "unexpected")
-            ) terms
-          in
-          sln::slns
+        ~f:(fun (slns:a result list) (line:string)->
+             let subseq : string list = STRING.split line "++" in
+             let var_terms : string list =
+               STRING.split (OPTION.force_conc (List.nth subseq 0)) "|"
+             in
+             let assign_terms : string list =
+               STRING.split (OPTION.force_conc (List.nth subseq 1)) "|"
+             in
+             let solved : (a*a) list =List.map ~f:(fun (term:string)->
+                 let args = String.split term '$' in
+                 match args with
+                 | [v1;v2] ->
+                   (
+                     VarMapper.inv_v env.varmap v1,
+                     VarMapper.inv_v env.varmap v2 
+                   )
+               ) var_terms
+             in
+             let assign: (a*a ast) list = List.map ~f:(
+                 fun (term:string) ->
+                   let args = String.split term '$' in
+                   match args with
+                   | [lhs;rhs] ->
+                     begin
+                       print "[ALG]" (lhs^"="^rhs);
+                       let vr : a = VarMapper.inv_v env.varmap lhs in
+                       let expr : a ast =
+                         ASTLib.from_symcaml (SymCaml.string_of_repr rhs)
+                           (VarMapper.inv_v env.varmap)
+                       in
+                       (vr,expr)
+                     end
+                   | _ -> raise (AlgebraicLib_error "unexpected")
+               ) assign_terms
+             in
+             let result : a result = {assigns=assign;solved=solved} in
+             result::slns
         )
      in
      result

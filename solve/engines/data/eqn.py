@@ -1,5 +1,14 @@
 from sympy import * 
 
+class Unmodelled:
+        def __init__(self,v):
+                self.kind ="unmodelled"
+                self.eqn = v
+
+        def is_diffeq(self):
+                return False;
+
+
 class Eqn:
         def __init__(self,e):
                 self.kind = "eqn"
@@ -28,6 +37,7 @@ class SOEq:
                 self.outs = [];
                 self.pars = {};
                 self.eqns = {};
+                self.unmodelled = {};
                 self.inits = {};
                 self.restricts = {};
                 self.diffeqns = {};
@@ -100,6 +110,10 @@ class SOEq:
                 return self.eqns[v]
             else:
                 return self.diffeqns[v]
+
+        def add_unmodelled(self,v):
+            self.outs.append(v);
+            self.unmodelled[v] = Unmodelled(v);
 
         def add_eqn(self,v,e):
             self.outs.append(v);

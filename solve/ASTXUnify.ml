@@ -139,38 +139,6 @@ struct
       (*define the symbols*)
       let vars : unid list = ASTLib.get_vars hexpr in
       (*variables unification depends on*)
-      (*
-      List.iter (fun (uvar:unid) -> match uvar with
-          | MathId(MNVar(_,name)) ->
-            begin
-              AlgebraicLib.UnifyEnv.define_sym env (uvar);
-              let mvar = MathLib.getvar menv name in
-              match mvar.bhvr with
-              | MBhvVar(bhv) ->
-                begin
-                  AlgebraicLib.UnifyEnv.define_sym_expr env (uvar) (mast2uast bhv.rhs)
-                end
-              | MBhvInput ->
-                begin
-                  AlgebraicLib.UnifyEnv.define_sym_expr env (uvar) (Term (uvar))
-                end
-              | MBhvStateVar(bhv) ->
-                begin
-                  (*TODO: add derivative if unmodelled *)
-                end
-                
-            end
-          | MathId(MNParam(name,v)) ->
-            begin
-              AlgebraicLib.UnifyEnv.define_sym_param env (uvar) ([v])
-            end
-          | MathId(_) ->
-            raise (ASTUnifier_error "unhandled mathid variable")
-          | HwId(hid) ->
-            raise (ASTUnifier_error "hwid not expected in assignment goal.")
-          
-        ) vars;
-      *)
       (*actual unification*)
       AlgebraicLib.UnifyEnv.define_sym env (HwId hwtargvar);
       AlgebraicLib.UnifyEnv.define_sym_expr env (HwId hwtargvar) hexpr;
@@ -195,9 +163,9 @@ struct
   (*
      this is the math expression.
   *)
-  let construct_math : unid AlgebraicLib.UnifyEnv.t -> mid menv ->  bool -> unit
+  let construct_math : unid AlgebraicLib.UnifyEnv.t -> mid menv ->  bool -> bool -> unit
     =
-      fun (env) (menv) model_derivs ->
+      fun (env) (menv) model_fxns model_derivs ->
         MathLib.iter_vars menv (fun mvar ->
             let mid : mid = MathLib.var2mid mvar in
             AlgebraicLib.UnifyEnv.define_sym env (MathId mid); 
@@ -209,14 +177,16 @@ struct
                     (MathId mid) (mast2uast bhv.rhs)
                     (ASTLib.number2ast bhv.ic)
                 else
-                  AlgebraicLib.UnifyEnv.define_sym_expr env
-                    (MathId mid) (Term (MathId mid))
+                    AlgebraicLib.UnifyEnv.define_sym_unmodelled env (MathId mid)
+
               end
             | MBhvVar(bhv) ->
               begin
-                AlgebraicLib.UnifyEnv.define_sym_expr env
-                  (MathId mid) (mast2uast bhv.rhs);
-                ()
+                if model_fxns then
+                  AlgebraicLib.UnifyEnv.define_sym_expr env
+                    (MathId mid) (mast2uast bhv.rhs)
+                else
+                  AlgebraicLib.UnifyEnv.define_sym_unmodelled env (MathId mid)
               end
             | MBhvInput ->
               begin
@@ -242,9 +212,9 @@ struct
       ()
 
   (*given an assignment*)
-  let to_rsteps : string -> unid ast option -> (unid*unid ast) list -> rstep list
+  let to_rsteps : string -> unid ast option -> unid AlgebraicLib.result -> rstep list
     -> rstep list =
-    fun patport targexpr asgns init_steps ->
+    fun patport targexpr result init_steps ->
       (*convert an assignment to variable*)
       let to_assign_rstep : unid -> unid ast -> rstep =
         fun vrb expr ->
@@ -289,7 +259,7 @@ struct
                        "unexpected: cannot have connection for math unify")
           end
       in
-      let all_steps = LIST.fold asgns (fun (v,e) (steps:rstep list)  ->
+      let assign_steps = LIST.fold result.assigns (fun (v,e) (steps:rstep list)  ->
           match e with
           (*the connection unification can be ignored*)
           | Term(variable) ->
@@ -335,7 +305,21 @@ struct
 
         ) init_steps 
       in
-      all_steps
+      let model_steps = LIST.fold result.solved (fun (port,v) (steps:rstep list) ->
+          match port,v with
+          | HwId(HNPort(HWKOutput,_,outport,_)),MathId(mid) ->
+            RSolveMathVar(outport,mid)::steps
+
+          (*this is a connection*)
+          | HwId(HNPort(HWKOutput,_,_,_)), HwId(HNPort(HWKInput,_,_,_)) -> steps
+
+          | _ ->
+            raise (ASTUnifier_error
+                     ("unexpected modelled assign:"^(unid2str port)^"="^(unid2str v))
+                  )
+        ) assign_steps
+      in
+      model_steps
 
 
   let solve_math :
@@ -347,7 +331,7 @@ struct
           AlgebraicLib.UnifyEnv.init
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwvar;
-        construct_math un_env menv true;
+        construct_math un_env menv true true;
         prioritize_math un_env menv mvar;
         let alg_env = AlgebraicLib.init (unid2str) in
         let branching = Globals.get_glbl_int "unify-branch" in
@@ -365,7 +349,7 @@ struct
         let un_env = AlgebraicLib.UnifyEnv.init
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwpatvar;
-        construct_math un_env menv false;
+        construct_math un_env menv true false;
         construct_hw_expr un_env hwenv menv htargvar hexpr;
         let alg_env = AlgebraicLib.init (unid2str) in
         let branching = Globals.get_glbl_int "unify-branch" in
@@ -383,7 +367,7 @@ struct
         let un_env = AlgebraicLib.UnifyEnv.init
             (HwLib.hwcompname2str comp.name) (unid2str) in
         construct_hw_comp un_env comp cfg inst hwpatoutput;
-        construct_math un_env menv false;
+        construct_math un_env menv false false;
         construct_hw_expr un_env hwenv menv htargvar hexpr;
         force_assign un_env comp cfg inst hwpatinput hexpr;
         (*TODO: foreach other input, don't allow this assignment*)

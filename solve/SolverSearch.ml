@@ -172,9 +172,15 @@ struct
 
   let slnstep2str (n:sslnctx) = match n with
     | SSlnAddConn(conn) -> "[sln] conn "^(SlnLib.wireconn2str conn)
+
     | SSlnAddRoute(label) -> "[sln] route "^(SlnLib.label2str label ident mid2str)
     | SSlnAddGen(label) -> "[sln] generate "^(SlnLib.label2str label ident mid2str)
+    | SSlnAddProducer(label) -> "[sln] producer "^(SlnLib.label2str label ident mid2str)
+    | SSlnAddConsumer(label) -> "[sln] consumer "^(SlnLib.label2str label ident mid2str)
+
     | SSlnRmRoute(label) -> "[sln] rm-route "^(SlnLib.label2str label ident mid2str)
+    | SSlnRmConsumer(label) -> "[sln] rm-consumer "^(SlnLib.label2str label ident mid2str)
+
     | SSlnAddComp(comp) -> "[sln] add-comp "^(HwLib.hwcompinst2str comp
                                              )
   let mapstep2str (n:smapctx) = match n with
@@ -198,20 +204,6 @@ struct
     | SModSln(c) -> slnstep2str c
     | _ -> error "step2str" "unimplemented"
 
-  (*
-  match n with
-  | SAddGoal(v) -> "add "^(UnivLib.goal2str v)
-  | SRemoveGoal(v) -> "rm "^(UnivLib.goal2str v)
-  | SAddNodeRel(id,i,rel) ->
-    (*)"SLN ADDNODE "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^(List.fold_right (fun x r -> r^"; "^(UnivLib.urel2str x)) rels "")*)
-    "s.addnode "^(UnivLib.unodeid2name id)^"."^(string_of_int i)^" :=: "^(UnivLib.uvar2str rel)
-  | SSolUseNode(id,i) -> "s.use "^(UnivLib.unodeid2name id)^"."^(string_of_int i)
-  | SSolAddConn(src,snk) -> "s.mkconn "^(SlnLib.wire2str src)^" <-> "^(SlnLib.wire2str snk)
-  | SSolAddLabel(w,p,l) -> "s.mklbl "^(SlnLib.wire2str w)^"."^p^" -> "^(SlnLib.label2str l)
-  | SSolRemoveLabel(w,p,l) -> "s.rmlbl "^(SlnLib.wire2str w)^"."^p^" -> "^(SlnLib.label2str l)
-  | SMakeGoalActive(v) -> "activate "^(UnivLib.goal2str v)
-  | SMakeGoalPassive(v) -> "inactive "^(UnivLib.goal2str v)
-  *)
 
   let inst2inst_goal_step (s:sgoalctx) (fn:hwcompinst->hwcompinst) : sgoalctx = match s with
     | SGAddGoal(g) -> SGAddGoal(GoalLib.inst2inst_goal g fn)
@@ -220,9 +212,14 @@ struct
 
   let inst2inst_sln_step (s:sslnctx) (fn:hwcompinst->hwcompinst) : sslnctx = match s with
     | SSlnAddConn(conn) -> SSlnAddConn(SlnLib.inst2inst_conn conn fn)
+
     | SSlnAddGen(label) -> SSlnAddGen(SlnLib.inst2inst_label label fn)
     | SSlnAddRoute(label) -> SSlnAddRoute(SlnLib.inst2inst_label label fn)
+    | SSlnAddConsumer(label) -> SSlnAddConsumer(SlnLib.inst2inst_label label fn)
+    | SSlnAddProducer(label) -> SSlnAddProducer(SlnLib.inst2inst_label label fn)
+
     | SSlnRmRoute(label) -> SSlnRmRoute(SlnLib.inst2inst_label label fn)
+    | SSlnRmConsumer(label) -> SSlnRmConsumer(SlnLib.inst2inst_label label fn)
     | SSlnAddComp(compinst) -> SSlnAddComp(fn compinst)
 
   let inst2inst_comp_step (s:scmpctx) (fn:hwcompinst->hwcompinst): scmpctx = match s with
@@ -246,9 +243,14 @@ struct
 
   let apply_sln_step (tbl:gltbl) (s:sslnctx) : unit = match s with
     | SSlnAddConn(conn) -> SlnLib.add_conn tbl.sln_ctx conn 
+
     | SSlnAddGen(label) -> SlnLib.add_generate tbl.sln_ctx label ident mid2str
     | SSlnAddRoute(label) -> SlnLib.add_route tbl.sln_ctx label ident mid2str
+    | SSlnAddProducer(label) -> SlnLib.add_producer tbl.sln_ctx label ident mid2str
+    | SSlnAddConsumer(label) -> SlnLib.add_consumer tbl.sln_ctx label ident mid2str
+
     | SSlnRmRoute(label) -> SlnLib.rm_route tbl.sln_ctx label ident mid2str
+    | SSlnRmConsumer(label) -> SlnLib.rm_consumer tbl.sln_ctx label ident mid2str
     | SSlnAddComp(compinst) -> SlnLib.add_comp tbl.sln_ctx compinst
   
   let apply_comp_step (tbl:gltbl) (s:scmpctx) : unit = match s with
@@ -276,11 +278,15 @@ struct
     | SModGoalCtx(SGChangeGoalStatus(_)) ->2
     | SModCompCtx(SCMakeConcComp(_)) -> 3
     | SModSln(SSlnAddRoute(_)) -> 4
-    | SModSln(SSlnRmRoute(_)) -> 5
-    | SModSln(_) -> 5
-    | SModMapCtx(_) -> 6
-    | SModCompCtx(_) -> 7
-    | SModGoalCtx(SGRemoveGoal(_)) -> 8
+    | SModSln(SSlnAddGen(_)) -> 5 
+    | SModSln(SSlnAddConsumer(_)) -> 6
+    | SModSln(SSlnAddProducer(_)) -> 7
+    | SModSln(SSlnRmRoute(_)) -> 8
+    | SModSln(SSlnRmConsumer(_)) -> 9
+    | SModSln(_) -> 10
+    | SModMapCtx(_) -> 11
+    | SModCompCtx(_) -> 12
+    | SModGoalCtx(SGRemoveGoal(_)) -> 13
     
   let order_steps x y =
     let score_x = priority x in
@@ -297,9 +303,15 @@ struct
 
   let unapply_sln_step (tbl:gltbl) (s:sslnctx) : unit = match s with
     | SSlnAddConn(conn) -> SlnLib.rm_conn tbl.sln_ctx conn 
-    | SSlnAddGen(label) -> SlnLib.rm_generate tbl.sln_ctx label ident mid2str 
+
+    | SSlnAddGen(label) -> SlnLib.rm_generate tbl.sln_ctx label ident mid2str
     | SSlnAddRoute(label) -> SlnLib.rm_route tbl.sln_ctx label ident mid2str 
+    | SSlnAddProducer(label) -> SlnLib.rm_producer tbl.sln_ctx label ident mid2str
+    | SSlnAddConsumer(label) -> SlnLib.rm_consumer tbl.sln_ctx label ident mid2str
+
     | SSlnRmRoute(label) -> SlnLib.add_route tbl.sln_ctx label ident mid2str
+    | SSlnRmConsumer(label) -> SlnLib.add_consumer tbl.sln_ctx label ident mid2str
+
     | SSlnAddComp(compinst) -> SlnLib.rm_comp tbl.sln_ctx compinst
     | _ -> error "unapply_sln_step" "handler for step casedoes not exist"
 
