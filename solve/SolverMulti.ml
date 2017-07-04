@@ -375,6 +375,7 @@ struct
       debug "   - connecting generates to routes.";
       if LIST.empty producers = false then
         begin
+          (*consider each possible connection*)
           glblctx_mk_chblock ctx;
           List.iter (fun (produce_wire:wireid) ->
               let goal = GoalLib.mk_conn_goal tbl produce_wire consume_wire expr in
@@ -386,7 +387,14 @@ struct
           glblctx_commit_chblock ctx;
         end
       else
-        ()
+        begin
+          (* this variable is not yet modelled. Ignore the consumer tag *)
+          glblctx_add_ch ctx ([
+            SModSln(SSlnRmConsumer(consume_lbl));
+          ]);
+          glblctx_commit_chblock ctx;
+        end
+
     in
     (*make an input block that connects to a wire*)
     let mk_input_block lbl (wire:wireid) expr =
