@@ -145,7 +145,7 @@ struct
             )
         end
 
-      
+        
 
      
   let rewrite_equiv : z3expr list -> z3expr -> simpl_z3expr option =
@@ -153,7 +153,7 @@ struct
       match expr with
       | Z3Power(base,exp) ->
         (*b^1 -> b *)
-        xform_power_with_matching_base equivs base exp  
+        xform_power_with_matching_base equivs base exp
       | _ -> None
 
 
@@ -360,20 +360,37 @@ struct
               and hmax = number_to_z3_expr hwival.max in
               let mmin =  number_to_z3_expr mival.min
               and mmax = number_to_z3_expr mival.max in
-              let max_cover =
-                Z3And(
-                  Z3LTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmax),
-                  Z3GTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmin)
-                )
-              in
-              let min_cover =
-                Z3And(
-                  Z3GTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmin),
-                  Z3LTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmax)
-                ) 
-              in
-              Z3Assert(min_cover)::Z3Assert(max_cover)::cstrs
+              if not (NUMBER.eq mival.min mival.max)  then
+                begin
+                  let max_cover =
+                    Z3And(
+                      Z3LTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmax),
+                      Z3GTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmin)
+                    )
+                  in
+                  let min_cover =
+                    Z3And(
+                      Z3LTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmax),
+                      Z3GTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmin)
+                    ) 
+                  in
+                  Z3Comment("cover cstr")::Z3Assert(min_cover)::Z3Assert(max_cover)::cstrs
+                end
+
+              else
+                begin
+                  let num_cover =
+                    Z3And(
+                      Z3GTE(Z3Plus(Z3Mult(scvar,mmin),ofvar),hmin),
+                      Z3LTE(Z3Plus(Z3Mult(scvar,mmax),ofvar),hmax)
+                    ) 
+                  in
+                  Z3Comment("cover cstr")::Z3Assert(num_cover)::cstrs
+
+                end
+
             ) cover_cstrs
+
         ) []
       in
       let time_const_stmts :z3st list = match prob.tc_to_xid with
@@ -382,15 +399,18 @@ struct
           SET.fold prob.xid_time (fun (tmin_maybe,tmax_maybe) asserts ->
               match tmin_maybe, tmax_maybe with
               | Some(tmin),Some(tmax) ->
+                  Z3Comment("time cstr")::
                   Z3Assert(Z3LTE(tc_var,number_to_z3_expr tmax))::
                   Z3Assert(Z3LTE(number_to_z3_expr tmin,tc_var))::
                   asserts
 
               | Some(tmin),None ->
+                  Z3Comment("time cstr")::
                   Z3Assert(Z3LTE(number_to_z3_expr tmin,tc_var))::
                   asserts
 
               | None,Some(tmax) ->
+                  Z3Comment("time cstr")::
                   Z3Assert(Z3LTE(tc_var,number_to_z3_expr tmax))::
                   asserts
 

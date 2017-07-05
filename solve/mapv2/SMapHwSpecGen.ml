@@ -247,18 +247,63 @@ struct
         mkresult args scale offset value cstrs 
 
       | SVSymbol(a), SVNumber(m) ->
+        (*
+           the issue, given n * X
+           the offset term is b_x*(a_n*eps+b_n)
+           if distributed
+           b_x*a_n*n + b_x*b_n
+           the solver does the following (assume n is one here):
+           -b_x*a_n = b_x*b_n
+           b_x \neq 0
+           a_n is large pos value
+           b_n is large neg value
+           a_n neq b_n
+           
+
+        *)
+        (*a1*1/n*(a2*n+b2)*)
+        let scale =
+          SEMult(
+            res1.scale,
+            SEAdd(
+              res2.scale,
+              SEMult(
+                res2.offset, SENumber(NUMBER.div (Integer 1) m)
+              )
+            )
+          )
+        in
+        (*
         let scale =
           SEAdd(
             SEMult(res1.scale,res2.scale),
-            SEDiv(SEMult(res1.scale,res2.offset),SENumber(m))
+            SEMult(res1.scale,
+              SEMult(
+                res2.offset, SENumber(NUMBER.div (Integer 1) m)
+              )
+            )
           )
         in
+        *)
+        (*b1*(a2*n+b2)*)
         let offset =
+          SEMult(
+            res1.offset,
+            SEAdd(
+              SEMult(res2.scale,SENumber(m)),
+              res2.offset
+            )
+          )
+        in
+        (*this is analogous but doesn't work*)
+        (*let offset =
           SEAdd(
-            SEMult(SEMult(res2.scale,res1.offset),SENumber(m)),
+            SEMult(res1.offset,SEMult(res2.scale,SENumber(m))),
             SEMult(res1.offset,res2.offset)
           )
         in
+        *)
+
         let value = SVSymbol(IntervalLib.mult a (IntervalLib.num m)) in
         let cstrs = [] in
         mkresult args scale offset value cstrs 
@@ -305,10 +350,10 @@ struct
       let offset = SENumber(Integer 0) in
       let value = NUMBER.pow n m in
       let scale =
-        SEDiv(SEMult(
+        SEMult(SEMult(
             SEPow(SEMult(res1.scale,SENumber n),SEMult(res2.scale,SENumber m)),
             SEPow(SEMult(res1.scale,SENumber n),res2.offset)
-          ),SENumber(value))
+          ),SENumber(NUMBER.div (Integer 1) value))
       in
       let cstrs = [mk_equal0 res1.offset] in
       mkresult [res1;res2] scale offset (SVNumber value) cstrs
@@ -526,14 +571,20 @@ struct
   let late_bind_assoc : map_ctx -> map_assoc -> map_result list -> map_result =
     fun ctx assoc args ->
       (*TODO: actually implement sorting*)
-      let args_sorted = args in
+      let rank_arg arg = match arg.value with
+        | SVZero -> 0 | SVNumber(_) -> 1 | SVSymbol(_) -> 2
+      in
+      let order_args x y = (rank_arg y) - (rank_arg x) in
+      let args_sorted = List.sort order_args args in
       let late_bind = match assoc with
         | MAssocAdd -> late_bind_add2
         | MAssocMult -> late_bind_mult2
       in
       match args_sorted with
       | h::t ->
-        List.fold_right (fun result arg_i -> late_bind ctx result arg_i) t h
+        List.fold_right (fun result arg_i ->
+            late_bind ctx result arg_i
+          ) t h
       | [h] ->
         h
 

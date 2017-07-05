@@ -224,7 +224,6 @@ struct
 
   let _rm_wire_from_label (type c) test_eq (m:(c,wire_coll) map) (key:c)  (wire:wireid) =
     let matches = MAP.filter m (fun other_key other_coll -> test_eq other_key key) in
-    Printf.printf "    -> # matches = %d\n" (List.length matches);
     LIST.iter (fun (key,coll) ->
       let ncoll = match coll with
         | WCollEmpty -> WCollEmpty
@@ -263,7 +262,6 @@ struct
   let add_route (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
       let wire =
-      Printf.printf "-> add route %s\n" (label2str albl f g);
         match albl with
         | MInLabel(lbl) ->
           _add_wire_to_label std_eq sln.route.ins lbl.var lbl.wire; 
@@ -280,7 +278,6 @@ struct
 
   let add_generate (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
       fun sln albl f g ->
-        Printf.printf "-> add generate %s\n" (label2str albl f g);
         let wire =
           match albl with
           | MInLabel(lbl) ->
@@ -330,7 +327,6 @@ struct
 
   let rm_generate (type a) (type b) : (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
-      Printf.printf "-> remove generate %s\n" (label2str albl f g);
       let wire =
         match albl with
         | MInLabel(lbl) ->
@@ -348,7 +344,6 @@ struct
 
   let rm_route (type a) (type b): (a,b) sln -> (a,b) label -> (a->string) -> (b->string) -> unit =
     fun sln albl f g ->
-      Printf.printf "-> remove route %s\n" (label2str albl f g);
       let wire = match albl with
         | MInLabel(lbl) ->
           _rm_wire_from_label (std_eq) sln.route.ins lbl.var lbl.wire
@@ -488,6 +483,13 @@ struct
       let result =  SET.to_list matches in
       SET.destroy(matches);
       result
+
+  let wire2label (type a) (type b) : (a,b) sln -> wireid -> (a,b) label =
+    fun sln wire ->
+      match wire2labels sln wire with
+      | [h] -> h
+      | _ ->
+        error "wire2label" "single wire"
 
   let connected_to_outblock (type a) (type b) : (a,b) sln -> wireid -> bool =
     fun sln wire ->

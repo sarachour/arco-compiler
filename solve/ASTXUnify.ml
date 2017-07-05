@@ -62,11 +62,7 @@ struct
       let cmpid = HwLib.mkcompid comp.name inst_maybe in 
       (*inputs are wildcards*)
       MAP.iter comp.ins (fun portname portd ->
-        let portid : unid =
-            proc_var (HwLib.port2hwid
-               portd.knd portd.comp portd.port portd.prop portd.typ)
-        in
-
+        let portid : unid = proc_var (HwLib.portvar2hwid portd inst_maybe) in
         match ConcCompLib.get_var_config cfg portname with
         | None -> 
           begin
@@ -89,10 +85,8 @@ struct
       (*outputs are wildcards*)
       MAP.iter comp.outs (fun (portname:string) (portd :hwvid hwportvar)->
         let portid : unid =
-            proc_var (HwLib.port2hwid
-               portd.knd portd.comp portd.port portd.prop portd.typ)
+            proc_var (HwLib.portvar2hwid portd inst_maybe)
         in
-
         match ConcCompLib.get_var_config cfg portname with 
         | None ->
           begin
@@ -105,11 +99,9 @@ struct
               AlgebraicLib.UnifyEnv.define_pat_expr env portid
                 (proc_expr expr.rhs)
             | HWBAnalogState(expr) ->
-              let ic_port,ic_prop = expr.ic in 
-              let ic_id =
-                proc_var (HwLib.port2hwid portd.knd
-                            portd.comp ic_port ic_prop portd.typ)
-              in
+              let ic_port,_ = expr.ic in
+              let ic_portvar = HwLib.comp_getvar comp ic_port  in
+              let ic_id = proc_var (HwLib.portvar2hwid ic_portvar inst_maybe) in 
               AlgebraicLib.UnifyEnv.define_pat env ic_id;
               AlgebraicLib.UnifyEnv.define_pat_deriv_expr env portid
                 (proc_expr expr.rhs) (Term(ic_id)) 
@@ -123,10 +115,7 @@ struct
           end
       );
     let hwvarport = HwLib.comp_getvar comp hwvar in
-    let hwvarid = HwLib.port2hwid
-        hwvarport.knd hwvarport.comp hwvarport.port hwvarport.prop
-        hwvarport.typ
-    in
+    let hwvarid = HwLib.portvar2hwid hwvarport inst_maybe in
     AlgebraicLib.UnifyEnv.pat_prioritize env (proc_var hwvarid);
    () 
 
@@ -270,18 +259,33 @@ struct
                 begin
                   match v,variable with
                   (*we're connecting hardware ports*)
-                  | HwId(HNPort(HWKOutput,_,outport,_)),HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop)) ->
+                  | HwId(HNPort(HWKOutput,_,outport,_)),
+                    HwId(HNPort(HWKInput,HCMGlobal(compinst),port,prop)) ->
                     (to_connect_output_rstep outport compinst port)::steps
 
-                  | HwId(HNPort(HWKInput,_,inport,_)),HwId(HNPort(HWKOutput,HCMGlobal(compinst),port,prop)) ->
+                  | HwId(HNPort(HWKInput,_,inport,_)),
+                    HwId(HNPort(HWKOutput,HCMGlobal(compinst),port,prop)) ->
                     (to_connect_input_rstep inport compinst port)::steps
 
-                  | HwId(HNPort(_)),HwId(HNPort(_)) ->
+                  (* output to output *)
+                  | HwId(HNPort(HWKOutput,_,_,_)),
+                    HwId(HNPort(HWKOutput,_,_,_)) ->
+                      begin
+                        Printf.printf "Assignment %s = %s\n"
+                        (unid2str v)
+                        (uast2str e);
+                        Printf.printf "cannot connect output<->output\n";
+                        steps
+                        (*raise (ASTUnifier_error "cannot connect output<->output");*)
+                      end
+
+                  | HwId(HNPort(HWKInput,_,_,_)),
+                    HwId(HNPort(HWKInput,_,_,_)) ->
                     begin
                       Printf.printf "Assignment %s = %s\n"
                         (unid2str v)
                         (uast2str e);
-                      raise (ASTUnifier_error "cannot connect input<->input, or output<->output")
+                      raise (ASTUnifier_error "cannot connect input<->input");
                     end
 
                   | HwId(_),HwId(_) ->
@@ -311,7 +315,13 @@ struct
             RSolveMathVar(outport,mid)::steps
 
           (*this is a connection*)
-          | HwId(HNPort(HWKOutput,_,_,_)), HwId(HNPort(HWKInput,_,_,_)) -> steps
+          | HwId(HNPort(HWKOutput,_,_,_)),
+            HwId(HNPort(HWKInput,_,_,_)) ->
+            steps
+
+          | HwId(HNPort(HWKOutput,_,_,_)),
+            HwId(HNPort(HWKOutput,_,_,_)) ->
+            steps
 
           | _ ->
             raise (ASTUnifier_error
