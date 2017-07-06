@@ -845,7 +845,6 @@ struct
 
   
   let create_block : string list -> hwvid hwcomp -> hwcompinst 
-    -> (string->interval)
     -> (string->number) -> matst list =
     fun namespace comp inst port_to_ival port_to_ic -> 
       let stmtq = QUEUE.make () in
@@ -935,7 +934,6 @@ struct
             (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
             (*compute handles*)
             let handle = expr2blockdiag q cmpns bhvr.rhs in
-            let ival = port_to_ival vr.port in 
             begin
               match model_noise(), model_ideal() with
               | true,true ->
@@ -948,8 +946,7 @@ struct
               | true,false ->
                 begin
                   let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                  let clamp_out = automate_clamp q cmpns handle ival in 
-                  let noise_out = automate_noise q cmpns clamp_out var_handle in
+                  let noise_out = automate_noise q cmpns handle var_handle in
                   q (add_route_line noise_out int_out);
                   ()
                 end
@@ -959,8 +956,7 @@ struct
                 ()
               | false,false ->
                 begin
-                  let clamp_out = automate_clamp q cmpns handle defs.ival in
-                  q (add_route_line clamp_out int_out)
+                  q (add_route_line handle int_out)
                 end
                 (*this is where you'd pipe the output through a few things*)
                 (*then you connect*)
@@ -970,7 +966,6 @@ struct
             let handle = expr2blockdiag q cmpns bhvr.rhs in
             let icval = port_to_ic vr.port in
             let integ,integ_in,integ_out = create_integrator q cmpns icval in
-            let ival = port_to_ival vr.port in 
             begin
               match model_noise(),model_ideal() with
               | true,true ->
@@ -985,8 +980,7 @@ struct
               | true,false ->
                 begin
                   let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                  let deriv_clamp_out = automate_clamp q cmpns handle ival in
-                  let deriv_noise_out = automate_noise q cmpns deriv_clamp_out var_handle in
+                  let deriv_noise_out = automate_noise q cmpns handle var_handle in
                   let stvar_clamp_out = automate_clamp q cmpns integ_out defs.stvar.ival in
                   q (add_route_line deriv_noise_out integ_in);
                   q (add_route_line stvar_clamp_out int_out);
@@ -1001,9 +995,8 @@ struct
 
               | false,false ->
                 begin
-                  let deriv_clamp_out = automate_clamp q cmpns handle defs.deriv.ival in
                   let stvar_clamp_out = automate_clamp q cmpns integ_out defs.stvar.ival in
-                  q (add_route_line deriv_clamp_out integ_in);
+                  q (add_route_line handle integ_in);
                   q (add_route_line stvar_clamp_out int_out);
                 end
 
@@ -1085,7 +1078,6 @@ struct
     (*create scaffold for used comp.*)
     SolverCompLib.iter_used_comps tbl (fun (inst:hwcompinst) ccomp ->
           let blk = create_block circ_ns ccomp.d inst
-              (port_to_interval ccomp)
               (port_to_ic tbl ccomp)
           in
           (*specialize intervals*)
