@@ -299,11 +299,21 @@ struct
     else
       ""
 
-  let count (s:string) (sub:string) : int=
-    (List.length (split s sub)) - 1
+  let count (s:string) (sub:string) : int =
+    let matches = Str.full_split (Str.regexp sub) s  in
+    List.fold_left (fun cnt m -> match m with
+        | Str.Delim(_) -> cnt+1
+        | _ -> cnt
+      ) 0 matches 
+
+
+  let has (s:string) (sub:string) : bool =
+    count s sub > 0
 
   let startswith (s:string) (p:string) : bool =
     Str.string_match (Str.regexp p) s 0
+
+  let prefix = startswith
 
   let compare (s1) (s2) : int =
     String.compare s1 s2

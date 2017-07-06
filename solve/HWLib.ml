@@ -587,6 +587,27 @@ struct
     let x1 = comp_fold_ins x f x0 in
     comp_fold_outs x f x1
 
+  let comp_iter_digital_ins (type a) : a hwcomp -> (a hwportvar -> hwddefs -> unit) -> unit =
+    fun x fn ->
+      comp_fold_ins x (fun x () -> match x.defs with
+          | HWDDigital(defn) -> fn x defn
+          | _ -> ()
+        ) ()
+
+  let comp_iter_digital_outs (type a) : a hwcomp -> (a hwportvar -> hwddefs -> unit) -> unit =
+    fun x fn ->
+      comp_fold_outs x (fun x () -> match x.defs with
+          | HWDDigital(defn) -> fn x defn
+          | _ -> ()
+        ) ()
+
+  let comp_iter_stvar_outs (type a) : a hwcomp -> (a hwportvar -> a hwaderiv -> unit) -> unit =
+    fun x fn ->
+      comp_fold_outs x (fun x () -> match x.bhvr with
+          | HWBAnalogState(bhvr) -> fn x bhvr
+          | _ -> ()
+      ) ()
+
   let comp_iter_outs (type a) (x:a hwcomp) (f:a hwportvar -> unit) : unit =
     comp_fold_outs x (fun x () -> f x) ()
 
@@ -643,6 +664,12 @@ struct
 
   let iter_comps (type a) (env:a hwenv) (f:a hwcomp->unit) : unit =
     fold_comps env (fun x () -> f x) ()
+
+  let iter_digital_interface (type a) (env:a hwenv) (f:a hwcomp->unit) : unit =
+    fold_comps env (fun x () -> match x.name with
+        | HWCmInput(_) -> f x
+        | HWCmOutput(_) -> f x
+      ) ()
 
   let requires_infer v = match v.defs with
     | HWDAnalog(def) ->

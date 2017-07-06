@@ -43,29 +43,39 @@ let slvr_menu = menu 1
 let slvr_print_inter = print_inter 1
 
 let simulinkformat2suffix f = match f with
-  | SFIdealSDE -> "sdeIdeal"
-  | SFIdealODE -> "odeIdeal"
-  | SFCircSDE -> "sdeCirc"
-  | SFCircODE -> "odeCirc"
-  | SFCircMapODE -> "odeCircMap"
-  | SFCircMapSDE -> "sdeCircMap"
-  | SFIdealMapSDE -> "sdeIdealMap"
-  | SFIdealMapODE -> "odeIdealMap"
+  | SFIdealSDE -> "sde_ideal"
+  | SFIdealODE -> "ode_ideal"
+  | SFRngSDE -> "sde_rng"
+  | SFRngODE -> "ode_rng"
+  | SFRngMapODE -> "ode_rng_map"
+  | SFRngMapSDE -> "sde_rng_map"
+  | SFIdealMapSDE -> "sde_ideal_map"
+  | SFIdealMapODE -> "ode_ideal_map"
+  | SFRngDigSDE -> "sde_digrng"
+  | SFRngDigODE -> "ode_digrng"
+  | SFRngDigMapSDE -> "sde_digrng_map"
+  | SFRngDigMapODE -> "ode_digrng_map"
 
 let to_mat_file slntbl out i format mappings =
   let base = out^"_"^(string_of_int i)^"_"^(simulinkformat2suffix format) in
   let matfile = base^".m" in
   let matcode : matst list option= match format,mappings with
-    | SFCircMapODE,Some(mappings) ->
+    | SFRngMapODE,Some(mappings) ->
       Some(SimulinkGen.to_simulink slntbl mappings base format)
 
-    | SFCircMapSDE,Some(mappings) ->
+    | SFRngMapSDE,Some(mappings) ->
       Some(SimulinkGen.to_simulink slntbl mappings base format)
 
     | SFIdealMapODE,Some(mappings) ->
       Some(SimulinkGen.to_simulink slntbl mappings base format)
 
     | SFIdealMapSDE,Some(mappings) ->
+      Some(SimulinkGen.to_simulink slntbl mappings base format)
+
+    | SFRngDigMapODE,Some(mappings) -> 
+      Some(SimulinkGen.to_simulink slntbl mappings base format)
+
+    | SFRngDigMapSDE,Some(mappings) ->
       Some(SimulinkGen.to_simulink slntbl mappings base format)
 
     | SFIdealMapODE,None ->
@@ -76,12 +86,20 @@ let to_mat_file slntbl out i format mappings =
       warn "to_mat_file" "cannot generate mapped simulink file";
       None
 
-    | SFCircMapODE,None ->
+    | SFRngMapODE,None ->
       warn "to_mat_file" "cannot generate mapped simulink file";
       None
-    | SFCircMapSDE,None ->
+    | SFRngMapSDE,None ->
       warn "to_mat_file" "cannot generate mapped simulink file";
       None
+    | SFRngDigMapODE,None ->
+      warn "to_mat_file" "cannot generate mapped simulink file";
+      None
+    | SFRngDigMapSDE,None ->
+      warn "to_mat_file" "cannot generate mapped simulink file";
+      None
+
+
     | _,_ ->
       Some(SimulinkGen.to_simulink slntbl (MAP.make ()) base format)
   in
@@ -103,7 +121,8 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
   to_mat_file slntbl out i SFCircSDE None;
   *)
   to_mat_file slntbl out i SFIdealODE None;
-  to_mat_file slntbl out i SFCircODE None;
+  to_mat_file slntbl out i SFRngODE None;
+  to_mat_file slntbl out i SFRngDigODE None;
   Printf.printf "===== Solution Found ======\n";
   ()
 
@@ -117,7 +136,8 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   to_mat_file slntbl out i SFCircMapSDE mappings;
   to_mat_file slntbl out i SFIdealMapSDE mappings;
   *)
-  to_mat_file slntbl out i SFCircMapODE mappings;
+  to_mat_file slntbl out i SFRngMapODE mappings;
+  to_mat_file slntbl out i SFRngDigMapODE mappings;
   to_mat_file slntbl out i SFIdealMapODE mappings;
   slvr_print_inter "---- Generating Summary File ---";
   let cmp_sum :string = SolverCompLib.ccomps2str slntbl in

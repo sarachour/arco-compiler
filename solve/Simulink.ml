@@ -44,11 +44,14 @@ type simulink_format =
   | SFIdealODE
   | SFIdealMapSDE
   | SFIdealMapODE
-  | SFCircSDE
-  | SFCircODE
-  | SFCircMapSDE
-  | SFCircMapODE
-
+  | SFRngSDE
+  | SFRngODE
+  | SFRngMapSDE
+  | SFRngMapODE
+  | SFRngDigODE
+  | SFRngDigSDE
+  | SFRngDigMapODE
+  | SFRngDigMapSDE
 
 type simblock = {
   ins : (string,int) map;
@@ -57,9 +60,11 @@ type simblock = {
 type simns = string list
 type simel =
   | SIMBlock of simns*string 
-  | SIMBlockIn of simns*string*
-string
+  | SIMBlockIn of simns*string*string
   | SIMBlockOut of simns*string*string
+
+exception SimulinkError of string
+let error s e = raise (SimulinkError(s^":"^e))
 
 module SimulinkRouter =
 struct
@@ -127,23 +132,29 @@ struct
 
   let model_noise ()= match REF.dr simulink_format with
     | SFIdealSDE -> true
-    | SFCircSDE -> true
-    | SFCircMapSDE -> true
+    | SFRngSDE -> true
+    | SFRngMapSDE -> true
     | _ -> false
 
-  let model_ideal () = match REF.dr simulink_format with
-    | SFCircSDE -> false
-    | SFCircODE -> false
-    | SFCircMapSDE -> false
-    | SFCircMapODE -> false
-    | SFIdealSDE -> true
-    | SFIdealODE -> true
-    | SFIdealMapODE -> true
-    | SFIdealMapSDE -> true
+  let model_op_ranges () = match REF.dr simulink_format with
+    | SFIdealSDE -> false
+    | SFIdealODE -> false
+    | SFIdealMapODE -> false
+    | SFIdealMapSDE -> false
+    | _ -> true
+
+  let model_sample () = match REF.dr simulink_format with
+    | SFRngDigSDE -> true
+    | SFRngDigODE -> true
+    | SFRngDigMapSDE -> true
+    | SFRngDigMapODE -> true
+    | _ -> false
 
   let model_mapper form = match REF.dr simulink_format with
-    | SFCircMapODE -> true
-    | SFCircMapSDE -> true
+    | SFRngDigMapODE -> true
+    | SFRngDigMapSDE -> true
+    | SFRngMapODE -> true
+    | SFRngMapSDE -> true
     | SFIdealMapODE -> true
     | SFIdealMapSDE -> true
     | _ -> false
@@ -154,9 +165,10 @@ struct
   noop (MAP.put basic_fxns "+" "simulink/Math Operations/Sum");;
   noop (MAP.put basic_fxns "int" "simulink/Continuous/Integrator");;
   noop (MAP.put basic_fxns "sat" "simulink/Discontinuities/Saturation");;
-  noop (MAP.put basic_fxns "ver_static" "simulink/Model Verification/Check Static Gap");;
+  noop (MAP.put basic_fxns "ver_static_range" "simulink/Model Verification/Check  Static Range");;
   noop (MAP.put basic_fxns "in" "simulink/Ports & Subsystems/In1");;
   noop (MAP.put basic_fxns "0hold" "simulink/Discrete/Zero-Order Hold");;
+  noop (MAP.put basic_fxns "1hold" "simulink/Discrete/First-Order Hold");;
   noop (MAP.put basic_fxns "out" "simulink/Ports & Subsystems/Out1");;
   noop (MAP.put basic_fxns "const" "simulink/Sources/Constant");;
   noop (MAP.put basic_fxns "noise" "simulink/Sources/Uniform Random Number");;
@@ -243,6 +255,16 @@ struct
     match x with
     | SIMBlock(_) -> MAP.get symtbl.blocks (loc2path x)
 
+  let blk_port_to_id : simel -> int =
+    fun x ->
+      match x with
+      | SIMBlockIn(name,blk,port) ->
+        blk_inport_to_id blk port
+
+      | SIMBlockOut(name,blk,port) ->
+        blk_outport_to_id blk port
+
+
   let mk_sim_in x p = match x with
     | SIMBlock(ns,blk) -> SIMBlockIn(ns,blk,p)
     | _ -> error "mk_sim_in" "input must be on a block"
@@ -277,7 +299,9 @@ struct
       match k with
       | SIMBlock(ns,blkn) ->
         if MAP.has symtbl.blocks (loc2path k) = false then
-          noop (MAP.put symtbl.blocks (loc2path k) {ins=MAP.make();outs=MAP.make()})
+          noop (MAP.put symtbl.blocks (loc2path k)
+                  {ins=MAP.make();outs=MAP.make()})
+
       | SIMBlockIn(ns,blkn,inp) ->
         let blk = get_block (SIMBlock(ns,blkn)) in
         if MAP.has blk.ins inp = false then
@@ -294,6 +318,13 @@ struct
     let path = loc2path k in
     MAP.put symtbl.paths path k;
     ()
+
+  let filter_paths (prefix:simel) (xtra_filter : simel -> bool) : simel list =
+    let prefix_str = loc2path prefix in
+    MAP.filter_values symtbl.paths (fun pref blk ->
+        STRING.prefix pref prefix_str &&
+        (xtra_filter blk)
+      )
 
   let declare_vars ks =
     List.iter (fun x -> declare_var x) ks
@@ -427,6 +458,7 @@ struct
     q (set_param (MATVar model_name) "Solver" (MATLit (MATStr("ode3"))));
     ()
 
+  
   let create_in q (ns:string list) (vr:string)=
     (*comp*)
     let loc = SIMBlock(ns,vr) in
@@ -625,27 +657,26 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"verstatic_"^(string_of_int id)) in
     declare_var (loc);
-    q (add_route_block (get_basic_fxn "ver_static") loc);
+    q (add_route_block (get_basic_fxn "ver_static_range") loc);
     q (set_route_param
-         (loc) "UpperBound"         
+         (loc) "max"         
          (MATLit(MATStr(string_of_float max))));
     q (set_route_param
-         (loc) "LowerBound"         
+         (loc) "min"         
          (MATLit(MATStr(string_of_float min))));
     
     let inp_loc = mk_sim_in loc "I" in
-    let out_loc = mk_sim_out loc "O" in
     SimulinkRouter.position q (loc2path loc);
-    declare_vars [inp_loc;out_loc];
-    loc,inp_loc,out_loc
+    declare_vars [inp_loc];
+    loc,inp_loc
 
   let create_one_hold q namespace sample =
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"hold1_"^(string_of_int id)) in
     declare_var (loc);
-    q (add_route_block (get_basic_fxn "one_hold") loc);
+    q (add_route_block (get_basic_fxn "1hold") loc);
     q (set_route_param
-         (loc) "SampleTime"         
+         (loc) "Ts"         
          (MATLit(MATStr(string_of_float sample))));
     let inp_loc = mk_sim_in loc "I" in
     let out_loc = mk_sim_out loc "O" in
@@ -657,7 +688,7 @@ struct
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"hold0_"^(string_of_int id)) in
     declare_var (loc);
-    q (add_route_block (get_basic_fxn "zero_hold") loc);
+    q (add_route_block (get_basic_fxn "0hold") loc);
     q (set_route_param
          (loc) "SampleTime"         
          (MATLit(MATStr(string_of_float sample))));
@@ -715,7 +746,7 @@ struct
 
   let create_integrator q namespace ic =
     let id = symtbl_size () in
-    let loc = SIMBlock(namespace,"int_"^(string_of_int id)) in
+    let loc = SIMBlock(namespace,"integ_"^(string_of_int id)) in
     declare_var (loc);
     q (add_route_block (get_basic_fxn "int") loc);
     q (set_route_param
@@ -843,45 +874,58 @@ struct
     q (remove_block (loc2path loc) "Out1");
     loc
 
-  
-  let create_block : string list -> hwvid hwcomp -> hwcompinst 
-    -> (string->number) -> matst list =
-    fun namespace comp inst port_to_ival port_to_ic -> 
+
+
+  let create_block : string list -> hwvid hwcomp ->  matst list =
+    fun namespace comp -> 
       let stmtq = QUEUE.make () in
       let q x = noop (QUEUE.enqueue stmtq x) in
       let qs x = noop (QUEUE.enqueue_all stmtq x) in
       let cmploc,cmpns =
-        match create_subsystem q namespace (HwLib.hwcompinst2str inst) with
+        match create_subsystem q namespace (HwLib.hwcompname2str comp.name) with
         | SIMBlock(ns,str) -> SIMBlock(ns,str),ns @ [str]
         | _ -> error "create_block" "subsystem must be a block"
       in
       declare_var cmploc;
       let automate_clamp q cmpns inp ival =
-        let smin,smax = IntervalLib.interval2numbounds ival in
-        let clamp,clamp_in,clamp_out= create_force_range q cmpns smin smax in
-        let ver,ver_in,ver_out = create_verify_range q cmpns smin smax in 
-        q (add_route_line inp ver_in);
-        q (add_route_line ver_out clamp_in);
-        clamp_out
+        if model_op_ranges () then
+          let smin,smax = IntervalLib.interval2numbounds ival in
+          let clamp,clamp_in,clamp_out= create_force_range q cmpns smin smax in
+          if model_mapper () then
+            begin
+              let ver,ver_in = create_verify_range q cmpns smin smax in
+              q (add_route_line inp ver_in);
+              q (add_route_line inp clamp_in);
+              clamp_out
+            end
+
+          else
+            begin
+              q (add_route_line inp clamp_in);
+              clamp_out
+            end
+        else
+          inp
+
       in
       let automate_sample q cmpns inp sample =
-        let hold1,hold1_in,hold1_out = create_one_hold q cmpns
-            (float_of_number sample)
-        in
-      (*
-      let sample_cmp,sample_in,sample_out =
-        create_sample q cmpns (float_of_number sample)
-      in
-      declare_sample comp.name vr.port sample_cmp;
-      *)
-        q (add_route_line inp hold1_in);
-        hold1_out
+        if model_sample () then
+          let hold1,hold1_in,hold1_out = create_zero_hold q cmpns
+              (float_of_number sample)
+          in
+          q (add_route_line inp hold1_in);
+          hold1_out
+        else
+          inp
       in
       let automate_noise q cmpns inp noise_inp =
-        let _,variance,noise_in,noise_out = create_noise q cmpns in 
-        q (add_route_line inp noise_in);
-        q (add_route_line noise_inp variance);
-        noise_out 
+        if model_noise () then
+          let _,variance,noise_in,noise_out = create_noise q cmpns in 
+          q (add_route_line inp noise_in);
+          q (add_route_line (noise_inp ()) variance);
+          noise_out 
+        else
+          inp
       in
 
       HwLib.comp_iter_ins comp (fun vr ->
@@ -889,30 +933,15 @@ struct
           match vr.defs with
           | HWDAnalog(defs) ->
             begin
-              match model_ideal() with
-              | true ->
-                q (add_route_line ext_out int_in)
-
-              | false ->
-                begin
-                  let clamp_out = automate_clamp q cmpns ext_out defs.ival in
-                  q (add_route_line clamp_out int_in);
-                end
+              let clamp_out = automate_clamp q cmpns ext_out defs.ival in
+              q (add_route_line clamp_out int_in);
             end
+
           | HWDDigital(defs) ->
             begin
-              match model_ideal() with
-              | true ->
-                begin
-                  q (add_route_line ext_out int_in)
-                end
-
-              | false ->
-                begin
-                  let sample,_ = defs.sample in
-                  let sample_out = automate_sample q cmpns ext_out sample in
-                  q (add_route_line sample_out int_in)
-                end
+              let sample,_ = defs.sample in
+              let sample_out = automate_sample q cmpns ext_out sample in
+              q (add_route_line sample_out int_in)
             end
 
 
@@ -934,96 +963,38 @@ struct
             (*let min,max = IntervalLib.interval2numbounds defs.ival in*)
             (*compute handles*)
             let handle = expr2blockdiag q cmpns bhvr.rhs in
-            begin
-              match model_noise(), model_ideal() with
-              | true,true ->
-                begin
-                  let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                  let noise_out = automate_noise q cmpns handle var_handle in
-                  q (add_route_line noise_out int_out);
-                  ()
-                end
-              | true,false ->
-                begin
-                  let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                  let noise_out = automate_noise q cmpns handle var_handle in
-                  q (add_route_line noise_out int_out);
-                  ()
-                end
+            let noise_out = automate_noise q cmpns handle
+                (fun () -> expr2blockdiag q cmpns bhvr.stoch.std)
+            in
+            q (add_route_line noise_out int_out);
 
-              | false,true ->
-                q (add_route_line handle int_out);
-                ()
-              | false,false ->
-                begin
-                  q (add_route_line handle int_out)
-                end
-                (*this is where you'd pipe the output through a few things*)
-                (*then you connect*)
-            end
           | HWBAnalogState(bhvr),HWDAnalogState(defs) ->
             (*let min,max = IntervalLib.interval2numbounds defs.deriv.ival in*)
-            let handle = expr2blockdiag q cmpns bhvr.rhs in
-            let icval = port_to_ic vr.port in
-            let integ,integ_in,integ_out = create_integrator q cmpns icval in
             begin
-              match model_noise(),model_ideal() with
-              | true,true ->
-                begin
-                  (*this is where you'd pipe the output through a few things*)
-                  let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                  let noise_out = automate_noise q cmpns handle var_handle in
-                  q (add_route_line noise_out integ_in);
-                  q (add_route_line integ_out int_out);
-                end
-
-              | true,false ->
-                begin
-                  let var_handle = expr2blockdiag q cmpns bhvr.stoch.std in
-                  let deriv_noise_out = automate_noise q cmpns handle var_handle in
-                  let stvar_clamp_out = automate_clamp q cmpns integ_out defs.stvar.ival in
-                  q (add_route_line deriv_noise_out integ_in);
-                  q (add_route_line stvar_clamp_out int_out);
-                end
-
-              | false,true ->
-                begin
-                  q (add_route_line handle integ_in);
-                  q (add_route_line integ_out int_out);
-                  ()
-                end
-
-              | false,false ->
-                begin
-                  let stvar_clamp_out = automate_clamp q cmpns integ_out defs.stvar.ival in
-                  q (add_route_line handle integ_in);
-                  q (add_route_line stvar_clamp_out int_out);
-                end
-
+              let handle = expr2blockdiag q cmpns bhvr.rhs in
+              let integ,integ_in,integ_out = create_integrator q cmpns (Integer 0) in
+              let noise_out = automate_noise q cmpns handle
+                  (fun () -> expr2blockdiag q cmpns bhvr.stoch.std)
+              in
+              let stvar_clamp_out = automate_clamp q cmpns integ_out defs.stvar.ival in
+              q (add_route_line noise_out integ_in);
+              q (add_route_line stvar_clamp_out int_out);
             end
+
           | HWBAnalog(bhvr),HWDDigital(defs) ->
-            let handle = expr2blockdiag q cmpns bhvr.rhs in
-            let sample,_ = defs.sample in
             begin
-              match model_ideal() with
-              | true ->
-                q (add_route_line handle int_out)
-
-              | false ->
-                begin
-                  let sample,_ = defs.sample in
-                  let sample_out = automate_sample q cmpns handle sample in
-                  q (add_route_line sample_out int_out);
-                end
-
+              let handle = expr2blockdiag q cmpns bhvr.rhs in
+              let sample,_ = defs.sample in
+              let sample_out = automate_sample q cmpns handle sample in
+              q (add_route_line sample_out int_out);
             end
+            
           | _ -> error "iter outs" "unexpected"
         );
       let stmts = QUEUE.to_list stmtq in
       QUEUE.destroy stmtq;
       stmts
 
-  (*
   let create_library (namespace:simns) (g:hwvid hwenv) : matst list=
     let stmtq = QUEUE.make () in
     let q x = noop (QUEUE.enqueue stmtq x) in
@@ -1043,7 +1014,6 @@ struct
     QUEUE.destroy stmtq;
     stmts
 
-   *)
   let get_comp_from_lib namespace (name:hwcompname) =
     namespace^"/library/"^(HwLib.hwcompname2str name)
 
@@ -1059,11 +1029,25 @@ struct
       error "get_mapping" ("mapping for wire "^(SlnLib.wireid2str wire)^" does not exist:\n"^mapstr)
 
 
-  let port_to_interval : ucomp_conc -> string -> interval =
-    error "port_to_interval" "unimpl"
 
-  let port_to_ic: gltbl -> ucomp_conc -> string -> number =
-    error "port_to_interval" "unimpl"
+  let update_ic : (matst -> unit) -> simel -> float -> unit =  
+      fun q loc ic ->
+        q (set_route_param
+             (loc) "InitialCondition"
+             (MATLit(MATStr(string_of_float ic ))));
+        ()
+
+  let simel_is_integ_blk : simel -> bool =
+    fun x ->
+      match x with
+      | SIMBlock(ns,name) ->
+        begin
+          Printf.printf "-> name=%s\n" name;
+          if STRING.has name "integ" then Printf.printf ": match\n";
+          STRING.has name "integ"
+        end
+
+      | _ -> false
 
   let create_circuit (tbl) namespace (mappings:(wireid,linear_transform) map) =
     let stmtq = QUEUE.make () in
@@ -1075,11 +1059,14 @@ struct
       | SIMBlock(ns,cmp) -> ns@[cmp]
       | _ -> error "create_circuit" "how is this not a block"
     in
+    let lib_ns = namespace @ ["library"] in
     (*create scaffold for used comp.*)
     SolverCompLib.iter_used_comps tbl (fun (inst:hwcompinst) ccomp ->
-          let blk = create_block circ_ns ccomp.d inst
-              (port_to_ic tbl ccomp)
-          in
+          let loc = SIMBlock(circ_ns,HwLib.hwcompinst2str inst) in
+          let refr = SIMBlock(lib_ns,HwLib.hwcompname2str inst.name) in
+          (*declaring a copy*)
+          decl_copy refr loc;
+          q (copy_route_block refr loc);
           (*specialize intervals*)
           (*Bind Parameters*)
           HwLib.comp_iter_params ccomp.d (fun (par:hwparam) ->
@@ -1092,65 +1079,86 @@ struct
                 q (add_route_line src_loc_out par_loc)
               | None ->
                 error "comp_iter" "parameter must be specialized."
-          );
+            );
+          (*TODO Unimpl*)
+          HwLib.comp_iter_stvar_outs ccomp.d (fun (sv:hwvid hwportvar) (bhvr:hwvid hwaderiv) ->
+              let ic_port, ic_prop = bhvr.ic in
+              let ic_wire = mkwire inst.name inst.inst ic_port in
+              let integ_el : string =
+                match filter_paths refr (fun path -> simel_is_integ_blk path) with
+                | [SIMBlock(ns,name)] -> name  
+                | [] -> error "comp_iter_stvar_outs" "cannot find integrator block"
+                | _ -> error "comp_iter_stvar_outs" "more than one integrator block"
+              in
+              let stvar_loc = SIMBlock(circ_ns @ [HwLib.hwcompinst2str inst],integ_el) in
+              let value : float = match ConcCompLib.get_var_config ccomp.cfg ic_port with
+                | Some(Integer(i)) -> float_of_int (i)
+                | Some(Decimal(d)) -> (d)
+                | Some(_) ->
+                  error "comp_iter_stvar_outs" "initial condition cannot be a function"
+                | None ->
+                  error "comp_iter_stvar_outs" "initial condition must be selected."
+              in
+              let mapping = if model_mapper ()
+                then get_mapping mappings ic_wire 
+                else {scale=1.0;offset=0.0}
+              in
+              let xform_value = value*. mapping.scale +. mapping.offset in
+              update_ic q stvar_loc xform_value
+            )
 
       );
     (*add linear mappings to digital interface*)
     SolverCompLib.iter_used_comps tbl (fun (inst:hwcompinst) ccomp ->
         (*for each output*)
-        HwLib.comp_iter_vars ccomp.d (fun (port:hwvid hwportvar) ->
-            let wire = (HwLib.port2wire ccomp.d.name ccomp.inst port.port) in
-            match  port.defs with
-            | HWDDigital(defs) ->
+        HwLib.comp_iter_digital_ins ccomp.d (fun (port:hwvid hwportvar) (defns:hwddefs) ->
+            let wire = mkwire inst.name inst.inst port.port in
+            let mapping = if model_mapper ()
+              then get_mapping mappings wire
+              else {scale=1.0;offset=0.0}
+            in
+            let linmap_in, linmap_out = create_linmap q circ_ns mapping false in
+            let dst_loc :simel =
+              SIMBlockIn(circ_ns,(HwLib.hwcompinst2str wire.comp),wire.port)
+            in
+            match SlnLib.wire2label sln wire with
+            | ValueLabel(vlbl) ->
+              let src_loc_out = create_const q circ_ns (float_of_number vlbl.value) in
               begin
-                  let mapping = if model_mapper ()
-                  then get_mapping mappings wire
-                  else {scale=1.0;offset=0.0}
-                in
-                let linmap_in, linmap_out = create_linmap q circ_ns mapping false in
-                match port.knd with
-                | HWKInput ->
-                  begin
-                    let dst_loc :simel =
-                      SIMBlockIn(circ_ns,(HwLib.hwcompinst2str wire.comp),wire.port)
-                    in
-                    match SlnLib.wire2label sln wire with
-                    | ValueLabel(vlbl) ->
-                      let src_loc_out = create_const q circ_ns (float_of_number vlbl.value) in
-                      begin
-                        q (add_route_line src_loc_out linmap_in);
-                        q (add_route_line linmap_out dst_loc)
-                      end
-
-
-                    | MInLabel(vlbl) ->
-                      let src_out_ext,src_in_int,src_out_int =
-                        create_in q circ_ns ((HwLib.hwcompinst2str wire.comp)^"_in")
-                      in
-                      begin
-                        q (add_route_line src_out_ext linmap_in);
-                        q (add_route_line linmap_out src_in_int);
-                        q (add_route_line src_out_int dst_loc)
-                      end
-                  end
-
-                | HWKOutput ->
-                  let src_loc : simel =
-                    SIMBlockOut(circ_ns,HwLib.hwcompinst2str wire.comp,wire.port)
-                  in
-                  let dst_in_int,dst_out_int,dst_out_ext =
-                    create_out q circ_ns ((HwLib.hwcompinst2str wire.comp)^"_out")
-                  in
-                  begin
-                    q (add_route_line src_loc linmap_in);
-                    q (add_route_line linmap_out dst_in_int);
-                  end
-
+                q (add_route_line src_loc_out linmap_in);
+                q (add_route_line linmap_out dst_loc)
+              end
+              
+           
+            | MInLabel(vlbl) ->
+              let src_out_ext,src_in_int,src_out_int =
+                create_in q circ_ns ((HwLib.hwcompinst2str wire.comp)^"_in")
+              in
+              begin
+                q (add_route_line src_out_ext linmap_in);
+                q (add_route_line linmap_out src_in_int);
+                q (add_route_line src_out_int dst_loc)
               end
 
-            | _ -> ()
           );
-        
+        HwLib.comp_iter_digital_outs ccomp.d (fun (port:hwvid hwportvar) (defns:hwddefs) ->
+            let wire = mkwire inst.name inst.inst port.port in
+            let mapping = if model_mapper ()
+              then get_mapping mappings wire
+              else {scale=1.0;offset=0.0}
+            in
+            let linmap_in, linmap_out = create_linmap q circ_ns mapping true in
+            let src_loc : simel =
+              SIMBlockOut(circ_ns,HwLib.hwcompinst2str wire.comp,wire.port)
+            in
+            let dst_in_int,dst_out_int,dst_out_ext =
+              create_out q circ_ns ((HwLib.hwcompinst2str wire.comp)^"_out")
+            in
+            begin
+              q (add_route_line src_loc linmap_in);
+              q (add_route_line linmap_out dst_in_int);
+            end
+        )
 
       );
     SlnLib.iter_conns sln (fun (src:wireid) (dst:wireid) ->
@@ -1172,12 +1180,12 @@ struct
     let model_name = name in
     _model_preamble stmtq model_name;
     debug ("=== Emitting Library ===");
-    (*let libstmts = (create_library [model_name] hw) in*)
+    let libstmts = (create_library [model_name] hw) in
     let circ_stmts = create_circuit tbl [model_name] mappings in
     let preamble_stmts = QUEUE.to_list stmtq in
     let main_stmts = [
       MATStmt(MATFxn("preamble",[]));
-      (*MATStmt(MATFxn("build_comp_library",[]));*)
+      MATStmt(MATFxn("build_comp_library",[]));
       MATStmt(MATFxn("build_circuit",[]));
     ] in
     [
@@ -1190,10 +1198,8 @@ struct
       MATComment("preamble function");
       MATFxnDecl("preamble",[],preamble_stmts);
       MATComment("");MATComment("");
-      (*
       MATComment("library assembly function");
       MATFxnDecl("build_comp_library",[],libstmts);
-      *)
       MATComment("");MATComment("");
       MATComment("");
    ]
