@@ -168,8 +168,10 @@ struct
   noop (MAP.put basic_fxns "ver_static_range" "simulink/Model Verification/Check  Static Range");;
   noop (MAP.put basic_fxns "in" "simulink/Ports & Subsystems/In1");;
   noop (MAP.put basic_fxns "0hold" "simulink/Discrete/Zero-Order Hold");;
+  noop (MAP.put basic_fxns "rate_trans" "simulink/Signal Attributes/Rate Transition");;
   noop (MAP.put basic_fxns "1hold" "simulink/Discrete/First-Order Hold");;
   noop (MAP.put basic_fxns "out" "simulink/Ports & Subsystems/Out1");;
+  noop (MAP.put basic_fxns "ground" "simulink/Sources/Ground");;
   noop (MAP.put basic_fxns "const" "simulink/Sources/Constant");;
   noop (MAP.put basic_fxns "noise" "simulink/Sources/Uniform Random Number");;
   noop (MAP.put basic_fxns "quantize" "simulink/Discontinuities/Quantizer");;
@@ -188,22 +190,36 @@ struct
     paths: (string,simel) map;
     (*comp to block info*)
     blocks: (string,simblock) map;
+    conns: (simel,simel option) map;
   }
 
   let symtbl = {
     paths = MAP.make();
     blocks = MAP.make();
+    conns = MAP.make();
   }
 
   let clear_tbl () =
     MAP.clear symtbl.paths;
     MAP.clear symtbl.blocks;
+    MAP.clear symtbl.conns;
     ()
 
   let ns_to_str ns =
     match ns with
     | h::t -> (List.fold_left (fun s x -> s^"/"^x) h t)^"/"
     | [] -> ""
+
+  let simel_to_str : simel -> string =
+    fun sel -> match sel with
+      | SIMBlock(ns,name) ->
+        Printf.sprintf "%s.blk[%s]" (ns_to_str ns) name
+      | SIMBlockIn(ns,name,port) ->
+        Printf.sprintf "%s.blk[%s].in[%s]"
+          (ns_to_str ns) name port
+      | SIMBlockOut(ns,name,port) ->
+        Printf.sprintf "%s.blk[%s].out[%s]"
+          (ns_to_str ns) name port
 
   let string_of_outs simblock =
     MAP.str simblock.outs ident string_of_int
@@ -352,11 +368,25 @@ struct
         MATLit(MATArr(posarr))
       ]))
 
+  let iter_unconnected  : (simel->unit) -> unit =
+    fun fn ->
+      MAP.iter symtbl.conns (fun snk src_maybe -> match src_maybe with
+          | Some(src) -> ()
+          | None -> fn snk)
+
+  let iter_connected  : (simel -> simel->unit) -> unit =
+    fun fn ->
+      MAP.iter symtbl.conns (fun snk src_maybe -> match src_maybe with
+          | Some(src) -> fn src snk
+          | None -> ())
+
+  (*
   let add_block route newdest =
     MATStmt(MATFxn("add_block",[
         MATLit(MATStr(route));
         MATLit(MATStr(newdest))
       ]))
+  *)
 
   let add_route_block route newdest =
     MATStmt(MATFxn("add_block",[
@@ -364,16 +394,27 @@ struct
         MATLit(MATStr(loc2path newdest))
       ]))
 
-  let copy_route_block route newdest =
-    MATStmt(MATFxn("add_block",[
-        MATLit(MATStr(loc2path route));
-        MATLit(MATStr(loc2path newdest))
-      ]))
+  let copy_route_block : simel -> simel -> matst =
+    fun refr newdest ->
+      let blk = get_block refr in
+      let new_ns,new_blk = match newdest with
+        | SIMBlock(ns,blk) -> ns,blk
+        | _ -> error "copy_route_block" "cannot copy input,output"
+      in
+      MAP.put symtbl.blocks (loc2path newdest) blk;
+      MAP.iter blk.ins (fun inp _ ->
+          let ident = SIMBlockIn(new_ns,new_blk,inp) in
+          if MAP.has symtbl.conns ident then
+            error "copy_route_block" "port already exists."
+          else
+            noop (MAP.put symtbl.conns ident None)
+        );
+      MATStmt(MATFxn("add_block",[
+          MATLit(MATStr(loc2path refr));
+          MATLit(MATStr(loc2path newdest))
+        ]))
 
-  let decl_copy refr newinst : unit =
-    let data = get_block refr in
-    MAP.put symtbl.blocks (loc2path newinst) data;
-    ()
+    
 
   let set_param mvar param vl =
      MATStmt(MATFxn("set_param",[
@@ -392,42 +433,61 @@ struct
   let relative ns loc =
     STRING.removeprefix loc (ns^"/") 
 
-  let add_line ns gsrc gsnk =
-    let src = relative ns gsrc in
-    let snk = relative ns gsnk in
-    (MATStmt(MATFxn("add_line",[
-        MATLit(MATStr(ns));
-        MATLit(MATStr(src));
-        MATLit(MATStr(snk));
-      ])))
+  let proc_line_gen_matst : string list -> simel -> simel -> matst =
+    fun ns gsrc gsnk ->
+      let nsstr = STRING.remove_last_char (ns_to_str ns) in
+      let src = relative (nsstr) (loc2path gsrc) in
+      let snk = relative (nsstr) (loc2path gsnk) in
+      (MATStmt(MATFxn("add_line",[
+             MATLit(MATStr(nsstr));
+             MATLit(MATStr(src));
+             MATLit(MATStr(snk));
+           ])))
 
-  let add_route_line src snk = match src, snk with
-    | SIMBlockIn(ns1,cmp1,inp),SIMBlockOut(ns2,cmp2,out) ->
-      if ns1 = ns2 then
-        add_line (STRING.remove_last_char (ns_to_str ns1)) (loc2path snk) (loc2path src)
-      else
-        error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
+  let proc_line_add_conn : string list -> simel -> simel -> matst =
+    fun ns gsrc gsnk ->
+      begin
+        if MAP.has symtbl.conns gsnk then
+          noop (MAP.put symtbl.conns gsnk (Some gsrc))
+        else
+          error "add_line" ("port must exist in conn map:"^(simel_to_str gsnk));
+        proc_line_gen_matst ns gsrc gsnk
+      end
 
-    | SIMBlockOut(ns1,cmp1,out),SIMBlockIn(ns2,cmp2,inp) ->
-      if ns1 = ns2 then
-        add_line (STRING.remove_last_char (ns_to_str ns1)) (loc2path src) (loc2path snk)
-      else
-        error "add_route_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
+  let _proc_line : (string list -> simel -> simel -> matst) -> simel -> simel -> matst=
+    fun fn src snk ->
+      match src, snk with
+      | SIMBlockIn(ns1,cmp1,inp),SIMBlockOut(ns2,cmp2,out) ->
+        if ns1 = ns2 then
+          fn ns1 snk src
+        else
+          error "proc_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
+            
+      | SIMBlockOut(ns1,cmp1,out),SIMBlockIn(ns2,cmp2,inp) ->
+        if ns1 = ns2 then
+          fn ns1 src snk 
+        else
+          error "proc_line" ("namespaces don't match:"^(ns_to_str ns1)^" != "^(ns_to_str ns2))
+            
 
+      | SIMBlockIn(_),SIMBlockIn(_) ->
+        error "proc_line"
+          ("cannot connect input to input: "^(loc2path src)^"->"^(loc2path snk))
 
-    | SIMBlockIn(_),SIMBlockIn(_) ->
-      error "add_route_line"
-        ("cannot connect input to input: "^(loc2path src)^"->"^(loc2path snk))
-
-    | SIMBlockOut(_),SIMBlockOut(_) ->
-      error "add_route_line"
-        ("cannot connect output to output: "^(loc2path src)^"->"^(loc2path snk))
-
+      | SIMBlockOut(_),SIMBlockOut(_) ->
+        error "proc_line"
+          ("cannot connect output to output: "^(loc2path src)^"->"^(loc2path snk))
+        
     | _ ->
-      error "add_route_line"
+      error "proc_line"
         ("cannot connect comps: "^(loc2path src)^"->"^(loc2path snk))
         
 
+  let add_route_line =
+    _proc_line proc_line_gen_matst
+
+  let add_hwconn_line =
+    _proc_line proc_line_add_conn
 
   let remove_line ns (gsrc:string)  (gsnk:string) =
     let src = relative ns gsrc in
@@ -480,6 +540,19 @@ struct
         SimulinkRouter.position q (loc2path loc)
       end;
     loc_out_port,int_loc_in_port,int_loc_out_port
+
+  let create_ground q (ns:string list) =
+    let id = symtbl_size () in
+    let loc = SIMBlock(ns,"gnd_"^(string_of_int id)) in
+    let loc_out = mk_sim_out loc "O" in
+    if defined loc = false then
+      begin
+        declare_var (loc);
+        declare_var (loc_out);
+        q (add_route_block (get_basic_fxn "ground") (loc));
+        SimulinkRouter.position q (loc2path loc);
+      end;
+    loc_out
 
   let create_out q ns (vr:string) =
     let loc = SIMBlock(ns,vr) in
@@ -684,6 +757,21 @@ struct
     declare_vars [inp_loc;out_loc];
     loc,inp_loc,out_loc
 
+
+  let create_rate_trans q namespace sample =
+    let id = symtbl_size () in
+    let loc = SIMBlock(namespace,"ratetrans_"^(string_of_int id)) in
+    declare_var (loc);
+    q (add_route_block (get_basic_fxn "rate_trans") loc);
+    q (set_route_param
+         (loc) "OutPortSampleTime"         
+         (MATLit(MATStr(string_of_float sample))));
+    let inp_loc = mk_sim_in loc "I" in
+    let out_loc = mk_sim_out loc "O" in
+    SimulinkRouter.position q (loc2path loc);
+    declare_vars [inp_loc;out_loc];
+    loc,inp_loc,out_loc
+
   let create_zero_hold q namespace sample =
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"hold0_"^(string_of_int id)) in
@@ -699,6 +787,8 @@ struct
     loc,inp_loc,out_loc
 
 
+
+
   let create_quantize q namespace sample =
     let id = symtbl_size () in
     let loc = SIMBlock(namespace,"smp_"^(string_of_int id)) in
@@ -712,6 +802,8 @@ struct
     SimulinkRouter.position q (loc2path loc);
     declare_vars [sample_out;sample_in];
     loc,sample_in,sample_out
+
+
 
   let create_noise q namespace =
    let id = symtbl_size () in
@@ -910,7 +1002,7 @@ struct
       in
       let automate_sample q cmpns inp sample =
         if model_sample () then
-          let hold1,hold1_in,hold1_out = create_zero_hold q cmpns
+          let hold1,hold1_in,hold1_out = create_rate_trans q cmpns
               (float_of_number sample)
           in
           q (add_route_line inp hold1_in);
@@ -1065,7 +1157,6 @@ struct
           let loc = SIMBlock(circ_ns,HwLib.hwcompinst2str inst) in
           let refr = SIMBlock(lib_ns,HwLib.hwcompname2str inst.name) in
           (*declaring a copy*)
-          decl_copy refr loc;
           q (copy_route_block refr loc);
           (*specialize intervals*)
           (*Bind Parameters*)
@@ -1076,7 +1167,7 @@ struct
               | Some(value) ->
                 let src_loc_out : simel = create_const q circ_ns (float_of_number value) in
                 warn "iter_used_comps" ("adding assignment for "^par.name);
-                q (add_route_line src_loc_out par_loc)
+                q (add_hwconn_line src_loc_out par_loc)
               | None ->
                 error "comp_iter" "parameter must be specialized."
             );
@@ -1126,7 +1217,7 @@ struct
               let src_loc_out = create_const q circ_ns (float_of_number vlbl.value) in
               begin
                 q (add_route_line src_loc_out linmap_in);
-                q (add_route_line linmap_out dst_loc)
+                q (add_hwconn_line linmap_out dst_loc)
               end
               
            
@@ -1137,7 +1228,7 @@ struct
               begin
                 q (add_route_line src_out_ext linmap_in);
                 q (add_route_line linmap_out src_in_int);
-                q (add_route_line src_out_int dst_loc)
+                q (add_hwconn_line src_out_int dst_loc)
               end
 
           );
@@ -1164,7 +1255,16 @@ struct
     SlnLib.iter_conns sln (fun (src:wireid) (dst:wireid) ->
         let src_loc = SIMBlockOut(circ_ns,(HwLib.hwcompinst2str src.comp),src.port) in
         let dst_loc = SIMBlockIn(circ_ns,(HwLib.hwcompinst2str dst.comp),dst.port) in
-        q (add_route_line src_loc dst_loc)
+        q (add_hwconn_line src_loc dst_loc)
+      );
+    iter_unconnected (fun (loc:simel) -> match loc with
+        | SIMBlockIn(ns,comp,name) ->
+          begin
+            (*ignore unconnected input blocks*)
+            let gnd_out = create_ground q ns in
+            q (add_route_line gnd_out loc)
+          end
+
       );
     let stmts = QUEUE.to_list stmtq in
     QUEUE.destroy stmtq;
@@ -1187,6 +1287,7 @@ struct
       MATStmt(MATFxn("preamble",[]));
       MATStmt(MATFxn("build_comp_library",[]));
       MATStmt(MATFxn("build_circuit",[]));
+      remove_block model_name "library";
     ] in
     [
       MATComment("toplevel script");

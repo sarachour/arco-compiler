@@ -201,9 +201,9 @@ struct
       ()
 
   (*given an assignment*)
-  let to_rsteps : string -> unid ast option -> unid AlgebraicLib.result -> rstep list
+  let to_rsteps : string -> unid ast option -> unid AlgebraicLib.result -> rstep list -> unid option
     -> rstep list =
-    fun patport targexpr result init_steps ->
+    fun patport targexpr result init_steps passthrough_var_maybe ->
       (*convert an assignment to variable*)
       let to_assign_rstep : unid -> unid ast -> rstep =
         fun vrb expr ->
@@ -270,22 +270,32 @@ struct
                   (* output to output *)
                   | HwId(HNPort(HWKOutput,_,_,_)),
                     HwId(HNPort(HWKOutput,_,_,_)) ->
-                      begin
-                        Printf.printf "Assignment %s = %s\n"
-                        (unid2str v)
-                        (uast2str e);
-                        Printf.printf "cannot connect output<->output\n";
+                    begin
+                      if OPTION.eq passthrough_var_maybe variable then
                         steps
-                        (*raise (ASTUnifier_error "cannot connect output<->output");*)
+                      else
+                        begin
+                          Printf.printf "Assignment %s = %s\n"
+                            (unid2str v)
+                            (uast2str e);
+                          Printf.printf "cannot connect output<->output\n";
+                          (*steps*)
+                          raise (ASTUnifier_error "cannot connect output<->output");
+                        end
                       end
 
                   | HwId(HNPort(HWKInput,_,_,_)),
                     HwId(HNPort(HWKInput,_,_,_)) ->
                     begin
-                      Printf.printf "Assignment %s = %s\n"
-                        (unid2str v)
-                        (uast2str e);
-                      raise (ASTUnifier_error "cannot connect input<->input");
+                      if OPTION.eq passthrough_var_maybe variable then
+                        steps
+                      else
+                        begin
+                          Printf.printf "Assignment %s = %s\n"
+                            (unid2str v)
+                            (uast2str e);
+                          raise (ASTUnifier_error "cannot connect input<->input");
+                        end
                     end
 
                   | HwId(_),HwId(_) ->
@@ -347,7 +357,7 @@ struct
         let branching = Globals.get_glbl_int "unify-branch" in
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in 
-        List.map (fun asgn -> to_rsteps hwvar (None) asgn steps) asgns
+        List.map (fun asgn -> to_rsteps hwvar (None) asgn steps None) asgns
       end
 
 
@@ -366,7 +376,7 @@ struct
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in
         (*asgns to rsteps*)
-        List.map (fun asgn -> to_rsteps hwpatvar (Some hexpr) asgn steps) asgns
+        List.map (fun asgn -> to_rsteps hwpatvar (Some hexpr) asgn steps None) asgns
       end
 
   let solve_hw_passthru :
@@ -387,7 +397,9 @@ struct
         let restrict_size = Globals.get_glbl_int "unify-restrict-size" in
         let asgns = AlgebraicLib.unify alg_env un_env branching restrict_size in
         (*asgns to rsteps*)
-        List.map (fun asgn -> to_rsteps hwpatoutput (Some hexpr) asgn steps) asgns
+        List.map (fun asgn ->
+            to_rsteps hwpatoutput (Some hexpr) asgn steps (Some (HwId htargvar))
+          ) asgns
       end
 
   (* take the set of assignments, and convert to steps *)

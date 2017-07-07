@@ -100,6 +100,10 @@ struct
     | Some(x) -> fn x
     | None -> None
 
+  let eq (type a) (f:a option) (d:a) = match f with
+    | Some(x) -> x = d
+    | None -> false
+
 
   let conc_list (type a) (f: a option list) : a list =
     List.fold_left (fun lst el -> match el with
