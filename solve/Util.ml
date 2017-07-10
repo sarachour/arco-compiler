@@ -208,6 +208,9 @@ struct
   let float_list_of_number_list (x:number list) =
     List.map float_of_number x
 
+  let from_float (x:float) =
+    Decimal x
+
   let max numlst = MATH.max (float_list_of_number_list numlst)
   let min numlst = MATH.min (float_list_of_number_list numlst)
 
@@ -258,7 +261,15 @@ struct
 
   let eq_int x i = match x with
     | Integer(j) -> i = j
-    | Decimal(j) -> (float_of_int i) = j 
+    | Decimal(j) -> (float_of_int i) = j
+
+  let is_inf x = match x with
+    | Integer(i) -> false
+    | Decimal(i) -> i = infinity || i = neg_infinity
+
+  let is_nan x = match x with
+    | Integer(i) -> false
+    | Decimal(i) -> i = nan
 end
 
 

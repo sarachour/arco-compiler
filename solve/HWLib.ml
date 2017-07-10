@@ -627,6 +627,10 @@ struct
     else
       error "comp_getparam" "could not find param in comp"
 
+  let is_stvar_port (type a) : a hwenv -> hwcompname -> string -> bool =
+    fun env comp port ->
+      error "is_stvar_port" "unimpl"
+
   let comp_getinterval (type a) (x:a hwcomp) (f:string) =
     let hwvar = comp_getvar x f in
     match hwvar.defs with
@@ -653,6 +657,10 @@ struct
       bhvr=map_bhvr x.bhvr f;
       defs = x.defs 
     }
+
+  let get_dependent_input_ports (type a) : a hwenv -> hwcompname -> string -> string list =
+    fun env name port ->
+      error "get_linked_input_ports" "unimpl"
 
   let map_comp (type a) (type b) (x:a hwcomp) (f:a->b) : b hwcomp =
     let nins = MAP.map_vals x.ins (fun k v -> map_var v f)   in

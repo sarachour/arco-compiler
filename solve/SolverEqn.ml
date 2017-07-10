@@ -462,7 +462,7 @@ struct
 
   (* Component unification algorithm*)
   let __unify_goal_with_comp : gltbl -> hwvid hwcomp -> hwcompcfg -> int option ->
-    hwvid hwportvar -> unifiable_goal -> (unit->ucomp_conc*sstep list) =
+    hwvid hwportvar -> unifiable_goal -> (unit->ucomp_conc*sstep list) -> int =
     fun tbl comp cfg inst hwvar unifiable_goal initialize ->
       let nslns = REF.mk 0 in
       let is_used_comp = inst <> None in 
@@ -534,7 +534,6 @@ struct
             SolverCompLib.get_extendable_inputs_for_inblock_goal tbl.env.hw ConcCompLib.newcfg
               hwvar hgoal.wire hgoal.prop
           in
-          if is_used_comp then () else
           begin
             (*for each feasible port the expression can be forced through to connect to an input,
               ensure that the expression is passed through*)
@@ -570,7 +569,6 @@ struct
               port_out_portvar conn_start_wire hgoal.prop
           in
           let conn_start_label = SlnLib.wire2producer tbl.sln_ctx conn_start_wire in
-          if is_used_comp then () else
           begin
             LIST.iter (fun (port_in_var:hwvid) ->
                 let port_in_portname = HwLib.hwid2portname port_in_var in
@@ -674,12 +672,21 @@ struct
     in
     __unify_goal_with_comp tbl ucomp.d (ConcCompLib.mkhwcompcfg ()) None hwvar g initialize
 
-  
+  let test_unify_goal_with_conc_comp_creates_cycle : gltbl -> ucomp_conc -> hwvid hwportvar -> unifiable_goal -> bool =
+    fun tbl ucomp hwvar g ->
+      let pat_wire = mkwire hwvar.comp ucomp.inst hwvar.port in
+      (*use creates cycle to determine if making connection causes a cycle.*)
+      true 
+
   let unify_goal_with_conc_comp (tbl:gltbl) (ucomp:ucomp_conc) (hwvar:hwvid hwportvar) (g:unifiable_goal) =
     let initialize (type a) () : ucomp_conc*sstep list=
       ucomp,[]
     in
-    __unify_goal_with_comp tbl ucomp.d ucomp.cfg (Some ucomp.inst) hwvar g initialize
+    if test_unify_goal_with_conc_comp_creates_cycle tbl ucomp hwvar g = false then
+      __unify_goal_with_comp tbl ucomp.d ucomp.cfg (Some ucomp.inst) hwvar g initialize
+    else
+      0
+
 
 
 

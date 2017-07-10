@@ -325,13 +325,26 @@ struct
       let decls : z3st list = List.fold_right (fun (idx:int) (stmts:z3st list) ->
           let varname = xid_to_z3_var idx in
           let decl = Z3ConstDecl(varname , Z3Real) in
-          let sane =
+          let s_max_float = 1e10 in
+          let s_min_float = 1e-100 in
+          let not_too_large =
             Z3Assert(Z3And(
-                Z3LTE(Z3Var varname,Z3Number (Decimal vmax)),
-                Z3GTE(Z3Var varname,Z3Number (Decimal vmin))
+                Z3LTE(Z3Var varname,Z3Number(Decimal s_max_float)),
+                Z3GTE(Z3Var varname,Z3Number(Decimal (0.-.s_max_float)))
               ))
           in
-          decl::sane::stmts
+          (*not part of constraint problem.*)
+          let not_too_small=
+            Z3Assert(Z3Or(
+                Z3Eq(Z3Var varname, Z3Number(Integer 0)),
+                Z3IfThenElse(
+                  Z3LT(Z3Var varname, Z3Number(Integer 0)),
+                  Z3LTE(Z3Var varname, Z3Number(Decimal (0.-.s_min_float))),
+                  Z3GTE(Z3Var varname, Z3Number(Decimal s_min_float))
+                )
+              ))
+          in
+          decl::not_too_large::stmts
         ) (LIST.mkrange 0 prob.n) []
       in
       let simpl_equiv : SMapSimplifier.simpl_z3expr list=
@@ -435,7 +448,7 @@ struct
               | Z3QFloat(f) ->
                 MAP.put xid_to_val xid (Decimal f)
               | Z3QInterval(Z3QRange(min,max)) ->
-                MAP.put xid_to_val xid (Decimal (MATH.mean [min;max]))
+                MAP.put xid_to_val xid (Decimal (MATH.max[min;max]))
               (*anything with infinity is basically a don't care.*)
               | Z3QInterval(Z3QAny) ->
                 MAP.put xid_to_val xid (Integer 0)

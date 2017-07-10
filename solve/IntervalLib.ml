@@ -675,6 +675,19 @@ struct
   let exp (a:interval)  : interval= rule_exp a 
   let neg (a:interval)  : interval= rule_sub (num (Integer 0)) a 
 
+  let number_of_interval (ival:interval) = match ival with
+    | Interval(a) ->
+      begin
+        match a.min,a.max with
+        | BNDNum(min_v),BNDNum(max_v) ->
+          let min_n = NUMBER.from_float min_v and max_n = NUMBER.from_float max_v in
+          if NUMBER.eq min_n max_n then Some min_n else None
+            
+        | _ -> None
+      end
+    | Quantize([v]) ->
+      Some (NUMBER.from_float v)
+    | _ -> None
 
   let rule_neg (a:interval)  : interval = _compute_interval1 a bound_neg
 

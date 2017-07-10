@@ -387,8 +387,18 @@ struct
           let decl = Z3ConstDecl(vid_to_var_name z3state k,Z3Real) in
           let finite =
             Z3Assert(Z3And(
-                Z3LTE(Z3Var vname,Z3Int(999999999999)),
-                Z3GTE(Z3Var vname,Z3Int(0-999999999999))
+                Z3LTE(Z3Var vname,Z3Int(max_float)),
+                Z3GTE(Z3Var vname,Z3Int(min_float))
+              ))
+          in
+          let non_negligable =
+            Z3Assert(Z3Or(
+                Z3Eq(Z3Var vname, Z3Int(0)),
+                Z3IfThenElse(
+                  Z3LT(Z3Var vname, Z3Int(0)),
+                  Z3LTE(Z3Var vname, Z3Decimal(0.-epsilon_float)),
+                  Z3GTE(Z3Var vname, Z3Decimal(epsilon_float))
+                )
               ))
           in
           decl::finite::decls

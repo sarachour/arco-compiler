@@ -390,8 +390,35 @@ struct
       in
       ()
 
-  
-   
+  (*determine if the wire, when connected *)
+  let creates_cycle (type a) (type b) : hwvid hwenv -> (a,b) sln -> wireid -> wireid -> bool =
+    fun henv sln out inp ->
+      let is_cyc = REF.mk false in
+      let visited_outs = SET.make () in
+      let rec _proc (outp:wireid) =
+        if REF.dr is_cyc then () else
+          begin
+            SET.add visited_outs outp;
+            if HwLib.is_stvar_port henv outp.comp.name outp.port then () else
+              begin
+                let inports : string list = HwLib.get_dependent_input_ports henv outp.comp.name outp.port in
+                List.iter (fun (inport:string) ->
+                    let inwire = mkwire outp.comp.name outp.comp.inst inport in
+                    if inwire = inp then REF.upd is_cyc (fun _ -> true);
+                    if REF.dr is_cyc then () else
+                    if MAP.has sln.conns.dest2src inwire then
+                      begin
+                        let new_outs = MAP.get sln.conns.dest2src inwire in
+                        SET.iter new_outs (fun new_out -> _proc new_out) 
+                      end
+                  ) inports
+              end
+          end
+      in
+      _proc out;
+      REF.dr is_cyc
+
+
   let iter_insts (sln:usln) fn : unit =
     SET.iter sln.comps (fun inst -> fn inst)
   

@@ -259,6 +259,7 @@ struct
 
 
 
+
   let bhvr_is_expr hv = match hv.bhvr with
     | HWBAnalog(_) -> true
     | HWBDigital(_) -> true
