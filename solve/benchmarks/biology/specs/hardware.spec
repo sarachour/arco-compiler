@@ -369,6 +369,7 @@ schematic
   conn input(I) -> vdadd
   conn input(I) -> vtoi_curr
   conn input(I) -> mm
+  %conn input(V) -> vgain
 
   conn input(V) -> ihill_stim
   conn input(V) -> ihill_rep

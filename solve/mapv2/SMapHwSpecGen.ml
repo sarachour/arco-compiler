@@ -23,7 +23,7 @@ struct
         *)
         begin
           Printf.printf "[WARN] does not have value for port %s\n" port;
-          SVZero
+          SVDC
         end
 
 
@@ -136,31 +136,60 @@ struct
   let mk_not_equal1 : map_expr -> map_cstr =
     fun x -> mk_not_equal x ((Integer 0))
 
+  let mk_loc_val_of_number : number -> map_loc_val =
+    fun x -> if NUMBER.eq_int x 0 then
+        SVZero
+      else
+        SVNumber x
+
+  let mk_loc_val_of_interval : interval -> map_loc_val =
+    fun ival ->
+      match IntervalLib.number_of_interval ival with
+      | Some(n) -> mk_loc_val_of_number n
+      | None -> SVSymbol(ival)
+
+  let mk_cstr_from_loc_val : map_loc_val -> map_expr -> map_expr -> map_cstr list -> map_cstr list =
+    fun v sc off lst -> match v with
+      | SVZero -> lst
+      | SVNumber(n) ->
+        if NUMBER.is_nan n || NUMBER.is_inf n then
+          SCFalse::lst
+        else
+          (mk_not_equal0 (SEAdd(SEMult(sc,SENumber n),off)))::lst
+
+      | SVDC ->
+        (mk_equal1 sc)::(mk_equal0 off)::lst
+
+      | SVSymbol(n) -> (mk_not_equal0 sc)::lst
+
   (*process the bounds over the variable.*)
   let port_val_to_port_cstrs: string -> map_loc_val -> map_loc_val*(map_cstr list) =
     fun port_name port_val ->
       (*Printf.printf "value[%s] : %s\n" port_name (SMapLocVal.to_string port_val);*)
+
       match port_val with
       | SVSymbol(interval) ->
-        if IntervalLib.is_value interval then
-          begin
-            if IntervalLib.is_zero interval then
-              SVZero,[]
-            else
-              (SVNumber (Decimal(IntervalLib.get_value interval))),
-                [mk_not_equal0 (SEVar(SMScale(port_name)))]
-          end
-        else
-          SVSymbol(interval),
-                [mk_not_equal0 (SEVar(SMScale(port_name)))]
-      | SVNumber(n) ->
-        if NUMBER.is_zero n then
-          SVZero,[]
-        else
-          (SVNumber(n)),
-                [mk_not_equal0 (SEVar(SMScale(port_name)))]
-      | SVZero ->
+        let new_loc_val = mk_loc_val_of_interval interval in
+        let new_cstr = mk_cstr_from_loc_val
+            new_loc_val (SEVar(SMScale(port_name))) (SEVar(SMOffset(port_name))) []
+        in
+        new_loc_val,new_cstr
+
+     | SVNumber(n) ->
+       let new_loc_val = mk_loc_val_of_number n in
+       let new_cstr = mk_cstr_from_loc_val
+           new_loc_val (SEVar(SMScale(port_name))) (SEVar(SMOffset(port_name))) []
+       in
+       new_loc_val,new_cstr
+
+     | SVZero ->
         SVZero, []
+
+     | SVDC ->
+         let new_cstr = mk_cstr_from_loc_val
+             port_val (SEVar(SMScale(port_name))) (SEVar(SMOffset(port_name))) []
+         in
+         SVDC,new_cstr
 
   let late_bind_input: string -> map_ctx -> map_result=
     fun port_name ctx ->
@@ -205,22 +234,23 @@ struct
         new_port_val
         []
 
-  let mk_loc_val_of_number : number -> map_loc_val =
-    fun x -> if NUMBER.eq_int x 0 then
-        SVZero
-      else
-        SVNumber x
-
-  let mk_loc_val_of_interval : interval -> map_loc_val =
-    fun ival ->
-      match IntervalLib.number_of_interval ival with
-      | Some(n) -> mk_loc_val_of_number n
-      | None -> SVSymbol(ival)
-
+  
   let rec late_bind_mult2 : map_ctx -> map_result -> map_result -> map_result =
     fun ctx res1 res2 ->
       let args = [res1;res2] in
       match res1.value, res2.value with
+      | SVDC,SVZero ->
+        let scale = SEVar(get_freevar()) in
+        let offset = SENumber(Integer 0) in
+        let value = SVZero in
+        mkresult args scale offset value []
+
+      | SVDC,_ ->
+        res1
+
+      | _,SVDC ->
+        late_bind_mult2 ctx res2 res1
+        
       | SVZero,SVZero ->
         let scale = SEVar (get_freevar()) in 
         let offset = SEMult(res1.offset, res2.offset) in
@@ -255,9 +285,10 @@ struct
           SEAdd(SEMult(SEMult(res2.scale,SENumber(m)),res1.offset),
                 SEMult(res1.offset,res2.offset)))
         in
-        let value = (NUMBER.mult n m) in
-        let cstrs = [] in
-        mkresult args scale offset (mk_loc_val_of_number value) cstrs 
+        let value = mk_loc_val_of_number (NUMBER.mult n m) in
+        let base_cstrs = [] in
+        let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+        mkresult args scale offset (value) cstrs 
 
       | SVSymbol(a), SVNumber(m) ->
         (*
@@ -288,11 +319,11 @@ struct
               SEMult(res2.scale,SENumber(m)),res2.offset)
           )
         in
-        let cstrs = 
-            []
-        in
-        let value = (IntervalLib.mult a (IntervalLib.num m)) in
-        mkresult args scale offset (mk_loc_val_of_interval value) cstrs
+        let value = mk_loc_val_of_interval (IntervalLib.mult a (IntervalLib.num m)) in
+        (*is irreversible if transformed value is zero*)
+        let base_cstrs =  [] in
+        let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+        mkresult args scale offset (value) cstrs
 
 
 
@@ -304,13 +335,15 @@ struct
       | SVSymbol(s1), SVSymbol(s2) ->
         let scale = SEMult(res1.scale,res2.scale) in
         let offset = SENumber(Integer 0) in
-        let value = (IntervalLib.mult s1 s2) in
-        let cstrs = [
+        let value = mk_loc_val_of_interval (IntervalLib.mult s1 s2) in
+        let base_cstrs = [
           mk_equal0 (res1.offset) ;
           mk_equal0 (res2.offset) ;
         ]
         in
-        mkresult args scale offset (mk_loc_val_of_interval value) cstrs 
+        let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+        mkresult args scale offset (value) cstrs
+
       | _ ->
         raise (SMapHwSpecLateBind_error "mult.unimpl case")
 
@@ -319,6 +352,9 @@ struct
     match res.value with
     | SVZero ->
       mkfailure()
+
+    | SVDC ->
+      res
 
     | SVNumber(n) ->
       let n_inv = NUMBER.div (Integer 1) n in
@@ -332,7 +368,9 @@ struct
         )
       in
       let offset = SENumber(Integer 0) in
-      let cstrs = [] in
+      let value = mk_loc_val_of_number n_inv in
+      let base_cstrs = [] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
       mkresult [res] scale offset (mk_loc_val_of_number n_inv) cstrs
 
     | SVSymbol(x) ->
@@ -342,18 +380,36 @@ struct
         )
       in
       let offset = SENumber(Integer 0) in
-      let cstrs = [
+      let value =  mk_loc_val_of_interval (IntervalLib.div (IntervalLib.num (Integer 1)) x) in
+      let base_cstrs = [
         mk_equal0 res.offset
       ] in
-      let value =  IntervalLib.div (IntervalLib.num (Integer 1)) x in
-      mkresult [res] scale offset
-        (mk_loc_val_of_interval value) cstrs 
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult [res] scale offset (value) cstrs 
+        
 
   
   let late_bind_pow (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
+    let args = [res1;res2] in
     match res1.value, res2.value with
     | SVZero, SVZero ->
       mkfailure ()
+
+    (*special don't care*)
+    | SVDC, SVZero ->
+      raise (SMapHwSpecLateBind_error "late_bind_pow: unimpl DC^0... DC neq 0")
+
+    | SVZero, SVDC->
+      raise (SMapHwSpecLateBind_error "late_bind_pow: unimpl 0^DC")
+
+    | SVNumber(n), SVDC->
+      raise (SMapHwSpecLateBind_error "late_bind_pow: unimpl (n=1?)^DC")
+
+    | SVDC, _ ->
+      res1
+
+    | _,SVDC ->
+      res2
 
     | SVNumber(n),SVZero ->
       let scale =
@@ -361,61 +417,67 @@ struct
       in
       let offset = SENumber(Integer 0) in
       let value = SVNumber(Integer 1) in
-      let cstrs = [] in
-      mkresult [res1;res2] scale offset value cstrs
+      let base_cstrs = [] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset value cstrs
 
     | SVZero,SVNumber(n) ->
       let scale = SEVar (get_freevar()) in
       let offset = SENumber (Integer 0) in
       let value = SVZero in
-      let cstrs = [] in
-      mkresult [res1;res2] scale offset value cstrs
+      let base_cstrs = [] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVNumber(n),SVNumber(m) ->
       let offset = SENumber(Integer 0) in
-      let value = NUMBER.pow n m in
-      let value_inv = NUMBER.div (Integer 1) value in
+      let value = mk_loc_val_of_number (NUMBER.pow n m) in
+      let value_inv = NUMBER.div (Integer 1) (NUMBER.pow n m) in
       let scale =
-        SEMult(SEMult(
-            SEPow(SEMult(res1.scale,SENumber n),SEMult(res2.scale,SENumber m)),
-            SEPow(SEMult(res1.scale,SENumber n),res2.offset)
-          ),SENumber(value_inv))
+          SEMult(SEMult(
+              SEPow(SEMult(res1.scale,SENumber n),SEMult(res2.scale,SENumber m)),
+              SEPow(SEMult(res1.scale,SENumber n),res2.offset)
+            ),SENumber(value_inv))
       in
-      let cstrs = [mk_equal0 res1.offset] in
-      mkresult [res1;res2] scale offset (mk_loc_val_of_number value) cstrs
+      let base_cstrs = [mk_equal0 res1.offset] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
 
     | SVSymbol(x), SVNumber(m) ->
       let offset = SENumber(Integer 0) in
-      let cstrs = [
+      let scale = SEPow(res1.scale,SENumber m) in
+      let value = mk_loc_val_of_interval (IntervalLib.pow x (IntervalLib.num m)) in
+      let base_cstrs = [
         mk_equal0 res1.offset;
         mk_equal (SENumber m) (SEAdd(SEMult(res2.scale,SENumber m),res2.offset))
       ]
       in
-      let scale = SEPow(res1.scale,SENumber m) in
-      let value = (IntervalLib.pow x (IntervalLib.num m)) in
-      mkresult [res1;res2] scale offset (mk_loc_val_of_interval value) cstrs
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVNumber(n), SVSymbol(x) ->
       let offset = SENumber(Integer 0) in
-      let cstrs= [
+      let scale = SEPow(SEMult(res1.scale,SENumber n),res2.offset) in
+      let value = mk_loc_val_of_interval (IntervalLib.pow (IntervalLib.num n) x) in
+      let base_cstrs= [
         mk_equal0 res1.offset;
         mk_equal (SENumber n) (SEPow(SEMult(res1.scale,SENumber n),res2.scale))
       ]
       in
-      let scale = SEPow(SEMult(res1.scale,SENumber n),res2.offset) in
-      let value = (IntervalLib.pow (IntervalLib.num n) x) in
-      mkresult [res1;res2] scale offset (mk_loc_val_of_interval value) cstrs
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVSymbol(x), SVSymbol(y) ->
       let offset = SENumber(Integer 0) in
-      let scale = SENumber(Integer 0) in
-      let cstrs = [
+      let scale = SENumber(Integer 1) in
+      let value = mk_loc_val_of_interval  (IntervalLib.pow x y) in
+      let base_cstrs = [
         mk_equal0 res1.offset; mk_equal0 res2.offset;
         mk_equal1 res1.scale; mk_equal1 res2.scale
       ] in
-      let value = (IntervalLib.pow x y) in
-      mkresult [res1;res2] scale offset (mk_loc_val_of_interval value) cstrs
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVZero, SVSymbol(y) ->
       raise (SMapHwSpecLateBind_error "unimpl: 0**x")
@@ -429,6 +491,13 @@ struct
   let rec late_bind_add2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     let args = [res1;res2] in
     match res1.value, res2.value with
+
+    | SVDC,_->
+      res1
+
+    | _,SVDC ->
+      late_bind_add2 ctx res2 res1
+
     | SVZero,SVZero ->
       let scale = SEVar(get_freevar()) in
       let offset = SEAdd(res1.offset, res2.offset) in
@@ -439,9 +508,10 @@ struct
     | SVZero, SVNumber(n) ->
       let scale = res2.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
-      let value = (n) in
-      let cstrs = [] in
-      mkresult args scale offset (mk_loc_val_of_number value) cstrs
+      let value = mk_loc_val_of_number (n) in
+      let base_cstrs = [] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVNumber(_), SVZero ->
       late_bind_add2 ctx res2 res1
@@ -449,16 +519,18 @@ struct
     | SVNumber(n), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
-      let value = (NUMBER.add n m) in
-      let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset (mk_loc_val_of_number value) cstrs
+      let value = mk_loc_val_of_number (NUMBER.add n m) in
+      let base_cstrs = [mk_equal res1.scale res2.scale] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVSymbol(a), SVZero ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
-      let value = (a) in
-      let cstrs = [] in
-      mkresult args scale offset (mk_loc_val_of_interval value) cstrs
+      let value = mk_loc_val_of_interval (a) in
+      let base_cstrs = [] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVZero, SVSymbol(_) ->
        late_bind_add2 ctx res2 res1 
@@ -466,9 +538,10 @@ struct
     | SVSymbol(a), SVNumber(m) ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
-      let value = (IntervalLib.add a (IntervalLib.num m)) in
-      let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset (mk_loc_val_of_interval value) cstrs
+      let value = mk_loc_val_of_interval (IntervalLib.add a (IntervalLib.num m)) in
+      let base_cstrs = [mk_equal res1.scale res2.scale] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
     | SVNumber(_), SVSymbol(_) ->
       late_bind_add2 ctx res2 res1
@@ -476,9 +549,10 @@ struct
     | SVSymbol(a), SVSymbol(b) ->
       let scale = res1.scale in
       let offset = SEAdd(res1.offset, res2.offset) in
-      let value = (IntervalLib.add a b) in
-      let cstrs = [mk_equal res1.scale res2.scale] in
-      mkresult args scale offset (mk_loc_val_of_interval value) cstrs
+      let value = mk_loc_val_of_interval (IntervalLib.add a b) in
+      let base_cstrs = [mk_equal res1.scale res2.scale] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      mkresult args scale offset (value) cstrs
 
 
 
@@ -503,7 +577,7 @@ struct
     let scale = lhs.scale in
     let offset = SENumber (Integer 0) in
     let value = lhs.value in
-    let cstr = [
+    let base_cstrs = [
       mk_equal lhs.scale rhs.scale;
       mk_equal lhs.scale ic.scale;
       mk_equal0 lhs.offset;
@@ -512,7 +586,8 @@ struct
       mk_equal lhs.scale (SEVar SMTimeConstant);
     ]
     in
-    mkresult [lhs;rhs;ic] scale offset value cstr 
+    let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+    mkresult [lhs;rhs;ic] scale offset value cstrs
 
   let map_range_of_interval : interval -> map_range option =
     let vmax = 1e32 in
@@ -537,16 +612,23 @@ struct
           | Some(mrng) -> mrng
           | None -> raise (SMapHwSpecLateBind_error "the math expr bounds must be resolvable.")
         end
-    | SVNumber(n) -> {min=n; max = n}
-    | SVZero -> {min=Integer 0; max=Integer 0}
-
+      | SVNumber(n) -> {min=n; max = n}
+      | SVZero -> {min=Integer 0; max=Integer 0}
+     
   let late_bind_cover :  map_range -> map_ctx -> map_result -> map_result =
     fun port_range ctx res  ->
-      let expr_range = map_range_of_map_loc_val res.value in
-      let cstrs = [
-        SCCoverInterval(port_range, expr_range , res.scale, res.offset);
-      ] in
-      mkresult [res] res.scale res.offset res.value cstrs 
+      match res.value with
+      |SVDC ->
+        mkresult [res] res.scale res.offset res.value []
+
+      | _ ->
+        begin
+          let expr_range = map_range_of_map_loc_val res.value in
+          let cstrs = [
+            SCCoverInterval(port_range, expr_range , res.scale, res.offset);
+          ] in
+          mkresult [res] res.scale res.offset res.value cstrs 
+        end
 
   let late_bind_noop  : map_ctx -> map_result -> map_result =
     fun ctx res ->
@@ -589,7 +671,9 @@ struct
       let scale = arg0.scale in
       let offset = SESub(SENumber(Integer 0), arg0.offset) in
       let value = match arg0.value with
-        | SVZero -> SVZero | SVNumber(x) -> SVNumber(NUMBER.neg x)
+        | SVZero -> SVZero
+        | SVNumber(x) -> SVNumber(NUMBER.neg x)
+        | SVDC -> SVDC
         | SVSymbol(ival) -> SVSymbol(IntervalLib.neg ival)
       in
       let cstrs = [] in
@@ -599,7 +683,7 @@ struct
     fun ctx assoc args ->
       (*TODO: actually implement sorting*)
       let rank_arg arg = match arg.value with
-        | SVZero -> 0 | SVNumber(_) -> 1 | SVSymbol(_) -> 2
+        | SVZero -> 1 | SVNumber(_) -> 2 | SVSymbol(_) -> 3 | SVDC(_) -> 0
       in
       let order_args x y = (rank_arg y) - (rank_arg x) in
       let args_sorted = List.sort order_args args in
@@ -734,7 +818,7 @@ struct
         let map_base = process_ast base in
         let map_exp = process_ast exp in
         let fxn = interp_arg2 (SMapHwSpecLateBind.late_bind_pow) in
-        SCLateBind(fxn,[map_exp;map_base])
+        SCLateBind(fxn,[map_base;map_exp])
 
       | Op1(Exp,exp) ->
         let map_exp = process_ast exp in

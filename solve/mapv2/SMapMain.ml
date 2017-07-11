@@ -9,6 +9,7 @@ open SMapHwSpecGen;;
 open SMapHwConfigGen;;
 open SMapSolver;;
 
+open Z3Lib;;
 exception SMapMain_error of string
 
 module SMapMain = struct
@@ -61,12 +62,34 @@ module SMapMain = struct
       | Some(prob) ->
         begin
           let is_sat = SMapSolver.compute_transform_exists tbl prob timeout in
-          if is_sat then print "SAT\n" else print "UNSAT\n";
-          is_sat
+          Printf.printf "%s\n" (Z3Lib.status2str is_sat);
+          begin
+            match is_sat with
+            | Z3SAT -> true | Z3DeltaSAT(_) -> true
+            | Z3Unknown -> true | Z3Timeout -> true
+            | _ -> false
+          end
         end
 
       | None -> false
 
+  let infer_has_mapping : gltbl -> bool =
+    fun tbl ->
+      let prob_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl in
+      let timeout = Globals.get_glbl_int "map-infer-solution-timeout" in
+      match prob_opt with
+      | Some(prob) ->
+        begin
+          let is_sat = SMapSolver.compute_transform_exists tbl prob timeout in
+          Printf.printf "%s\n" (Z3Lib.status2str is_sat);
+          begin
+            match is_sat with
+            | Z3SAT -> true | Z3DeltaSAT(_) -> true
+            | _ -> false
+          end
+        end
+
+      | None -> false
 
 
   let infer_best : (gltbl) -> (wireid,linear_transform) map option =

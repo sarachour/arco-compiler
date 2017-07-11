@@ -59,7 +59,11 @@ type z3assign =
 
 type z3model = z3assign list
 
+type z3status =
+  | Z3SAT | Z3UNSAT | Z3Timeout | Z3DeltaSAT of float | Z3Unknown | Z3Error
+
+
 type z3sln = {
-  mutable sat: bool;
+  mutable sat: z3status;
   mutable model: z3model option;
 }

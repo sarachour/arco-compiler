@@ -14,6 +14,7 @@ let _ = MAP.put glbls "interactive" (GlblPropInt 0)
 let _ = MAP.put glbls "debug" (GlblPropInt 0)
 
 let _ = MAP.put glbls "enable-jaunt" (GlblPropBool true)
+let _ = MAP.put glbls "enable-jaunt-feasible" (GlblPropBool true)
 
 let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 8)
 let _ = MAP.put glbls "multi-num-global-solutions" (GlblPropInt 2)
@@ -37,6 +38,7 @@ let _ = MAP.put glbls "z3-minimize-depth" (GlblPropInt 3)
 let _ = MAP.put glbls "z3-minimize-strategy" (GlblPropString "binary")
 
 let _ = MAP.put glbls "map-infer-feasible-timeout" (GlblPropInt 60)
+let _ = MAP.put glbls "map-infer-solution-timeout" (GlblPropInt 60)
 (*
 
 *)

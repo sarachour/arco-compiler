@@ -253,6 +253,17 @@ struct
     | Decimal(0.0) -> true
     | _ -> false
 
+  let is_one x = match x with
+    | Integer(1) -> true
+    | Decimal(1.0) -> true
+    | _ -> false
+
+  let is_neg_one x = match x with
+    | Integer(-1) -> true
+    | Decimal(-1.0) -> true
+    | _ -> false
+
+
   let eq a b = match a,b with
     | Integer(x),Integer(y) -> x = y
     | Decimal(x),Decimal(y) -> x = y
@@ -601,6 +612,9 @@ struct
     _work lst c0
 
 
+  let diag_iter (lst:'a list) (fxn: 'a -> 'a -> unit)  : unit =
+    diag_fold lst (fun x y r -> fxn x y) ()
+
   (*makes a list of tuples that is the product of the two lists*)
   let prod_fold (a:'a list) (b:'b list) (fxn:'a -> 'b -> 'c -> 'c) (c0:'c): 'c =
     let prod_sc a x =
@@ -663,6 +677,13 @@ struct
 
   let filter x y = List.filter x y
 
+
+  let filter_one x y = match filter x y with
+    | [h] -> h
+    | [] -> error "LIST.filter_one" "expected at least one match"
+    | lst -> error "LIST.filter_one" "expected exactly one match"
+
+ 
   let partition (x:'a list) fn : ('a list*'a list) =
     List.fold_left (fun (y,n) el ->
         if fn el then (el::y,n) else (y,el::n)
@@ -1116,6 +1137,11 @@ struct
   let filter (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (a*b) list =
     fold x (fun q v k -> if f q v then (q,v)::k else k) []
 
+  let filter_one x y = match filter x y with
+    | [h] -> h
+    | [] -> error "MAP.filter_one" "expected at least one match"
+    | lst -> error "MAP.filter_one" "expected exactly one match"
+
   let filter_values (type a) (type b) (x:(a,b) map) (f: a->b->bool) : (b) list =
     fold x (fun q v k -> if f q v then (v)::k else k) []
 
@@ -1388,9 +1414,10 @@ struct
     MAP.fold g.adj (fun src dests r0 ->
       MAP.fold dests (fun dest edj r -> fn src dest edj r) r0 ) c0
 
-  let iter_node g f =
-    let _ = MAP.iter g.adj (fun x dests -> f x ) in
-    ()
+  let iter_node (type a) (type b) : (a,b) graph -> (a-> unit) -> unit=
+    fun g f ->
+      let _ = MAP.iter g.adj (fun x dests -> f x ) in
+      ()
 
   let srcs (type a) (type b) (g:(a,b) graph) (node:a) : (a*b) list =
     let proc_edge (srcn:a) (snkn:a) (edj:b) (r:(a*b) list) =
@@ -1440,8 +1467,8 @@ struct
     let parents = parents g n in
     children @ parents
 
-  
-  (*get disjoint graph nodes*)
+
+    (*get disjoint graph nodes*)
   let disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =
     let rec get_subset (members:a set) (currnode:a) : a set =
       noop (SET.add members currnode);
@@ -1555,6 +1582,71 @@ struct
 
 
 
+
+  let rmedge (type a) (type b) : ((a,b) graph) -> a -> a -> unit=
+    fun g par ch ->
+      let dest = MAP.get (g.adj) par in
+      MAP.rm dest ch;
+      ()
+
+  let rmnode (type a) (type b) : ((a,b) graph) -> a -> unit =
+    fun g n ->
+      let chs = children g n and pars = parents g n in
+      List.iter (fun child ->
+          rmedge g n child;
+        ) chs;
+
+      List.iter (fun parent ->
+        rmedge g parent n;
+      ) pars;
+      MAP.rm g.adj n;
+      ()
+
+  let destroy (type a) (type b) : (a,b) graph -> unit =
+    fun g ->
+      ()
+
+  let map_nodes (type a) (type b) (type c) : (a,b) graph -> (c->string) -> (a->c) -> (c,b) graph=
+    fun g cstr fn ->
+      let new_g = make g.vcmp cstr g.val2str in
+      let fnx : a->a*c = fun r -> (r,fn r) in
+      MAP.iter g.adj (fun n _ ->
+          let new_node = fn n in
+          let chs = List.map fnx (children g n) in
+          let pars = List.map fnx (parents g n) in
+          if hasnode new_g new_node = false then
+            noop (mknode new_g new_node);
+          List.iter (fun (ch,new_ch) ->
+              if hasnode new_g new_ch = false then
+                noop (mknode new_g new_ch);
+              let edj : b= OPTION.force_conc (getedge g n ch) in
+              noop (mkedge new_g new_node new_ch edj)
+            ) chs;
+          List.iter (fun (par,new_par) ->
+              if hasnode new_g new_par = false then
+                noop (mknode new_g new_par);
+              let edj : b= OPTION.force_conc (getedge g par n) in
+              noop (mkedge new_g new_node new_par edj)
+            ) pars 
+      );
+      new_g
+
+
+  let merge (type a) (type b) (g:(a,b) graph) (n1:a) (n2:a) : unit =
+    let n2_children = children g n2 in
+    let n2_parents = parents g n2 in
+    List.iter (fun child ->
+        let v = getedge g n2 child in
+        rmedge g n1 child;
+        noop (mkedge g n1 child (OPTION.force_conc v))
+      ) n2_children;
+    List.iter (fun parent ->
+        let v = getedge g parent n2 in
+        rmedge g parent n1;
+        noop (mkedge g parent n1 (OPTION.force_conc v))
+      ) n2_parents;
+    rmnode g n2;
+    ()
 
 
   let tostr g : string =

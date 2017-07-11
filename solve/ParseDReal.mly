@@ -75,10 +75,10 @@ model_stmt:
 
 stmts:
   | SOLUTION COLON EOL {
-    {sat=true;model=None}
+    {sat=Z3SAT;model=None}
   }
   | stmts UNKNOWN EOL {
-    {sat=false;model=None}
+    {sat=Z3Unknown;model=None}
   }
   | stmts lst(model_stmt) {
     let mdl = $2 and obj = $1 in
@@ -86,24 +86,24 @@ stmts:
     obj
   }
   | stmts SAT EOL {
-    $1.sat <- true;
+    $1.sat <- Z3SAT;
     $1
   }
   | stmts DELTASAT EQ FLOAT EOL {
-    $1.sat <- true;
+    $1.sat <- Z3DeltaSAT($4);
     $1
   }
   | stmts DELTASAT EOL {
-    $1.sat <- true;
+    $1.sat <- Z3DeltaSAT(-1.0);
     $1
   }
   | UNSAT EOL {
-    {sat=false;model=None}
+    {sat=Z3UNSAT;model=None}
   }
   | stmts EOL {
      $1
   }
 env :
   | stmts EOF {Some $1}
-  | EOF       {Some {sat=false;model=None}}
+  | EOF       {Some {sat=Z3Timeout;model=None}}
   

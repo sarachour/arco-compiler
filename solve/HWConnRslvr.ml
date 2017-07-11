@@ -176,13 +176,17 @@ struct
   let timeout = 6*50;;
 
   let consistent gltbl =
-      let tbl,stmts = to_smt_prob gltbl in
-      debug "== Generated Constraints\n";
-      debug "== Created Z3 Instance\n";
-      flush_all(); 
-      let z = Z3Lib.exec "wiring" stmts timeout false in
-      z.sat
-
+    let tbl,stmts = to_smt_prob gltbl in
+    debug "== Generated Constraints\n";
+    debug "== Created Z3 Instance\n";
+    flush_all(); 
+    let z = Z3Lib.exec "wiring" stmts timeout false in
+    match z.sat with
+    | Z3SAT -> true
+    | Z3DeltaSAT(_) -> true
+    | Z3Timeout -> true
+    | Z3Unknown -> true
+    | Z3UNSAT -> false
 
   let z32cstr tbl z3 =
     let sln = MAP.make() in
@@ -203,14 +207,18 @@ struct
   let get_sln gltbl =
     let tbl,decls = to_smt_prob gltbl in
     let z : z3sln = Z3Lib.exec "wiring" decls timeout false in
-    if z.sat = false then
+    match z.sat with
+    | Z3SAT ->
+      begin
+        match z.model with
+        | Some(m) ->
+          let z3mdl = m in
+          let mapping = z32cstr tbl z3mdl in
+          mapping
+        | None -> error "get_sln" "no solution"
+      end
+
+    | _ ->
       error "get_sln" "no solution exists. ie UNSAT."
-    else
-      match z.model with
-      | Some(m) ->
-        let z3mdl = m in
-        let mapping = z32cstr tbl z3mdl in
-        mapping
-      | None -> error "get_sln" "no solution"
 end
 

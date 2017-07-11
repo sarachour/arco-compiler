@@ -128,24 +128,42 @@ struct
 
 
   
-  let test_node_map_cons tbl (node:sstep snode) =
+  let test_node_map_feasible tbl (node:sstep snode) =
     let mint,musr= mkmenu tbl None in
     let jaunt_enabled = Globals.get_glbl_bool "enable-jaunt" in
-    if jaunt_enabled  = false ||
+    let jaunt_feasible_enabled = Globals.get_glbl_bool "enable-jaunt-feasible" in
+    if jaunt_enabled  = false || jaunt_feasible_enabled = false || 
        (jaunt_enabled = true && SMapMain.infer_feasible tbl) then
       begin
-        debug ("<<< SAT => VALID >>");
+        debug ("<<< IS FEASIBLE >>");
         musr();
         true
       end
     else
       begin
-        debug "<< UNSAT => INVALID >>";
+        debug "<< NOT FEASIBLE >>"; 
         musr();
         false
       end
 
-  
+  let test_node_map_cons tbl (node:sstep snode) =
+    let mint,musr= mkmenu tbl None in
+    let jaunt_enabled = Globals.get_glbl_bool "enable-jaunt" in
+    if jaunt_enabled  = false ||
+       (jaunt_enabled = true && SMapMain.infer_has_mapping tbl) then
+      begin
+        debug ("<<< HAS MAPPING >>");
+        musr();
+        true
+      end
+    else
+      begin
+        debug "<< NO MAPPING >>";
+        musr();
+        false
+      end
+
+
   let mark_if_solution (v:gltbl) (curr:(sstep snode)) = 
     let mint,_ = mkmenu v None in
     debug "[mark-if-solution] testing if solution.";
@@ -213,7 +231,7 @@ struct
       if is_valid = false then
         false
       (*TODO: only check nodes in end. If search becomes sufficiently fast, change*)
-      else if test_node_map_cons tbl node then
+      else if test_node_map_feasible tbl node then
         true
       else
         begin

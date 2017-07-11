@@ -42,13 +42,13 @@ def IPTG mag = [0,0.60] kmol
 
 
 param K2 : unit = 1.0
-%input K2P : unit
-%def K2P mag = [1,1] unit
+input K2P : unit
+def K2P mag = [1,1] unit
 
 rel umodif = (U)*(1/((1+(IPTG/K) )^nu))
 
 rel UTF = (Cu*a1)*((K2^beta)/((K2^beta) +(V^beta)))
-rel VTF = (Cv*a2)*((K2^gamma)/((K2^gamma) + (umodif^gamma)))
+rel VTF = (Cv*a2)*((K2P^gamma)/((K2P^gamma) + (umodif^gamma)))
 %
 rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
 def U mag = [0,15.6] unit

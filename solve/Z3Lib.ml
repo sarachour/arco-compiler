@@ -295,6 +295,15 @@ struct
     in
     _ast2z3 x
 
+  let status2str : z3status -> string =
+    fun x -> match x with
+      | Z3SAT -> "sat"
+      | Z3DeltaSAT(prec) -> "delta-sat("^(string_of_float prec)^")"
+      | Z3UNSAT -> "unsat"
+      | Z3Unknown -> "unknown"
+      | Z3Error -> "error"
+      | Z3Timeout -> "timeout"
+
   let sln2str (x:z3sln) =
     let qty2str a = match a with
       |Z3QInt(i) -> string_of_int i
@@ -306,7 +315,7 @@ struct
     let assigns2str a =
       List.fold_right (fun x r -> r^"\n"^(assign2str x)) a ""
     in
-    let sat = if x.sat then  "SAT" else "UNSAT" in
+    let sat = status2str x.sat in 
     let mdl = match x.model with
     | Some(m) -> "MODEL\n"^(assigns2str m)
     | None -> "(no model)"
@@ -408,7 +417,7 @@ struct
       | Z3Bool(a) ->
         Z3Bool(a)
   
-  let sat (root:string) (stmts:z3st list) timeout use_dreal : bool =
+  let sat (root:string) (stmts:z3st list) timeout use_dreal : z3status =
     let stmts =
       if use_dreal then
         (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT]
@@ -427,7 +436,8 @@ struct
     flush_all ();
     begin
       if use_dreal then
-        Sys.command ("./timebomb.sh 'dReal --model "^smtfile^" > "^resfile^"' "^
+        Sys.command ("./timebomb.sh 'dReal --precision 0.00001 --model "^
+                     smtfile^" > "^resfile^"' "^
                     (string_of_int timeout))
       else
        Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
@@ -530,8 +540,12 @@ struct
     if use_dreal then
       begin
         let minvar = "__minima__" in
+        let test_status : z3status -> bool =
+          fun s -> match s with
+            | Z3SAT -> true | Z3DeltaSAT(_) -> true | _ -> false
+        in
         let has_solution sln =
-          if sln.sat = false || sln.model = None then None else sln.model
+          if test_status sln.sat  || sln.model = None then None else sln.model
         in
         let get_min_qty model = List.fold_right (fun q minval ->
                   match q with

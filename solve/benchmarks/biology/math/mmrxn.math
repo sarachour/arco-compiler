@@ -11,18 +11,22 @@ output ES : M
 output P : M
 
 %input kf : 1/s
-param kf : 1/s = 3.154
-%def kf mag = [3.154,3.154] unit
+%param kf : 1/s = 3.154
 
-param kr : 1/s = 2.315
-param krp : 1/s = 0
+%param kr : 1/s = 2.315
+
+
+param kf : 1/s = 0.3154
+param kr : 1/s = 0.2315
 param kcat : 1/s = 0.21
 
+param krp : 1/s = 0
 
 
-param krcat : 1/s = 2.525
+
+%param krcat : 1/s = 2.525
+param krcat : 1/s = 0.2525
 %input krcat : unit
-%def krcat mag = [2.525,2.525] unit
 
 time t : s
 
@@ -35,7 +39,7 @@ time t : s
 
 % individually solvable
 %rel ddt S =  (kr+kcat)*ES - kf*E*S init 0.256
-rel ddt S =  (kr)*ES - kf*E*S init 0.00256
+rel ddt S =  (krcat)*ES - kf*E*S init 0.00256
 def S mag = [0,0.003] M
 var ddt S = 0.04*S shape GAUSS
 
@@ -43,7 +47,7 @@ var ddt S = 0.04*S shape GAUSS
 %def ddt S speed 100 ms 
 
 %rel ddt E = (kr+ kcat)*ES -kf*E*S init 0.124
-rel ddt E = (kr)*ES -kf*E*S init 0.00124
+rel ddt E = (krcat)*ES -kf*E*S init 0.00124
 def E mag = [0,0.0014] M
 var ddt E = 0.04*E shape GAUSS
 
@@ -51,7 +55,7 @@ var ddt E = 0.04*E shape GAUSS
 %def ddt E speed 100 ms 
 
 
-rel ddt P = kcat*ES - krp*P init  0
+rel ddt P = kcat*ES  init  0
 def P mag = [0,0.0014] M
 var ddt P = 0.04*P shape GAUSS
 

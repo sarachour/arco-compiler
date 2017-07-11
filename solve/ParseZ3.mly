@@ -147,12 +147,12 @@ model:
     | OPARAN MODEL CPARAN {[]}
 
 sat:
-  | SAT           {true}
-  | UNSAT         {false}
+  | SAT           {Z3SAT}
+  | UNSAT         {Z3UNSAT}
 
 stmts:
   | errorst {
-    {sat=false;model=None}
+    {sat=Z3Error;model=None}
   }
   | sat           {
     {sat=$1;model=None}
@@ -184,4 +184,4 @@ stmts:
 
 env :
   | stmts EOF {Some $1}
-  | EOF       {Some {sat=false;model=None}}
+  | EOF       {Some {sat=Z3Timeout;model=None}}
