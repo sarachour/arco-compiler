@@ -1632,18 +1632,21 @@ struct
       new_g
 
 
+  (*replace n1 with n2*)
   let merge (type a) (type b) (g:(a,b) graph) (n1:a) (n2:a) : unit =
     let n2_children = children g n2 in
     let n2_parents = parents g n2 in
     List.iter (fun child ->
         let v = getedge g n2 child in
-        rmedge g n1 child;
-        noop (mkedge g n1 child (OPTION.force_conc v))
+        rmedge g n2 child;
+        if child <> n1 && child <> n2 then
+          noop (mkedge g n1 child (OPTION.force_conc v))
       ) n2_children;
     List.iter (fun parent ->
         let v = getedge g parent n2 in
-        rmedge g parent n1;
-        noop (mkedge g parent n1 (OPTION.force_conc v))
+        rmedge g parent n2;
+        if parent <> n1  && parent <> n2 then
+          noop (mkedge g parent n1 (OPTION.force_conc v))
       ) n2_parents;
     rmnode g n2;
     ()

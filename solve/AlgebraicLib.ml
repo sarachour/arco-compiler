@@ -258,7 +258,7 @@ struct
      Printf.fprintf fh
        "sys.path.insert(0,'engines')\n";
      Printf.fprintf fh
-       "from engines.sympy_engine import engine\n";
+       "from engines.unify.sympy_engine import engine\n";
      Printf.fprintf fh
        "engine.label(\"%s\")\n"
        prob.label;

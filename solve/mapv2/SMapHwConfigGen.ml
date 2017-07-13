@@ -10,61 +10,15 @@ open IntervalData;;
 open IntervalLib;;
 
 open AST;;
+open SMapSolverData;;
 
 open SMapData;;
 open SMapIntervalCompute;;
 open SMapHwSpecGen;;
 
 exception SMapHwConfigGen_error of string
-module SMapConfigData =
+module SMapCfggenUtil=
 struct
-
-  type cfggen_bin =
-    | SMBMapExpr of hwcompinst*map_expr
-    | SMBNumber of number
-    | SMBTimeConstant
-    | SMBMapVar of hwcompinst*map_var
-
-  
-
-  let string_of_bin (b:cfggen_bin) = match b with
-    | SMBMapExpr(inst,e) -> SMapExpr.to_string e
-    | SMBNumber(n) -> string_of_number n
-    | SMBTimeConstant -> "tau"
-    | SMBMapVar(inst,v) ->
-      (HwLib.hwcompinst2str inst)^"."^
-      (SMapVar.to_string v)
-
-  type cfggen_mapvar = {
-    comp:hwcompinst;
-    mapvar:map_var;
-  }
-
-  type cfggen_mapexpr = {
-    inst:hwcompinst;
-    expr:map_expr;
-  }
-  type cfggen_ctx = {
-    insts : (hwcompinst, map_comp_ctx) map;
-    cstrs: (wireid, map_cstr list) map;
-    bins : (cfggen_bin,unit) graph;
-    export: (cfggen_bin,bool) map;
-  }
-
-  let mkctx () =
-    {
-      insts = MAP.make();
-      bins=GRAPH.make
-          (fun a b -> a = b)
-          (fun bin -> string_of_bin bin)
-          (fun () -> "");
-      cstrs= MAP.make();
-      export=MAP.make();
-    }
-
-  let string_of_mapvar : cfggen_mapvar -> string =
-    fun v ->
-      (HwLib.hwcompinst2str v.comp)^":"^(SMapVar.to_string v.mapvar)
 
   let bind_val_to_wire: cfggen_ctx -> map_loc_val -> wireid -> unit=
     fun ctx v wire ->
@@ -177,9 +131,13 @@ struct
       GRAPH.iter_node ctx.bins (fun node -> match node with
           | SMBMapExpr(i,e) ->
             let new_node : cfggen_bin = SMBMapExpr(i,SMapExpr.simpl e) in
-            SMapConfigData.connect_bins ctx (node) new_node;
-            SMapConfigData.export_bin ctx node false;
-            ()
+            (*if this is simplified*)
+            if new_node <> node then
+              begin
+                SMapConfigData.connect_bins ctx (node) new_node;
+                SMapConfigData.export_bin ctx node false;
+                ()
+              end
           | _ -> ()
         )
 

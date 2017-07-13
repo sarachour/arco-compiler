@@ -1,0 +1,6 @@
+preds=Resolve[ForAll[{A,B,W,S,ES},-ES + 0.311==-ES + Ytot_&&-ES + 0.245==-ES + Xtot_&&-A*B*ES + S*W==-ES*R_ + S*W*F_&&0.140000000000000==Z0_],Reals]
+asgns=Solve[preds,{Xtot_,Ytot_,X_,Y_,Z_,F_,R_,Z0_}]
+Print[asgns]
+preds=Resolve[ForAll[{A,B,W,S,ES},-ES + 0.245==-ES + Ytot_&&-ES + 0.311==-ES + Xtot_&&-A*B*ES + S*W==-ES*R_ + S*W*F_&&0.140000000000000==Z0_],Reals]
+asgns=Solve[preds,{Xtot_,Ytot_,X_,Y_,Z_,F_,R_,Z0_}]
+Print[asgns]
