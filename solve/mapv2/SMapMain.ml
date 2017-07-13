@@ -62,13 +62,8 @@ module SMapMain = struct
       | Some(prob) ->
         begin
           let is_sat = SMapSolver.compute_transform_exists tbl prob timeout in
-          Printf.printf "%s\n" (Z3Lib.status2str is_sat);
-          begin
-            match is_sat with
-            | Z3SAT -> true | Z3DeltaSAT(_) -> true
-            | Z3Unknown -> true | Z3Timeout -> true
-            | _ -> false
-          end
+          is_sat
+          
         end
 
       | None -> false
@@ -81,12 +76,7 @@ module SMapMain = struct
       | Some(prob) ->
         begin
           let is_sat = SMapSolver.compute_transform_exists tbl prob timeout in
-          Printf.printf "%s\n" (Z3Lib.status2str is_sat);
-          begin
-            match is_sat with
-            | Z3SAT -> true | Z3DeltaSAT(_) -> true
-            | _ -> false
-          end
+          is_sat
         end
 
       | None -> false

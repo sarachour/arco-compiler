@@ -1,3 +1,4 @@
+open Util;;
 
 open SMapHwConfigGen;;
 open SMapData;;
@@ -6,7 +7,12 @@ open SMapSolverData;;
 open Z3Data;;
 open Z3Lib;;
 
-exception SMapZ3Solver_error of string
+open HWData;;
+open HWLib;;
+open MathData;;
+
+
+exception Z3SMapSolver_error of string
 module Z3SMapSolver =
 struct
 
@@ -46,7 +52,7 @@ struct
           ))
       in
       let comment =
-        Z3Comment(LIST.tostr string_of_cfggen_mapvar ", " mappings)
+        Z3Comment(LIST.tostr SMapCfggenCtx.string_of_mapvar ", " mappings)
       in
       (*not part of constraint problem.*)
       Z3Comment("")::comment::decl::not_too_large::[]
@@ -210,16 +216,16 @@ struct
               | Z3QInterval(Z3QAny) ->
                 MAP.put xid_to_val xid (Integer 0)
               | Z3QInterval(Z3QInfinite(QDNegative)) ->
-                MAP.put xid_to_val xid (Decimal vmin)
+                MAP.put xid_to_val xid (Decimal SMapSlvrOpts.vmin)
               | Z3QInterval(Z3QInfinite(QDPositive)) ->
-                MAP.put xid_to_val xid (Decimal vmax)
+                MAP.put xid_to_val xid (Decimal SMapSlvrOpts.vmax)
               (*if the interval has a lower or upper bound, set value to lower or upper bound*)
               | Z3QInterval(Z3QLowerBound(b)) ->
                 MAP.put xid_to_val xid (Decimal b)
               | Z3QInterval(Z3QUpperBound(b)) ->
                 MAP.put xid_to_val xid (Decimal b)
               | Z3QBool(_) ->
-                raise (SMapZ3Solver_error "unexpected: boolean datatype")
+                raise (Z3SMapSolver_error "unexpected: boolean datatype")
 
             end;
             ()

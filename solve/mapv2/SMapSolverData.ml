@@ -1,6 +1,8 @@
 open Util;;
 open SMapData;;
 open HWData;;
+open HWLib;;
+
 
 type cfggen_bin =
     | SMBMapExpr of hwcompinst*map_expr
@@ -51,6 +53,27 @@ struct
     cstrs= MAP.make();
     export=MAP.make();
   }
+  let make_bin : cfggen_ctx -> cfggen_bin -> unit =
+    fun ctx bin ->
+      if GRAPH.hasnode ctx.bins bin= false then
+        noop (GRAPH.mknode ctx.bins bin);
+      ()
+
+  let connect_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> unit =
+    fun ctx bin1 bin2 ->
+      make_bin ctx bin1;
+      make_bin ctx bin2;
+      GRAPH.mkedge ctx.bins bin1 bin2 ();
+      ()
+  let merge_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> unit =
+    fun ctx bin1 bin2 ->
+      GRAPH.merge ctx.bins bin1 bin2;
+      ()
+
+  let export_bin :cfggen_ctx -> cfggen_bin -> bool -> unit =
+    fun ctx e v ->
+      MAP.put ctx.export e v;
+      ()
 
 end
 
@@ -75,7 +98,7 @@ type mapslvr_ctx = {
   mutable success: bool;
 }
 
-module SMapSolverOpts =
+module SMapSlvrOpts =
 struct
 
   let vmax = 1e6;;
@@ -85,7 +108,7 @@ end
 
 module SMapSlvrCtx =
 struct
-  let string_of_mapslvr_bin step = match step with
+  let string_of_bin step = match step with
     | SMVMapExpr(me) -> "me."^(SMapExpr.to_string me)
     | SMVMapVar(mv) -> "mv."^(string_of_int mv)
     | SMVNeq(e,n) -> "neq."^(SMapExpr.to_string e)^"."^(string_of_number n)
@@ -96,11 +119,11 @@ struct
     | SMVIC(e,n) -> "ic."^(SMapExpr.to_string e)^"."^(string_of_number n)
     | SMVNumber(n) -> "mn."^(string_of_number n)
 
-  let mk_mapslvr_ctx () = {
+  let mk_ctx () = {
     varmap = MAP.make();
     xidmap= MAP.make();
     bins = GRAPH.make (fun a b -> a=b) 
-        (fun step -> string_of_mapslvr_bin step)
+        (fun step -> string_of_bin step)
         (fun () -> "");
     sts = SET.make_dflt();
     success = true;

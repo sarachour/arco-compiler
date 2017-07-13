@@ -63,51 +63,30 @@ struct
             List.iter (fun wire -> bind_time_cstrs_to_wire ctx sample speed wire) wlist
         | WCollEmpty -> ()
 
-  let make_bin : cfggen_ctx -> cfggen_bin -> unit =
-    fun ctx bin ->
-      if GRAPH.hasnode ctx.bins bin= false then
-        noop (GRAPH.mknode ctx.bins bin);
-      ()
-
-  let connect_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> unit =
-    fun ctx bin1 bin2 ->
-      make_bin ctx bin1;
-      make_bin ctx bin2;
-      GRAPH.mkedge ctx.bins bin1 bin2 ();
-      ()
-  let merge_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> unit =
-    fun ctx bin1 bin2 ->
-      GRAPH.merge ctx.bins bin1 bin2;
-      ()
-
-  let export_bin :cfggen_ctx -> cfggen_bin -> bool -> unit =
-    fun ctx e v ->
-      MAP.put ctx.export e v;
-      ()
-
+  
   let connect_bins_by_cstr :cfggen_ctx -> hwcompinst -> map_cstr -> bool =
     fun ctx inst cstr ->
       match cstr with
       | SCVarEqVar(mv1,mv2) ->
-        ret (connect_bins ctx (SMBMapVar(inst,mv1)) (SMBMapVar(inst,mv2))) true
+        ret (SMapCfggenCtx.connect_bins ctx (SMBMapVar(inst,mv1)) (SMBMapVar(inst,mv2))) true
 
       | SCVarEqConst(mv1,n) ->
-        ret (connect_bins ctx (SMBMapVar(inst,mv1)) (SMBNumber n)) true
+        ret (SMapCfggenCtx.connect_bins ctx (SMBMapVar(inst,mv1)) (SMBNumber n)) true
 
       | SCVarEqExpr(mv1,me1) ->
-        ret (connect_bins ctx (SMBMapVar(inst,mv1)) (SMBMapExpr(inst,me1))) true
+        ret (SMapCfggenCtx.connect_bins ctx (SMBMapVar(inst,mv1)) (SMBMapExpr(inst,me1))) true
 
       | SCExprEqExpr(me1,me2) ->
-        ret (connect_bins ctx (SMBMapExpr(inst,me1)) (SMBMapExpr(inst,me2))) true
+        ret (SMapCfggenCtx.connect_bins ctx (SMBMapExpr(inst,me1)) (SMBMapExpr(inst,me2))) true
 
       | SCExprEqConst(me1,n) ->
-        ret (connect_bins ctx (SMBMapExpr(inst,me1)) (SMBNumber n)) true
+        ret (SMapCfggenCtx.connect_bins ctx (SMBMapExpr(inst,me1)) (SMBNumber n)) true
 
       | SCExprNeqConst(me,n) ->
-        ret (make_bin ctx (SMBMapExpr(inst,me))) false
+        ret (SMapCfggenCtx.make_bin ctx (SMBMapExpr(inst,me))) false
 
       | SCVarNeqConst(mv,n) ->
-        ret (make_bin ctx (SMBMapVar(inst,mv))) false
+        ret (SMapCfggenCtx.make_bin ctx (SMBMapVar(inst,mv))) false
 
       | SCCoverInterval(mrng,hrng,mexpr,hexpr) -> false
       | SCCoverTime(n,n2) -> false
@@ -122,8 +101,6 @@ module SMapGraphSimplifier =
 struct
 
 
-  type cfggen_bin = SMapConfigData.cfggen_bin;;
-  type cfggen_ctx = SMapConfigData.cfggen_ctx;;
 
   (*this simplifies every expression and adds the simplifcation*)
   let simplify_expressions : cfggen_ctx -> unit =
@@ -134,8 +111,8 @@ struct
             (*if this is simplified*)
             if new_node <> node then
               begin
-                SMapConfigData.connect_bins ctx (node) new_node;
-                SMapConfigData.export_bin ctx node false;
+                SMapCfggenCtx.connect_bins ctx (node) new_node;
+                SMapCfggenCtx.export_bin ctx node false;
                 ()
               end
           | _ -> ()
@@ -150,8 +127,6 @@ end
 module SMapHwConfigGen =
 struct
 
-  type cfggen_bin = SMapConfigData.cfggen_bin;;
-  type cfggen_ctx = SMapConfigData.cfggen_ctx;;
 
   (*get range of expression*)
   let interval_of_expr : gltbl -> mid ast -> interval =
@@ -188,23 +163,23 @@ struct
       begin
         MAP.iter lbls.outs (fun name wire_coll ->
             let ival : interval = interval_of_var gltbl MOutput name in
-            SMapConfigData.bind_val_to_wire_collection ctx (outfxn name ival) wirefxn wire_coll 
+            SMapCfggenUtil.bind_val_to_wire_collection ctx (outfxn name ival) wirefxn wire_coll 
           );
         MAP.iter lbls.ins (fun name wire_coll ->
             let ival : interval = interval_of_var gltbl MInput name in
-            SMapConfigData.bind_val_to_wire_collection ctx (infxn name ival) wirefxn wire_coll
+            SMapCfggenUtil.bind_val_to_wire_collection ctx (infxn name ival) wirefxn wire_coll
           );
         MAP.iter lbls.locals (fun name wire_coll ->
             let ival : interval = interval_of_var gltbl MLocal name in
-            SMapConfigData.bind_val_to_wire_collection ctx (localfxn name ival)  wirefxn wire_coll
+            SMapCfggenUtil.bind_val_to_wire_collection ctx (localfxn name ival)  wirefxn wire_coll
           );
         MAP.iter lbls.exprs (fun (expr:mid ast) (wire_coll) ->
             let ival : interval = interval_of_expr gltbl expr in
-            SMapConfigData.bind_val_to_wire_collection ctx (exprfxn expr ival)  wirefxn wire_coll
+            SMapCfggenUtil.bind_val_to_wire_collection ctx (exprfxn expr ival)  wirefxn wire_coll
           );
         MAP.iter lbls.vals (fun (num:number) (wire_coll) ->
             (*TODO: if input number then transformable. Otherwise not. *)
-            SMapConfigData.bind_val_to_wire_collection ctx (numfxn num)  wirefxn wire_coll
+            SMapCfggenUtil.bind_val_to_wire_collection ctx (numfxn num)  wirefxn wire_coll
           );
         ()
       end
@@ -214,15 +189,15 @@ struct
     fun gltbl ctx lbls ->
       MAP.iter lbls.outs (fun name wire_coll ->
           let min_sample_period,max_speed= time_constraints_of_var gltbl name in
-          SMapConfigData.bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
+          SMapCfggenUtil.bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
         );
       MAP.iter lbls.ins (fun name wire_coll ->
           let min_sample_period,max_speed= time_constraints_of_var gltbl name in
-          SMapConfigData.bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
+          SMapCfggenUtil.bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
         );
       MAP.iter lbls.locals (fun name wire_coll ->
           let min_sample_period,max_speed= time_constraints_of_var gltbl name in
-          SMapConfigData.bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
+          SMapCfggenUtil.bind_time_cstrs_to_wire_collection ctx min_sample_period max_speed wire_coll
         );
       ()
 
@@ -259,9 +234,9 @@ struct
 
   let build_config : map_hw_spec -> gltbl ->  cfggen_ctx option =
     fun tblspec tbl ->
-      let ctx : cfggen_ctx = SMapConfigData.mkctx() in
+      let ctx : cfggen_ctx = SMapCfggenCtx.mkctx() in
       let sln : (string,mid) sln = tbl.sln_ctx in
-      SMapConfigData.make_bin ctx (SMBTimeConstant);
+      SMapCfggenCtx.make_bin ctx (SMBTimeConstant);
       SET.iter sln.comps (fun (inst:hwcompinst) ->
           let data : map_comp_ctx =
             {
@@ -271,18 +246,18 @@ struct
           in
           let spec : map_comp = MAP.get tblspec.comps inst.name in
           MAP.iter spec.inputs (fun port _ ->
-              SMapConfigData.make_bin ctx (SMBMapVar(inst,SMScale(port)));
-              SMapConfigData.make_bin ctx (SMBMapVar(inst,SMOffset(port)));
+              SMapCfggenCtx.make_bin ctx (SMBMapVar(inst,SMScale(port)));
+              SMapCfggenCtx.make_bin ctx (SMBMapVar(inst,SMOffset(port)));
               ()
             );
           MAP.iter spec.outputs (fun port _ ->
-              SMapConfigData.make_bin ctx (SMBMapVar(inst,SMScale(port)));
-              SMapConfigData.make_bin ctx (SMBMapVar(inst,SMOffset(port)));
+              SMapCfggenCtx.make_bin ctx (SMBMapVar(inst,SMScale(port)));
+              SMapCfggenCtx.make_bin ctx (SMBMapVar(inst,SMOffset(port)));
               ()
             );
           (*all the component time constants are the same*)
-          SMapConfigData.make_bin ctx (SMBMapVar(inst,SMTimeConstant));
-          SMapConfigData.connect_bins ctx
+          SMapCfggenCtx.make_bin ctx (SMBMapVar(inst,SMTimeConstant));
+          SMapCfggenCtx.connect_bins ctx
             SMBTimeConstant (SMBMapVar(inst,SMTimeConstant));
           MAP.put ctx.insts inst data;
           ()
@@ -321,10 +296,10 @@ struct
       (* Merge variables joined through a connection *)
       MAP.iter sln.conns.src2dest (fun (src:wireid) (dests:wireid set) ->
           SET.iter dests (fun (dest:wireid) ->
-              SMapConfigData.connect_bins ctx
+              SMapCfggenCtx.connect_bins ctx
                 (SMBMapVar(src.comp,SMScale(src.port)))
                 (SMBMapVar(dest.comp,SMScale(dest.port)));
-              SMapConfigData.connect_bins ctx
+              SMapCfggenCtx.connect_bins ctx
                 (SMBMapVar(src.comp,SMOffset(src.port)))
                 (SMBMapVar(dest.comp,SMOffset(dest.port)));
            )
@@ -339,7 +314,7 @@ struct
           let remaining_cstrs : map_cstr list =
             List.filter (fun (cstr:map_cstr) ->
                 Printf.printf "  -> cstr %s\n" (SMapCstr.to_string cstr);
-                (SMapConfigData.connect_bins_by_cstr ctx inst cstr)=false)
+                (SMapCfggenUtil.connect_bins_by_cstr ctx inst cstr)=false)
               result.cstrs
           in
           (*if any of the constraints are false, terminate early during sunthesis process*)

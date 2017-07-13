@@ -6,7 +6,8 @@ module ScipyOptimizeLib =
 struct
 
 
-  let exec : sciopt_st list -> sciopt_result =
-    raise (ScipyOptimizeLib_error "unimpl")
+  let exec : string -> sciopt_st list -> int -> sciopt_result =
+    fun suffix sts timeout ->
+      raise (ScipyOptimizeLib_error "unimpl")
 
 end

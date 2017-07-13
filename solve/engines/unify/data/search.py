@@ -1,5 +1,5 @@
 from sympy import *
-from data.eqn import *
+from eqn import *
 import numpy as np
 
 # a search path is a set of assignments

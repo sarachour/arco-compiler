@@ -13,5 +13,5 @@ type sciopt_status =
 type sciopt_result = {
   status:sciopt_status;
   obj: float;
-  vect: float list;
+  vect: float list option;
 }
