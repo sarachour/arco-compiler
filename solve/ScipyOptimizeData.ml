@@ -2,8 +2,19 @@ open Util;;
 
 
 type sciopt_st =
-  | SCINameVar of int*string
-  
+  | SCIInitialize of float*int*int
+  | SCIInitGuess of int*float 
+  | SCIBound of float*float
+  | SCIEq of string*string
+  | SCINeq of string*string
+  | SCIGTE of string*string
+  | SCILTE of string*string
+  | SCIInterval of string*float*float
+  | SCIObjective of string
+  | SCISolve
+  | SCIWrite of string
+  | SCIComment of string 
+
 
 type sciopt_status =
   | SCISuccess

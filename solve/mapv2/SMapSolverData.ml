@@ -80,11 +80,9 @@ end
 type mapslvr_bin =
   | SMVMapExpr of map_expr
   | SMVMapVar of int
-  | SMVNumber of number
   | SMVNeq of map_expr*number
   | SMVCoverTime of number option*number option
   | SMVTimeConstant
-  | SMVIC of map_expr*number
 
 type mapslvr_st =
   | SMVCover of int*int*map_range*map_range
@@ -116,8 +114,10 @@ struct
                            (OPTION.tostr n string_of_number)^
                            (OPTION.tostr m string_of_number)
     | SMVTimeConstant -> "tc"
+    (*
     | SMVIC(e,n) -> "ic."^(SMapExpr.to_string e)^"."^(string_of_number n)
     | SMVNumber(n) -> "mn."^(string_of_number n)
+    *)
 
   let mk_ctx () = {
     varmap = MAP.make();
