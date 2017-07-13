@@ -229,11 +229,23 @@ struct
 
 
   
+  let print_slvr_bins : mapslvr_ctx -> unit =
+    fun ctx ->
+      let disjoint = GRAPH.disjoint ctx.bins in
+      Printf.printf "=== SOLVER CTX ==";
+      List.iteri (fun d bset ->
+          Printf.printf "--- Bin %d ---\n" d;
+          SET.iter bset (fun bin ->
+              Printf.printf "%s\n" (SMapSlvrCtx.string_of_bin bin)
+            );
+          Printf.printf "---------\n"
+        ) disjoint
 
   let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> (wireid,linear_transform) map option =
     fun tbl ctx compute_time ->
       let slvr_ctx = SMapSlvrCtx.mk_ctx () in
       convert_mapvar_graph_to_xid_graph slvr_ctx ctx;
+      print_slvr_bins slvr_ctx;
       (*reduce_xid_graph slvr_ctx ctx;*)
       if slvr_ctx.success = false then
         None
