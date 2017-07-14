@@ -96,8 +96,8 @@ struct
     let _,maxval= LIST.max  float_of_int (MAP.keys ctx.xidmap)  in
     maxval + 1
 
-  let to_scipy : mapslvr_ctx -> sciopt_st list =
-    fun ctx ->
+  let to_scipy_and_obj : mapslvr_ctx -> (string -> string) -> sciopt_st list =
+    fun ctx obj_fn ->
       let sts : sciopt_st queue = QUEUE.make () in
       let q x = noop (QUEUE.enqueue sts x ) in
       let qall x = noop (QUEUE.enqueue_all sts x ) in
@@ -138,7 +138,9 @@ struct
             ); 
           (*maximize speed*)
           if REF.dr is_tc then
-            q (SCIObjective(List.nth cls 0))
+            q (SCIObjective(
+                obj_fn (List.nth cls 0)
+              ))
           else
             ()
         ) disjoint;
@@ -148,8 +150,16 @@ struct
         );
       QUEUE.to_list sts 
 
-  let parse_sln : (string,mid) sln -> map_hw_spec -> (int,cfggen_mapvar list) map
-    -> float list -> (wireid, linear_transform) map =
-    fun sln mapspec mapper asgns ->
-      raise (ScioptSMapSolver_error "unimpl: parse_sln")
+  let to_scipy : mapslvr_ctx -> sciopt_st list =
+    fun ctx ->
+      (*try to either speed up or slow down the simulation.*)
+      let fact = 2.0 in
+      let inv_fact = 1.0 /. fact in
+      to_scipy_and_obj ctx
+        (fun tc -> Printf.sprintf "0.0-((%s)-%f)**2"
+            tc 1.0)
+
+  let get_standard_model : (int,float) map -> (int,float) map =
+    fun mp -> mp
+
 end

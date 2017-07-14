@@ -14,15 +14,28 @@ type sciopt_st =
   | SCISolve
   | SCIWrite of string
   | SCIComment of string 
+  | SCINewline 
 
+type sciopt_error_code =
+  | SCIGradEvalRequired
+  | SCIFunctionEvalRequired
+  | SCIMoreEqCstrThanVars
+  | SCIMoreThan3nItersInLSQProb
+  | SCIIncompatCstr
+  | SCISingularMatE
+  | SCISingularMatC
+  | SCIRankDefEqCstr
+  | SCIPosDirectDerivative
+  | SCIMaxIters
+  | SCIUnknown
 
 type sciopt_status =
   | SCISuccess
-  | SCIExceededIter
+  | SCIError of sciopt_error_code
   | SCIMalformedProb
 
 type sciopt_result = {
   status:sciopt_status;
   obj: float;
-  vect: float list option;
+  vect: ((int,float) map) option;
 }

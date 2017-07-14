@@ -241,6 +241,59 @@ struct
           Printf.printf "---------\n"
         ) disjoint
 
+  let build_linmap_transform : (string,mid) sln -> map_hw_spec -> (int,cfggen_mapvar list) map
+    -> (int,float) map -> (wireid, linear_transform) map =
+    fun sln mapspec mapper asgns ->
+      let wire_to_mapping : (wireid,linear_transform) map = MAP.make () in
+      MAP.iter mapper (fun xid (mapvars:cfggen_mapvar list) ->
+          List.iter (fun (var:cfggen_mapvar) ->
+              let wire_maybe  = match var.mapvar with
+                | SMScale(port) ->Some (mkwire var.comp.name var.comp.inst port)
+                | SMOffset(port) -> Some (mkwire var.comp.name var.comp.inst port)
+                | _ -> None
+              in
+              let value = MAP.get asgns xid in
+              match wire_maybe with
+              | Some(wire) ->
+                let linear_trans :linear_transform= if MAP.has wire_to_mapping wire 
+                  then MAP.get wire_to_mapping wire else {scale=1.0;offset=0.0}
+                in
+                begin
+                  match var.mapvar with
+                  | SMScale(_) -> linear_trans.scale <- value 
+                  | SMOffset(_) -> linear_trans.offset <- value
+                end;
+                noop (MAP.put wire_to_mapping wire linear_trans)
+
+              | None -> ()
+
+            ) mapvars
+        );
+      SET.iter sln.comps (fun (inst:hwcompinst) ->
+          let spec : map_comp = MAP.get mapspec.comps inst.name in
+          MAP.iter spec.inputs (fun port _ ->
+              let wire : wireid = {comp=inst;port=port} in
+              if MAP.has wire_to_mapping wire = false then
+                noop (MAP.put wire_to_mapping wire {scale=1.0;offset=0.0})
+            );
+          MAP.iter spec.outputs (fun port _ ->
+              let wire : wireid = {comp=inst;port=port} in
+              if MAP.has wire_to_mapping wire = false then
+                noop (MAP.put wire_to_mapping wire {scale=1.0;offset=0.0})
+            )
+        );
+      Printf.printf "=== Mappings ===\n%s\n=======\n"
+        (SLinearTransform.map_to_string wire_to_mapping);
+      wire_to_mapping
+
+  let validate_model : int -> mapslvr_ctx -> (int,float) map -> bool*(int,float) map =
+    fun compute_time slvr_ctx stdmodel ->
+      let z3prob = Z3SMapSolver.slvr_ctx_to_z3_validate slvr_ctx stdmodel in
+      let mapsln : z3sln = Z3Lib.exec "mapver" z3prob compute_time true in
+      match mapsln.model with
+      | Some(model) -> true,Z3SMapSolver.get_standard_model model
+      | None -> false,stdmodel
+        
   let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> (wireid,linear_transform) map option =
     fun tbl ctx compute_time ->
       let slvr_ctx = SMapSlvrCtx.mk_ctx () in
@@ -259,7 +312,8 @@ struct
             let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
             match mapsln.model with
             | Some(model) ->
-              Some (Z3SMapSolver.parse_sln tbl.sln_ctx tbl.map_ctx mapping model)
+              let stdmodel = Z3SMapSolver.get_standard_model model in
+              Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
             | None -> None
           end
 
@@ -269,8 +323,17 @@ struct
             let mapsln : sciopt_result = ScipyOptimizeLib.exec "map" scipy_prob compute_time in
             match mapsln.vect with
             | Some(model) ->
-              Some (ScioptSMapSolver.parse_sln tbl.sln_ctx tbl.map_ctx mapping model)
-                
+              begin
+                let stdmodel = ScioptSMapSolver.get_standard_model model in
+                let is_valid,accmodel =
+                  validate_model compute_time slvr_ctx stdmodel
+                in
+                if is_valid then
+                  Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping accmodel)
+                else
+                  None
+              end
+
             | None -> None
           end
 

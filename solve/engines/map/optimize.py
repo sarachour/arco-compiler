@@ -1,14 +1,17 @@
 from scipy import optimize
 import inspect
+import numpy
 import sys
 
 class OptimizeProblem:
 
-    def __init__(self,n):
+    def __init__(self,tol,iters,n):
         self.cstrs = []
         self.dim = n
-        self.tol = 1e-15;
-        self.init = None;
+        self.tol = tol;
+        self.iters = iters;
+        self.init = [0.0]*n
+
         self.opt = None;
         self.bounds = None;
         self.maxIter = 100;
@@ -18,8 +21,8 @@ class OptimizeProblem:
     def var(self, name):
         return;
 
-    def initial(self,ic):
-        self.init = ic;
+    def initial(self,idx,ic):
+        self.init[idx] = ic;
 
     def eq(self,expr1,expr2):
         fn = lambda x : expr1(x) - expr2(x)
@@ -68,24 +71,22 @@ class OptimizeProblem:
         nfn = "%s - (%s)" % (expr1,expr2)
         self._eq_cstr(nfn)
 
-    def eq_num(self,expr, n):
-        nfn = "(%s) - (%f)" % (expr,n)
-        self._eq_cstr(nfn)
-        
     def neq(self,expr1,expr2):
         nfn = "(%s) - (%s)" % (expr1,expr2)
         self._neq_cstr(nfn)
 
-    def neq_num(self,expr,n):
-        nfn = "(%s) - (%f)" % (expr,n)
-        self._neq_cstr(nfn)
+    def lte(self,expr1,expr2):
+        nfn = "(%s) - (%s)" % (expr2,expr1)
+        self._ineq_cstr(nfn);
+
+    def gte(self,expr1,expr2):
+        nfn = "(%s) - (%s)" % (expr1,expr2)
+        self._ineq_cstr(nfn);
    
-    
+
     def interval(self,expr,mini,maxi):
-        cstr_min = "(%s) - %f" % (expr,mini);
-        cstr_max= "%f - (%s)" % (maxi,expr);
-        self._ineq_cstr(cstr_min)
-        self._ineq_cstr(cstr_max)
+        self.lte(expr,str(maxi));
+        self.gte(expr,str(mini));
 
     def objective(self,expr):
         self.opt = eval("lambda x: %s" % expr);
@@ -95,50 +96,69 @@ class OptimizeProblem:
 
     def solve(self):
 
+        print(self.init)
         res=optimize.minimize(
             self.opt,
             self.init,
             constraints=self.cstrs,
             tol=self.tol,
             bounds=self.bounds,
-            options={'maxiter':self.maxIter , 'disp': True}
+            options={
+                'maxiter':self.maxIter ,
+                'disp': True
+            }
         )
+        print(res)
         self.result = res
+
+    def wrap(self,xi):
+        if abs(xi) <= self.tol:
+            return 0
+        else:
+            return xi
+
+    def is_sat(self,x):
+        for cstr in self.cstrs:
+           value = cstr["fun"](x)
+           if cstr["type"] == "eq":
+              result = (abs(value) <= self.tol)
+           else:
+              result = (value >= 0)
+
+           if not result:
+              print(str(value)+"-> fail "+cstr["type"])
+              return False;
+           else:
+              print(str(value)+"-> pass "+cstr["type"])
+
+        return True;
+
+    def round_vect(self,x,n):
+        res = []
+        trunc = "%."+str(n)+"g"
+        for v in x:
+            vr = float(trunc % v)
+            res.append(vr)
+
+        return res;
+
+    def find_sigfigs(self,x):
+        for sigfigs in range(1,128):
+            xrnd = self.round_vect(x,sigfigs)
+            print("-> ",sigfigs)
+            print(xrnd,self.is_sat(xrnd))
 
     def write(self,filename):
         fh = open(filename,'w');
-        if self.result = None:
-            fh.write("unknown")
-        else if self.result.status = 0:
-            fh.write("success")
-            
-
-model= OptimizeProblem(5);
-
-model.initial([0,1,1,0,0])
-
-model.bound(-10000,10000)
-model.eq_num(" x[0]",0)
-model.eq(" x[0]", "x[3] - x[0]*(x[4]+x[2]*0.2525)")
-model.eq_num(" x[3] - x[0]*(x[4]+x[2]*0.2525)", 0)
-model.eq(" x[1]", "x[1]*(x[2]+x[4]*3.960396)")
-
-model.neq_num(" x[1]", 0)
-model.neq_num(" x[2]*0.2525+x[4]", 0)
-model.neq_num(" x[1]*(x[2]+x[4]*3.96096)", 0)
-
-model.interval("x[1]*0 + x[0]", 0, 12000)
-model.interval("x[1]*0 + x[3]", 0, 12000)
-model.interval("x[1]*1.32468e-6 + x[3]", 0, 12000)
-model.interval("x[1]*0 + x[0]", 0, 3300)
-model.interval("x[1]*0 + x[0]", 0, 12000)
-model.interval("x[1]*0.0014 + x[0]", 0, 12000)
-model.interval("x[2]*0.2525 + x[4]", 0, 10)
-
-
-model.objective("-x[1]-x[2]")
-
-model.solve();
-
-
-
+        if self.result == None:
+            fh.write("unknown\n")
+        elif self.result.status == 0: 
+            fh.write("success\n")
+            i = 0;
+            #self.find_sigfigs(self.result.x);
+            for ident in self.result.x:
+                fh.write("%d=%e\n" % (i,ident))
+                i+=1;
+        else:
+            fh.write("failure\n")
+            fh.write("%d\n" % self.result.status)

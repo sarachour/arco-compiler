@@ -397,13 +397,27 @@ struct
 
     (*special don't care*)
     | SVDC, SVZero ->
-      raise (SMapHwSpecLateBind_error "late_bind_pow: unimpl DC^0... DC neq 0")
+      let scale = SENumber(Integer 1) in 
+      let offset = SENumber(Integer 0) in
+      let value = SVNumber (Integer 1) in
+      mkresult args scale offset value []
 
     | SVZero, SVDC->
-      raise (SMapHwSpecLateBind_error "late_bind_pow: unimpl 0^DC")
+      let scale = SENumber(Integer 1) in 
+      let offset = SENumber(Integer 0) in
+      let value = SVZero  in
+      mkresult args scale offset value []
 
-    | SVNumber(n), SVDC->
-      raise (SMapHwSpecLateBind_error "late_bind_pow: unimpl (n=1?)^DC")
+    | SVNumber(Integer 0), SVDC->
+        begin
+          let scale = SENumber(Integer 1) in 
+          let offset = SENumber(Integer 0) in
+          let value = SVNumber (Integer 1) in
+          mkresult args scale offset value []
+        end
+
+    | SVNumber(n), SVDC ->
+        res2
 
     | SVDC, _ ->
       res1
@@ -480,10 +494,16 @@ struct
       mkresult args scale offset (value) cstrs
 
     | SVZero, SVSymbol(y) ->
-      raise (SMapHwSpecLateBind_error "unimpl: 0**x")
+      let scale = SENumber (Integer 1) in
+      let offset = SENumber (Integer 0) in
+      let value = SVZero in
+      mkresult args scale offset value []
 
     | SVSymbol(y), SVZero ->
-      raise (SMapHwSpecLateBind_error "unimpl: x**0")
+      let scale = SENumber (Integer 1) in
+      let offset = SENumber (Integer 0) in
+      let value = SVNumber (Integer 1) in
+      mkresult args scale offset value []
 
     | _ ->
     raise (SMapHwSpecLateBind_error "unimpl:process_ast pow")

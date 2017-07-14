@@ -195,84 +195,66 @@ struct
       in
       (problem)
 
-  
-  
-  let parse_sln : (string,mid) sln -> map_hw_spec -> (int,cfggen_mapvar list) map
-    -> z3assign list -> (wireid, linear_transform) map =
-    fun sln mapspec mapper asgns ->
-      let xid_to_val : (int,number) map= MAP.make () in 
+
+  let slvr_ctx_to_z3_validate : mapslvr_ctx -> (int,float) map -> z3st list =
+    fun ctx sln ->
+      let base_prob = slvr_ctx_to_z3 ctx in
+      let delta = 1e-3 in
+      let sts = MAP.fold sln (fun idx value rest ->
+          if MAP.has ctx.xidmap idx then
+            let value = if value < delta then delta else value in
+            Z3Assert(Z3LTE(
+                  Z3Var (xid_to_z3_var idx),
+                  Z3Number
+                    (NUMBER.from_float  (value +. delta))
+                ))::
+              Z3Assert(Z3GTE(
+                  Z3Var (xid_to_z3_var idx),
+                  Z3Number
+                    (NUMBER.from_float  (value -. delta))
+                ))
+              ::rest
+          else
+            rest
+        ) []
+      in
+      let prob =  base_prob @ Z3Comment("==== Validate ===")::sts in
+      prob
+
+  let get_standard_model : z3assign list -> (int,float) map =
+    fun asgns ->
+      let  xid_to_val : (int,float) map= MAP.make () in
       List.iter (fun asgn -> match asgn with
           | Z3Set(varname,qty) ->
             let xid = z3_var_to_xid varname in
             begin
               match qty with
               | Z3QInt(i) ->
-                MAP.put xid_to_val xid (Integer i)
+                MAP.put xid_to_val xid (float_of_int i)
               | Z3QFloat(f) ->
-                MAP.put xid_to_val xid (Decimal f)
+                MAP.put xid_to_val xid (f)
               | Z3QInterval(Z3QRange(min,max)) ->
-                MAP.put xid_to_val xid (Decimal (MATH.max[min;max]))
+                MAP.put xid_to_val xid ((MATH.max[min;max]))
               (*anything with infinity is basically a don't care.*)
               | Z3QInterval(Z3QAny) ->
-                MAP.put xid_to_val xid (Integer 0)
+                MAP.put xid_to_val xid (0.0)
               | Z3QInterval(Z3QInfinite(QDNegative)) ->
-                MAP.put xid_to_val xid (Decimal SMapSlvrOpts.vmin)
+                MAP.put xid_to_val xid (SMapSlvrOpts.vmin)
               | Z3QInterval(Z3QInfinite(QDPositive)) ->
-                MAP.put xid_to_val xid (Decimal SMapSlvrOpts.vmax)
+                MAP.put xid_to_val xid (SMapSlvrOpts.vmax)
               (*if the interval has a lower or upper bound, set value to lower or upper bound*)
               | Z3QInterval(Z3QLowerBound(b)) ->
-                MAP.put xid_to_val xid (Decimal b)
+                MAP.put xid_to_val xid (b)
               | Z3QInterval(Z3QUpperBound(b)) ->
-                MAP.put xid_to_val xid (Decimal b)
+                MAP.put xid_to_val xid (b)
               | Z3QBool(_) ->
                 raise (Z3SMapSolver_error "unexpected: boolean datatype")
 
             end;
             ()
         ) asgns;
-      let wire_to_mapping : (wireid,linear_transform) map = MAP.make () in
-      MAP.iter mapper (fun xid (mapvars:cfggen_mapvar list) ->
-          List.iter (fun (var:cfggen_mapvar) ->
-              let wire_maybe  = match var.mapvar with
-                | SMScale(port) ->Some (mkwire var.comp.name var.comp.inst port)
-                | SMOffset(port) -> Some (mkwire var.comp.name var.comp.inst port)
-                | _ -> None
-              in
-              let value = float_of_number (MAP.get xid_to_val xid) in
-              match wire_maybe with
-              | Some(wire) ->
-                let linear_trans :linear_transform= if MAP.has wire_to_mapping wire 
-                  then MAP.get wire_to_mapping wire else {scale=1.0;offset=0.0}
-                in
-                begin
-                  match var.mapvar with
-                  | SMScale(_) -> linear_trans.scale <- value 
-                  | SMOffset(_) -> linear_trans.offset <- value
-                end;
-                noop (MAP.put wire_to_mapping wire linear_trans)
-
-              | None -> ()
-
-            ) mapvars
-
-        );
-      SET.iter sln.comps (fun (inst:hwcompinst) ->
-          let spec : map_comp = MAP.get mapspec.comps inst.name in
-          MAP.iter spec.inputs (fun port _ ->
-              let wire : wireid = {comp=inst;port=port} in
-              if MAP.has wire_to_mapping wire = false then
-                noop (MAP.put wire_to_mapping wire {scale=1.0;offset=0.0})
-            );
-          MAP.iter spec.outputs (fun port _ ->
-              let wire : wireid = {comp=inst;port=port} in
-              if MAP.has wire_to_mapping wire = false then
-                noop (MAP.put wire_to_mapping wire {scale=1.0;offset=0.0})
-            )
-        );
-      Printf.printf "=== Mappings ===\n%s\n=======\n"
-        (SLinearTransform.map_to_string wire_to_mapping);
-      wire_to_mapping
-
+      xid_to_val
+  
 
 end
 
