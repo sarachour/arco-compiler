@@ -37,7 +37,7 @@ struct
           | SESub(a,b) -> Printf.sprintf "(%s)-(%s)" (_proc a) (_proc b)
           | SEVar(SMFreeVar a) -> Printf.sprintf "%s" (xid_to_sciopt_expr a)
           | SEVar(_) -> raise (ScioptSMapSolver_error "the expression should be processed.")
-          | SENumber(a) -> Printf.sprintf "%s" (string_of_number a)
+          | SENumber(a) -> Printf.sprintf "%s" (string_of_float (float_of_number a))
       in
       _proc expr
   
@@ -103,7 +103,7 @@ struct
       let qall x = noop (QUEUE.enqueue_all sts x ) in
       let disjoint = GRAPH.disjoint ctx.bins in
       let nvars = get_nvars ctx in
-      let tol = 1e-15 and iters = 100 in
+      let tol = 1e-16 and iters = 100 in
       q (SCIInitialize(tol,iters,nvars));
       q (SCIBound(SMapSlvrOpts.vmin, SMapSlvrOpts.vmax));
       MAP.iter ctx.xidmap (fun idx mapvars ->
@@ -156,8 +156,8 @@ struct
       let fact = 2.0 in
       let inv_fact = 1.0 /. fact in
       to_scipy_and_obj ctx
-        (fun tc -> Printf.sprintf "0.0-((%s)-%f)**2"
-            tc 1.0)
+        (fun tc -> Printf.sprintf "0.0-((%s)**2) - 1.0/((%s)**2 + 1e-25)"
+            tc tc)
 
   let get_standard_model : (int,float) map -> (int,float) map =
     fun mp -> mp

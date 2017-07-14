@@ -37,5 +37,6 @@ type sciopt_status =
 type sciopt_result = {
   status:sciopt_status;
   obj: float;
+  tolerance: float;
   vect: ((int,float) map) option;
 }

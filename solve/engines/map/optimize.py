@@ -2,6 +2,7 @@ from scipy import optimize
 import inspect
 import numpy
 import sys
+import math
 
 class OptimizeProblem:
 
@@ -11,10 +12,9 @@ class OptimizeProblem:
         self.tol = tol;
         self.iters = iters;
         self.init = [0.0]*n
-
+        self.eqs = {};
         self.opt = None;
         self.bounds = None;
-        self.maxIter = 100;
         self.result = None;
         self.names = {};
 
@@ -24,13 +24,6 @@ class OptimizeProblem:
     def initial(self,idx,ic):
         self.init[idx] = ic;
 
-    def eq(self,expr1,expr2):
-        fn = lambda x : expr1(x) - expr2(x)
-        cstr = {
-            "fun":fn,
-            "type":"eq"
-        };
-        self.cstrs.append(cstr);
 
     def _ineq_cstr(self,fn):
         fnx = "lambda x: %s" % fn
@@ -42,20 +35,18 @@ class OptimizeProblem:
         self.cstrs.append(cstr);
 
     def _eq_cstr(self,fn):
-        fn_min = "%e - (%s)" % (self.tol,fn) 
-        fn_max = "(%s) + %e" % (fn,self.tol) 
-        self._ineq_cstr(fn_min);
-        self._ineq_cstr(fn_max);
-        #fnx = "lambda x: %s" % fn
-        #print("%s = 0" % fnx)
-        #cstr = {
-        #    "fun":eval(fnx),
-        #    "type":"eq"
-        #};
-        #self.cstrs.append(cstr);
+        fnx = "lambda x: %s" % fn
+        print("%s == 0" % fnx)
+        cstr = {
+            "fun":eval(fnx),
+            "type":"eq"
+        };
+        self.cstrs.append(cstr);
 
+    
     def _neq_cstr(self,fn):
-        fnx = "lambda x: (%s)**2 - %e*%e" % (fn,self.tol,self.tol);
+        tol = self.tol*0
+        fnx = "lambda x: (%s)**2 - %e*%e" % (fn,tol,tol);
         print("%s >= 0" % fnx)
         cstr = {
             "fun":eval(fnx),
@@ -68,8 +59,35 @@ class OptimizeProblem:
         self.names[idx] = name;
 
     def eq(self,expr1, expr2):
-        nfn = "%s - (%s)" % (expr1,expr2)
-        self._eq_cstr(nfn)
+        if not (expr1 in self.eqs):
+            self.eqs[expr1] = []
+        if not (expr2 in self.eqs):
+            self.eqs[expr2] = []
+
+        self.eqs[expr1].append(expr2)
+        self.eqs[expr2].append(expr1)
+
+    def equiv_cstr(self,equiv):
+        first = equiv.pop()
+        for e in equiv:
+            for e2 in equiv:
+                if e == e2:
+                    continue;
+                
+                subexpr = "((%s)-(%s))**2" % (e2,e)
+                self.lte(subexpr,self.tol)
+
+    def compile_eqs(self):
+        exprs = self.eqs.keys()
+        covered = []
+        for expr in exprs:
+           if expr in covered:
+              continue
+
+           other = self.eqs[expr]
+           equiv = other + [expr]
+           self.equiv_cstr(equiv)
+           covered += equiv
 
     def neq(self,expr1,expr2):
         nfn = "(%s) - (%s)" % (expr1,expr2)
@@ -94,60 +112,40 @@ class OptimizeProblem:
     def bound(self,mini,maxi):
         self.bounds = [(mini,maxi)]*self.dim
 
-    def solve(self):
-
-        print(self.init)
+    def _solve(self,tol):
+        init_guess = self.init 
         res=optimize.minimize(
             self.opt,
-            self.init,
+            init_guess,
             constraints=self.cstrs,
-            tol=self.tol,
+            tol=tol,
             bounds=self.bounds,
             options={
-                'maxiter':self.maxIter ,
+                'maxiter':self.iters,
                 'disp': True
             }
         )
-        print(res)
-        self.result = res
+        return res
 
-    def wrap(self,xi):
-        if abs(xi) <= self.tol:
-            return 0
-        else:
-            return xi
+    def solve(self):
+        tols = [self.tol]
+        steps = int(0-math.log(self.tol))
+        for i in range(0,steps-3):
+           last_tol = tols[-1]
+           next_tol = last_tol*10
+           tols.append(next_tol)
 
-    def is_sat(self,x):
-        for cstr in self.cstrs:
-           value = cstr["fun"](x)
-           if cstr["type"] == "eq":
-              result = (abs(value) <= self.tol)
-           else:
-              result = (value >= 0)
+        self.compile_eqs()
+        for tol in tols:
+           print("Tolerance="+str(tol));
+           res = self._solve(tol)
+           self.result = res
+           self.result.tolerance = tol
+           if self.result.status == 0:
+               return;
 
-           if not result:
-              print(str(value)+"-> fail "+cstr["type"])
-              return False;
-           else:
-              print(str(value)+"-> pass "+cstr["type"])
 
-        return True;
-
-    def round_vect(self,x,n):
-        res = []
-        trunc = "%."+str(n)+"g"
-        for v in x:
-            vr = float(trunc % v)
-            res.append(vr)
-
-        return res;
-
-    def find_sigfigs(self,x):
-        for sigfigs in range(1,128):
-            xrnd = self.round_vect(x,sigfigs)
-            print("-> ",sigfigs)
-            print(xrnd,self.is_sat(xrnd))
-
+  
     def write(self,filename):
         fh = open(filename,'w');
         if self.result == None:
@@ -155,7 +153,7 @@ class OptimizeProblem:
         elif self.result.status == 0: 
             fh.write("success\n")
             i = 0;
-            #self.find_sigfigs(self.result.x);
+            fh.write("%e\n" % self.result.tolerance)
             for ident in self.result.x:
                 fh.write("%d=%e\n" % (i,ident))
                 i+=1;

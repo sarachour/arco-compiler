@@ -64,6 +64,7 @@ rm -rf $EXPDIR/*
 mkdir -p $EXPDIR
 mkdir -p $EXPDIR/smt
 mkdir -p $EXPDIR/unify
+mkdir -p $EXPDIR/map
 mkdir -p $TMPDIR
 
 mv error.log $EXPDIR
@@ -76,5 +77,8 @@ mv *.model $EXPDIR/smt
 mv unify_*.py $EXPDIR/unify
 mv unify_*.out $EXPDIR/unify
 mv unify_*.log $EXPDIR/unify
+mv mapopt_*.py $EXPDIR/map
+mv mapopt_*.out $EXPDIR/map
+mv mapopt_*.log $EXPDIR/map
 
 mv *.debug.txt $TMPDIR

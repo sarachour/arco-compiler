@@ -151,20 +151,12 @@ struct
           SET.iter bins (fun (bin:mapslvr_bin) ->
               match bin with
               | SMVNeq(_,n) ->
+                let z3n = number_to_z3_expr n in
                 let neqs = List.map (
                     fun expr ->
-                      if NUMBER.is_zero n then
-                        let z3n = number_to_z3_expr (Decimal 1e-15) in
-                        Z3Assert(Z3Or(
-                            Z3LT(expr,Z3Neg(z3n)),
-                            Z3GT(expr,z3n)
-                          ))
-                      else
-                        let z3n = number_to_z3_expr n in
-                        Z3Assert(Z3Or(
-                            Z3LT(expr,z3n),
-                            Z3GT(expr,z3n)
-                          ))
+                      Z3Assert(Z3Not(
+                          Z3Eq(expr,z3n)
+                        ))
                   ) cls
                 in
                   noop (SET.add_all not_equals neqs)
@@ -196,13 +188,17 @@ struct
       (problem)
 
 
-  let slvr_ctx_to_z3_validate : mapslvr_ctx -> (int,float) map -> z3st list =
-    fun ctx sln ->
+  let slvr_ctx_to_z3_validate : mapslvr_ctx -> (int,float) map -> float -> z3st list =
+    fun ctx sln prec ->
       let base_prob = slvr_ctx_to_z3 ctx in
-      let delta = 1e-3 in
+      let delta = prec /. 2.0 in
+      let neg_delta = 0.0 -. delta in
       let sts = MAP.fold sln (fun idx value rest ->
           if MAP.has ctx.xidmap idx then
-            let value = if value < delta then delta else value in
+            let value =
+              if value >= neg_delta && value <= delta then
+                0.0 else value
+            in
             Z3Assert(Z3LTE(
                   Z3Var (xid_to_z3_var idx),
                   Z3Number

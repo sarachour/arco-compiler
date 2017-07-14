@@ -78,8 +78,9 @@ struct
     fun outfile ->
       let lines = In_channel.read_lines outfile in
       match lines with
-      | "success"::model ->
+      | "success"::tol::model ->
         let status = SCISuccess in
+        let tol = float_of_string tol in
         let mdl = MAP.make () in
         List.iter ~f:(fun (line:string) ->
             match STRING.split line "=" with
@@ -90,15 +91,15 @@ struct
                    )
             | _ -> ()
           ) model;
-        {status=status;vect=Some(mdl);obj=0.0-.1.0}
+        {status=status;tolerance=tol;vect=Some(mdl);obj=0.0-.1.0}
 
       | "unknown"::rest ->
         let status = SCIMalformedProb in
-        {status=status;vect=None;obj=0.0-.1.0}
+        {status=status;tolerance=0.0;vect=None;obj=0.0-.1.0}
 
       | "failure"::errcode::rest ->
         let status = SCIError(int_to_error_code (int_of_string errcode)) in 
-        {status=status;vect=None;obj=0.0-.1.0}
+        {status=status;tolerance=0.0;vect=None;obj=0.0-.1.0}
 
   let exec : string -> sciopt_st list -> int -> sciopt_result =
     fun suffix sts timeout ->

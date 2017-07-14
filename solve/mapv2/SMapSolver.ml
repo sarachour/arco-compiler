@@ -286,14 +286,28 @@ struct
         (SLinearTransform.map_to_string wire_to_mapping);
       wire_to_mapping
 
-  let validate_model : int -> mapslvr_ctx -> (int,float) map -> bool*(int,float) map =
-    fun compute_time slvr_ctx stdmodel ->
-      let z3prob = Z3SMapSolver.slvr_ctx_to_z3_validate slvr_ctx stdmodel in
-      let mapsln : z3sln = Z3Lib.exec "mapver" z3prob compute_time true in
-      match mapsln.model with
-      | Some(model) -> true,Z3SMapSolver.get_standard_model model
-      | None -> false,stdmodel
-        
+  (*compute a tight bound then gradually relax it*)
+  let validate_model : int -> mapslvr_ctx -> (int,float) map -> float -> bool*(int,float) map =
+    fun compute_time slvr_ctx stdmodel prec ->
+      let evaluate prec = 
+        let z3prob = Z3SMapSolver.slvr_ctx_to_z3_validate slvr_ctx stdmodel prec in
+        let mapsln : z3sln = Z3Lib.exec "mapver" z3prob compute_time true in
+        match mapsln.model with
+        | Some(model) -> true,Z3SMapSolver.get_standard_model model
+        | None -> false,stdmodel
+      in
+      let rec _work mult =
+        let new_prec = mult *. prec in
+        let succ,model = evaluate new_prec in
+        if succ then
+          succ,model
+        else if new_prec > 1.0 then
+          succ,model
+        else
+          _work (mult *. 10.0)
+      in
+      _work 1.0
+
   let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> (wireid,linear_transform) map option =
     fun tbl ctx compute_time ->
       let slvr_ctx = SMapSlvrCtx.mk_ctx () in
@@ -320,13 +334,15 @@ struct
         | "scipy" ->
           begin
             let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx in
-            let mapsln : sciopt_result = ScipyOptimizeLib.exec "map" scipy_prob compute_time in
+            let mapsln : sciopt_result =
+              ScipyOptimizeLib.exec "map" scipy_prob compute_time in
             match mapsln.vect with
             | Some(model) ->
               begin
                 let stdmodel = ScioptSMapSolver.get_standard_model model in
+                build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel;
                 let is_valid,accmodel =
-                  validate_model compute_time slvr_ctx stdmodel
+                  validate_model compute_time slvr_ctx stdmodel mapsln.tolerance
                 in
                 if is_valid then
                   Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping accmodel)
