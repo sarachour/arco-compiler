@@ -27,6 +27,7 @@ type cfggen_ctx = {
   cstrs: (wireid, map_cstr list) map;
   bins : (cfggen_bin,unit) graph;
   export: (cfggen_bin,bool) map;
+  mutable success: bool;
 }
 module SMapCfggenCtx =
 struct
@@ -52,6 +53,7 @@ struct
         (fun () -> "");
     cstrs= MAP.make();
     export=MAP.make();
+    success=true;
   }
   let make_bin : cfggen_ctx -> cfggen_bin -> unit =
     fun ctx bin ->
@@ -80,7 +82,7 @@ end
 type mapslvr_bin =
   | SMVMapExpr of map_expr
   | SMVMapVar of int
-  | SMVNeq of map_expr*number
+  | SMVOp of map_op*map_expr*number
   | SMVCoverTime of number option*number option
   | SMVTimeConstant
 
@@ -109,7 +111,7 @@ struct
   let string_of_bin step = match step with
     | SMVMapExpr(me) -> "me."^(SMapExpr.to_string me)
     | SMVMapVar(mv) -> "mv."^(string_of_int mv)
-    | SMVNeq(e,n) -> "neq."^(SMapExpr.to_string e)^"."^(string_of_number n)
+    | SMVOp(op,e,n) -> (SMapCstr.string_of_op op)^"."^(SMapExpr.to_string e)^"."^(string_of_number n)
     | SMVCoverTime(n,m) -> "ct."^
                            (OPTION.tostr n string_of_number)^
                            (OPTION.tostr m string_of_number)

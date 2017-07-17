@@ -128,10 +128,13 @@ struct
             );
           SET.iter bins (fun (bin:mapslvr_bin) ->
               match bin with
-              | SMVNeq(_,n) ->
+              | SMVOp(op,_,n) ->
                 let nstr = string_of_number n in
                 List.iter (fun expr ->
-                    q (SCINeq(expr,nstr))
+                    match op with
+                    | SCNEQ -> q (SCINeq(expr,nstr))
+                    | SCGTE -> q (SCIGTE(expr,nstr))
+                    | SCLTE -> q (SCILTE(expr,nstr))
                   ) cls
               | SMVCoverTime(min,max) ->
                 List.iter (fun expr ->

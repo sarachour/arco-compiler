@@ -436,7 +436,7 @@ struct
     flush_all ();
     begin
       if use_dreal then
-        Sys.command ("./timebomb.sh 'dReal --precision 0.00001 --model "^
+        Sys.command ("./timebomb.sh 'dReal --precision 0.001 --model "^
                      smtfile^" > "^resfile^"' "^
                     (string_of_int timeout))
       else

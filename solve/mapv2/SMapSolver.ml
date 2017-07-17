@@ -136,25 +136,25 @@ struct
           LIST.iter (fun cstr ->
               Printf.printf "  cstr: %s\n" (SMapCstr.to_string cstr);
               match cstr with
-              | SCExprNeqConst(me,n) ->
+              | SCExprOPConst(op,me,n) ->
                 begin
                   let xidexpr = (map_expr_to_xid_expr slvr_ctx inst me) in
                   let xidexpr_bin = SMVMapExpr(xidexpr) in
-                  let neq_bin = SMVNeq(xidexpr,n) in
-                  if GRAPH.hasnode slvr_ctx.bins neq_bin = false then
-                    noop (GRAPH.mknode slvr_ctx.bins neq_bin);
-                  GRAPH.mkedge slvr_ctx.bins xidexpr_bin neq_bin ();
+                  let op_bin = SMVOp(op,xidexpr,n) in
+                  if GRAPH.hasnode slvr_ctx.bins op_bin = false then
+                    noop (GRAPH.mknode slvr_ctx.bins op_bin);
+                  GRAPH.mkedge slvr_ctx.bins xidexpr_bin op_bin ();
                   ()
                 end
                 
-              | SCVarNeqConst(mv,n) ->
+              | SCVarOPConst(op,mv,n) ->
                 begin
                   let xidvar = (map_var_to_xid_var slvr_ctx inst mv) in
                   let xidvar_bin = SMVMapVar(xidvar) in
-                  let neq_bin = SMVNeq(SEVar (SMFreeVar xidvar), n) in
-                  if GRAPH.hasnode slvr_ctx.bins neq_bin = false then
-                    noop (GRAPH.mknode slvr_ctx.bins neq_bin);
-                  GRAPH.mkedge slvr_ctx.bins xidvar_bin neq_bin ();
+                  let op_bin = SMVOp(op,SEVar (SMFreeVar xidvar), n) in
+                  if GRAPH.hasnode slvr_ctx.bins op_bin = false then
+                    noop (GRAPH.mknode slvr_ctx.bins op_bin);
+                  GRAPH.mkedge slvr_ctx.bins xidvar_bin op_bin ();
                   ()
                 end
                 
@@ -178,6 +178,8 @@ struct
                     noop (GRAPH.mkedge slvr_ctx.bins SMVTimeConstant cstr_bin);
                   ()
                 end
+
+            
               | _ -> ()
           ) cstrs
       );
@@ -188,7 +190,7 @@ struct
             let to_remove = match bin with
               | SMBMapExpr(inst,e) ->
                 SMVMapExpr(map_expr_to_xid_expr slvr_ctx inst e)
-              | _ ->
+              | SMBMapVar(inst,e) ->
                 raise (SMapSolver_error "unexpected: must export var")
             in
             if GRAPH.hasnode slvr_ctx.bins to_remove then
@@ -347,6 +349,8 @@ struct
               end
 
           end
+        | _ ->
+          raise (SMapSolver_error ("unexpected method: "^solver))
 
   let compute_transform : gltbl ->  cfggen_ctx -> int ->
     (wireid, linear_transform) map option=

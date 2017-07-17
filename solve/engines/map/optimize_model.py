@@ -15,7 +15,7 @@ class OptimizeModel:
         self._geq = [];
         self.dim = n
         self.obj = "0"
-        self.success = False;
+        self.success = True;
 
     def initial(self,idx,ic):
         self.init[idx] = ic

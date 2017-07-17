@@ -82,10 +82,10 @@ struct
       | SCExprEqConst(me1,n) ->
         ret (SMapCfggenCtx.connect_bins ctx (SMBMapExpr(inst,me1)) (SMBNumber n)) true
 
-      | SCExprNeqConst(me,n) ->
+      | SCExprOPConst(_,me,n) ->
         ret (SMapCfggenCtx.make_bin ctx (SMBMapExpr(inst,me))) false
 
-      | SCVarNeqConst(mv,n) ->
+      | SCVarOPConst(_,mv,n) ->
         ret (SMapCfggenCtx.make_bin ctx (SMBMapVar(inst,mv))) false
 
       | SCCoverInterval(mrng,hrng,mexpr,hexpr) -> false
@@ -118,9 +118,89 @@ struct
           | _ -> ()
         )
 
+  let numerical_rewrite: cfggen_ctx -> unit =
+    fun ctx ->
+      let changes = REF.mk 0 in
+      let subs : (string,number) map = MAP.make () in
+      let get_sub : hwcompinst -> map_var -> number option =
+        fun i v ->
+          let key = SMapCfggenCtx.string_of_bin (SMBMapVar(i,v)) in
+          MAP.ifget subs key
+      in
+      let put_sub : hwcompinst -> map_var -> number -> unit =
+        fun i v num ->
+          let key = SMapCfggenCtx.string_of_bin (SMBMapVar(i,v)) in
+          if MAP.has subs key then () else
+            begin
+              MAP.put subs key num;
+              REF.upd changes (fun x -> x +1)
+            end
+      in
+      let rec work () =
+        begin
+          REF.upd changes (fun _ -> 0);
+          GRAPH.iter_node ctx.bins (fun node -> match node with
+              | SMBMapVar(i,v) ->
+                let number = List.fold_right (fun other rest ->
+                    match other,rest with
+                    | SMBNumber(n),Some(n2) ->
+                      if n == n2 then Some(n) else
+                        begin
+                          ctx.success <- false;
+                          None
+                        end
+
+                    | SMBNumber(n), None ->
+                      Some n
+
+                    | _ -> rest
+                  ) (GRAPH.connected ctx.bins node) None
+                in
+                begin
+                  match number with
+                  | Some(n) ->
+                    begin
+                      put_sub i v n
+                    end
+
+                  | None -> ()
+                end
+              | _ -> ()
+            );
+          if REF.dr changes > 0 then
+            begin
+              GRAPH.iter_node ctx.bins (fun node -> match node with
+                  | SMBMapExpr(i,e) ->
+                    let simpl_expr = SMapExpr.simpl
+                        (SMapExpr.sub e (fun v -> OPTION.map (get_sub i v) (fun x -> SENumber(x))))
+                    in
+                    let simpl_bin = match simpl_expr with
+                      |SEVar(v) -> SMBMapVar(i,v)
+                      |SENumber(n) -> SMBNumber(n)
+                      | _ -> SMBMapExpr(i,simpl_expr)
+                    in
+                    if simpl_bin <> node then
+                      begin
+                        SMapCfggenCtx.connect_bins ctx (node) simpl_bin;
+                        SMapCfggenCtx.export_bin ctx node false;
+                        ()
+                      end
+                    else
+                      ()
+                  | _ -> ()
+                );
+              work ()
+            end
+          else
+            ()
+        end
+      in
+      work ()
+
   let simplify : cfggen_ctx -> unit =
     fun ctx ->
-      simplify_expressions ctx;
+      numerical_rewrite(ctx);
+      simplify_expressions(ctx);
       ()
 end
 

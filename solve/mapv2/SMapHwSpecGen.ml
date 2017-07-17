@@ -94,13 +94,28 @@ struct
       in
       {cstrs=all_cstrs;scale=scale;offset=offset;value=value}
 
+  let rec mk_less_than : map_expr -> number -> map_cstr =
+    fun a n ->
+      match a with
+      | SENumber(m) -> if m <= n then SCTrue else SCFalse 
+      | SEVar(a) -> SCVarOPConst(SCLTE,a,n)
+      | expr -> SCExprOPConst(SCLTE,expr,n)
 
+  let rec mk_greater_than : map_expr -> number -> map_cstr =
+    fun a n ->
+      match a with
+      | SENumber(m) -> if m >= n then SCTrue else SCFalse 
+      | SEVar(a) -> SCVarOPConst(SCGTE,a,n)
+      | expr -> SCExprOPConst(SCGTE,expr,n)
+
+  (*
   let rec mk_not_equal : map_expr -> number -> map_cstr =
     fun a n ->
       match a with
       | SENumber(m) -> if n = m then SCFalse else SCTrue
-      | SEVar(a) -> SCVarNeqConst(a,n)
-      | expr -> SCExprNeqConst(expr,n)
+      | SEVar(a) -> SCVarOPConst(SCNEQ,a,n)
+      | expr -> SCExprOPConst(SCNEQ,expr,n)
+  *)
 
   let rec mk_equal : map_expr -> map_expr -> map_cstr =
     fun mapexpr1 mapexpr2 ->
@@ -127,14 +142,18 @@ struct
   let mk_equal0 : map_expr -> map_cstr =
     fun x -> mk_equal x (SENumber (Integer 0))
 
+  (*
   let mk_not_equal0 : map_expr -> map_cstr =
     fun x -> mk_not_equal x ((Integer 0))
+  *)
 
   let mk_equal1 : map_expr -> map_cstr =
     fun x -> mk_equal x (SENumber (Integer 0))
 
+  (*
   let mk_not_equal1 : map_expr -> map_cstr =
     fun x -> mk_not_equal x ((Integer 0))
+  *)
 
   let mk_loc_val_of_number : number -> map_loc_val =
     fun x -> if NUMBER.eq_int x 0 then
@@ -149,18 +168,24 @@ struct
       | None -> SVSymbol(ival)
 
   let mk_cstr_from_loc_val : map_loc_val -> map_expr -> map_expr -> map_cstr list -> map_cstr list =
-    fun v sc off lst -> match v with
+    fun v sc off lst ->
+      let nonzero_pos : number = Decimal 1e-20 in
+      match v with
       | SVZero -> lst
+
       | SVNumber(n) ->
         if NUMBER.is_nan n || NUMBER.is_inf n then
           SCFalse::lst
         else
-          (mk_not_equal0 (SEAdd(SEMult(sc,SENumber n),off)))::lst
+          let expr = SEPow(SEAdd(SEMult(sc,SENumber n),off),SENumber(Integer 2)) in
+          (mk_greater_than expr nonzero_pos)::lst
 
       | SVDC ->
         (mk_equal1 sc)::(mk_equal0 off)::lst
 
-      | SVSymbol(n) -> (mk_not_equal0 sc)::lst
+      | SVSymbol(n) ->
+        let expr = SEPow(sc,SENumber(Integer 2)) in 
+        (mk_greater_than expr nonzero_pos)::lst
 
   (*process the bounds over the variable.*)
   let port_val_to_port_cstrs: string -> map_loc_val -> map_loc_val*(map_cstr list) =

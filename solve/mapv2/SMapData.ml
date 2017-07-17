@@ -53,6 +53,9 @@ type map_expr =
   | SEDiv of map_expr*map_expr
   | SEPow of map_expr*map_expr
 
+type map_op =
+  | SCLTE | SCGTE | SCNEQ
+
 type map_cstr =
   | SCFalse
   | SCTrue
@@ -62,13 +65,14 @@ type map_cstr =
   (*expr constraints*)
   | SCExprEqExpr of map_expr*map_expr
   | SCExprEqConst of map_expr*number
-  | SCExprNeqConst of map_expr*number
-  (*var constraints*)
   | SCVarEqVar of map_var*map_var
-  | SCVarEqExpr of map_var*map_expr 
+  | SCVarEqExpr of map_var*map_expr
   | SCVarEqConst of map_var*number
-  | SCVarNeqConst of map_var*number
-
+  (*test*)
+  | SCExprOPConst of map_op*map_expr*number
+  | SCVarOPConst of map_op*map_var*number
+  (*var constraints*)
+ 
 (*get the constraints*)
 type map_result = {
   mutable cstrs: map_cstr list;
@@ -147,6 +151,20 @@ struct
       | SEPow(a,b) -> "("^(to_string a)^"^"^(to_string b)^")"
       | SEDiv(a,b) -> "("^(to_string a)^"/"^(to_string b)^")"
       | _ -> "unimpl"
+
+  let sub : map_expr -> (map_var -> map_expr option) -> map_expr =
+    fun expr fn -> 
+    let rec _work e = match e with
+      | SEVar(v) -> begin match fn v with | Some(e) -> e | _ ->  SEVar(v) end
+      | SENumber(n) -> SENumber(n)
+      | SEAdd(a,b) -> SEAdd(_work a, _work b)
+      | SESub(a,b) -> SESub(_work a, _work b)
+      | SEPow(a,b) -> SEPow(_work a, _work b)
+      | SEMult(a,b) -> SEMult(_work a, _work b)
+      | SEDiv(a,b) -> SEDiv(_work a, _work b)
+    in
+    _work expr 
+
 
   let simpl : map_expr -> map_expr =
     fun expr ->
@@ -238,6 +256,12 @@ module SMapCstr =
 struct
   exception SMapCstr_error of string;;
 
+  let string_of_op : map_op -> string =
+    fun op ->
+      match op with
+      | SCLTE -> "<="
+      | SCGTE -> ">="
+      | SCNEQ -> "!="
   let to_string : map_cstr -> string =
     fun cstr ->
       match cstr with
@@ -245,16 +269,17 @@ struct
       | SCTrue -> "assert(true)"
       | SCExprEqExpr(e1,e2) -> (SMapExpr.to_string e1)^"="^(SMapExpr.to_string e2)^" (e.e)"
       | SCExprEqConst(e1,n) -> (SMapExpr.to_string e1)^"="^(string_of_number n)^" (e.n)"
-      | SCExprNeqConst(e1,n) -> (SMapExpr.to_string e1)^"!="^(string_of_number n)^" (e.n)"
+      | SCExprOPConst(op,e1,n) -> (SMapExpr.to_string e1)^(string_of_op op)^(string_of_number n)^" (e.n)"
 
       | SCVarEqExpr(v1,e2) -> (SMapVar.to_string v1)^"="^(SMapExpr.to_string e2)^" (v.e)"
       | SCVarEqVar(v1,v2) -> (SMapVar.to_string v1)^"="^(SMapVar.to_string v2)^" (v.v)"
       | SCVarEqConst(v1,n) -> (SMapVar.to_string v1)^"="^(string_of_number n)^" (v.n)"
-      | SCVarNeqConst(v1,n)-> (SMapVar.to_string v1)^"!="^(string_of_number n)^" (v.n)"
+      | SCVarOPConst(op,v1,n)-> (SMapVar.to_string v1)^(string_of_op op)^(string_of_number n)^" (v.n)"
 
       | SCCoverInterval(hwrng,mrng,sc,off) ->
         (SMapExpr.to_string sc)^"*"^(SMapRange.to_string mrng)^"+"^(SMapExpr.to_string off)^" \\in "^
         (SMapRange.to_string hwrng)
+
       | SCCoverTime(min,max) ->
         (OPTION.tostr min string_of_number)^" <= tau <= "^(OPTION.tostr max string_of_number)
 

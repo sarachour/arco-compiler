@@ -139,7 +139,7 @@ struct
                 
               | SMVMapExpr(mapexpr) ->
                 (xid_expr_to_z3_expr mapexpr)::rest
-                
+
               | SMVTimeConstant -> ret (REF.upd is_tc (fun _ -> true)) rest
               | _ -> rest
             ) []
@@ -150,16 +150,21 @@ struct
             );
           SET.iter bins (fun (bin:mapslvr_bin) ->
               match bin with
-              | SMVNeq(_,n) ->
+              | SMVOp(op,_,n) ->
                 let z3n = number_to_z3_expr n in
-                let neqs = List.map (
+                let ineqs = List.map (
                     fun expr ->
-                      Z3Assert(Z3Not(
-                          Z3Eq(expr,z3n)
-                        ))
+                      match op with
+                      | SCNEQ ->
+                        Z3Assert(Z3Not(Z3Eq(expr,z3n)))
+                      | SCGTE ->
+                        Z3Assert(Z3GTE(expr,z3n))
+                      | SCLTE ->
+                        Z3Assert(Z3LTE(expr,z3n))
+
                   ) cls
                 in
-                  noop (SET.add_all not_equals neqs)
+                  noop (SET.add_all not_equals ineqs)
                     
               | SMVCoverTime(min,max) ->
                 List.iter (
