@@ -103,8 +103,12 @@ struct
       let qall x = noop (QUEUE.enqueue_all sts x ) in
       let disjoint = GRAPH.disjoint ctx.bins in
       let nvars = get_nvars ctx in
-      let tol = 1e-16 and iters = 100 in
-      q (SCIInitialize(tol,iters,nvars));
+      q (SCIInitialize(nvars));
+      q (SCISetMethod(SCICOBYLA));
+      q (SCISetIters(1000));
+      q (SCISetTries(20));
+      q (SCISetCstrTol(1e-6));
+      q (SCISetMinTol(1e-10));
       q (SCIBound(SMapSlvrOpts.vmin, SMapSlvrOpts.vmax));
       MAP.iter ctx.xidmap (fun idx mapvars ->
           let init_guess = compute_guess mapvars in
@@ -139,7 +143,7 @@ struct
           (*maximize speed*)
           if REF.dr is_tc then
             q (SCIObjective(
-                obj_fn (List.nth cls 0)
+                obj_fn ("0")
               ))
           else
             ()

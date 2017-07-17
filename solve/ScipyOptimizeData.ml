@@ -1,8 +1,17 @@
 open Util;;
 
 
+type sciopt_method =
+  | SCICOBYLA
+  | SCISLSQP
+
 type sciopt_st =
-  | SCIInitialize of float*int*int
+  | SCIInitialize of int
+  | SCISetIters of int
+  | SCISetTries of int
+  | SCISetMethod of sciopt_method
+  | SCISetCstrTol of float
+  | SCISetMinTol of float
   | SCIInitGuess of int*float 
   | SCIBound of float*float
   | SCIEq of string*string
@@ -40,3 +49,8 @@ type sciopt_result = {
   tolerance: float;
   vect: ((int,float) map) option;
 }
+
+let string_of_sciopt_method : sciopt_method -> string =
+  fun x -> match x with
+    | SCICOBYLA -> "COBYLA"
+    | SCISLSQP -> "SLSQP"

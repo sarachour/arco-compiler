@@ -16,8 +16,18 @@ struct
       Printf.fprintf fh "from engines.map.optimize import OptimizeProblem\n";
       List.iter ~f:(fun (st:sciopt_st) ->
           match st with
-          | SCIInitialize(tol,iters,dim) ->
-            Printf.fprintf fh "prob = OptimizeProblem(%e,%d,%d)\n" tol iters dim;
+          | SCIInitialize(dim) ->
+            Printf.fprintf fh "prob = OptimizeProblem(%d)\n" dim
+          | SCISetIters(value)->
+            Printf.fprintf fh "prob.set_prop('value',%d)\n" value
+          | SCISetTries(value)->
+            Printf.fprintf fh "prob.set_prop('tries',%d)\n" value
+          | SCISetCstrTol(value)->
+            Printf.fprintf fh "prob.set_prop('ctol',%e)\n" value
+          | SCISetMinTol(value)->
+            Printf.fprintf fh "prob.set_prop('tol',%e)\n" value
+          | SCISetMethod(value) ->
+            Printf.fprintf fh "prob.set_prop('method','%s')\n" (string_of_sciopt_method value) 
           | SCIInitGuess(idx,value) ->
             Printf.fprintf fh "prob.initial(%d,%e)\n" idx value
           | SCIBound(vmin,vmax) ->

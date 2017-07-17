@@ -202,32 +202,6 @@ struct
           end
       )
 
-
-  let remap_xid_graph : mapslvr_ctx -> unit =
-    fun ctx ->
-      let remap = MAP.make () in
-      let max_remap () =
-        let _,v =LIST.max float_of_int (MAP.to_values remap) in
-        v
-      in
-      let bin_set = GRAPH.disjoint ctx.bins in
-      List.iteri (fun (i:int) (bins:mapslvr_bin set) ->
-          SET.iter bins (fun (bin:mapslvr_bin) ->
-              match bin with
-              | SMVMapVar(old_i) ->
-                noop (MAP.put remap old_i i)
-              | _ -> ()
-            )
-        ) bin_set;
-      MAP.iter ctx.xidmap (fun (i:int) _ ->
-          if MAP.has remap i then () else
-            noop (MAP.put remap i (max_remap() + 1))
-        );
-      raise (SMapSolver_error "unimpl")
-        
-        
-
-
   
   let print_slvr_bins : mapslvr_ctx -> unit =
     fun ctx ->
@@ -296,17 +270,18 @@ struct
         | Some(model) -> true,Z3SMapSolver.get_standard_model model
         | None -> false,stdmodel
       in
-      let rec _work mult =
+      let prec = if prec = 0.0 then 1e-10 else prec in
+      let rec _work mult maxtries =
         let new_prec = mult *. prec in
         let succ,model = evaluate new_prec in
         if succ then
           succ,model
-        else if new_prec > 1.0 then
+        else if new_prec > 1.0 || maxtries == 0 then
           succ,model
         else
-          _work (mult *. 10.0)
+          _work (mult *. 10.0) (maxtries-1)
       in
-      _work 1.0
+      _work 1.0 25
 
   let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> (wireid,linear_transform) map option =
     fun tbl ctx compute_time ->
@@ -347,10 +322,30 @@ struct
                 if is_valid then
                   Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping accmodel)
                 else
-                  None
+                  begin
+                    Printf.printf "-> fallback to z3-unconstrained.\n";
+                    let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
+                    let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
+                    match mapsln.model with
+                    | Some(model) ->
+                      let stdmodel = Z3SMapSolver.get_standard_model model in
+                      Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
+                    | None -> None
+                  end
+              end
+              
+            | None ->
+              begin
+                Printf.printf "-> fallback to z3\n";
+                let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
+                let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
+                match mapsln.model with
+                | Some(model) ->
+                  let stdmodel = Z3SMapSolver.get_standard_model model in
+                  Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
+                | None -> None
               end
 
-            | None -> None
           end
 
   let compute_transform : gltbl ->  cfggen_ctx -> int ->
