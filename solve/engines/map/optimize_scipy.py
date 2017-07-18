@@ -9,11 +9,12 @@ class OptimizeProblem:
         self.model = OptimizeModel(n);
 
         self.method = "COBYLA";
-        self.tol = 1e-8;
+        self.tol = 1e-2;
         # The error allowed for the sum of constraints.
-        self.ctol = 1e-6;
+        self.ctol = 1e-10;
         self.iters = 1000;
-        self.tries = 100;
+        self.tries = 1000;
+        self.n_results = 10;
         print("algo-tol="+str(self.tol))
         print("cstr-tol="+str(self.ctol))
         self.result = None;
@@ -30,6 +31,8 @@ class OptimizeProblem:
             self.tol = v
         elif key == "tries":
             self.tries = v
+        elif key == "results":
+            self.n_results = v
 
     def var(self, name):
         return;
@@ -37,7 +40,7 @@ class OptimizeProblem:
     def initial(self,idx,ic):
         self.model.initial(idx,ic)
 
-    def test(self,cstrs,x):
+    def test(self,cstrs,x,emit=False):
         print("---> Testing")
         print(x);
         max_error = 0;
@@ -57,9 +60,10 @@ class OptimizeProblem:
                 this_test = (val == 0.0 )
 
             max_error = max(max_error,error)
-            print("  "+cstr['code']+" => "+str(this_test))
-            print("     ->"+str(error))
-            print("");
+            if emit == True:
+                print("  "+cstr['code']+" => "+str(this_test))
+                print("     ->"+str(error))
+                print("");
 
         print("pass:"+str(max_error <= error_tol))
         print("error:"+str(max_error));
@@ -67,30 +71,29 @@ class OptimizeProblem:
 
     
     
-    def name(self,idx,name):
-        self.names[idx] = name;
-
     def eq(self,expr1, expr2):
         self.model.eq(expr1,expr2)
-        
+        return;
     
     def neq(self,expr1,expr2):
-        self.model.neq(expr1,expr2)
+        self.model.neq(expr1,expr2,label="cstr")
+        return
 
     def lte(self,expr1,expr2):
-        self.model.gte(expr2,expr1)
+        self.model.gte(expr2,expr1, label="cstr")
+        return;
 
     def gte(self,expr1,expr2):
-        self.model.gte(expr1,expr2)
-   
+        self.model.gte(expr1,expr2, label="cstr")
+        return;
 
     def interval(self,expr,mini,maxi):
         cmini = mini + self.ctol
         cmaxi = maxi - self.ctol
         if cmaxi < cmini:
             cmaxi = cmini = (maxi+mini)/2.0 
-        self.model.gte(expr,str(cmini))
-        self.model.gte(str(cmaxi),expr)
+        self.model.gte(expr,str(cmini), label="bound")
+        self.model.gte(str(cmaxi),expr, label="bound")
 
     def objective(self,expr):
         self.model.objective(expr);
@@ -109,7 +112,7 @@ class OptimizeProblem:
             options={
                 'rhobeg':10,
                 'maxiter':self.iters,
-                'disp': True,
+                'disp': False,
                 'catol':self.ctol,
                 'tol': self.tol
             }
@@ -146,50 +149,81 @@ class OptimizeProblem:
         elif self.method == "COBYLA":
             return self.result.success
 
+    def random_ic(self,pt,obj,cstrs):
+        result = self._solve(obj,cstrs,pt);
+        is_succ,_ = self.test(cstrs,result.x);
+        if is_succ:
+            return result.x;
+        else:
+            return None
+
     def solve(self):
-        random = lambda i: numpy.random.uniform() + numpy.random
         self.model.finish()
         self.model.rewrite()
-        obj,cstrs = self.model.generate()
+        self.results = []
 
         if self.model.model_success() == False:
             return;
 
+        best_tol = None;
+        # generate relevant problems
+        obj,cstrs = self.model.generate()
+        ic_obj,ic_cstrs = self.model.generate(label=["bound"], equiv=False)
+        get_ic = lambda x : self.random_ic(x,ic_obj,ic_cstrs)
+        
         self.cstrs = cstrs;
 
-        self.result = self._solve(obj,cstrs,self.model.init_guess())
-
-        if self.is_success():
-            is_succ,tol = self.test(cstrs,self.result.x)
+        first_guess = get_ic(self.model.init_guess())
+        if first_guess == None:
             return;
 
+        result = self._solve(obj,cstrs,first_guess)
+        is_succ,tol = self.test(cstrs,result.x)
+
+        if is_succ:
+            self.results.append(result)
+
         for tries in range(0,self.tries):
-            new_guess = self.model.random_point();
+            if len(self.results) > self.n_results:
+                continue;
+
+            new_guess = get_ic(self.model.random_point());
+            if new_guess == None:
+                continue;
+
             print("Guess="+str(new_guess));
-            self.result = self._solve(obj,cstrs,new_guess)
-            
-            if self.is_success():
-                is_succ,tol = self.test(cstrs,self.result.x)
-                return;
+
+            result = self._solve(obj,cstrs,new_guess)
+            is_succ,tol = self.test(cstrs,result.x)
+            if is_succ:
+                self.results.append(result)
 
   
-    def write(self,filename):
-        fh = open(filename,'w');
+    def write_result(self,fh,result):
 
-        if self.result == None:
+        if result == None:
             fh.write("unknown\n")
             return
 
-        is_succ,tol = self.test(self.cstrs,self.result.x)
-        if self.is_success() and is_succ:
+        is_succ,tol = self.test(self.cstrs,result.x,emit=True)
+        if is_succ:
             fh.write("success\n")
             i = 0;
             fh.write("%e\n" % tol)
-            result_vect = self.model.result(self.result.x);
+            result_vect = self.model.result(result.x);
             print(result_vect);
-            for ident in self.result.x:
+            for ident in result.x:
                 fh.write("%d=%e\n" % (i,ident))
                 i+=1;
         else:
             fh.write("failure\n")
             fh.write("%d\n" % self.result.status)
+
+    def write(self,filename):
+        fh = open(filename,'w');
+        fh.write("%d\n" % self.model.dim)
+        for result in self.results:
+            self.write_result(fh,result)
+
+        fh.close()
+

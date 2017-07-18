@@ -17,6 +17,8 @@ let _ = MAP.put glbls "enable-jaunt" (GlblPropBool true)
 let _ = MAP.put glbls "enable-jaunt-feasible" (GlblPropBool true)
 let _ = MAP.put glbls "jaunt-solve-method" (GlblPropString "smt")
 let _ = MAP.put glbls "jaunt-validate" (GlblPropBool true)
+let _ = MAP.put glbls "jaunt-fallback" (GlblPropBool true)
+let _ = MAP.put glbls "enable-jaunt-cover" (GlblPropBool true)
 
 let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 8)
 let _ = MAP.put glbls "multi-num-global-solutions" (GlblPropInt 2)

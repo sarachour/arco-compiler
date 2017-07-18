@@ -13,6 +13,18 @@ exception ScioptSMapSolver_error of string
 module ScioptSMapSolver =
 struct
 
+
+  let options = MAP.make ();;
+  MAP.put options "use-cover" true;;
+
+  let set_option : string -> bool -> unit =
+    fun key v ->
+      noop (MAP.put options key v)
+
+  let get_option : string -> bool =
+    fun key ->
+      MAP.get options key
+
   (*if only scale variables, guess 1. otherwise guess zero.*)
   let compute_guess : cfggen_mapvar list -> float =
     fun maps ->
@@ -64,6 +76,7 @@ struct
 
           | None,None -> [] 
         end
+
   let cover_cstr_to_sciopt : int->int-> map_range -> map_range -> sciopt_st list =
     fun scale_xid offset_xid hwival mival ->
       let scvar = (xid_to_sciopt_expr scale_xid) in
@@ -103,6 +116,7 @@ struct
       let qall x = noop (QUEUE.enqueue_all sts x ) in
       let disjoint = GRAPH.disjoint ctx.bins in
       let nvars = get_nvars ctx in
+      let opt_use_cover = get_option "use-cover" in
       q (SCIInitialize(nvars));
       q (SCISetMethod(SCICOBYLA));
       q (SCISetIters(1000));
@@ -138,7 +152,8 @@ struct
                   ) cls
               | SMVCoverTime(min,max) ->
                 List.iter (fun expr ->
-                    qall (time_cstr_to_sciopt expr min max)
+                    if opt_use_cover then
+                      qall (time_cstr_to_sciopt expr min max)
                   ) cls
               | _ -> ()
               
@@ -153,6 +168,7 @@ struct
         ) disjoint;
       SET.iter ctx.sts (fun st -> match st with
           | SMVCover(sc,off,hwival,mival) ->
+            if opt_use_cover then
             qall (cover_cstr_to_sciopt sc off hwival mival)
         );
       QUEUE.to_list sts 

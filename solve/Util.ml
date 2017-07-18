@@ -590,6 +590,20 @@ struct
     in
     matches,rest
 
+  let split_n (type a) : a list -> int -> a list*(a list) =
+    fun lst prefix ->
+      let rec _proc l n = match l with
+        | h::t ->
+          if n > 0 then
+            let np, nf = _proc t (n-1) in
+            (h::np,nf)
+          else
+            ([],h::t)
+        | [] ->
+          ([],[])
+      in
+      _proc lst prefix
+
   let merge (type a) (lsts : a list list) : a list = 
     List.fold_left (fun clst lst -> clst @ lst) [] lsts 
 
@@ -1811,19 +1825,22 @@ struct
       match parent g node with
       | Some(par) ->
         let edj :b = edge g par node in
-        let r = nf node r in
-        let r = ef par node edj r in
-        let r = _fold_path par r in
-        r
+        let r2 = nf node r in
+        let r3 = ef par node edj r2 in
+        let r4 = _fold_path par r3 in
+        r4
       | None ->
-        let r = nf node r in
-        r
+        let r2 = nf node r in
+        r2
     in
     _fold_path node ic
 
   let has_ancestor (type a) (type b) (g:(a,b) tree) (en:a) (anc:a) : bool =
-    let is_anc = fold_path (fun n c -> if n = anc then true else c) (fun x y z c -> c) g en false in
-    is_anc
+    let is_anc = fold_path
+        (fun n c -> if n = anc then true else c)
+        (fun x y z c -> c) g en false
+    in
+    is_anc 
 
   let get_path (type a) (type b) (g: (a,b) tree) (en:a) : a list =
     fold_path (fun x lst -> lst @ [x]) (fun src snk v r -> r) g en []
@@ -1865,10 +1882,11 @@ struct
           Some q
         else
           r
-      ) pa None in
+      ) pa (OPTION.map t.root (fun id -> i2n t id)) in
     match anc with
     | Some(a) -> a
-    | None -> error "ancestor" "two nodes must have an ancestor."
+    | None -> error "ancestor"
+                ("two nodes must have an ancestor:")
 
 
   let setroot (type a) (type b) (g:(a,b) tree) (src:a) =

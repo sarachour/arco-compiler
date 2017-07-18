@@ -16,6 +16,18 @@ exception Z3SMapSolver_error of string
 module Z3SMapSolver =
 struct
 
+  let options = MAP.make ();;
+  MAP.put options "use-cover" true;;
+
+  
+  let set_option : string -> bool -> unit =
+    fun key v ->
+      noop (MAP.put options key v)
+
+  let get_option : string -> bool =
+    fun key ->
+      MAP.get options key
+
   let rec xid_to_z3_var : int -> string =
     fun idx ->
       "x"^(string_of_int idx)
@@ -128,6 +140,7 @@ struct
       let equals = SET.make_dflt() in
       let not_equals = SET.make_dflt() in
       let bin_set = GRAPH.disjoint slvr_ctx.bins in
+      let opt_use_cover = get_option "use-cover" in
       MAP.iter slvr_ctx.xidmap (fun id mappings ->
           noop (QUEUE.enqueue_all decls (z3st_decl_xid id mappings));
         );
@@ -169,7 +182,8 @@ struct
               | SMVCoverTime(min,max) ->
                 List.iter (
                   fun expr ->
-                    noop (QUEUE.enqueue_all time_cover (time_cstr_to_z3 expr min max))
+                    if opt_use_cover then
+                      noop (QUEUE.enqueue_all time_cover (time_cstr_to_z3 expr min max))
                 ) cls
               | _ -> ()
             );
@@ -177,7 +191,8 @@ struct
       SET.iter slvr_ctx.sts (fun st -> match st with
           | SMVCover(sc,off,hwival,mival) ->
             let sts = cover_cstr_to_z3 sc off hwival mival in
-            noop (QUEUE.enqueue_all cover sts)
+            if opt_use_cover then
+              noop (QUEUE.enqueue_all cover sts)
         );
       let problem =
         (QUEUE.to_list decls) @

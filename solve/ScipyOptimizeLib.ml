@@ -84,13 +84,13 @@ struct
       | _ -> "Positive directional derivative for linesearch"
       | _ -> "Iteration limit exceeded"
 
-  let parse_output : string -> sciopt_result =
-    fun outfile ->
-      let lines = In_channel.read_lines outfile in
-      match lines with
-      | "success"::tol::model ->
+  let parse_result : string list -> int -> sciopt_result*(string list) =
+    fun lines dim ->
+    match lines with
+      | "success"::tol::lst->
         let status = SCISuccess in
         let tol = float_of_string tol in
+        let model,rest = LIST.split_n lst dim in
         let mdl = MAP.make () in
         List.iter ~f:(fun (line:string) ->
             match STRING.split line "=" with
@@ -101,17 +101,35 @@ struct
                    )
             | _ -> ()
           ) model;
-        {status=status;tolerance=tol;vect=Some(mdl);obj=0.0-.1.0}
+        {status=status;tolerance=tol;vect=Some(mdl);obj=0.0-.1.0},rest
 
       | "unknown"::rest ->
         let status = SCIMalformedProb in
-        {status=status;tolerance=0.0;vect=None;obj=0.0-.1.0}
+        {status=status;tolerance=0.0;vect=None;obj=0.0-.1.0},rest
 
       | "failure"::errcode::rest ->
         let status = SCIError(int_to_error_code (int_of_string errcode)) in 
-        {status=status;tolerance=0.0;vect=None;obj=0.0-.1.0}
+        {status=status;tolerance=0.0;vect=None;obj=0.0-.1.0},rest
 
-  let exec : string -> sciopt_st list -> int -> sciopt_result =
+  let parse_output : string -> sciopt_result list =
+    fun outfile ->
+      let dim,lines = match In_channel.read_lines outfile with
+        | dim::lines -> (int_of_string dim), lines
+        | [] -> raise (ScipyOptimizeLib_error "unexpected")
+      in
+      let results = SET.make_dflt() in
+      let rec _process buf =
+        match buf with
+        | [] -> ()
+        | _ ->
+          let result,rest = parse_result buf dim in
+          SET.add results result;
+          _process rest
+      in
+      _process lines;
+      SET.to_list results
+      
+  let exec : string -> sciopt_st list -> int -> sciopt_result list =
     fun suffix sts timeout ->
       let filename = "mapopt_"^(string_of_int (REF.dr id))^".py" in
       let outfile = "mapopt_"^(string_of_int (REF.dr id))^".out" in

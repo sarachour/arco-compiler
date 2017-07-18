@@ -346,23 +346,27 @@ struct
       if TREE.hasnode sr.tree old = false then
         error "move_cursor" ("the cursor of id "^(string_of_int next.id)^" is not found.") 
       else
-          let anc = TREE.ancestor sr.tree next old in
-          debug ("move cursor: "^(string_of_int old.id)^"->"^(string_of_int anc.id)^"->"^(string_of_int next.id));
-          (*from leaf to root list*)
-          let to_anc = LIST.rm_after (TREE.get_path sr.tree old) (fun n -> anc.id = n.id) in
-          (*from leaf to root list*)
-          let from_anc = LIST.rm_after (TREE.get_path sr.tree next) (fun n -> anc.id = n.id) in
-          debug "== move information ==";
-          debug ("<- steps: "^(LIST.length2str to_anc)^"/"^(LIST.length2str (TREE.get_path sr.tree old)));
-          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " (TREE.get_path sr.tree old));
-          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " to_anc);
-          debug ("-> steps: "^(LIST.length2str from_anc) ^"/"^(LIST.length2str (TREE.get_path sr.tree next)));
-          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " (TREE.get_path sr.tree next));
-          debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " from_anc);
-          List.iter (fun x -> noop (unapply_node sr env x))  to_anc;
-          List.iter (fun x -> noop (apply_node sr env x )) (LIST.rev from_anc);
-          (sr.curs <- Some next);
-          env
+        begin
+              let anc = TREE.ancestor sr.tree next old in
+              debug ("move cursor: "^(string_of_int old.id)^"->"^(string_of_int anc.id)^"->"^(string_of_int next.id));
+              (*from leaf to root list*)
+              let to_anc = LIST.rm_after (TREE.get_path sr.tree old) (fun n -> anc.id = n.id) in
+              (*from leaf to root list*)
+              let from_anc = LIST.rm_after (TREE.get_path sr.tree next) (fun n -> anc.id = n.id) in
+              debug "== move information ==";
+              debug ("<- steps: "^(LIST.length2str to_anc)^"/"^(LIST.length2str (TREE.get_path sr.tree old)));
+              debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " (TREE.get_path sr.tree old));
+              debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " to_anc);
+              debug ("-> steps: "^(LIST.length2str from_anc) ^"/"^(LIST.length2str (TREE.get_path sr.tree next)));
+              debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " (TREE.get_path sr.tree next));
+              debug (LIST.tostr (fun (n:a snode) -> string_of_int n.id) " " from_anc);
+              List.iter (fun x -> noop (unapply_node sr env x))  to_anc;
+              List.iter (fun x -> noop (apply_node sr env x )) (LIST.rev from_anc);
+              (sr.curs <- Some next);
+              env
+        end
+
+
     | None ->
         let to_node = TREE.get_path sr.tree next in
         List.iter (fun x -> noop (apply_node sr env x)) (LIST.rev to_node);

@@ -39,7 +39,7 @@ let auni_menu = menu 3
 type  rnode = (rstep) snode
 
 
-
+let error s e = raise (ASTUnifier_error (s^": "^e))
 
 module ASTUnifier =
 struct
@@ -182,8 +182,8 @@ struct
                 AlgebraicLib.UnifyEnv.define_sym_expr env
                   (MathId mid) (Term (MathId mid))
               end
-            | _ ->
-              error "construct_math" "unexpected"
+            | MBhvUndef ->
+              error "construct_math" ("undefined behavior: "^mvar.name)
           );
         MAP.iter menv.params (fun _ mparam ->
             let paramid = MathLib.str2mid menv mparam.name in

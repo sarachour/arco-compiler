@@ -278,12 +278,39 @@ struct
         let succ,model = evaluate new_prec in
         if succ then
           succ,model
-        else if new_prec > 1.0 || maxtries == 0 then
+        else if new_prec >= 1.0 || maxtries == 0 then
           succ,model
         else
           _work (mult *. 10.0) (maxtries-1)
       in
       _work 1.0 25
+
+  let get_validated_model : gltbl -> mapslvr_ctx  -> int -> sciopt_result -> (wireid, linear_transform) map option =
+    fun tbl slvr_ctx compute_time mapsln ->
+      (*determine if we should validate a nonlinear optimizer solution with dReal*)
+      let do_validate = Globals.get_glbl_bool "jaunt-validate" in
+      let mapping = slvr_ctx.xidmap in
+      match mapsln.vect with
+      | Some(model) ->
+        begin
+          let stdmodel = ScioptSMapSolver.get_standard_model model in
+          let sci_xform =
+            build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel
+          in
+          if do_validate then
+            begin
+              let is_valid,accmodel =
+                validate_model compute_time slvr_ctx stdmodel mapsln.tolerance
+              in
+              if is_valid then
+                Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping accmodel)
+              else
+                None
+            end
+          else
+            Some(sci_xform)
+        end
+      | None -> None
 
   let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> (wireid,linear_transform) map option =
     fun tbl ctx compute_time ->
@@ -295,7 +322,13 @@ struct
         None
       else
         let mapping = slvr_ctx.xidmap in
-        let solver = Globals.get_glbl_string "jaunt-solve-method" in
+        let solver = Globals.get_glbl_string "jaunt-solve-method" in 
+        (*use the unconstrined problem as a fallback if dReal with the local solution doesn't work*)
+        let do_fallback = Globals.get_glbl_bool "jaunt-fallback" in
+        (*add the cover constraints. Without these, we are only propagation *)
+        let incorp_cover = Globals.get_glbl_bool "enable-jaunt-cover" in
+        Z3SMapSolver.set_option "use-cover" incorp_cover;
+        ScioptSMapSolver.set_option "use-cover" incorp_cover;
         match solver with
         | "smt" ->
           begin
@@ -309,21 +342,20 @@ struct
           end
 
         | "scipy" ->
-          begin
             let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx in
-            let mapsln : sciopt_result =
+            let mapslns : sciopt_result list =
               ScipyOptimizeLib.exec "map" scipy_prob compute_time in
-            match mapsln.vect with
-            | Some(model) ->
-              begin
-                let stdmodel = ScioptSMapSolver.get_standard_model model in
-                build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel;
-                let is_valid,accmodel =
-                  validate_model compute_time slvr_ctx stdmodel mapsln.tolerance
-                in
-                if is_valid then
-                  Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping accmodel)
-                else
+            let final_result = List.fold_right (fun result validated_result ->
+                match validated_result with
+                | None -> get_validated_model tbl slvr_ctx compute_time result
+                | Some(_) -> validated_result
+              ) mapslns None
+            in
+            begin
+              match final_result with
+              | Some(r) -> final_result
+              | None ->
+                if do_fallback then 
                   begin
                     Printf.printf "-> fallback to z3-unconstrained.\n";
                     let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
@@ -334,21 +366,9 @@ struct
                       Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
                     | None -> None
                   end
-              end
-              
-            | None ->
-              begin
-                Printf.printf "-> fallback to z3\n";
-                let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
-                let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
-                match mapsln.model with
-                | Some(model) ->
-                  let stdmodel = Z3SMapSolver.get_standard_model model in
-                  Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-                | None -> None
-              end
-
-          end
+                else
+                  None
+            end
         | _ ->
           raise (SMapSolver_error ("unexpected method: "^solver))
 

@@ -953,7 +953,9 @@ struct
       else
         begin
         debug ("found "^(string_of_int currslns)^" / "^(string_of_int nslns));
-        if SearchLib.is_exhausted tbl.search (Some root) then
+        if SearchLib.is_exhausted tbl.search (Some root) &&
+           SearchLib.is_visited tbl.search targ_node
+        then
           begin
             debug "no more nodes left to check.";
             musr ();

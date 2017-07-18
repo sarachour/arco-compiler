@@ -658,8 +658,10 @@ struct
     (*get the current state*)
     (tbl.search <- get_partial_search ms id);
     let maybe_root = SearchLib.root tbl.search in
+    let cnode = SearchLib.cursor tbl.search in
     match maybe_root with
     | Some(root) ->
+      Printf.printf "curs=%d, root=%d\n" cnode.id root.id;
       SearchLib.move_cursor tbl.search tbl root;
       Some tbl
     | None ->

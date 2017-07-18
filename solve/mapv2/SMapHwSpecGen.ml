@@ -148,7 +148,7 @@ struct
   *)
 
   let mk_equal1 : map_expr -> map_cstr =
-    fun x -> mk_equal x (SENumber (Integer 0))
+    fun x -> mk_equal x (SENumber (Integer 1))
 
   (*
   let mk_not_equal1 : map_expr -> map_cstr =
@@ -532,6 +532,11 @@ struct
 
     | _ ->
     raise (SMapHwSpecLateBind_error "unimpl:process_ast pow")
+
+
+
+
+
 
   let rec late_bind_add2 (ctx:map_ctx)(res1:map_result) (res2:map_result) : map_result =
     let args = [res1;res2] in

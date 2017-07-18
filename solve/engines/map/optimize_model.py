@@ -23,7 +23,7 @@ class OptimizeModel:
     def bounds(self,vmin,vmax):
         self.bound = [(vmin,vmax)]*self.dim
 
-    def eq(self,a,b):
+    def eq(self,a,b,label=None):
         if not (a in self._eq_tmp):
             self._eq_tmp[a] = [a]
 
@@ -51,11 +51,11 @@ class OptimizeModel:
         self.obj = obj;
         return;
 
-    def neq(self,a,b):
-        self._neq.append((a,b))
+    def neq(self,a,b,label=None):
+        self._neq.append((a,b,label))
 
-    def gte(self,a,b):
-        self._geq.append((a,b))
+    def gte(self,a,b,label=None):
+        self._geq.append((a,b,label))
 
     def variables(self):
         xlate = {};
@@ -190,17 +190,17 @@ class OptimizeModel:
         neq = self._neq;
         self._neq = [];
         print("=== Neq =====")
-        for (a,b) in neq:
+        for (a,b,l) in neq:
             an = self.replace(self.evaluate(a,x),all_subs)
             bn = self.replace(self.evaluate(b,x),all_subs)
             if not ((an,bn) in self._neq or (bn,an) in self._neq):
                 print(an,bn)
-                self._neq.append((str(an),str(bn)))
+                self._neq.append((str(an),str(bn),l))
 
         print("=== Geq =====")
         geq = self._geq;
         self._geq = [];
-        for (a,b) in geq:
+        for (a,b,l) in geq:
             an = self.replace(self.evaluate(a,x),all_subs)
             bn = self.replace(self.evaluate(b,x),all_subs)
             if an == bn:
@@ -208,7 +208,7 @@ class OptimizeModel:
 
             if not ((an,bn) in self._geq or (bn,an) in self._geq):
                 print(an,bn)
-                self._geq.append((str(an),str(bn)))
+                self._geq.append((str(an),str(bn),l))
 
     def _mkcstr(self,fn):
         fnx = "lambda x: %s" % fn
@@ -220,22 +220,28 @@ class OptimizeModel:
         };
         return cstr
 
-    def generate(self):
+    def generate(self,label=None,equiv=True):
         cstrs = [];
         for equiv in self._eq:
+            # disable equivalence constraints
+            if equiv == False:
+                continue;
+
             for e1 in equiv:
                 for e2 in equiv:
                     if not (e1 == e2):
                         c = self._mkcstr("0-((%s) - (%s))**2" % (e1,e2))
                         cstrs.append(c)
 
-        for (a,b) in self._neq:
-            c = self._mkcstr("((%s) - (%s))**2 - %e" % (a,b,1e-64))
-            cstrs.append(c)
+        for (a,b,l) in self._neq:
+            if label == None or l in label:
+                c = self._mkcstr("((%s) - (%s))**2 - %e" % (a,b,1e-64))
+                cstrs.append(c)
 
-        for (a,b) in self._geq:
-            c = self._mkcstr("(%s) - (%s)" % (a,b))
-            cstrs.append(c)
+        for (a,b,l) in self._geq:
+            if label == None or l in label:
+                c = self._mkcstr("(%s) - (%s)" % (a,b))
+                cstrs.append(c)
 
         objfun = eval("lambda x : %s\n" % self.obj)
         return objfun,cstrs;
@@ -260,7 +266,7 @@ class OptimizeModel:
     def _random_val(self,i):
         iv = self.init[i]
         bmin,bmax = self.bound[i]
-        rv = numpy.random.normal(loc=0,scale=10)
+        rv = numpy.random.normal(loc=0,scale=1)
         return rv
 
     def random_point(self):

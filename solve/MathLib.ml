@@ -230,8 +230,7 @@ struct
       if dat.bhvr <> MBhvUndef then
         error "mkstrel" ("variable "^name^" already has relation defined.")
       else
-        match e.time with
-        | Some(tv) ->
+        begin
           let bhv : mid mderiv = {
             rhs=rhs;
             ic=ic;
@@ -246,6 +245,8 @@ struct
           dat.bhvr <- MBhvStateVar(bhv);
           dat.defs <- MDefStVar(def);
           e
+        end
+
           (*
           let tr : untid ast = UnitTypeChecker.typeof rhs mid2unit in
           let tl : untid ast= UnitTypeChecker.typeof lhs mid2unit in
@@ -259,8 +260,6 @@ struct
             error "mkstrel" ("variable "^name^" doesn't type check with expression: "^
               (UnitLib.unit2str (UExpr tl))^" =? "^(UnitLib.unit2str (UExpr tr))
           *)
-        | None ->
-          error "mkstrel"  "time variable not defined anywhere."
 
 
   let mkrel (e:'a menv) name rhs : mid menv =
@@ -368,7 +367,8 @@ struct
             | MBhvInput ->
               error "inference_var" ("cannot infer interval for input ["^x.name^"]")
             | MBhvUndef ->
-              error "inference_var" "cannot infer interval of undefined output"
+              error "inference_var"
+                (xstart.name^"] cannot infer interval of undefined output ["^x.name^"]")
         in
         STACK.push lookup_stack x.name;
         ival
