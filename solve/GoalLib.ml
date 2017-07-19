@@ -210,7 +210,9 @@ struct
 
   let ast_size_goal_difficulty (g) = match g with
     | GUnifiable(GUMathGoal(e)) -> 50.
-    | GUnifiable(GUHWInExprGoal(e)) -> 2.*.(float_of_int (ASTLib.score e.expr))
+    | GUnifiable(GUHWInExprGoal(e)) ->
+      let fscore = float_of_int (ASTLib.score e.expr) in 
+      2.*.(fscore -. 1.0) +. 1.
     | GUnifiable(GUHWConnInBlock(_)) -> 1.
     | GUnifiable(GUHWConnOutBlock(_)) -> 1.
     | GUnifiable(GUHWConnPorts(_)) -> 1.

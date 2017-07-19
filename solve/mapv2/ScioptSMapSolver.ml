@@ -81,17 +81,15 @@ struct
     fun scale_xid offset_xid hwival mival ->
       let scvar = (xid_to_sciopt_expr scale_xid) in
       let ofvar = (xid_to_sciopt_expr offset_xid) in
-      let hmin =  string_of_number hwival.min
-      and hmax = string_of_number hwival.max in
+      let hmin =  float_of_number hwival.min
+      and hmax = float_of_number hwival.max in
       let mmin =  string_of_number mival.min
       and mmax = string_of_number mival.max in
       if not (NUMBER.eq mival.min mival.max)  then
         begin
           SCIComment("-> var cover constraints")::
-          SCILTE(Printf.sprintf "%s*%s+%s" scvar mmax ofvar,hmax)::
-          SCIGTE(Printf.sprintf "%s*%s+%s" scvar mmax ofvar,hmin)::
-          SCILTE(Printf.sprintf "%s*%s+%s" scvar mmin ofvar,hmax)::
-          SCIGTE(Printf.sprintf "%s*%s+%s" scvar mmin ofvar,hmin)::
+          SCIInterval(Printf.sprintf "%s*%s+%s" scvar mmax ofvar,hmin,hmax)::
+          SCIInterval(Printf.sprintf "%s*%s+%s" scvar mmin ofvar,hmin,hmax)::
           []
 
         end
@@ -99,8 +97,7 @@ struct
       else
         begin
           SCIComment("-> number cover constraints")::
-          SCILTE(Printf.sprintf "%s*%s+%s" scvar mmax ofvar,hmax)::
-          SCIGTE(Printf.sprintf "%s*%s+%s" scvar mmin ofvar,hmin)::
+          SCIInterval(Printf.sprintf "%s*%s+%s" scvar mmax ofvar,hmin,hmax)::
           []
         end
 
@@ -119,10 +116,10 @@ struct
       let opt_use_cover = get_option "use-cover" in
       q (SCIInitialize(nvars));
       q (SCISetMethod(SCICOBYLA));
-      q (SCISetIters(1000));
-      q (SCISetTries(20));
-      q (SCISetCstrTol(1e-6));
-      q (SCISetMinTol(1e-10));
+      q (SCISetIters(2000));
+      q (SCISetTries(40));
+      q (SCISetCstrTol(1e-10));
+      q (SCISetMinTol(1e-2));
       q (SCIBound(SMapSlvrOpts.vmin, SMapSlvrOpts.vmax));
       MAP.iter ctx.xidmap (fun idx mapvars ->
           let init_guess = compute_guess mapvars in

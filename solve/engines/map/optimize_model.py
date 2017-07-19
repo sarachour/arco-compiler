@@ -4,8 +4,129 @@ import sys
 import math
 from sympy import Symbol
 import sympy as sp
+import numpy as np
 
-class OptimizeModel:
+class ScipySimplexOptimizeProblem:
+    def __init__(self,d):
+        self._c = [0]*d;
+        self._A_ub = [] 
+        self._b_ub = []
+        self._A_eq = [] 
+        self._b_eq = []
+        self.dim = d;
+        self.bounds =[(None,None)]*d
+
+    @property
+    def bounds(self):
+        return self._bounds
+
+    @bounds.setter
+    def bounds(self,value):
+        mini,maxi = value;
+        self._bounds = [(mini,maxi)]*self.dim
+
+    @property
+    def A_ub(self):
+        return self._A_ub
+
+    @property
+    def b_ub(self):
+        return self._b_ub
+
+    @property
+    def A_eq(self):
+        return self._A_eq
+
+    @property
+    def b_eq(self):
+        return self._b_eq
+
+    @property
+    def c(self):
+        return self._c
+
+    @c.setter
+    def c(self,v):
+        self._c = v
+
+    def ub(self,vect,maxi):
+        self._b_ub.append(maxi)
+        self._A_ub.append(vect)
+        return
+
+    def eq(self,vect,maxi):
+        self._b_eq.append(maxi)
+        self._A_eq.append(vect)
+
+class OptimizeLinearModel:
+    def __init__(self,n):
+        self.init = [0.0]*n
+        self.cstrs = [];
+        self.dim = n;
+        self.obj = None;
+        self._bounds = [(None,None)]*n
+
+    def to_coeff_vect(self,expr):
+        fn = eval("lambda x : %s\n" % expr)
+        print(expr);
+        ident = np.identity(self.dim);
+        coeff = np.apply_along_axis(fn,1,ident)
+        print(coeff);
+        return coeff;
+
+    def cstr(self,expr,mini,maxi):
+        vect = self.to_coeff_vect(expr)
+        cstr = {
+            "vect":vect,
+            "upper_bound":maxi,
+            "lower_bound":mini,
+            "expr":expr
+        }
+        self.cstrs.append(cstr)
+
+    def test(self,x):
+        print(x)
+        if np.isscalar(x) and (math.isnan(x) or math.isinf(x)):
+            return False
+
+        for cstr in self.cstrs:
+            v = sum(np.multiply(cstr["vect"],x))
+            print(v)
+            ub = cstr["upper_bound"]
+            lb = cstr["lower_bound"]
+            print("%f <= %s <= %f" % (lb,cstr["expr"],ub))
+            if v < lb or v > ub:
+                return False
+
+        return True
+
+    @property
+    def bounds(self):
+        return self._bounds
+
+    @bounds.setter
+    def bounds(self,mini,maxi):
+        mini,maxi = value;
+        self._bounds = [(mini,maxi)]*self.dim
+
+    def objective(self,expr):
+        self.obj = self.to_coeff_vect(expr);
+
+    def generate(self):
+        prob = ScipySimplexOptimizeProblem(self.dim);
+
+        prob.c = self.obj;
+        for cstr in self.cstrs:
+            v = cstr["vect"]
+            mini = cstr["lower_bound"]
+            maxi = cstr["upper_bound"]
+
+            prob.ub(v,maxi)
+            prob.ub(np.multiply(-1,v),mini*(-1))
+
+        return prob
+
+class OptimizeNonlinearModel:
     def __init__(self,n):
         self.init = [0.0]*n
         self.mask_const = [None]*n
@@ -293,15 +414,21 @@ class OptimizeModel:
     def init_guess(self):
         return self.init;
 
-    def _random_val(self,i):
-        iv = self.init[i]
-        bmin,bmax = self.bound[i]
-        rv = numpy.random.normal(loc=0,scale=10)
-        return rv
+    #def _random_val(self,i):
+    #    iv = self.init[i]
+    #    bmin,bmax = self.bound[i]
+    #    rv = numpy.random.normal(loc=0,scale=100)
+    #    return rv
 
-    def random_point(self):
-        newguess = map(lambda i : self._random_val(i), range(0,self.dim))
-        return newguess
+    #def _random_weight(self,i):
+    #    iv = self.init[i]
+    #    bmin,bmax = self.bound[i]
+    #    rv = numpy.random.normal(loc=0,scale=100)
+    #    return rv
+
+    #def random_point(self):
+    #    newguess = map(lambda i : self._random_val(i), range(0,self.dim))
+    #    return newguess
 
 
     def test(self,cstrs,x,ctol=1e-6,emit=False):

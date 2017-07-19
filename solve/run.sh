@@ -14,6 +14,7 @@ TMPDIR=tmp
 
 ./killall.sh dReal
 ./killall.sh z3 
+./killall.sh python
 ./killall.sh solver.debug 
 ./killall.sh solver 
 rm $TMPDIR/*

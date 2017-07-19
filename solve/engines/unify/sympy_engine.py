@@ -28,8 +28,8 @@ class SympyEngine(Engine):
            #asgns = self.unify_and_resolve_exprs(ctx,init_path)
 
 
-           ntries = 25 
-           #ntries = 100
+           #ntries = 25 
+           ntries = 100
            for i in range(0,25):
                    init_path = SympySearchPath().set_unify(s_templ,s_targ)
                    n_cstrs = generator.history.n_restricts()*0.2

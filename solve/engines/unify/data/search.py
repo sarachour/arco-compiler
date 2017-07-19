@@ -478,6 +478,7 @@ class SympySlnGenerator:
         templ.append(ctx.apply_expr(templ_expr.eqn))
         targ.append(ctx.apply_expr(targ_expr.eqn))
 
+        print(templ,targ)
         if templ_expr.is_diffeq() and targ_expr.is_diffeq():
             templ.append(ctx.apply_expr(templ_expr.ic))
             targ.append(ctx.apply_expr(targ_expr.ic))

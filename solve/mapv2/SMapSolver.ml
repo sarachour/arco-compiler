@@ -278,7 +278,7 @@ struct
         let succ,model = evaluate new_prec in
         if succ then
           succ,model
-        else if new_prec >= 1.0 || maxtries == 0 then
+        else if new_prec >= 0.001 || maxtries == 0 then
           succ,model
         else
           _work (mult *. 10.0) (maxtries-1)
