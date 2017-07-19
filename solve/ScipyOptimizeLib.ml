@@ -135,6 +135,7 @@ struct
       let outfile = "mapopt_"^(string_of_int (REF.dr id))^".out" in
       let logfile= "mapopt_"^(string_of_int (REF.dr id))^".log" in
       print_string ("==== Evaluating <"^filename^"> ====\n");
+      flush_all();
       REF.upd id (fun x -> x+1);
       emit filename (sts @ [SCISolve; SCIWrite(outfile)]);
       Sys.command ("python "^filename^" > "^logfile);

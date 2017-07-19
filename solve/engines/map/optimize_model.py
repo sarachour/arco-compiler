@@ -260,15 +260,75 @@ class OptimizeModel:
 
         return vect;
 
+
+    def generate_nocstr(self,label=None,equiv=True):
+        obj,icstrs = self.generate();
+        cstrs = []
+        for equiv in self._eq:
+            # disable equivalence constraints
+            if equiv == False:
+                continue;
+
+            for e1 in equiv:
+                for e2 in equiv:
+                    if not (e1 == e2):
+                        c = "((%s) - (%s))**2" % (e1,e2)
+                        cstrs.append(c)
+
+        for (a,b,l) in self._neq:
+            if label == None or l in label:
+                c = "max(0,((%s) - (%s))**2 - %e)" % (a,b,1e-64)
+                cstrs.append(c)
+
+        for (a,b,l) in self._geq:
+            if label == None or l in label:
+                c = "max(0,(%s) - (%s))" % (a,b)
+                cstrs.append(c)
+
+
+        prog = "+".join(cstrs);
+        objfun = eval("lambda x : %s\n" % prog)
+        return objfun,icstrs;
+
     def init_guess(self):
         return self.init;
 
     def _random_val(self,i):
         iv = self.init[i]
         bmin,bmax = self.bound[i]
-        rv = numpy.random.normal(loc=0,scale=1)
+        rv = numpy.random.normal(loc=0,scale=10)
         return rv
 
     def random_point(self):
         newguess = map(lambda i : self._random_val(i), range(0,self.dim))
         return newguess
+
+
+    def test(self,cstrs,x,ctol=1e-6,emit=False):
+        print("---> Testing")
+        print(x);
+        max_error = 0;
+        error_tol = ctol;
+
+        for cstr in cstrs:
+            val = cstr['fun'](x)
+            if cstr['type'] == "ineq":
+                if val < 0.0:
+                    error = abs(val)
+                else:
+                    error = 0.0;
+                this_test = (val >= 0.0 )
+
+            if cstr['type'] == "eq":
+                error = abs(val)
+                this_test = (val == 0.0 )
+
+            max_error = max(max_error,error)
+            if emit == True:
+                print("  "+cstr['code']+" => "+str(this_test))
+                print("     ->"+str(error))
+                print("");
+
+        print("pass:"+str(max_error <= error_tol))
+        print("error:"+str(max_error));
+        return (max_error <= error_tol, max_error)
