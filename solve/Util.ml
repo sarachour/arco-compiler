@@ -263,6 +263,39 @@ struct
     | Decimal(-1.0) -> true
     | _ -> false
 
+  let neq a b = match a,b with
+    | Integer(x),Integer(y) -> x <> y
+    | Decimal(x),Decimal(y) -> x <> y
+    | Integer(x),Decimal(y) -> float_of_int x <> y
+    | Decimal(x),Integer(y) -> float_of_int y <> x
+
+  let gt a b = match a,b with
+    | Integer(x),Integer(y) -> x > y
+    | Decimal(x),Decimal(y) -> x > y
+    | Integer(x),Decimal(y) -> float_of_int x > y
+    | Decimal(x),Integer(y) -> float_of_int y > x
+
+
+  
+  let lt a b = match a,b with
+    | Integer(x),Integer(y) -> x < y
+    | Decimal(x),Decimal(y) -> x < y
+    | Integer(x),Decimal(y) -> float_of_int x < y
+    | Decimal(x),Integer(y) -> float_of_int y < x
+
+  let gte a b = match a,b with
+    | Integer(x),Integer(y) -> x >= y
+    | Decimal(x),Decimal(y) -> x >= y
+    | Integer(x),Decimal(y) -> float_of_int x >= y
+    | Decimal(x),Integer(y) -> float_of_int y >= x
+
+
+  
+  let lte a b = match a,b with
+    | Integer(x),Integer(y) -> x <= y
+    | Decimal(x),Decimal(y) -> x <= y
+    | Integer(x),Decimal(y) -> float_of_int x <= y
+    | Decimal(x),Integer(y) -> float_of_int y <= x
 
   let eq a b = match a,b with
     | Integer(x),Integer(y) -> x = y
@@ -1414,6 +1447,9 @@ struct
   let hasnode (type a) (type b) (g:(a,b) graph) (n:a) : bool =
     MAP.has (g.adj) n
 
+  let size (type a) (type b) (g:(a,b) graph) : int =
+    MAP.size g.adj
+
   let iter (type a) (type b) (g:(a,b) graph) (fn : a-> a-> b -> unit) =
     let iterset src snk v =
       fn src snk v
@@ -1480,6 +1516,7 @@ struct
     let children = children g n in
     let parents = parents g n in
     children @ parents
+
 
 
     (*get disjoint graph nodes*)

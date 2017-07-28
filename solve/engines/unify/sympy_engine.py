@@ -29,17 +29,30 @@ class SympyEngine(Engine):
 
 
            #ntries = 25 
-           ntries = 100
-           for i in range(0,25):
+           ntries = 50
+
+           restrict_frac = 1.0;
+           total_slns = 0;
+           sln_ratio = 1;
+           target_ratio = 0.2;
+
+           # control system for number of results
+           for i in range(0,ntries):
                    init_path = SympySearchPath().set_unify(s_templ,s_targ)
-                   n_cstrs = generator.history.n_restricts()*0.2
+                   n_cstrs = generator.history.n_restricts()*restrict_frac
                    cstrs = generator.get_constraints(1 + int(n_cstrs))
                    if cstrs == None:
                       return generator.get_assignments();
 
                    init_path.add_restricts(cstrs);
                    nslns = generator.get_sln(init_path);
+                   total_slns += nslns;
+
+                   # control system
+                   sln_ratio = total_slns / float(1+i) + 1e-6
+                   restrict_frac = (target_ratio/sln_ratio)*0.2 + restrict_frac*0.8
                    print("# slns:" + str(nslns))
+                   print("ratio:" + str(restrict_frac))
 
 
            # ASSIGNMENTS

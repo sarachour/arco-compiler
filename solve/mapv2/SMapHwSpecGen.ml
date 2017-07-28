@@ -94,19 +94,25 @@ struct
       in
       {cstrs=all_cstrs;scale=scale;offset=offset;value=value}
 
-  let rec mk_less_than : map_expr -> number -> map_cstr =
-    fun a n ->
-      match a with
-      | SENumber(m) -> if m <= n then SCTrue else SCFalse 
-      | SEVar(a) -> SCVarOPConst(SCLTE,a,n)
-      | expr -> SCExprOPConst(SCLTE,expr,n)
 
-  let rec mk_greater_than : map_expr -> number -> map_cstr =
-    fun a n ->
+  let rec eval_ineq : map_op -> number -> map_cstr =
+    fun op n ->
+      match op with
+      | SCLTE(x) -> if NUMBER.lte n x then SCTrue else SCFalse
+      | SCGTE(x) -> if NUMBER.gte n x then SCTrue else SCFalse
+      | SCNEQ(x) -> if NUMBER.neq n x then SCTrue else SCFalse
+      | SCOr(a,b) -> begin match eval_ineq a n, eval_ineq b n with
+          | SCTrue,_ -> SCTrue
+          | _, SCTrue -> SCTrue
+          | _ -> SCFalse
+        end
+
+  let rec mk_ineq : map_expr -> map_op -> map_cstr =
+    fun a op ->
       match a with
-      | SENumber(m) -> if m >= n then SCTrue else SCFalse 
-      | SEVar(a) -> SCVarOPConst(SCGTE,a,n)
-      | expr -> SCExprOPConst(SCGTE,expr,n)
+      | SENumber(m) -> eval_ineq op m 
+      | SEVar(a) -> SCVarIneq(op,a)
+      | expr -> SCExprIneq(op,expr)
 
   (*
   let rec mk_not_equal : map_expr -> number -> map_cstr =
@@ -142,11 +148,17 @@ struct
   let mk_equal0 : map_expr -> map_cstr =
     fun x -> mk_equal x (SENumber (Integer 0))
 
-  (*
+  
   let mk_not_equal0 : map_expr -> map_cstr =
-    fun x -> mk_not_equal x ((Integer 0))
-  *)
+    fun expr ->
+      mk_ineq expr (SCNEQ (Integer 0))
+  
 
+  let mk_gte : map_expr -> number -> map_cstr =
+    fun expr n ->
+      mk_ineq expr (SCGTE n)
+
+  
   let mk_equal1 : map_expr -> map_cstr =
     fun x -> mk_equal x (SENumber (Integer 1))
 
@@ -177,15 +189,14 @@ struct
         if NUMBER.is_nan n || NUMBER.is_inf n then
           SCFalse::lst
         else
-          let expr = SEPow(SEAdd(SEMult(sc,SENumber n),off),SENumber(Integer 2)) in
-          (mk_greater_than expr nonzero_pos)::lst
+          let expr = (SEAdd(SEMult(sc,SENumber n),off)) in
+          (mk_not_equal0 expr)::lst
 
       | SVDC ->
         (mk_equal1 sc)::(mk_equal0 off)::lst
 
       | SVSymbol(n) ->
-        let expr = SEPow(sc,SENumber(Integer 2)) in 
-        (mk_greater_than expr nonzero_pos)::lst
+        (mk_not_equal0 sc)::lst
 
   (*process the bounds over the variable.*)
   let port_val_to_port_cstrs: string -> map_loc_val -> map_loc_val*(map_cstr list) =
@@ -259,6 +270,9 @@ struct
         new_port_val
         []
 
+  let mk_affine : map_expr -> map_expr -> map_expr -> map_expr =
+    fun scale offset v ->
+      SEAdd (SEMult(scale,v),offset)
   
   let rec late_bind_mult2 : map_ctx -> map_result -> map_result -> map_result =
     fun ctx res1 res2 ->
@@ -275,7 +289,7 @@ struct
 
       | _,SVDC ->
         late_bind_mult2 ctx res2 res1
-        
+
       | SVZero,SVZero ->
         let scale = SEVar (get_freevar()) in 
         let offset = SEMult(res1.offset, res2.offset) in
@@ -284,10 +298,8 @@ struct
 
       | SVZero, SVNumber(n) ->
         let scale = SEVar (get_freevar()) in
-        let offset =
-          SEAdd(SEMult(SEMult(res1.scale,SENumber(n)),res2.offset),
-                SEMult(res1.offset,res2.offset))
-        in
+        let n_expr = mk_affine res2.scale res2.offset (SENumber (n)) in
+        let offset = SEMult(res1.offset,n_expr) in
         let value = SVZero in
         mkresult args scale offset value [] 
 
@@ -304,14 +316,16 @@ struct
         late_bind_mult2 ctx res2 res1
 
       | SVNumber(n),SVNumber(m)->
-        let scale = SEMult(res1.scale,res2.scale) in
-        let offset =
-          SEAdd(SEMult(SEMult(res1.scale,SENumber(n)),res2.offset),
-          SEAdd(SEMult(SEMult(res2.scale,SENumber(m)),res1.offset),
-                SEMult(res1.offset,res2.offset)))
-        in
-        let value = mk_loc_val_of_number (NUMBER.mult n m) in
-        let base_cstrs = [] in
+        let scale = SEVar (get_freevar()) in
+        let offset = SEVar (get_freevar()) in
+        let n_expr = mk_affine res1.scale res1.offset (SENumber n) in
+        let m_expr = mk_affine res2.scale res2.offset (SENumber m) in
+        let res_val  = NUMBER.mult n m in
+        let res_expr = mk_affine scale offset (SENumber (res_val)) in
+        let value = mk_loc_val_of_number (res_val) in
+        let base_cstrs = [
+          mk_equal (SEMult(n_expr,m_expr)) res_expr
+        ] in
         let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
         mkresult args scale offset (value) cstrs 
 
@@ -330,23 +344,15 @@ struct
            
 
         *)
-        (*a1*1/n*(a2*n+b2)*)
-        let m_div = NUMBER.div (Integer 1) m in
-        let scale = 
-            SEMult(res1.scale,
-                   SEAdd(res2.scale,
-                         SEMult(res2.offset, SENumber(m_div))
-                        ))
-        in
-        let offset = SEMult(
-            res1.offset,
-            SEAdd(
-              SEMult(res2.scale,SENumber(m)),res2.offset)
-          )
-        in
+        let m_expr = mk_affine res2.scale res2.offset (SENumber m) in
+        let scale = SEVar (get_freevar()) in
+        let offset = SEMult(m_expr,res1.offset) in
         let value = mk_loc_val_of_interval (IntervalLib.mult a (IntervalLib.num m)) in
         (*is irreversible if transformed value is zero*)
-        let base_cstrs =  [] in
+        let base_cstrs =  [
+          mk_not_equal0 m_expr;
+          mk_equal (SEMult(scale,SENumber m)) (SEMult(res1.scale,m_expr));
+        ] in
         let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
         mkresult args scale offset (value) cstrs
 
@@ -362,8 +368,8 @@ struct
         let offset = SENumber(Integer 0) in
         let value = mk_loc_val_of_interval (IntervalLib.mult s1 s2) in
         let base_cstrs = [
-          mk_equal0 (res1.offset) ;
-          mk_equal0 (res2.offset) ;
+          mk_equal0 (res1.offset);
+          mk_equal0 (res2.offset);
         ]
         in
         let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
@@ -383,18 +389,15 @@ struct
 
     | SVNumber(n) ->
       let n_inv = NUMBER.div (Integer 1) n in
-      let scale =
-        SEDiv(
-          SENumber(Integer 1),
-          SEAdd(
-            res.scale,
-            SEMult(res.offset,SENumber n_inv)
-          )
-        )
-      in
-      let offset = SENumber(Integer 0) in
+      let scale = SEVar (get_freevar()) in
+      let offset = SEVar (get_freevar()) in
+      let res_expr = mk_affine scale offset (SENumber n_inv) in
+      let n_expr = mk_affine res.scale res.offset (SENumber n) in
       let value = mk_loc_val_of_number n_inv in
-      let base_cstrs = [] in
+      let base_cstrs = [
+        mk_not_equal0 n_expr;
+        mk_equal (res_expr) (SEDiv(SENumber (Integer 1),n_expr)); 
+      ] in
       let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
       mkresult [res] scale offset (mk_loc_val_of_number n_inv) cstrs
 
@@ -407,10 +410,12 @@ struct
       let offset = SENumber(Integer 0) in
       let value =  mk_loc_val_of_interval (IntervalLib.div (IntervalLib.num (Integer 1)) x) in
       let base_cstrs = [
-        mk_equal0 res.offset
+        mk_equal0 res.offset;
+        mk_not_equal0 (res.scale)
       ] in
       let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
-      mkresult [res] scale offset (value) cstrs 
+      if IntervalLib.contains x (Integer 0) then mkfailure() else
+      mkresult [res] scale offset (value) cstrs
         
 
   
@@ -428,19 +433,12 @@ struct
       mkresult args scale offset value []
 
     | SVZero, SVDC->
-      let scale = SENumber(Integer 1) in 
+      let scale = SEVar (get_freevar()) in
       let offset = SENumber(Integer 0) in
       let value = SVZero  in
       mkresult args scale offset value []
 
-    | SVNumber(Integer 0), SVDC->
-        begin
-          let scale = SENumber(Integer 1) in 
-          let offset = SENumber(Integer 0) in
-          let value = SVNumber (Integer 1) in
-          mkresult args scale offset value []
-        end
-
+    
     | SVNumber(n), SVDC ->
         res2
 
@@ -450,50 +448,75 @@ struct
     | _,SVDC ->
       res2
 
+    (* n^0 *)
     | SVNumber(n),SVZero ->
-      let scale =
-        SEPow(SEAdd(SEMult(res1.scale,SENumber n),res1.offset),res2.offset)
-      in
-      let offset = SENumber(Integer 0) in
+      let m_exp_aff = mk_affine res1.scale res1.offset (SENumber n)  in
+      let scale = SEVar (get_freevar()) in
+      let offset = SEVar (get_freevar()) in
       let value = SVNumber(Integer 1) in
-      let base_cstrs = [] in
+      let base_cstrs = [
+        mk_equal (SEAdd(scale,offset)) (SEPow(m_exp_aff,res2.offset))
+      ] in
       let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
       mkresult args scale offset value cstrs
 
-    | SVZero,SVNumber(n) ->
+    (* 0^n *)
+    | SVZero,SVNumber(m) ->
+      let m_exp_aff = mk_affine res2.scale res2.offset (SENumber m) in
       let scale = SEVar (get_freevar()) in
-      let offset = SENumber (Integer 0) in
+      let offset = SEPow(res1.offset,m_exp_aff) in
       let value = SVZero in
-      let base_cstrs = [] in
-      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
-      mkresult args scale offset (value) cstrs
-
-    | SVNumber(n),SVNumber(m) ->
-      let offset = SENumber(Integer 0) in
-      let value = mk_loc_val_of_number (NUMBER.pow n m) in
-      let value_inv = NUMBER.div (Integer 1) (NUMBER.pow n m) in
-      let scale =
-          SEMult(SEMult(
-              SEPow(SEMult(res1.scale,SENumber n),SEMult(res2.scale,SENumber m)),
-              SEPow(SEMult(res1.scale,SENumber n),res2.offset)
-            ),SENumber(value_inv))
+      let base_cstrs = 
+          []
       in
-      let base_cstrs = [mk_equal0 res1.offset] in
       let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
-      mkresult args scale offset (value) cstrs
+      if NUMBER.lte m (Integer 0) then
+        mkfailure()
+      else
+        mkresult args scale offset (value) cstrs
 
+    (*n^m*)
+    | SVNumber(n),SVNumber(m) ->
+      let scale = SEVar (get_freevar()) in
+      let offset = SEVar (get_freevar()) in
+      let m_exp_aff = mk_affine res2.scale res2.offset (SENumber m) in
+      let m_base_aff =mk_affine res1.scale res1.offset (SENumber n) in
+      let res_value = NUMBER.pow n m in
+      let res_aff = mk_affine scale offset (SENumber res_value) in
+      let value = mk_loc_val_of_number (res_value) in
+      let base_cstrs = [
+        mk_equal res_aff (SEPow(m_base_aff,m_exp_aff));
+        mk_gte m_base_aff (Integer 0)
+      ] in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      if NUMBER.gt m (Integer 0) || NUMBER.neq n (Integer 0) then
+        mkresult args scale offset (value) cstrs
+      else
+        mkfailure()
 
     | SVSymbol(x), SVNumber(m) ->
       let offset = SENumber(Integer 0) in
-      let scale = SEPow(res1.scale,SENumber m) in
+      let m_expr = mk_affine res2.scale res2.offset (SENumber m) in
+      let scale = SEPow(res1.scale,m_expr) in
       let value = mk_loc_val_of_interval (IntervalLib.pow x (IntervalLib.num m)) in
-      let base_cstrs = [
-        mk_equal0 res1.offset;
-        mk_equal (SENumber m) (SEAdd(SEMult(res2.scale,SENumber m),res2.offset))
-      ]
+      let base_cstrs = if NUMBER.gt m (Integer 0) then
+          [
+            mk_equal0 res1.offset;
+            mk_equal (SENumber m) m_expr
+          ]
+        else
+          [
+            mk_equal0 res1.offset;
+            mk_gte res1.scale (Integer 0);
+            mk_equal (SENumber m) m_expr;
+            mk_not_equal0 res1.scale;
+          ]
       in
       let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
-      mkresult args scale offset (value) cstrs
+      if IntervalLib.contains x (Integer 0) then
+        mkfailure()
+      else
+        mkresult args scale offset (value) cstrs
 
     | SVNumber(n), SVSymbol(x) ->
       let offset = SENumber(Integer 0) in
@@ -519,7 +542,7 @@ struct
       mkresult args scale offset (value) cstrs
 
     | SVZero, SVSymbol(y) ->
-      let scale = SENumber (Integer 1) in
+      let scale = SEVar (get_freevar()) in
       let offset = SENumber (Integer 0) in
       let value = SVZero in
       mkresult args scale offset value []
@@ -913,6 +936,7 @@ struct
             | HWDAnalog(defs) ->
               SCLateBind (interp_arg1 (SMapHwSpecLateBind.create_late_bind_cover name defs.ival),
                           [process_ast (Term hwid)])
+
             | HWDDigital(defs) ->
               let sample_period, _ = defs.sample in
               SCLateBind(

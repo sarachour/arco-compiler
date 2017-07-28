@@ -1,6 +1,9 @@
 from scipy import optimize
 from optimize_model import OptimizeLinearModel
 from optimize_model import OptimizeNonlinearModel
+from optimize_process import OptimizeProcess
+from optimize_sample import OptimizeLinearSampler
+from optimize_classifier import OptimizeClassifier
 import sys
 import math
 
@@ -9,143 +12,26 @@ import time
 from multiprocessing import Process, Queue
 import numpy as np
 
-class OptimizeProcess:
-    def __init__(self,max_time,tol,ctol,iters):
-        self._tol = tol
-        self._ctol = ctol
-        self._iters = iters;
-        self._max_time = max_time;
 
-    @property
-    def max_time(self):
-        return self._max_time
-
-    @property
-    def ctol(self):
-        return self._ctol
-
-    @property
-    def tol(self):
-        return self._tol
-
-    @property
-    def iters(self):
-        return self._iters
-
-    @max_time.setter
-    def max_time(self,value):
-        self._max_time = value
-
-    @iters.setter
-    def iters(self,value):
-        self._iters = value
-
-    @tol.setter
-    def tol(self,value):
-        self._tol = value
-
-    @ctol.setter
-    def ctol(self,value):
-        self._ctol = value
-
-    def _execute(self,func,max_time,args):
-        proc = Process(target=func,args=args);
-        t0 = time.time();
-        self.queue = Queue()
-        proc.start()
-        while time.time() - t0 < max_time:
-            proc.join(timeout=1)
-            if not proc.is_alive():
-                break;
-
-        if proc.is_alive():
-            print("-> Terminate")
-            proc.terminate()
-            result = None
-        else:
-            result = self.queue.get()
-
-        return result
-
-    def _solve_diffevol(self,opt,bound,init_guess):
-        res = optimize.differential_evolution(
-            opt,
-            bounds=bound,
-            maxiter=1000
-        )
-        self.queue.put(res);
-
-    def _solve_cobyla(self,opt,cstrs,init_guess):
-        res=optimize.minimize(
-            opt,
-            init_guess,
-            method='COBYLA',
-            constraints=cstrs,
-            tol=self.tol,
-            options={
-                'rhobeg':10,
-                'maxiter':self.iters,
-                'disp': False,
-                'catol':self.ctol,
-                'tol': self.tol
-            }
-        )
-        self.queue.put(res);
-
-    def _solve_linear(self,prob):
-        res = optimize.linprog(
-            prob.c,
-            A_ub=prob.A_ub,
-            b_ub=prob.b_ub,
-            bounds=prob.bounds
-        )
-        self.queue.put(res)
-
-    def _solve_slsqp(self,opt,bound,cstrs,init_guess):
-        res=optimize.minimize(
-            opt,
-            init_guess,
-            method='SLSQP',
-            constraints=self.cstrs,
-            tol=self.tol,
-            bounds=self.model.bound,
-            options={
-                'maxiter':self.iters,
-                'disp': False,
-            }
-        )
-        self.queue.put(res)
-
-    def solve_slsqp(self,opt,bound,cstrs,init_guess):
-        return self._execute(self._solve_slsqp,self.max_time,(opt,bound,cstrs,init_guess))
-
-    def solve_cobyla(self,opt,cstrs,init_guess):
-        return self._execute(self._solve_cobyla,self.max_time,(opt,cstrs,init_guess))
-
-
-    def solve_diffevol(self,opt,init_guess):
-        return self._execute(self._solve_diffevol,self.max_time,(opt,init_guess))
-
-
-    def solve_linear(self,prob):
-        return self._execute(self._solve_linear,self.max_time,[prob]);
-       
 class OptimizeProblem:
 
     def __init__(self,n):
         self.model = OptimizeNonlinearModel(n);
-        self.interval_model = OptimizeLinearModel(n);
+        self.linear_model = OptimizeLinearModel(n);
 
         tol = 1e-6;
         # The error allowed for the sum of constraints.
         ctol = 1e-8;
         iters = 1000;
-        max_time = 5;
+        max_time = 15;
 
         self.processor = OptimizeProcess(max_time,tol,ctol,iters);
-        self.method = "COBYLA";
+        self.linear_sampler = OptimizeLinearSampler(self.linear_model,self.processor)
+
+        # other parameters
+        self.method = "COBYLA"
         self.tries = 100;
-        self.n_results = 10;
+        self.n_results = 3;
         self.result = None;
 
 
@@ -186,22 +72,34 @@ class OptimizeProblem:
         self.model.gte(expr1,expr2)
         return;
 
+    def lower_bound(self,idx,mini):
+        expr = "x[%d]" % idx
+        self.linear_model.cstr(expr,mini,1e60);
+        self.model.lower_bound(idx,mini)
+        self.linear_model.lower_bound(idx,mini)
+
+    def upper_bound(self,idx,maxii):
+        expr = "x[%d]" % idx
+        self.linear_model.cstr(expr,maxi,1e60);
+        self.model.lower_bound(idx,maxi)
+        self.linear_model.lower_bound(idx,maxi)
+
     def interval(self,expr,mini,maxi):
         self.model.gte(expr,str(mini))
         self.model.gte(str(maxi),expr)
-        self.interval_model.cstr(expr,mini,maxi);
+        self.linear_model.cstr(expr,mini,maxi);
 
     def objective(self,expr):
         self.model.objective(expr);
-        self.interval_model.objective("0");
+        self.linear_model.objective("0");
 
     def bound(self,mini,maxi):
         self.model.bounds(mini,maxi)
-        self.interval_model.bounds = (mini,maxi)
+        self.linear_model.set_bounds(mini,maxi)
 
     
     def _solve_global(self,obj,init_guess):
-        return self.processor.solve_diffevol(obj,init_guess);
+        return self.processor.solve_diffevol(obj,self.model.bound,init_guess);
 
 
 
@@ -210,56 +108,44 @@ class OptimizeProblem:
             return self.processor.solve_slsqp(obj,self.model.bound,cstrs,init_guess);
 
         if self.method == "COBYLA":
-            return self.processor.solve_cobyla(obj,cstrs,init_guess);
+            return self.processor.solve_cobyla(obj,self.model.bound,cstrs,init_guess);
 
+        if self.method == "MLSL":
+            return self.processor.solve_mlsl(obj,self.model.bound,cstrs,init_guess);
 
-    def random_weight(self):
-        dim = self.interval_model.dim
-        pt = map(lambda i : np.random.random()-0.5, range(0,dim))
-        return pt
+        if self.method == "MMA":
+            return self.processor.solve_mma(obj,self.model.bound,cstrs,init_guess);
 
-    def random_ic(self,prob):
-        weight = self.random_weight()
-        prob.c = weight;
-        result = self.processor.solve_linear(prob);
-        print(result)
-        if not (result == None):
-            is_succ = self.interval_model.test(result.x);
-            if is_succ:
-                return result.x;
-
-        
-        return None
-
-
-    def add_result_if_valid(self,cstrs,result):
+    def add_result_if_valid(self,cstrs,result,emit=False):
         ctol = self.processor.ctol
         if result != None:
-            is_succ,tol = self.model.test(cstrs,result.x,ctol=ctol,emit=False)
+            print(result)
+            self.minima.append(result)
+            is_succ,tol = self.model.test(cstrs,result.x,ctol=ctol,emit=emit)
             if is_succ:
                 self.results.append(result)
+            return is_succ
 
     def solve_local(self):
         # generate relevant problems
-        ival_prob = self.interval_model.generate();
-        obj,cstrs = self.model.generate()
-        
+        obj,cstrs = self.model.generate(self.processor.ctol)
+        classifier = OptimizeClassifier(self.model)
+        minobj,_ = self.model.derive_objective(cstrs)
         self.cstrs = cstrs;
 
-        first_guess = self.random_ic(ival_prob);
-        if first_guess == None:
-            print("-> No initial guess")
-            first_guess = self.model.init_guess()
+        print("==== LOCAL OPTIMIZE ===")
+        first_guess = self.model.init_guess();
 
         result = self._solve_local(obj,cstrs,first_guess)
         self.add_result_if_valid(cstrs,result);
 
         for tries in range(0,self.tries):
-            print("%d/%d tries, %d/%d results" % (tries,self.tries,len(self.results),self.n_results))
+            print("%d/%d tries, %d/%d results" %
+                  (tries,self.tries,len(self.results),self.n_results))
             if len(self.results) > self.n_results:
                 continue;
 
-            new_guess = self.random_ic(ival_prob);
+            new_guess = self.linear_sampler.sample(objective=minobj);
             if new_guess == None:
                 continue;
 
@@ -270,31 +156,51 @@ class OptimizeProblem:
 
 
 
-    def solve_global(self):
-        ctol = self.processor.ctol
-        obj,cstrs = self.model.generate_nocstr()
-        get_ic = lambda x : self.random_ic(x)
+    def safe_vect(self,v):
+        v2 = v[:]
+        for i in range(0,len(v)):
+            v2[i] += (np.random.random() - 0.5)*1e-20
 
-        self.cstrs = cstrs;
-
-        first_guess = get_ic(self.model.init_guess())
-        if first_guess == None:
-            first_guess = self.model.init_guess()
-
-        print("==== GLOBAL OPTIMIZE ===")
-        result = self._solve_global(obj,first_guess)
-        print(result)
-        is_succ,tol = self.model.test(cstrs,result.x,ctol=ctol)
+        return v
 
     def solve(self):
+        ctol = self.processor.ctol
         self.model.finish()
         self.model.rewrite()
-        self.results = []
+        self.results = [];
+        self.minima = [];
+        orig_obj,orig_cstrs = self.model.generate(self.processor.ctol)
 
+        self.cstrs = orig_cstrs;
         if self.model.model_success() == False:
             return;
 
-        self.solve_local()
+        #return;
+        self.linear_sampler.generate()
+        if self.linear_sampler.feasible() == False:
+            print("unsat");
+            return;
+
+        classifier = OptimizeClassifier(self.model)
+        obj,cstrs= classifier.derive_objective(orig_cstrs)
+
+        # scratch derived objective
+        obj = orig_obj
+
+        print("=== First Solution for Constrained Problem ===")
+        first_guess = self.safe_vect(self.model.init_guess())
+        result = self._solve_local(obj,orig_cstrs,first_guess);
+        is_succ = self.add_result_if_valid(orig_cstrs,result)
+
+        print("=== Solving Fully Constrained Problem ===")
+        for i in range(0,self.tries):
+            next_guess = self.linear_sampler.sample()
+            result = self._solve_local(obj,orig_cstrs,next_guess);
+            is_succ = self.add_result_if_valid(orig_cstrs,result)
+            if is_succ:
+                self.model.test(cstrs,result.x,ctol=ctol,emit=True)
+
+        # TODO: Find minima if no solution is found.
 
     def write_result(self,fh,result):
         ctol = self.processor.ctol
@@ -311,7 +217,7 @@ class OptimizeProblem:
             result_vect = self.model.result(result.x);
             print(result_vect);
             for ident in result.x:
-                fh.write("%d=%e\n" % (i,ident))
+                fh.write("%d=%.16e\n" % (i,ident))
                 i+=1;
         else:
             fh.write("failure\n")

@@ -9,6 +9,7 @@ type sciopt_st =
   | SCIInitialize of int
   | SCISetIters of int
   | SCISetTries of int
+  | SCISetResults of int
   | SCISetMethod of sciopt_method
   | SCISetCstrTol of float
   | SCISetMinTol of float

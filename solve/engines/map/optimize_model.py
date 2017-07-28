@@ -6,61 +6,129 @@ from sympy import Symbol
 import sympy as sp
 import numpy as np
 
-class ScipySimplexOptimizeProblem:
+def to_finite(v):
+    return v
+
+class ScipySimplexOptimizeProblem():
     def __init__(self,d):
         self._c = [0]*d;
         self._A_ub = [] 
         self._b_ub = []
         self._A_eq = [] 
         self._b_eq = []
-        self.dim = d;
-        self.bounds =[(None,None)]*d
 
-    @property
+        # eliminate empty columns
+        self._c_nz = None
+        self._A_ub_nz = None
+        self._A_eq_nz = None
+        self.dim = d;
+        self.bounds =[(-np.inf,np.inf)]*d
+
+    def to_nonlinear(self):
+        Aub = self.A_ub()
+        bub = self.b_ub()
+        c = self.c()
+
+        obj = lambda x : np.dot(c,x)
+        cstrs = []
+        for row,ub in zip(Aub,bub):
+            cfxn = lambda x : ub - np.dot(row,x)
+            cstr = {
+                "type":"ineq",
+                "fun":cfxn,
+                "code":"<unimpl>"
+            }
+            cstrs.append(cstr)
+
+        return obj, cstrs
+
     def bounds(self):
         return self._bounds
 
-    @bounds.setter
-    def bounds(self,value):
-        mini,maxi = value;
-        self._bounds = [(mini,maxi)]*self.dim
+    def set_bounds(self,value):
+        self._bounds = value
 
-    @property
     def A_ub(self):
-        return self._A_ub
+        if self._A_ub_nz != None:
+            return self._A_ub_nz
+        else:
+            return self._A_ub
 
-    @property
     def b_ub(self):
         return self._b_ub
 
-    @property
     def A_eq(self):
-        return self._A_eq
+        if self._A_eq_nz != None:
+           return self._A_eq_nz
+        else:
+           return self._A_eq
 
-    @property
     def b_eq(self):
         return self._b_eq
 
-    @property
     def c(self):
-        return self._c
+        if self._c_nz != None:
+            return self._c_nz;
+        else:
+            return self._c
 
-    @c.setter
-    def c(self,v):
+    def set_c(self,v):
         self._c = v
+
+    def __nonzero(self,x):
+        if x > 0:
+            return 1
+        else:
+            return 0
+
+    def constrained(self):
+        total = [0]*self.dim
+        for cstr in self.A_ub():
+            total = np.add(total,abs(cstr))
+
+        for cstr in self.A_eq():
+            total = np.add(total,abs(cstr))
+
+        total = np.add(total,np.abs(self.c()))
+
+        return map(lambda x: self.__nonzero(x),total);
+
+    def compress(self,row,nz):
+        compressed = [0]*sum(nz)
+        idx = 0
+        for i in range(0,len(row)):
+            if nz[i] > 0:
+                compressed[idx] = row[i]
+                idx += 1
+
+        return compressed;
+
+    def eliminate(self):
+        nonzero = self.constrained()
+        self._A_ub_nz = map(lambda row: self.compress(row,nonzero),self._A_ub)
+        self._A_eq_nz = map(lambda row: self.compress(row,nonzero),self._A_eq)
+        self._c_nz = self.compress(self._c,nonzero)
 
     def ub(self,vect,maxi):
         self._b_ub.append(maxi)
         self._A_ub.append(vect)
         return
 
+    def rm_ub(self):
+        self._b_ub.pop()
+        self.A_ub.pop()
+
     def eq(self,vect,maxi):
         self._b_eq.append(maxi)
         self._A_eq.append(vect)
 
+    def rm_eq(self):
+        self._b_eq.pop()
+        self._A_eq.pop()
+
 class OptimizeLinearModel:
     def __init__(self,n):
-        self.init = [0.0]*n
+        self.init = [0]*n
         self.cstrs = [];
         self.dim = n;
         self.obj = None;
@@ -104,18 +172,24 @@ class OptimizeLinearModel:
     def bounds(self):
         return self._bounds
 
-    @bounds.setter
-    def bounds(self,mini,maxi):
-        mini,maxi = value;
+    def set_bounds(self,mini,maxi):
         self._bounds = [(mini,maxi)]*self.dim
+
+    def lower_bound(self,idx,mini):
+        lb,ub= self._bounds[idx]
+        if lb > mini:
+            self._bounds[idx] = (mini,ub)
 
     def objective(self,expr):
         self.obj = self.to_coeff_vect(expr);
 
+    def sample(self):
+        return;
+
     def generate(self):
         prob = ScipySimplexOptimizeProblem(self.dim);
-
-        prob.c = self.obj;
+        prob.set_bounds(self.bounds);
+        prob.set_c(self.obj);
         for cstr in self.cstrs:
             v = cstr["vect"]
             mini = cstr["lower_bound"]
@@ -135,7 +209,7 @@ class OptimizeNonlinearModel:
         self._neq = [];
         self._geq = [];
         self.dim = n
-        self.obj = "0"
+        self.obj = "0.0"
         self.success = True;
 
     def initial(self,idx,ic):
@@ -143,6 +217,11 @@ class OptimizeNonlinearModel:
 
     def bounds(self,vmin,vmax):
         self.bound = [(vmin,vmax)]*self.dim
+
+    def lower_bound(self,idx,vmin):
+        lb,ub = self.bound[idx]
+        if lb > vmin:
+            self.bound[idx] = (vmin,ub)
 
     def eq(self,a,b,label=None):
         if not (a in self._eq_tmp):
@@ -169,7 +248,7 @@ class OptimizeNonlinearModel:
         self._eq = ((eqs))
 
     def objective(self,obj):
-        self.obj = obj;
+        #self.obj = obj;
         return;
 
     def neq(self,a,b,label=None):
@@ -302,10 +381,17 @@ class OptimizeNonlinearModel:
         print("=== Dedup =====")
         sym_equivs = self.remove_dups(sym_equivs);
         print(all_subs);
-        print("=== Write to String=====")
+        print("=== Subs =====")
+        for (v,num) in all_subs:
+            exprs =  [str(v),str(num)]
+            print(exprs)
+            self._eq.append(exprs);
+
+        print("=== Eq =====")
         self._eq  = [];
         for equiv in sym_equivs:
             exprs = map(lambda e : str(e), equiv)
+            print(exprs)
             self._eq.append(exprs)
 
         neq = self._neq;
@@ -332,17 +418,22 @@ class OptimizeNonlinearModel:
                 self._geq.append((str(an),str(bn),l))
 
     def _mkcstr(self,fn):
-        fnx = "lambda x: %s" % fn
+        fnx = "lambda x: to_finite(%s)" % fn
         print("%s >= 0" % fnx)
         cstr = {
             "fun":eval(fnx),
             "type":"ineq",
-            "code":fnx+" >= 0",
+            "code":fn,
         };
         return cstr
 
-    def generate(self,label=None,equiv=True):
+    def get_model(self):
+        return self._eq,self._neq,self._geq
+
+    def generate(self,ctol,label=None,equiv=True):
         cstrs = [];
+        fxn_type = "sharp";
+
         for equiv in self._eq:
             # disable equivalence constraints
             if equiv == False:
@@ -351,12 +442,19 @@ class OptimizeNonlinearModel:
             for e1 in equiv:
                 for e2 in equiv:
                     if not (e1 == e2):
-                        c = self._mkcstr("0-((%s) - (%s))**2" % (e1,e2))
+                        if fxn_type == "smooth":
+                            c = self._mkcstr("0-(((%s) - (%s))**2)**0.5" % (e1,e2))
+                        else:
+                            c = self._mkcstr("0-abs((%s) - (%s))" % (e1,e2))
                         cstrs.append(c)
 
         for (a,b,l) in self._neq:
             if label == None or l in label:
-                c = self._mkcstr("((%s) - (%s))**2 - %e" % (a,b,1e-64))
+                if fxn_type == "smooth":
+                    c = self._mkcstr("(((%s) - (%s))**2)**0.5 - %e" % (a,b,ctol))
+                else:
+                    c = self._mkcstr("abs((%s) - (%s)) - %e" % (a,b,ctol))
+
                 cstrs.append(c)
 
         for (a,b,l) in self._geq:
@@ -366,6 +464,8 @@ class OptimizeNonlinearModel:
 
         objfun = eval("lambda x : %s\n" % self.obj)
         return objfun,cstrs;
+
+
 
     def result(self,vect):
         print(self.mask_const)
@@ -431,14 +531,48 @@ class OptimizeNonlinearModel:
     #    return newguess
 
 
+    def unsat(self,cstrs,x):
+        unsat_cstr = []
+        sat_cstr = []
+
+        for cstr in cstrs:
+            try:
+                val = cstr['fun'](x)
+
+            except OverflowError:
+                unsat_cstr.append(cstr)
+                continue;
+
+            if cstr['type'] == "ineq":
+                this_test = (val >= 0.0 )
+
+            if cstr['type'] == "eq":
+                this_test = (val == 0.0 )
+
+            if this_test == False:
+                unsat_cstr.append(cstr)
+            else:
+                sat_cstr.append(cstr)
+
+
+        return unsat_cstr,sat_cstr
+
     def test(self,cstrs,x,ctol=1e-6,emit=False):
         print("---> Testing")
-        print(x);
+        for i in range(0,len(x)):
+            print("x[%d] = %f\n" % (i,x[i]))
+
         max_error = 0;
         error_tol = ctol;
 
+        emit = True
         for cstr in cstrs:
             val = cstr['fun'](x)
+
+            print(val)
+            if math.isnan(val) or math.isinf(val):
+                val = 0-error_tol*100000; 
+
             if cstr['type'] == "ineq":
                 if val < 0.0:
                     error = abs(val)

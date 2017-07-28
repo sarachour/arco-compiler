@@ -8,6 +8,7 @@ open HWLib;;
 open MathData;;
 
 open Util;;
+open Globals;;
 
 exception ScioptSMapSolver_error of string
 module ScioptSMapSolver =
@@ -114,12 +115,17 @@ struct
       let disjoint = GRAPH.disjoint ctx.bins in
       let nvars = get_nvars ctx in
       let opt_use_cover = get_option "use-cover" in
+      let tries = get_glbl_int "jaunt-scipy-tries" in
+      let ctol = get_glbl_float "jaunt-scipy-ctol" in
+      let xtol = get_glbl_float "jaunt-scipy-xtol" in
+      let results = get_glbl_int "jaunt-scipy-results" in
       q (SCIInitialize(nvars));
       q (SCISetMethod(SCICOBYLA));
-      q (SCISetIters(2000));
-      q (SCISetTries(40));
-      q (SCISetCstrTol(1e-10));
-      q (SCISetMinTol(1e-2));
+      q (SCISetIters(1000));
+      q (SCISetTries(tries));
+      q (SCISetResults(results));
+      q (SCISetCstrTol(ctol));
+      q (SCISetMinTol(xtol));
       q (SCIBound(SMapSlvrOpts.vmin, SMapSlvrOpts.vmax));
       MAP.iter ctx.xidmap (fun idx mapvars ->
           let init_guess = compute_guess mapvars in
@@ -139,13 +145,13 @@ struct
             );
           SET.iter bins (fun (bin:mapslvr_bin) ->
               match bin with
-              | SMVOp(op,_,n) ->
-                let nstr = string_of_number n in
+              | SMVOp(op,_) ->
                 List.iter (fun expr ->
                     match op with
-                    | SCNEQ -> q (SCINeq(expr,nstr))
-                    | SCGTE -> q (SCIGTE(expr,nstr))
-                    | SCLTE -> q (SCILTE(expr,nstr))
+                    | SCNEQ(n) -> q (SCINeq(expr,string_of_number n))
+                    | SCGTE(n) -> q (SCIGTE(expr,string_of_number n))
+                    | SCLTE(n) -> q (SCILTE(expr,string_of_number n))
+                    | SCOr(a,b) -> raise (ScioptSMapSolver_error "unsupported:or")
                   ) cls
               | SMVCoverTime(min,max) ->
                 List.iter (fun expr ->

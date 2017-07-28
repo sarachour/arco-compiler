@@ -454,6 +454,14 @@ struct
     in
     MixedInterval(intervals)
 
+  let crosses_n (x:interval_data) (n:number) :bool =
+    match x.min,x.max with
+    |BNDNum(min),BNDNum(max) -> NUMBER.lte (Decimal min) n && NUMBER.gte n (Decimal max) 
+    |BNDNum(min),BNDInf(QDPositive) -> NUMBER.lte (Decimal min) n   
+    |BNDInf(QDNegative),BNDNum(max) -> NUMBER.gte n (Decimal max)
+    |BNDInf(QDNegative),BNDInf(QDPositive) -> true
+
+
   (*if you're crossing*)
   let crosses_zero (x:interval_data) :bool =
     match x.min,x.max with
@@ -674,6 +682,12 @@ struct
   let pow (a:interval) (b:interval) : interval= rule_power a b
   let exp (a:interval)  : interval= rule_exp a 
   let neg (a:interval)  : interval= rule_sub (num (Integer 0)) a 
+
+  let contains (a:interval) (n:number) : bool =
+    match a with
+    | Interval(a) -> crosses_n a n
+    | Quantize(lst) -> LIST.has lst (float_of_number n)
+    | _ -> error "contains" "unknown interval"
 
   let number_of_interval (ival:interval) = match ival with
     | Interval(a) ->

@@ -226,14 +226,22 @@ module ASTLib
     let size (type x) (a:x ast) : int =
       fold a (fun pt n -> n + 1) 0
 
-    let score (type x) (a:x ast) : int =
-      fold a (fun pt n -> match pt with
-          | Op2(Power,_,_) -> n+4
-          | Op1(Exp,_) -> n+4
-          | Op2(Div,_,_) -> n+2
-          | OpN(Mult,_) -> n+2
-          | Op1(Neg,_) -> n
-          | _ -> n+1) 0
+    let score (type x) (a:x ast) : float =
+      let iscore = fold a (fun pt n -> match pt with
+          | Op2(Power,_,_) -> n+8
+          | Op1(Exp,_) -> n+8
+          | Op2(Div,_,_) -> n+6
+          | OpN(Mult,_) -> n+6
+          | OpN(Add,_) -> n+4
+          | OpN(Sub,_) -> n+4
+          | Op1(Neg,_) -> n+3
+          | Term(_) -> n+3
+          | Integer(_) -> n+1
+          | Decimal(_) -> n+1
+          | _ -> n+1
+        ) 0
+      in
+      (float_of_int iscore) *. 0.5
 
     let iter (type x) (a: x ast) (fn: x ast -> unit) : unit =
       let fld x r = let _ = fn x in r in

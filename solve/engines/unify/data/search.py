@@ -247,12 +247,15 @@ class RestrictStats:
 
     def failure(self):
         self.fail += 1;
+        self.n += 1;
+
 
     def success(self):
         self.succ += 1;
+        self.n += 1;
 
     def grade(self):
-        weight = self.succ - self.fail
+        weight = self.succ + self.fail*2
         return weight
 
     def __repr__(self):
@@ -265,7 +268,7 @@ class AssignExprHeuristic:
     def grade(self,v,e):
         r = srepr(e)
         #print(r);
-        return 1;
+        return len(str(e));
 
 class AssignFreqMap:
     def __init__(self):
@@ -400,12 +403,15 @@ class SearchHistory:
         self.restricts = RestrictFreqMap();
 
    def weight(self,assign,restrict):
-      rest_succ =restrict.succ
-      rest_fail =restrict.fail
-      asgn_succ = assign.succ
-      asgn_fail = assign.fail
+      #rest_succ =restrict.succ
+      #rest_fail =restrict.fail
+      #asgn_succ = assign.succ
+      #asgn_fail = assign.fail
+      asgn_score = assign.grade()
+      rest_score = restrict.grade()
+      return float(asgn_score + rest_score + 1)
 
-      return float(asgn_succ + asgn_fail+1)
+      #return float(asgn_succ + asgn_fail+1)
 
    def n_restricts(self):
         return len(self.restricts.restrict_space)
@@ -600,6 +606,7 @@ class SympySlnGenerator:
            for v in asgns:
               vr = self.ctx.templ.labels[v]
               expr = self.ctx.targ.label_expr(asgns[v])
-              print(str(vr)+"="+str(expr))
+              ve = simplify(nsimplify(expr),ratio=0.9).evalf()
+              print(str(vr)+"="+str(ve))
 
            print("=======")

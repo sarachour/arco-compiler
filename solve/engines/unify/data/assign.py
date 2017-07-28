@@ -45,7 +45,8 @@ class Assignment:
                 return "unimpl.repr"
 
         def __str__(self):
-                assign_str= [(k+"$"+(srepr(v))) for k,v in self.assigns.iteritems()]
+                simpl = lambda expr :  simplify(nsimplify(expr),ratio=0.9).evalf()
+                assign_str= [(k+"$"+(srepr(simpl(v)))) for k,v in self.assigns.iteritems()]
                 solved_str= [(k+"$"+v) for k,v in self.solved.iteritems()]
                 assign_strn="|".join(assign_str)
                 solved_strn="|".join(solved_str)

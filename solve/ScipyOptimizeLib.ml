@@ -19,9 +19,11 @@ struct
           | SCIInitialize(dim) ->
             Printf.fprintf fh "prob = OptimizeProblem(%d)\n" dim
           | SCISetIters(value)->
-            Printf.fprintf fh "prob.set_prop('value',%d)\n" value
+            Printf.fprintf fh "prob.set_prop('iters',%d)\n" value
           | SCISetTries(value)->
             Printf.fprintf fh "prob.set_prop('tries',%d)\n" value
+          | SCISetResults(value)->
+            Printf.fprintf fh "prob.set_prop('results',%d)\n" value
           | SCISetCstrTol(value)->
             Printf.fprintf fh "prob.set_prop('ctol',%e)\n" value
           | SCISetMinTol(value)->

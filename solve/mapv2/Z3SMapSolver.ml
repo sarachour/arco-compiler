@@ -134,6 +134,8 @@ struct
 
   let slvr_ctx_to_z3 : (mapslvr_ctx) -> (z3st list) =
     fun slvr_ctx ->
+      let eps = Decimal 1e-20 in
+      let neg_eps = Decimal (-1e-20) in
       let decls = QUEUE.make() in
       let cover = QUEUE.make() in
       let time_cover = QUEUE.make() in
@@ -163,17 +165,22 @@ struct
             );
           SET.iter bins (fun (bin:mapslvr_bin) ->
               match bin with
-              | SMVOp(op,_,n) ->
-                let z3n = number_to_z3_expr n in
+              | SMVOp(op,_) ->
                 let ineqs = List.map (
                     fun expr ->
                       match op with
-                      | SCNEQ ->
-                        Z3Assert(Z3Not(Z3Eq(expr,z3n)))
-                      | SCGTE ->
-                        Z3Assert(Z3GTE(expr,z3n))
-                      | SCLTE ->
-                        Z3Assert(Z3LTE(expr,z3n))
+                      | SCNEQ(n) ->
+                        Z3Assert(
+                          Z3Or(
+                            Z3LTE(expr,number_to_z3_expr (NUMBER.add n neg_eps)),
+                            Z3GTE(expr,number_to_z3_expr (NUMBER.add n eps))
+                          )
+                        )
+                      | SCGTE(n) ->
+                        Z3Assert(Z3GTE(expr,number_to_z3_expr n ))
+
+                      | SCLTE(n) ->
+                        Z3Assert(Z3LTE(expr,number_to_z3_expr n))
 
                   ) cls
                 in

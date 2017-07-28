@@ -54,7 +54,10 @@ type map_expr =
   | SEPow of map_expr*map_expr
 
 type map_op =
-  | SCLTE | SCGTE | SCNEQ
+  | SCLTE of number
+  | SCGTE of number
+  | SCNEQ of number
+  | SCOr of map_op*map_op
 
 type map_cstr =
   | SCFalse
@@ -69,8 +72,8 @@ type map_cstr =
   | SCVarEqExpr of map_var*map_expr
   | SCVarEqConst of map_var*number
   (*test*)
-  | SCExprOPConst of map_op*map_expr*number
-  | SCVarOPConst of map_op*map_var*number
+  | SCExprIneq of map_op*map_expr
+  | SCVarIneq of map_op*map_var
   (*var constraints*)
  
 (*get the constraints*)
@@ -165,6 +168,49 @@ struct
     in
     _work expr 
 
+  (*extract the largest term that satisfies *)
+  let factor: map_expr -> (map_expr -> bool) -> (map_expr*map_expr) option =
+    fun expr fn ->
+      let rec _work e =
+        if fn e then
+          Some (e,SENumber (Integer 1))
+        else
+
+          match e with
+          | SEMult(a,b) ->
+            begin
+              match _work a, _work b with
+              | Some(a1,a2),_ -> Some(a1,SEMult(a2,b))
+              | _,Some(b1,b2) -> Some(b1,SEMult(a,b2))
+              | _ -> None
+            end
+            
+          | SEDiv(SENumber (Integer 1),SEMult(a,b)) ->
+            let one_over_a = SEDiv(SENumber (Integer 1),a) in
+            let one_over_b = SEDiv(SENumber (Integer 1),b) in
+            begin
+              match _work one_over_a, _work one_over_b with
+              | Some(a1,a2),_ -> Some(a1,SEMult(a2,one_over_b))
+              | _,Some(b1,b2) -> Some(b1,SEMult(one_over_a,b2))
+              | _ -> None
+            end
+
+          | SEDiv(SENumber (Integer 1), b) ->
+            None
+
+          | SEDiv(a,b) ->
+            let one_over_b = SEDiv(SENumber (Integer 1),b) in
+            begin
+              match _work a, _work one_over_b with
+              | Some(a1,a2),_ -> Some(a1,SEDiv(a2,b))
+              | _,Some(b1,b2) -> Some(b1,SEDiv(b2,a))
+              | _ -> None
+            end
+            
+          | expr -> None  
+          
+      in
+      _work expr
 
   let simpl : map_expr -> map_expr =
     fun expr ->
@@ -179,9 +225,9 @@ struct
         | SENumber(n) -> SENumber(n)
         | SEAdd(a,b) ->
           proc a b (fun x y -> match x,y with
-              | SENumber(a),SENumber(b) -> SENumber(NUMBER.add a b)
-              | SENumber(a),ye -> if NUMBER.is_zero a then ye else SEAdd(x,y)
-              | xe,SENumber(a) -> if NUMBER.is_zero a then xe else SEAdd(x,y)
+              | SENumber(n1),SENumber(n2) -> SENumber(NUMBER.add n1 n2)
+              | SENumber(n1),ye -> if NUMBER.is_zero n1 then ye else SEAdd(x,y)
+              | xe,SENumber(n1) -> if NUMBER.is_zero n1 then xe else SEAdd(x,y)
               | _ -> SEAdd(x,y)
             )
         | SESub(a,b) ->
@@ -192,26 +238,35 @@ struct
             )
         | SEMult(a,b) ->
           proc a b (fun x y -> match x,y with
-              | SENumber(a),SENumber(b) -> SENumber(NUMBER.mult a b)
-              | xe,SENumber(a) ->
-                if NUMBER.is_zero a then SENumber(Integer 0)
-                else if NUMBER.is_one a then xe
+              | SENumber(n1),SENumber(n2) ->
+                SENumber(NUMBER.mult n1 n2)
+              | expr,SENumber(n1) ->
+                if NUMBER.is_zero n1 then SENumber(Integer 0)
+                else if NUMBER.is_one n1 then expr
                 else SEMult(x,y)
-              | SENumber(a),ye ->
-                if NUMBER.is_zero a then SENumber(Integer 0)
-                else if NUMBER.is_one a then ye
+              | SENumber(n1),expr ->
+                if NUMBER.is_zero n1 then SENumber(Integer 0)
+                else if NUMBER.is_one n1 then expr
                 else SEMult(x,y)
+
               | _ -> SEMult(x,y)
             )
         | SEDiv(a,b) ->
           proc a b (fun x y -> match x,y with
-              | SENumber(a),SENumber(b) -> SENumber(NUMBER.div a b)
-              | xe,SENumber(a) ->
-                if NUMBER.is_zero a then SENumber(NUMBER.div (Decimal 1.0) (Decimal 0.0))
-                else if NUMBER.is_one a then xe
-                else SEDiv(x,y)
-              | SENumber(a),ye ->
-                if NUMBER.is_zero a then SENumber(Integer 0)
+              | SENumber(n1),SENumber(n2) ->
+                SENumber(NUMBER.div n1 n2)
+
+              | expr,SENumber(n1) ->
+                if NUMBER.is_zero n1 then
+                  SENumber(NUMBER.div (Decimal 1.0) (Decimal 0.0))
+                else if NUMBER.is_one n1 then
+                  expr
+                else
+                  SEDiv(x,y)
+
+              | SENumber(n1),expr ->
+                if NUMBER.is_zero n1 then
+                  SENumber(Integer 0)
                 else SEDiv(x,y)
 
               | _ -> if x = y then SENumber(Integer 1) else SEDiv(x,y)
@@ -259,9 +314,10 @@ struct
   let string_of_op : map_op -> string =
     fun op ->
       match op with
-      | SCLTE -> "<="
-      | SCGTE -> ">="
-      | SCNEQ -> "!="
+      | SCLTE(x) -> "<="^(string_of_number x)
+      | SCGTE(x) -> ">="^(string_of_number x)
+      | SCNEQ(x) -> "!="^(string_of_number x)
+
   let to_string : map_cstr -> string =
     fun cstr ->
       match cstr with
@@ -269,12 +325,12 @@ struct
       | SCTrue -> "assert(true)"
       | SCExprEqExpr(e1,e2) -> (SMapExpr.to_string e1)^"="^(SMapExpr.to_string e2)^" (e.e)"
       | SCExprEqConst(e1,n) -> (SMapExpr.to_string e1)^"="^(string_of_number n)^" (e.n)"
-      | SCExprOPConst(op,e1,n) -> (SMapExpr.to_string e1)^(string_of_op op)^(string_of_number n)^" (e.n)"
+      | SCExprIneq(op,e1) -> (SMapExpr.to_string e1)^(string_of_op op)^" (e)"
 
       | SCVarEqExpr(v1,e2) -> (SMapVar.to_string v1)^"="^(SMapExpr.to_string e2)^" (v.e)"
       | SCVarEqVar(v1,v2) -> (SMapVar.to_string v1)^"="^(SMapVar.to_string v2)^" (v.v)"
       | SCVarEqConst(v1,n) -> (SMapVar.to_string v1)^"="^(string_of_number n)^" (v.n)"
-      | SCVarOPConst(op,v1,n)-> (SMapVar.to_string v1)^(string_of_op op)^(string_of_number n)^" (v.n)"
+      | SCVarIneq(op,v1)-> (SMapVar.to_string v1)^(string_of_op op)^" (v)"
 
       | SCCoverInterval(hwrng,mrng,sc,off) ->
         (SMapExpr.to_string sc)^"*"^(SMapRange.to_string mrng)^"+"^(SMapExpr.to_string off)^" \\in "^

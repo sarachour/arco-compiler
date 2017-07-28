@@ -55,7 +55,7 @@ struct
          MAP.has ctx.varmap name = false
       then
         begin
-          Printf.printf("[slvr] -> decl %s\n") name;
+          (*Printf.printf("[slvr] -> decl %s\n") name;*)
           noop (MAP.put ctx.varmap name varid);
           noop (MAP.put ctx.xidmap varid (new_decl::curr_decls));
           varid
@@ -63,7 +63,7 @@ struct
       else
         begin
           let idx = MAP.get ctx.varmap name in
-          Printf.printf("[slvr] -> get %s -> %d\n") name idx;
+          (*Printf.printf("[slvr] -> get %s -> %d\n") name idx;*)
           idx
         end
 
@@ -130,28 +130,27 @@ struct
       in
       GRAPH.destroy slvr_ctx.bins;
       slvr_ctx.bins <- new_graph;
-      Printf.printf "[slvr] === Constructing Contraints ====\n";
-      MAP.iter ctx.cstrs (fun wire cstrs ->
-          let inst = wire.comp in
+      Printf.printf "[slvr] === Constructing Constraints ====\n";
+      MAP.iter ctx.cstrs (fun inst cstrs ->
           LIST.iter (fun cstr ->
-              Printf.printf "  cstr: %s\n" (SMapCstr.to_string cstr);
+              (*Printf.printf "  cstr: %s\n" (SMapCstr.to_string cstr);*)
               match cstr with
-              | SCExprOPConst(op,me,n) ->
+              | SCExprIneq(op,me) ->
                 begin
                   let xidexpr = (map_expr_to_xid_expr slvr_ctx inst me) in
                   let xidexpr_bin = SMVMapExpr(xidexpr) in
-                  let op_bin = SMVOp(op,xidexpr,n) in
+                  let op_bin = SMVOp(op,xidexpr) in
                   if GRAPH.hasnode slvr_ctx.bins op_bin = false then
                     noop (GRAPH.mknode slvr_ctx.bins op_bin);
                   GRAPH.mkedge slvr_ctx.bins xidexpr_bin op_bin ();
                   ()
                 end
                 
-              | SCVarOPConst(op,mv,n) ->
+              | SCVarIneq(op,mv) ->
                 begin
                   let xidvar = (map_var_to_xid_var slvr_ctx inst mv) in
                   let xidvar_bin = SMVMapVar(xidvar) in
-                  let op_bin = SMVOp(op,SEVar (SMFreeVar xidvar), n) in
+                  let op_bin = SMVOp(op,SEVar (SMFreeVar xidvar)) in
                   if GRAPH.hasnode slvr_ctx.bins op_bin = false then
                     noop (GRAPH.mknode slvr_ctx.bins op_bin);
                   GRAPH.mkedge slvr_ctx.bins xidvar_bin op_bin ();
@@ -179,7 +178,7 @@ struct
                   ()
                 end
 
-            
+
               | _ -> ()
           ) cstrs
       );
@@ -278,7 +277,7 @@ struct
         let succ,model = evaluate new_prec in
         if succ then
           succ,model
-        else if new_prec >= 0.001 || maxtries == 0 then
+        else if new_prec >= 1.0 || maxtries == 0 then
           succ,model
         else
           _work (mult *. 10.0) (maxtries-1)
@@ -316,7 +315,7 @@ struct
     fun tbl ctx compute_time ->
       let slvr_ctx = SMapSlvrCtx.mk_ctx () in
       convert_mapvar_graph_to_xid_graph slvr_ctx ctx;
-      print_slvr_bins slvr_ctx;
+      (*print_slvr_bins slvr_ctx;*)
       (*reduce_xid_graph slvr_ctx ctx;*)
       if slvr_ctx.success = false then
         None

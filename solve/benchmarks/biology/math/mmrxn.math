@@ -16,14 +16,13 @@ output P : M
 param krp : 1/s = 0
 
 
-%param kf : 1/s = 0.3154
-%param kr : 1/s = 0.2315
-%param kcat : 1/s = 0.21
-%param krcat : 1/s = 2.525
+param kf : 1/s = 0.3154
+param kr : 1/s = 0.2315
+param kcat : 1/s = 0.021
 
-param kf : 1/s = 3.154
-param kr : 1/s = 2.315
-param kcat : 1/s = 0.21
+%param kf : 1/s = 3.154
+%param kr : 1/s = 2.315
+%param kcat : 1/s = 0.21
 
 
 time t : s
