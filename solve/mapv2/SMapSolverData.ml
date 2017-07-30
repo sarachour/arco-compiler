@@ -27,6 +27,7 @@ type cfggen_ctx = {
   cstrs: (hwcompinst, map_cstr list) map;
   bins : (cfggen_bin,unit) graph;
   export: (cfggen_bin,bool) map;
+  export_eq: (cfggen_bin*cfggen_bin,bool) map;
   mutable success: bool;
 }
 module SMapCfggenCtx =
@@ -62,6 +63,7 @@ struct
         (fun () -> "");
     cstrs= MAP.make();
     export=MAP.make();
+    export_eq=MAP.make();
     success=true;
   }
   let make_bin : cfggen_ctx -> cfggen_bin -> unit =
@@ -151,6 +153,12 @@ struct
       MAP.put ctx.export e v;
       ()
 
+  let export_edge :cfggen_ctx -> cfggen_bin -> cfggen_bin -> bool -> unit =
+    fun ctx e1 e2 v ->
+      MAP.put ctx.export_eq (e1,e2) v;
+      MAP.put ctx.export_eq (e2,e1) v;
+      ()
+
 end
 
 type mapslvr_bin =
@@ -166,7 +174,9 @@ type mapslvr_st =
 type mapslvr_ctx = {
   varmap: (string,int) map;
   xidmap: (int,cfggen_mapvar list) map;
-    
+  export: (mapslvr_bin,bool) map;
+  export_eq: (mapslvr_bin*mapslvr_bin,bool) map;
+
   mutable bins: (mapslvr_bin,unit) graph;
   sts: mapslvr_st set;
   mutable success: bool;
@@ -201,10 +211,33 @@ struct
     bins = GRAPH.make (fun a b -> a=b) 
         (fun step -> string_of_bin step)
         (fun () -> "");
+    export=MAP.make();
+    export_eq=MAP.make();
     sts = SET.make_dflt();
     success = true;
   }
 
 
+  let export_bin :mapslvr_ctx -> mapslvr_bin -> bool -> unit =
+    fun ctx e v ->
+      MAP.put ctx.export e v;
+      ()
+
+  let export_edge :mapslvr_ctx -> mapslvr_bin -> mapslvr_bin -> bool -> unit =
+    fun ctx e1 e2 v ->
+      MAP.put ctx.export_eq (e1,e2) v;
+      MAP.put ctx.export_eq (e2,e1) v;
+      ()
+
+  let is_edge_exported: mapslvr_ctx -> mapslvr_bin -> mapslvr_bin -> bool =
+    fun ctx e1 e2 ->
+      if MAP.has ctx.export_eq (e1,e2)
+      then MAP.get ctx.export_eq (e1,e2)
+      else true
+
+
+  let is_node_exported: mapslvr_ctx -> mapslvr_bin -> bool=
+    fun ctx bin ->
+      if MAP.has ctx.export bin then MAP.get ctx.export bin else true
 end
 

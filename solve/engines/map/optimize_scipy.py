@@ -28,6 +28,8 @@ class OptimizeProblem:
         self.processor = OptimizeProcess(max_time,tol,ctol,iters);
         self.linear_sampler = OptimizeLinearSampler(self.linear_model,self.processor)
 
+        self.model.objective("0");
+        self.linear_model.objective({"offset":0});
         # other parameters
         self.method = "COBYLA"
         self.tries = 100;
@@ -84,15 +86,50 @@ class OptimizeProblem:
         self.model.lower_bound(idx,maxi)
         self.linear_model.lower_bound(idx,maxi)
 
+    
     def interval(self,expr,mini,maxi):
         self.model.gte(expr,str(mini))
         self.model.gte(str(maxi),expr)
-        self.linear_model.cstr(expr,mini,maxi);
+
+
+    def __lin_dict_to_expr(self,lin):
+        terms = []
+        for k in lin:
+            if k == "offset":
+                terms.append("%f" % lin[k])
+                continue;
+
+            idx = int(k)
+            v = lin[k]
+            terms.append("x[%d]*%f" %(idx,v))
+
+        return "+".join(terms)
+
+    def lin_eq(self,lin1,lin2):
+        self.eq(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
+        self.linear_model.eq(lin1,lin2);
+
+    def lin_gte(self,lin1,lin2):
+        self.gte(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
+        self.linear_model.gte(lin1,lin2);
+
+    def lin_lte(self,lin1,lin2):
+        self.lte(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
+        self.linear_model.gte(lin2,lin1);
+
+    def lin_interval(self,sc,off,v,mini,maxi):
+        expr = "x[%d]*%f + x[%d]" % (sc,v,off)
+        self.interval(expr,mini,maxi)
+        self.linear_model.interval(sc,off,v,mini,maxi);
+
+    def lin_objective(self,lin):
+        self.objective(self.__lin_dict_to_expr(lin));
+        self.linear_model.objective(lin)
 
     def objective(self,expr):
         self.model.objective(expr);
-        self.linear_model.objective("0");
 
+    
     def bound(self,mini,maxi):
         self.model.bounds(mini,maxi)
         self.linear_model.set_bounds(mini,maxi)
@@ -126,36 +163,7 @@ class OptimizeProblem:
                 self.results.append(result)
             return is_succ
 
-    def solve_local(self):
-        # generate relevant problems
-        obj,cstrs = self.model.generate(self.processor.ctol)
-        classifier = OptimizeClassifier(self.model)
-        minobj,_ = self.model.derive_objective(cstrs)
-        self.cstrs = cstrs;
-
-        print("==== LOCAL OPTIMIZE ===")
-        first_guess = self.model.init_guess();
-
-        result = self._solve_local(obj,cstrs,first_guess)
-        self.add_result_if_valid(cstrs,result);
-
-        for tries in range(0,self.tries):
-            print("%d/%d tries, %d/%d results" %
-                  (tries,self.tries,len(self.results),self.n_results))
-            if len(self.results) > self.n_results:
-                continue;
-
-            new_guess = self.linear_sampler.sample(objective=minobj);
-            if new_guess == None:
-                continue;
-
-            print("Guess="+str(new_guess));
-
-            result = self._solve_local(obj,cstrs,new_guess)
-            self.add_result_if_valid(cstrs,result);
-
-
-
+   
     def safe_vect(self,v):
         v2 = v[:]
         for i in range(0,len(v)):
@@ -163,12 +171,8 @@ class OptimizeProblem:
 
         return v
 
-    def solve(self):
+    def solve_nonlinear(self):
         ctol = self.processor.ctol
-        self.model.finish()
-        self.model.rewrite()
-        self.results = [];
-        self.minima = [];
         orig_obj,orig_cstrs = self.model.generate(self.processor.ctol)
 
         self.cstrs = orig_cstrs;
@@ -202,11 +206,31 @@ class OptimizeProblem:
 
         # TODO: Find minima if no solution is found.
 
+    def solve_linear(self):
+        ctol = self.processor.ctol
+        prob = self.linear_model.generate()
+        obj,cstr = prob.to_nonlinear()
+        self.cstrs = cstr
+        result = self.processor.solve_linear(prob)
+
+        self.results.append(result);
+
+    def solve(self):
+        self.model.finish()
+
+        #self.model.rewrite()
+        self.results = [];
+        self.minima = [];
+        if self.method == "LINOPT":
+            self.solve_linear();
+            
+        else:
+            self.solve_nonlinear();
+
     def write_result(self,fh,result):
         ctol = self.processor.ctol
 
         if result == None:
-            fh.write("unknown\n")
             return
 
         is_succ,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)

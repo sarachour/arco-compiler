@@ -12,13 +12,13 @@ time t : s
 
 %param a2 : M/s = 15.6
 %param a1 : M/s = 156.25
+%param K : kmol = 0.000029618
 
 param a1 : M/s = 15.6
 param a2 : M/s = 13.32
 
 
-param K : kmol = 0.000029618
-%param K : kmol = 0.0029618
+param K : kmol = 0.0029618
 
 
 param nu : unit = 2.0015

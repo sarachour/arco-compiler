@@ -132,6 +132,25 @@ struct
         end
 
 
+
+  let slvr_bin_to_z3expr : (mapslvr_bin) -> z3expr option =
+    fun bin ->
+      match bin with
+      | SMVMapVar(id) ->
+        Some (Z3Var(xid_to_z3_var id))
+                
+      | SMVMapExpr(mapexpr) ->
+        Some (xid_expr_to_z3_expr mapexpr)
+
+      | _ ->
+        None
+
+
+  let slvr_bin_is_time_const : (mapslvr_bin) -> bool = 
+    fun bin -> match bin with
+      | SMVTimeConstant -> true
+      | _ -> false
+
   let slvr_ctx_to_z3 : (mapslvr_ctx) -> (z3st list) =
     fun slvr_ctx ->
       let eps = Decimal 1e-20 in
@@ -148,20 +167,34 @@ struct
         );
       List.iter (fun (bins:mapslvr_bin set) ->
           let is_tc = REF.mk false in
-          let cls :z3expr list = SET.fold bins (fun bin rest -> match bin with
-              | SMVMapVar(id) ->
-                (Z3Var(xid_to_z3_var id))::rest
-                
-              | SMVMapExpr(mapexpr) ->
-                (xid_expr_to_z3_expr mapexpr)::rest
-
-              | SMVTimeConstant -> ret (REF.upd is_tc (fun _ -> true)) rest
-              | _ -> rest
-            ) []
+          let exported_expr =
+            SET.fold bins (fun bin exported ->
+                (*update tc variable*)
+                REF.upd is_tc (fun v -> v || slvr_bin_is_time_const bin);
+                (*determine if exportable*)
+                if SMapSlvrCtx.is_node_exported slvr_ctx bin then
+                  match slvr_bin_to_z3expr bin with
+                  | Some(expr) -> expr::exported
+                  | None -> exported
+                else
+                  exported
+              ) []
+          in
+          let best_expr = LIST.min exported_expr
+              (fun z3expr -> String.length (Z3Lib.z3expr2str z3expr))
           in
           (*equivalence constraints*)
-          LIST.diag_iter cls (fun expr1 expr2 ->
-              noop (SET.add equals (Z3Assert(Z3Eq(expr1,expr2))))
+          LIST.diag_iter (SET.to_list bins) (fun bin1 bin2 ->
+              if SMapSlvrCtx.is_edge_exported slvr_ctx bin1 bin2 &&
+                 SMapSlvrCtx.is_node_exported slvr_ctx bin1 &&
+                 SMapSlvrCtx.is_node_exported slvr_ctx bin2
+              then
+                let expr1_maybe = slvr_bin_to_z3expr bin1 in
+                let expr2_maybe = slvr_bin_to_z3expr bin2 in
+                match expr1_maybe, expr2_maybe with
+                | Some(expr1),Some(expr2) ->
+                  noop (SET.add equals (Z3Assert(Z3Eq(expr1,expr2))))
+                | _ -> ()
             );
           SET.iter bins (fun (bin:mapslvr_bin) ->
               match bin with
@@ -182,7 +215,7 @@ struct
                       | SCLTE(n) ->
                         Z3Assert(Z3LTE(expr,number_to_z3_expr n))
 
-                  ) cls
+                  ) [best_expr] 
                 in
                   noop (SET.add_all not_equals ineqs)
                     
@@ -191,7 +224,7 @@ struct
                   fun expr ->
                     if opt_use_cover then
                       noop (QUEUE.enqueue_all time_cover (time_cstr_to_z3 expr min max))
-                ) cls
+                ) [best_expr]
               | _ -> ()
             );
         ) bin_set;
@@ -243,6 +276,102 @@ struct
       in
       let prob =  base_prob @ Z3Comment("==== Validate ===")::sts in
       prob
+
+
+  type z3map_partial =
+    | Z3MPNoScale 
+    | Z3MPNoOffset
+    | Z3MPPositiveOffset
+    | Z3MPPositiveScale
+
+
+  (*partially constrain*)
+  let mkpartial_constrain_unsat_cover : mapslvr_ctx -> z3st list -> (int,float) map -> z3st list =
+    fun ctx base_prob assigns ->
+      let violates_cover hwival mival =
+        mival.min < hwival.min || mival.max > hwival.max
+      in
+      let opt_use_cover = get_option "use-cover" in
+      let sts = QUEUE.from_list base_prob in
+      let q x = noop (QUEUE.enqueue sts x) in
+      q (Z3Comment("=== Partial UNSAT Cstr ===="));
+      (*constrain any cover assignments that are obviously violated*)
+      SET.iter ctx.sts (fun st -> match st with
+          | SMVCover(sc,off,hwival,mival) ->
+            if opt_use_cover && violates_cover hwival mival then
+              begin
+                q (Z3Assert(Z3Eq(
+                    Z3Var (xid_to_z3_var sc),
+                    Z3Number (Decimal (MAP.get assigns sc))
+                  )));
+                q (Z3Assert(Z3Eq(
+                    Z3Var (xid_to_z3_var off),
+                    Z3Number (Decimal (MAP.get assigns off))
+                  )));
+              end
+        );
+      QUEUE.to_list sts
+
+  let mkpartial_constrain_domain : mapslvr_ctx -> z3st list ->  z3map_partial list -> z3st list =
+    fun ctx base_prob partial_cfg ->
+      let covers_to_sts: (int->int->map_range ->map_range -> 'a option) -> 'a list =
+        fun fn ->
+          SET.fold ctx.sts (fun cstr rest -> match cstr with
+              | SMVCover(scid,ofid,mival,hival) ->
+                begin
+                  match fn scid ofid mival hival with
+                  | Some(res) -> res::rest
+                  | None -> rest
+                end
+            ) []
+      in
+      let partial_to_sts cfg =
+        match cfg with
+        | Z3MPNoScale ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(Z3Assert(
+                     Z3Eq(Z3Var (xid_to_z3_var sc_id), Z3Number (Integer 1))
+                   ))
+                 
+              )
+          in
+          sts
+
+        | Z3MPNoOffset ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(Z3Assert(
+                     Z3Eq(Z3Var (xid_to_z3_var off_id), Z3Number (Integer 0))
+                   ))
+                 
+              )
+          in
+          sts
+
+        | Z3MPPositiveOffset ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(Z3Assert(
+                     Z3GTE(Z3Var (xid_to_z3_var off_id), Z3Number (Integer 0))
+                   ))
+              )
+          in
+          sts
+
+        | Z3MPPositiveScale ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(Z3Assert(
+                     Z3GTE(Z3Var (xid_to_z3_var sc_id), Z3Number (Integer 0))
+                   ))
+              )
+          in
+          sts
+
+      in
+      List.fold_right (fun cfg rest -> (partial_to_sts cfg) @ rest) partial_cfg base_prob 
+
 
   let get_standard_model : z3assign list -> (int,float) map =
     fun asgns ->

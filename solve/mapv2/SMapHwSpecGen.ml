@@ -7,6 +7,8 @@ open AST;;
 open IntervalData;;
 open IntervalLib;;
 
+open Globals;;
+
 exception SMapCompCtx_error of string
 
 module SMapCompCtx =
@@ -87,13 +89,6 @@ struct
     fun () ->
       {cstrs=[SCFalse];scale=SEVar(SMFreeVar 0); offset=SEVar(SMFreeVar 0); value=SVZero;}
 
-  let mkresult : map_result list -> map_expr -> map_expr -> map_loc_val -> map_cstr list ->  map_result =
-    fun args scale offset value cstrs ->
-      let all_cstrs : map_cstr list = List.fold_left
-          (fun (r:map_cstr list) (x:map_result) -> x.cstrs @ r) cstrs (args)
-      in
-      {cstrs=all_cstrs;scale=scale;offset=offset;value=value}
-
 
   let rec eval_ineq : map_op -> number -> map_cstr =
     fun op n ->
@@ -114,14 +109,7 @@ struct
       | SEVar(a) -> SCVarIneq(op,a)
       | expr -> SCExprIneq(op,expr)
 
-  (*
-  let rec mk_not_equal : map_expr -> number -> map_cstr =
-    fun a n ->
-      match a with
-      | SENumber(m) -> if n = m then SCFalse else SCTrue
-      | SEVar(a) -> SCVarOPConst(SCNEQ,a,n)
-      | expr -> SCExprOPConst(SCNEQ,expr,n)
-  *)
+
 
   let rec mk_equal : map_expr -> map_expr -> map_cstr =
     fun mapexpr1 mapexpr2 ->
@@ -148,7 +136,43 @@ struct
   let mk_equal0 : map_expr -> map_cstr =
     fun x -> mk_equal x (SENumber (Integer 0))
 
+
   
+  let mkresult : map_result list -> map_expr -> map_expr -> map_loc_val -> map_cstr list ->  map_result =
+    fun args scale offset value cstrs ->
+      let process_affine expr range cstrs =
+        match range with
+        | "+" -> (mk_ineq expr (SCGTE(Integer 0)) )::cstrs
+        | "-" -> (mk_ineq expr (SCLTE(Integer 0)) )::cstrs
+        | "0" -> (mk_equal0 expr)::cstrs
+        | "1" -> (mk_equal expr (SENumber (Integer 1)))::cstrs
+        | "*" -> cstrs
+      in
+      let all_cstrs : map_cstr list = List.fold_left
+          (fun (r:map_cstr list) (x:map_result) -> x.cstrs @ r) cstrs (args)
+      in
+      let scale_range =  get_glbl_string "jaunt-scale-range" in
+      let offset_range = get_glbl_string "jaunt-offset-range" in
+      let all_cstrs = (
+          process_affine scale scale_range
+           (process_affine offset offset_range all_cstrs)
+        )
+      in
+      {cstrs=all_cstrs;scale=scale;offset=offset;value=value}
+
+
+
+  
+  (*
+  let rec mk_not_equal : map_expr -> number -> map_cstr =
+    fun a n ->
+      match a with
+      | SENumber(m) -> if n = m then SCFalse else SCTrue
+      | SEVar(a) -> SCVarOPConst(SCNEQ,a,n)
+      | expr -> SCExprOPConst(SCNEQ,expr,n)
+  *)
+
+   
   let mk_not_equal0 : map_expr -> map_cstr =
     fun expr ->
       mk_ineq expr (SCNEQ (Integer 0))
@@ -497,7 +521,7 @@ struct
     | SVSymbol(x), SVNumber(m) ->
       let offset = SENumber(Integer 0) in
       let m_expr = mk_affine res2.scale res2.offset (SENumber m) in
-      let scale = SEPow(res1.scale,m_expr) in
+      let scale = SEPow(res1.scale,SENumber m) in
       let value = mk_loc_val_of_interval (IntervalLib.pow x (IntervalLib.num m)) in
       let base_cstrs = if NUMBER.gt m (Integer 0) then
           [
@@ -520,11 +544,13 @@ struct
 
     | SVNumber(n), SVSymbol(x) ->
       let offset = SENumber(Integer 0) in
-      let scale = SEPow(SEMult(res1.scale,SENumber n),res2.offset) in
-      let value = mk_loc_val_of_interval (IntervalLib.pow (IntervalLib.num n) x) in
+      let scale = SENumber(Integer 1) in
+      let result =  (IntervalLib.pow (IntervalLib.num n) x) in
+      let value = mk_loc_val_of_interval result in
       let base_cstrs= [
-        mk_equal0 res1.offset;
-        mk_equal (SENumber n) (SEPow(SEMult(res1.scale,SENumber n),res2.scale))
+        mk_equal0 res2.offset;
+        mk_equal res2.scale (SENumber (Integer 1));
+        mk_equal (SENumber n) (mk_affine res1.scale res1.offset (SENumber n));
       ]
       in
       let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in

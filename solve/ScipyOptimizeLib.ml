@@ -9,6 +9,17 @@ struct
 
   let id = REF.mk 0
 
+  let lin_expr_to_dict : sciopt_linear_expr -> string =
+    fun expr ->
+      let rec _work e = 
+        match e with
+        | SCILinTerm(f,i) -> Printf.sprintf "\"%d\":%f" i f
+        | SCILinOffset(f) -> Printf.sprintf "\"offset\":%f" f
+        | SCILinAdd(lst) ->
+          (LIST.tostr _work "," lst)
+      in
+      Printf.sprintf "{%s}" (_work expr)
+
   let emit : string -> sciopt_st list -> unit =
     fun fn sts ->
       let fh = open_out fn in
@@ -46,6 +57,20 @@ struct
             Printf.fprintf fh "prob.interval(\"%s\",%f,%f)\n" (expr) min max
           | SCIObjective(v) ->
             Printf.fprintf fh "prob.objective(\"%s\")\n" (v)
+
+          | SCILinInterval(scale,offset,v,min,max) ->
+            Printf.fprintf fh "prob.lin_interval(%d,%d,%f,%f,%f)\n" scale offset v min max
+          | SCILinEq(lhs,rhs) ->
+            Printf.fprintf fh "prob.lin_eq(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
+          | SCILinLTE(lhs,rhs) ->
+            Printf.fprintf fh "prob.lin_lte(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
+          | SCILinGTE(lhs,rhs) ->
+            Printf.fprintf fh "prob.lin_gte(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
+          | SCILinNeq(lhs,rhs) ->
+            Printf.fprintf fh "prob.lin_neq(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
+          | SCILinObjective(expr) ->
+            Printf.fprintf fh "prob.lin_objective(%s)\n" (lin_expr_to_dict expr)
+          
           | SCIComment(v) ->
             Printf.fprintf fh "# %s\n" v 
           | SCISolve ->

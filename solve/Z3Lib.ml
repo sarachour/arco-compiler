@@ -40,6 +40,10 @@ struct
     | Z3GT(a,b) -> "(> "^(_s a)^" "^(_s b)^")"
     | Z3LTE(a,b) -> "(<= "^(_s a)^" "^(_s b)^")"
     | Z3GTE(a,b) -> "(>= "^(_s a)^" "^(_s b)^")"
+    | Z3Power(a,b) -> "(^ "^(_s a)^" "^(_s b)^")"
+    | Z3Mult(a,b) -> "(* "^(_s a)^" "^(_s b)^")"
+    | Z3Div(a,b) -> "(/ "^(_s a)^" "^(_s b)^")"
+    | Z3Sub(a,b) -> "(- "^(_s a)^" "^(_s b)^")"
     | Z3Number(i) -> string_of_number i
     | Z3Bool(true) -> "true"
     | Z3Bool(false) -> "false"

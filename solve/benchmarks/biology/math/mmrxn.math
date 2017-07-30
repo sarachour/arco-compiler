@@ -8,6 +8,7 @@ type M
 output E : M
 output S : M
 output ES : M
+%input ES : M
 output P : M
 
 
@@ -16,13 +17,13 @@ output P : M
 param krp : 1/s = 0
 
 
-param kf : 1/s = 0.3154
-param kr : 1/s = 0.2315
-param kcat : 1/s = 0.021
+%param kf : 1/s = 0.003154
+%param kr : 1/s = 0.002315
+%param kcat : 1/s = 0.00021
 
-%param kf : 1/s = 3.154
-%param kr : 1/s = 2.315
-%param kcat : 1/s = 0.21
+param kf : 1/s = 3.154
+param kr : 1/s = 2.315
+param kcat : 1/s = 0.21
 
 
 time t : s

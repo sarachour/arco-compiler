@@ -4,6 +4,12 @@ open Util;;
 type sciopt_method =
   | SCICOBYLA
   | SCISLSQP
+  | SCILinOpt
+
+type sciopt_linear_expr =
+  | SCILinTerm of float*int
+  | SCILinOffset of float
+  | SCILinAdd of sciopt_linear_expr list
 
 type sciopt_st =
   | SCIInitialize of int
@@ -25,6 +31,13 @@ type sciopt_st =
   | SCIWrite of string
   | SCIComment of string 
   | SCINewline 
+  | SCILinInterval of int*int*float*float*float
+  | SCILinEq of sciopt_linear_expr*sciopt_linear_expr 
+  | SCILinNeq of sciopt_linear_expr*sciopt_linear_expr 
+  | SCILinGTE of sciopt_linear_expr*sciopt_linear_expr 
+  | SCILinLTE of sciopt_linear_expr*sciopt_linear_expr 
+  | SCILinObjective of sciopt_linear_expr
+
 
 type sciopt_error_code =
   | SCIGradEvalRequired
@@ -55,3 +68,5 @@ let string_of_sciopt_method : sciopt_method -> string =
   fun x -> match x with
     | SCICOBYLA -> "COBYLA"
     | SCISLSQP -> "SLSQP"
+    | SCILinOpt -> "LINOPT"
+

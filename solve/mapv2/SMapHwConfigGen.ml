@@ -97,21 +97,6 @@ struct
 
 
 
-  (*this simplifies every expression and adds the simplifcation*)
-  let simplify_expressions : cfggen_ctx -> unit =
-    fun ctx ->
-      GRAPH.iter_node ctx.bins (fun node -> match node with
-          | SMBMapExpr(i,e) ->
-            let new_node : cfggen_bin = SMBMapExpr(i,SMapExpr.simpl e) in
-            (*if this is simplified*)
-            if new_node <> node then
-              begin
-                SMapCfggenCtx.connect_bins ctx (node) new_node;
-                SMapCfggenCtx.export_bin ctx node false;
-                ()
-              end
-          | _ -> ()
-        )
 
   
   (*
@@ -131,6 +116,7 @@ struct
   type cfggen_xform = {
     connect: (cfggen_bin*cfggen_bin) list;
     disable:cfggen_bin list;
+    disable_eq:(cfggen_bin*cfggen_bin) list;
     tag: string;
   }
   
@@ -138,12 +124,6 @@ struct
     (cfggen_bin ->cfggen_bin -> cfggen_xform list) -> unit =
     fun ctx rewrite ->
       let rewritten = SET.make_dflt () in
-      let check_pred (inst:hwcompinst) (pred:map_cstr) =
-        raise (SMapHwConfigGen_error "unimpl")
-      in
-      let check_preds preds = List.fold_right (fun (inst,pred) succ ->
-          (check_pred inst pred) && succ) preds true
-      in
       let rec _work () =
         let cnt = SET.size rewritten in
         GRAPH.iter_node ctx.bins (fun node ->
@@ -161,7 +141,11 @@ struct
                           ) xform.connect;
                         List.iter (fun a ->
                             SMapCfggenCtx.export_bin ctx a false;
-                          ) xform.disable
+                          ) xform.disable;
+                        List.iter (fun (a,b) ->
+                            SMapCfggenCtx.export_edge ctx a b false;
+                          ) xform.disable_eq
+
                       end
                   ) xforms
               ) connected
@@ -193,7 +177,7 @@ struct
       in
       let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
         fun node1 node2 ->
-          let tag newb = Printf.sprintf "a=ab: (%s, %s) -> (%s, 1)"
+          let tag newb = Printf.sprintf "a=ab: (%s = %s) -> (%s = 1)"
                       (SMapCfggenCtx.string_of_bin node1)
                       (SMapCfggenCtx.string_of_bin node2)
                       (SMapCfggenCtx.string_of_bin newb)
@@ -209,10 +193,10 @@ struct
                 | Some(_,new_expr) ->
                   let new_bin = SMapCfggenCtx.expr_to_bin i new_expr in
                   begin
-                    Printf.printf " >> %s\n" (tag new_bin);
                     [{
                       connect=[(new_bin,SMBNumber(Integer 1))];
                       disable=[];
+                      disable_eq=[(node1,node2)];
                       tag=tag new_bin
                     }]
                   end
@@ -232,10 +216,10 @@ struct
                 | Some(_,new_expr) ->
                   let new_bin = SMapCfggenCtx.expr_to_bin i new_expr in
                   begin
-                    Printf.printf "  >> %s\n" (tag new_bin);
                     [{
                       connect=[new_bin,SMBNumber(Integer 1)];
                       disable=[];
+                      disable_eq=[(node1,node2)];
                       tag=tag new_bin;
                     }]
                   end
@@ -253,10 +237,190 @@ struct
       in
       xform
 
-  let ab_eq_1_rewrite : cfggen_ctx ->
+  let pow_exp_eq_rewrite : cfggen_ctx -> (cfggen_bin -> cfggen_bin -> cfggen_xform list) =
+    fun ctx ->
+      let extract_pow_expr expr =
+        let res = SMapExpr.factor expr (fun e -> match e with | SEPow(_) -> true | _ -> false) in
+        OPTION.map res (fun (term,rest) -> term)
+      in
+      let extract_second_pow_expr expr power =
+        let res = SMapExpr.factor expr (fun e -> match e,power with
+            | SEPow(b,exp),SEPow(_,exp2) -> exp = exp2 | _ -> false)
+        in
+        OPTION.map res (fun (term,rest) -> term)
+      in
+      let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
+        fun node1 node2 ->
+          let tag new_base1 new_base2 = Printf.sprintf "a**n=b**n: (%s=%s) -> (%s=%s)"
+              (SMapCfggenCtx.string_of_bin node1)
+              (SMapCfggenCtx.string_of_bin node2)
+              (SMapCfggenCtx.string_of_bin new_base1)
+              (SMapCfggenCtx.string_of_bin new_base2)
+          in
+          match node1,node2 with
+          | SMBMapExpr(i,e1),SMBMapExpr(j,e2) ->
+            if i == j then
+              let pow1 = extract_pow_expr e1 in
+              let pow2 =
+                match pow1 with | Some(p1) -> extract_second_pow_expr e2 p1 | _ -> None
+              in
+              begin
+                match pow1, pow2 with
+                | Some(SEPow(base1,_)),Some(SEPow(base2,_)) ->
+                  if base1 = base2 then [] else
+                  let base1_bin = SMapCfggenCtx.expr_to_bin i base1 in 
+                  let base2_bin = SMapCfggenCtx.expr_to_bin j base2 in 
+                  [{
+                    connect=[(base1_bin,base2_bin)];
+                    disable=[];
+                    disable_eq=[(node1,node2)];
+                    tag=tag base1_bin base2_bin
+                  }]
+
+                | Some(_),Some(_) -> raise (SMapHwConfigGen_error "expected two power terms")
+                | _ -> []
+              end
+            else
+              []
+          | _ -> []
+
+      in
+      xform
+
+  let pow_base_eq_rewrite : cfggen_ctx -> (cfggen_bin -> cfggen_bin -> cfggen_xform list) =
+    fun ctx ->
+      let extract_pow_expr expr =
+        let res = SMapExpr.factor expr (fun e -> match e with | SEPow(_) -> true | _ -> false) in
+        OPTION.map res (fun (term,rest) -> term)
+      in
+      let extract_second_pow_expr expr power =
+        let res = SMapExpr.factor expr (fun e -> match e,power with
+            | SEPow(base,_),SEPow(base2,_) -> base = base2 | _ -> false)
+        in
+        OPTION.map res (fun (term,rest) -> term)
+      in
+      let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
+        fun node1 node2 ->
+          let tag new_exp1 new_exp2 = Printf.sprintf "a**n=a**m: (%s,%s) -> (%s,%s)"
+              (SMapCfggenCtx.string_of_bin node1)
+              (SMapCfggenCtx.string_of_bin node2)
+              (SMapCfggenCtx.string_of_bin new_exp1)
+              (SMapCfggenCtx.string_of_bin new_exp2)
+          in
+          match node1,node2 with
+          | SMBMapExpr(i,e1),SMBMapExpr(j,e2) ->
+            if i == j then
+              let pow1 = extract_pow_expr e1 in
+              let pow2 =
+                match pow1 with | Some(p1) -> extract_second_pow_expr e2 p1 | _ -> None
+              in
+              begin
+                match pow1, pow2 with
+                | Some(SEPow(_,exp1)),Some(SEPow(_,exp2)) ->
+                  if exp1 = exp2 then [] else
+                  let exp1_bin = SMapCfggenCtx.expr_to_bin i exp1 in 
+                  let exp2_bin = SMapCfggenCtx.expr_to_bin j exp2 in 
+                  [{
+                    connect=[(exp1_bin,exp2_bin)];
+                    disable=[];
+                    disable_eq=[(node1,node2)];
+                    tag=tag exp1_bin exp2_bin
+                  }]
+
+                | Some(_),Some(_) -> raise (SMapHwConfigGen_error "expected two power terms")
+                | _ -> []
+              end
+            else
+              []
+          | _ -> []
+
+      in
+      xform
+
+  let a_over_b_eq_1_rewrite : cfggen_ctx ->
     (cfggen_bin -> cfggen_bin -> cfggen_xform list) =
     fun ctx ->
-      raise (SMapHwConfigGen_error "unimpl")
+      let get_rational expr =
+        let numer_terms,denom_terms = SMapExpr.to_rational expr in
+        let numer_expr = match numer_terms with
+          | h::t -> Some(SMapExpr.product_of numer_terms) | [] -> None
+        in
+        let denom_expr = match denom_terms with
+          | h::t -> Some(SMapExpr.product_of denom_terms) | [] -> None
+        in
+        numer_expr,denom_expr
+      in 
+      let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
+        fun node1 node2 ->
+          let tag new_exp1 new_exp2 = Printf.sprintf "a/b=n>a=b: (%s,%s) -> (%s,%s)"
+              (SMapCfggenCtx.string_of_bin node1)
+              (SMapCfggenCtx.string_of_bin node2)
+              (SMapCfggenCtx.string_of_bin new_exp1)
+              (SMapCfggenCtx.string_of_bin new_exp2)
+          in
+          let do_rewrite i expr eq_term =
+            match get_rational expr with
+            | Some(numer),Some(denom) ->
+              let expr1_bin = SMapCfggenCtx.expr_to_bin i numer in 
+              let expr2_bin = SMapCfggenCtx.expr_to_bin i (SEMult(eq_term,denom)) in 
+              [{
+                connect=[(expr1_bin,expr2_bin)];
+                disable=[];
+                disable_eq=[(node1,node2)];
+                tag=tag expr1_bin expr2_bin
+              }]
+              
+            | None, Some(denom) ->
+              let num_bin = SMBNumber(Integer 1) in
+              let expr_bin = SMapCfggenCtx.expr_to_bin i (SEMult(eq_term,denom)) in 
+              [{
+                connect=[(num_bin,expr_bin)];
+                disable=[];
+                disable_eq=[(node1,node2)];
+                tag=tag expr_bin num_bin 
+              }]
+            | _ -> []
+          in
+          match node1,node2 with
+          | SMBMapExpr(i,e1),SMBNumber(n) ->
+            do_rewrite i e1 (SENumber n)
+
+          | SMBMapExpr(i,e1), SMBMapVar(j,v) ->
+            if i <> j then [] else
+              do_rewrite i e1 (SEVar v)
+
+          | SMBMapExpr(i,e1), SMBMapExpr(j,e2) ->
+            if i <> j then [] else
+              begin
+                let result=
+                  match get_rational e1, get_rational e2 with
+                  | (Some(numer1),Some(denom1)),(Some(numer2),Some(denom2)) ->
+                    Some (SEMult(numer1,denom2),SEMult(numer2,denom1))
+                  | (None,Some(denom1)),(Some(numer2),Some(denom2)) ->
+                    Some (denom2,SEMult(numer2,denom1))
+                  | (Some(numer1),Some(denom1)),(None,Some(denom2)) ->
+                    Some (denom1, SEMult(denom2,numer1))
+                  | (None,Some(denom1)),(None,Some(denom2)) ->
+                    Some (denom1,denom2)
+                  | _ -> None
+                in
+                match result with
+                | Some(expr1,expr2) ->
+                  if expr1 = expr2 then [] else
+                  let expr1_bin = SMapCfggenCtx.expr_to_bin i expr1 in 
+                  let expr2_bin = SMapCfggenCtx.expr_to_bin i (expr2) in 
+                  [{
+                    connect=[(expr1_bin,expr2_bin)];
+                    disable=[];
+                    disable_eq=[(node1,node2)];
+                    tag=tag expr1_bin expr2_bin;
+                  }]
+                | None -> []
+              end
+
+          | _ -> []
+      in
+      xform
 
   let an_eq_bn_rewrite : cfggen_ctx ->
     (cfggen_bin -> cfggen_bin -> cfggen_xform list )=
@@ -280,7 +444,7 @@ struct
         fun node1 node2 -> match node1,node2 with
           | SMBMapVar(i,v),SMBNumber(n) ->
             if put_sub i v n then
-              [{connect=[];disable=[];
+              [{connect=[];disable=[];disable_eq=[];
                 tag=Printf.sprintf "x=n: %s => %s"
                     (SMapCfggenCtx.string_of_bin node1) (string_of_number n)
                }]
@@ -288,7 +452,7 @@ struct
               []
           | SMBNumber(n), SMBMapVar(i,v) ->
             if put_sub i v n then 
-              [{connect=[];disable=[];
+              [{connect=[];disable=[];disable_eq=[];
                 tag=Printf.sprintf "x=n : %s => %s"
                     (SMapCfggenCtx.string_of_bin node2) (string_of_number n)
                }]
@@ -323,6 +487,7 @@ struct
               [{
                 connect=[(orig_bin,simpl_bin)];
                 disable=[(orig_bin)];
+                disable_eq=[];
                 tag=Printf.sprintf "simplx: %s => %s"
                     (SMapCfggenCtx.string_of_bin orig_bin)
                     (SMapCfggenCtx.string_of_bin simpl_bin)
@@ -359,7 +524,12 @@ struct
         collect_const_rewrite ctx numer_assign;
       ] in
       let phase3 = [
+        (*algebra rewrite rules*)
         a_eq_ab_rewrite ctx;
+        pow_base_eq_rewrite ctx;
+        pow_exp_eq_rewrite ctx;
+        a_over_b_eq_1_rewrite ctx;
+        (*constant rewrite rules*)
         collect_const_rewrite ctx numer_assign;
         sub_const_rewrite ctx numer_assign;
       ] in

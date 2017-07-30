@@ -139,6 +139,11 @@ struct
       |SMTimeConstant -> "tau"
 end
 
+type linear_map_expr =
+  | SELinTerm of number*map_var
+  | SELinOffset of number
+  | SELinAdd of linear_map_expr list
+
 module SMapExpr =
 struct
   exception SMapExpr_error of string;;
@@ -167,6 +172,192 @@ struct
       | SEDiv(a,b) -> SEDiv(_work a, _work b)
     in
     _work expr 
+
+  let linear_simplify :  linear_map_expr -> linear_map_expr =
+    fun expr ->
+      let condense lst = match lst with
+        | [term] -> term
+        | [] -> SELinOffset(Integer 0)
+        | lst -> SELinAdd(lst)
+      in
+      let add_offset lst n =
+        let added = REF.mk false in
+        let new_lst = List.map (fun x -> match x with
+            | SELinOffset(n2) -> begin
+                REF.upd added (fun _ -> true);
+                SELinOffset(NUMBER.add n n2)
+              end
+
+            | _ -> x
+          ) lst
+        in
+        assert(REF.dr added);
+        new_lst
+      in
+      let add_coeff lst v n =
+        let added = REF.mk false in
+        let new_lst = List.fold_right (fun x rest -> match x with
+            | SELinTerm(c,v2) -> begin
+                if v2 = v then
+                  begin
+                    REF.upd added (fun _ -> true);
+                    match NUMBER.add c n with
+                    | Integer(0) -> rest
+                    | Decimal(0.0) -> rest
+                    | new_n -> SELinTerm(new_n,v2)::rest
+                  end
+                else
+                  x::rest
+              end
+
+            | _ -> x::rest
+          ) lst []
+        in
+        if REF.dr added then
+          new_lst
+        else
+          SELinTerm(n,v)::new_lst
+      in
+      let rec _work e =  match e with
+        | SELinOffset(n) -> SELinOffset(n)
+        | SELinTerm(Integer 0,v) -> SELinOffset(Integer 0)
+        | SELinTerm(n,v) -> SELinTerm(n,v)
+        | SELinAdd(lst) ->
+          let terms = List.fold_right (fun a rest -> match _work a,rest with
+              | SELinTerm(c,v),SELinAdd(terms) ->
+                condense (add_coeff terms v c)
+                
+              | v, SELinOffset(Integer 0) ->
+                v
+
+              | SELinTerm(c1,v1),SELinTerm(c2,v2) ->
+                condense (add_coeff [rest] v1 c1)
+
+              | SELinOffset(n1),SELinOffset(n2) ->
+                SELinOffset(NUMBER.add n1 n2)
+
+              | SELinOffset(n),SELinAdd(terms) ->
+                begin
+                  condense (add_offset terms n)
+                end
+
+              | SELinAdd(_),SELinAdd(_) -> raise (SMapExpr_error "cannot have nested adds")
+
+              | expr1,expr2 ->
+                SELinAdd([expr1;expr2])
+
+            ) lst (SELinOffset (Integer 0))
+          in
+          terms
+      in
+      _work expr
+
+
+
+  let linearize: map_expr -> linear_map_expr option =
+    fun expr ->
+      let combine x y = match x,y with
+        | SELinAdd(lst),SELinAdd(lst2) -> SELinAdd(lst@lst2)
+        | SELinAdd(lst),term -> SELinAdd(term::lst)
+        | term, SELinAdd(lst) -> SELinAdd(term::lst)
+        | term,term2 -> SELinAdd([term;term2])
+      in
+      let xform x fn = match x with
+        | SELinAdd(lst) -> SELinAdd(List.map fn lst)
+        | term -> fn term
+      in
+      let xform_negate x =
+        xform x (fun expr -> match expr with
+            | SELinTerm(coeff,v) -> SELinTerm(NUMBER.neg coeff,v)
+            | SELinOffset(n) -> SELinOffset(NUMBER.neg n)
+            | _ -> raise (SMapExpr_error "xform_negate: cannot negate list")
+          )
+      in
+      let rec _work e =
+        match e with
+        | SEVar(v) -> Some (SELinTerm(Integer 1, v))
+        | SENumber(n) -> Some (SELinOffset(n))
+        | SEAdd(a,b) ->
+          begin
+            match _work a, _work b with
+            | Some(la),Some (lb) ->
+              Some (combine la lb)
+            | _ -> None
+          end
+        | SESub(a,b) ->
+          begin
+            match _work a, _work b with
+            | Some(la), Some(lb) ->
+              Some (combine la (xform_negate lb))
+            | _ -> None
+          end
+        | SEMult(a,b) ->
+          begin
+            match _work a, _work b with
+            | Some(la), Some(lb) ->
+              let simpl_la = linear_simplify la
+              and simpl_lb = linear_simplify lb
+              in
+              begin
+                match simpl_la, simpl_lb with
+                | SELinOffset(n),SELinTerm(coeff,v) ->
+                  Some (SELinTerm(NUMBER.mult n coeff,v))
+                | SELinTerm(coeff,v), SELinOffset(n) ->
+                  Some (SELinTerm(NUMBER.mult n coeff,v))
+                | SELinOffset(n),SELinOffset(m) ->
+                  Some (SELinOffset(NUMBER.mult n m))
+                | _ -> None
+              end
+            | _ -> None
+          end
+        | SEDiv(a,b) ->
+          begin
+            match _work a, _work b with
+            | Some(la), Some(lb) ->
+              let simpl_la = linear_simplify la
+              and simpl_lb = linear_simplify lb
+              in
+              begin
+                match simpl_la, simpl_lb with
+                | SELinTerm(coeff,v), SELinOffset(n) ->
+                  Some (SELinTerm(NUMBER.div coeff n ,v))
+                | SELinOffset(n),SELinOffset(m) ->
+                  Some (SELinOffset(NUMBER.div n m))
+                | _ -> None
+              end
+            | _ -> None
+          end
+
+        | SEPow(a,b) ->
+          begin
+            match _work a, _work b with
+            | Some(la), Some(lb) ->
+              let simpl_la = linear_simplify la
+              and simpl_lb = linear_simplify lb
+              in
+              begin
+                match simpl_la, simpl_lb with
+                | term, SELinOffset(v) ->
+                  if NUMBER.eq v (Integer 0) then
+                    Some (SELinOffset(Integer 1))
+                  else if NUMBER.eq v (Integer 1) then
+                    Some (term)
+                  else
+                    None
+                | _ -> None
+              end
+            | _ -> None
+          end
+
+        | _ -> 
+          raise (SMapExpr_error "unimpl")
+      in
+      _work expr
+
+  let linear_simplify : linear_map_expr -> linear_map_expr =
+    fun expr ->
+      raise (SMapExpr_error "unimpl")
+
 
   (*extract the largest term that satisfies *)
   let factor: map_expr -> (map_expr -> bool) -> (map_expr*map_expr) option =
@@ -211,6 +402,36 @@ struct
           
       in
       _work expr
+
+  (*extract the largest term that satisfies *)
+  let to_rational: map_expr ->  (map_expr list*map_expr list) =
+    fun expr  ->
+      let rec _work e =
+        match e with
+        | SEMult(a,b) ->
+          begin
+            let a1,a2 = _work a and b1,b2 = _work b in
+            a1@b1, a2@b2 
+          end
+            
+          | SEDiv(a,b) ->
+            begin
+              let a1,a2 = _work a and b1,b2 = _work b in
+              a1@b2,a2@b1
+            end
+
+          | expr -> [expr],[]
+          
+      in
+      _work expr
+
+  let product_of : map_expr list -> (map_expr ) =
+    fun terms ->
+      match terms with
+      | first_term::rest->
+        List.fold_right (fun term rest -> SEMult(term,rest)) rest first_term 
+      | [] ->
+         raise (SMapExpr_error "product_of, must have more than one element")
 
   let simpl : map_expr -> map_expr =
     fun expr ->

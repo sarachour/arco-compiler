@@ -182,26 +182,44 @@ struct
               | _ -> ()
           ) cstrs
       );
-    (*remove any nodes that are not being exported*)
-    MAP.iter ctx.export (fun bin export ->
-        if export = false then
-          begin
-            let to_remove = match bin with
-              | SMBMapExpr(inst,e) ->
-                SMVMapExpr(map_expr_to_xid_expr slvr_ctx inst e)
-              | SMBMapVar(inst,e) ->
-                raise (SMapSolver_error "unexpected: must export var")
-            in
-            if GRAPH.hasnode slvr_ctx.bins to_remove then
-              begin
-                let other = List.nth (GRAPH.connected slvr_ctx.bins to_remove) 0 in
-                Printf.printf "repl %s with %s\n"
-                  (SMapSlvrCtx.string_of_bin to_remove)
-                  (SMapSlvrCtx.string_of_bin other);
-                GRAPH.merge new_graph other to_remove 
-              end
+      (*remove any nodes that are not being exported*)
+      MAP.iter ctx.export (fun bin export ->
+          if export = false then
+            begin
+              let slvr_bin = match bin with
+                | SMBMapExpr(inst,e) ->
+                  SMVMapExpr(map_expr_to_xid_expr slvr_ctx inst e)
+                | SMBMapVar(inst,e) ->
+                  raise (SMapSolver_error "unexpected: must export var")
+              in
+              SMapSlvrCtx.export_bin slvr_ctx slvr_bin false;
+            end
+        );
+      (*remove any nodes that are not being exported*)
+      MAP.iter ctx.export_eq (fun (bin1,bin2) export ->
+          if export = false then
+            begin
+              let slvr_bin1 = match bin1 with
+                | SMBMapExpr(inst,e) ->
+                  SMVMapExpr(map_expr_to_xid_expr slvr_ctx inst e)
+                | SMBMapVar(inst,v) ->
+                  SMVMapVar(map_var_to_xid_var slvr_ctx inst v)
+                | SMBNumber(n) ->
+                  SMVMapExpr(SENumber n)
+
+              in
+              let slvr_bin2 = match bin2 with
+                | SMBMapExpr(inst,e) ->
+                  SMVMapExpr(map_expr_to_xid_expr slvr_ctx inst e)
+                | SMBMapVar(inst,v) ->
+                  SMVMapVar(map_var_to_xid_var slvr_ctx inst v)
+                | SMBNumber(n) ->
+                  SMVMapExpr(SENumber n)
+              in
+              SMapSlvrCtx.export_edge slvr_ctx slvr_bin1 slvr_bin2 false;
           end
       )
+
 
   
   let print_slvr_bins : mapslvr_ctx -> unit =
@@ -311,6 +329,67 @@ struct
         end
       | None -> None
 
+
+  
+  let optimize_compute_local_minima :
+    gltbl -> mapslvr_ctx -> (wireid,linear_transform) map option =
+    fun tbl slvr_ctx  ->
+      let compute_time = Globals.get_glbl_int "jaunt-optimize-localopt-timeout" in
+      let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx in
+      let mapslns : sciopt_result list =
+        ScipyOptimizeLib.exec "map" scipy_prob compute_time
+      in
+      let final_result = List.fold_right (fun result validated_result ->
+          match validated_result with
+          | None -> get_validated_model tbl slvr_ctx compute_time result
+          | Some(_) -> validated_result
+        ) mapslns None
+      in
+      final_result
+
+  let optimize_compute_linearized_cover_assign :
+    gltbl -> mapslvr_ctx -> bool*((wireid,linear_transform) map option) =
+    fun tbl slvr_ctx ->
+      let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
+      let mapping = slvr_ctx.xidmap in
+      let compute_time = Globals.get_glbl_int "jaunt-optimize-linearize-timeout" in
+      let linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx in
+      let linear_scipy_obj = ScioptSMapSolver.gen_obj_none slvr_ctx in
+      let linear_scipy_prob = linear_scipy_cstr @ [linear_scipy_obj] in
+      let initial_guess : sciopt_result list =
+        ScipyOptimizeLib.exec "lopt_map" linear_scipy_prob compute_time in
+      begin
+        Printf.printf "-> solve linearized problem \n";
+        match initial_guess with
+        | [lin_result] ->
+          let partial_z3prob = Z3SMapSolver.mkpartial_constrain_unsat_cover
+              slvr_ctx z3prob (OPTION.force_conc lin_result.vect)
+          in
+          let mapsln : z3sln = Z3Lib.exec "map" partial_z3prob compute_time true in
+          begin
+            match mapsln.model with
+            | Some(model) ->
+              let stdmodel = Z3SMapSolver.get_standard_model model in
+              true,Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
+            | None ->
+              true,None
+          end
+        | _ -> false, None
+      end
+
+  let compute_unconstrained : gltbl -> mapslvr_ctx -> int -> (wireid,linear_transform) map option =
+    fun tbl slvr_ctx compute_time ->
+      Printf.printf "-> fallback to z3-unconstrained.\n";
+      let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
+      let mapping = slvr_ctx.xidmap in
+      let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
+      match mapsln.model with
+      | Some(model) ->
+        let stdmodel = Z3SMapSolver.get_standard_model model in
+        Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
+      | None -> None
+
+
   let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> (wireid,linear_transform) map option =
     fun tbl ctx compute_time ->
       let slvr_ctx = SMapSlvrCtx.mk_ctx () in
@@ -328,7 +407,54 @@ struct
         let incorp_cover = Globals.get_glbl_bool "enable-jaunt-cover" in
         Z3SMapSolver.set_option "use-cover" incorp_cover;
         ScioptSMapSolver.set_option "use-cover" incorp_cover;
+        (*find solution for linearized problem and s*)
+        let sat_feas,sln =
+          if Globals.get_glbl_bool "jaunt-optimize-linearize-enabled" then
+            optimize_compute_linearized_cover_assign tbl slvr_ctx
+          else
+            true,None
+        in
+        if sat_feas = false then None else
+          let sln =
+            if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-enabled" then
+              optimize_compute_local_minima tbl slvr_ctx
+            else sln
+          in
+          let sln =
+            if sln = None && Globals.get_glbl_bool "jaunt-fallback" then
+              compute_unconstrained tbl slvr_ctx compute_time
+            else
+              sln
+          in
+          sln
+          
+(*
         match solver with
+        | "partial-smt" ->
+          begin
+            let z3prob = Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
+            let unsat_mappings = [] in
+            let linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx in
+            let linear_scipy_obj = ScioptSMapSolver.gen_obj_none slvr_ctx in
+            let linear_scipy_prob = linear_scipy_cstr @ [linear_scipy_obj] in
+            let initial_guess : sciopt_result list =
+              ScipyOptimizeLib.exec "lmap" linear_scipy_prob compute_time in
+            begin
+              match initial_guess with
+              | [lin_result] ->
+                let partial_z3prob = Z3SMapSolver.mkpartial_constrain_unsat_cover
+                    slvr_ctx z3prob (OPTION.force_conc lin_result.vect)
+                in
+                let mapsln : z3sln = Z3Lib.exec "map" partial_z3prob compute_time true in
+                match mapsln.model with
+                | Some(model) ->
+                  let stdmodel = Z3SMapSolver.get_standard_model model in
+                  Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
+                | None ->
+                  raise (SMapSolver_error "unimpl iterative")
+            end
+          end
+
         | "smt" ->
           begin
             let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
@@ -355,21 +481,13 @@ struct
               | Some(r) -> final_result
               | None ->
                 if do_fallback then 
-                  begin
-                    Printf.printf "-> fallback to z3-unconstrained.\n";
-                    let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
-                    let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
-                    match mapsln.model with
-                    | Some(model) ->
-                      let stdmodel = Z3SMapSolver.get_standard_model model in
-                      Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-                    | None -> None
-                  end
+                  
                 else
                   None
             end
         | _ ->
           raise (SMapSolver_error ("unexpected method: "^solver))
+*)
 
   let compute_transform : gltbl ->  cfggen_ctx -> int ->
     (wireid, linear_transform) map option=

@@ -641,6 +641,27 @@ struct
     List.fold_left (fun clst lst -> clst @ lst) [] lsts 
 
 
+  let min (type a) : a list -> (a -> int) -> a =
+    fun lst grade ->
+      match lst with
+      | h::t ->
+        List.fold_right (fun el best ->
+            if grade el < grade best then
+              el else best
+          ) t h
+      | _ -> raise (UtilError "unexpected: empty list for selecting min")
+
+  let max(type a) : a list -> (a -> int) -> a =
+    fun lst grade ->
+      match lst with
+      | h::t ->
+        List.fold_right (fun el best ->
+            if grade el > grade best then
+              el else best
+          ) t h
+      | _ -> raise (UtilError "unexpected: empty list for selecting min")
+
+
   let uniq a =
     List.fold_right (fun x r -> if count_val r x = 0 then x::r else r) a []
 

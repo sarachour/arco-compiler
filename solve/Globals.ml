@@ -19,10 +19,21 @@ let _ = MAP.put glbls "jaunt-solve-method" (GlblPropString "smt")
 let _ = MAP.put glbls "jaunt-validate" (GlblPropBool true)
 let _ = MAP.put glbls "jaunt-fallback" (GlblPropBool true)
 let _ = MAP.put glbls "enable-jaunt-cover" (GlblPropBool true)
+
+(*solve local optimization problem for seed points*)
+let _ = MAP.put glbls "jaunt-optimize-localopt-enabled" (GlblPropBool true)
+let _ = MAP.put glbls "jaunt-optimize-localopt-timeout" (GlblPropInt 2)
+
+(*solve linearized problem*)
+let _ = MAP.put glbls "jaunt-optimize-linearize-enabled" (GlblPropBool true)
+let _ = MAP.put glbls "jaunt-optimize-linearize-timeout" (GlblPropInt 2)
+
 let _ = MAP.put glbls "jaunt-scipy-tries" (GlblPropInt 25)
 let _ = MAP.put glbls "jaunt-scipy-ctol" (GlblPropFloat 1e-8)
 let _ = MAP.put glbls "jaunt-scipy-xtol" (GlblPropFloat 1e-7)
 let _ = MAP.put glbls "jaunt-scipy-results" (GlblPropInt 1)
+let _ = MAP.put glbls "jaunt-scale-range" (GlblPropString "*")
+let _ = MAP.put glbls "jaunt-offset-range" (GlblPropString "*")
 
 let _ = MAP.put glbls "multi-num-partial-solutions" (GlblPropInt 8)
 let _ = MAP.put glbls "multi-num-global-solutions" (GlblPropInt 2)

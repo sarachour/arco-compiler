@@ -134,22 +134,70 @@ class OptimizeLinearModel:
         self.obj = None;
         self._bounds = [(None,None)]*n
 
-    def to_coeff_vect(self,expr):
-        fn = eval("lambda x : %s\n" % expr)
-        print(expr);
-        ident = np.identity(self.dim);
-        coeff = np.apply_along_axis(fn,1,ident)
-        print(coeff);
-        return coeff;
+    def __dict_to_vect(self,els):
+        vals = [0]*self.dim
+        offset = 0;
+        for k in els:
+            if k == "offset":
+                offset = els[k]
+                continue;
 
-    def cstr(self,expr,mini,maxi):
-        vect = self.to_coeff_vect(expr)
+            idx = int(k);
+            vals[idx] = els[k]
+
+        return offset,vals;
+
+    def __vect_to_string(self,vect):
+        terms = []
+        for idx in range(0,len(vect)):
+            coeff = vect[idx]
+            if coeff == 0:
+                continue;
+            elif coeff == 1:
+                terms.append("x[%d]" % idx)
+            else:
+                terms.append("%f*x[%d]" % (coeff,idx))
+
+        return "+".join(terms)
+
+    def gte(self,ld1,ld2):
+        ln1,lv1 = self.__dict_to_vect(ld1);
+        ln2,lv2 = self.__dict_to_vect(ld2);
+        vect = np.subtract(lv1,lv2);
+        minimum = ln2 - ln1
         cstr = {
-            "vect":vect,
+            "vect": vect,
+            "lower_bound":minimum,
+            "upper_bound":None,
+            "expr":"%s > %f" % (self.__vect_to_string(vect),minimum)
+        }
+        self.cstrs.append(cstr)
+
+    def eq(self,ld1,ld2):
+        ln1,lv1 = self.__dict_to_vect(ld1);
+        ln2,lv2 = self.__dict_to_vect(ld2);
+        vect = np.subtract(lv1,lv2);
+        value = ln2 - ln1
+        cstr = {
+            "vect": vect,
+            "lower_bound":value,
+            "upper_bound":value,
+            "expr":"%s > %f" % (self.__vect_to_string(vect),value)
+        }
+        self.cstrs.append(cstr)
+
+    def interval(self,sc,off,v,mini,maxi):
+        vals = [0]*self.dim;
+        vals[sc] = v;
+        vals[off] = 1;
+        
+        cstr = {
+            "vect":vals,
             "upper_bound":maxi,
             "lower_bound":mini,
-            "expr":expr
+            "expr":"x[%d]*%f + x[%d] in [%f,%f]" % (sc,v,off,mini,maxi)
         }
+
         self.cstrs.append(cstr)
 
     def test(self,x):
@@ -159,7 +207,6 @@ class OptimizeLinearModel:
 
         for cstr in self.cstrs:
             v = sum(np.multiply(cstr["vect"],x))
-            print(v)
             ub = cstr["upper_bound"]
             lb = cstr["lower_bound"]
             print("%f <= %s <= %f" % (lb,cstr["expr"],ub))
@@ -181,7 +228,8 @@ class OptimizeLinearModel:
             self._bounds[idx] = (mini,ub)
 
     def objective(self,expr):
-        self.obj = self.to_coeff_vect(expr);
+        c,obj = self.__dict_to_vect(expr);
+        self.obj = obj;
 
     def sample(self):
         return;
@@ -195,8 +243,10 @@ class OptimizeLinearModel:
             mini = cstr["lower_bound"]
             maxi = cstr["upper_bound"]
 
-            prob.ub(v,maxi)
-            prob.ub(np.multiply(-1,v),mini*(-1))
+            if maxi != None:
+                prob.ub(np.array(v),maxi)
+            if mini != None:
+                prob.ub(np.multiply(-1,v),mini*(-1))
 
         return prob
 
