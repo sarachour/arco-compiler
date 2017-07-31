@@ -215,6 +215,16 @@ struct
                       | SCLTE(n) ->
                         Z3Assert(Z3LTE(expr,number_to_z3_expr n))
 
+                      | SCGT(n) ->
+                        Z3Assert(Z3GTE(expr,number_to_z3_expr
+                                         (NUMBER.add n eps)
+                                      ))
+
+                      | SCLT(n) ->
+                        Z3Assert(Z3LTE(expr,number_to_z3_expr
+                                         (NUMBER.add n neg_eps)
+                                      ))
+
                   ) [best_expr] 
                 in
                   noop (SET.add_all not_equals ineqs)
@@ -286,8 +296,8 @@ struct
 
 
   (*partially constrain*)
-  let mkpartial_constrain_unsat_cover : mapslvr_ctx -> z3st list -> (int,float) map -> z3st list =
-    fun ctx base_prob assigns ->
+  let mkpartial_constrain_unsat_cover : mapslvr_ctx -> z3st list -> (int,float) map -> float -> z3st list =
+    fun ctx base_prob assigns ctol ->
       let violates_cover hwival mival =
         mival.min < hwival.min || mival.max > hwival.max
       in
@@ -300,13 +310,22 @@ struct
           | SMVCover(sc,off,hwival,mival) ->
             if opt_use_cover && violates_cover hwival mival then
               begin
-                q (Z3Assert(Z3Eq(
+                let sc_val = MAP.get assigns sc and off_val = MAP.get assigns off in
+                q (Z3Assert(Z3GTE(
                     Z3Var (xid_to_z3_var sc),
-                    Z3Number (Decimal (MAP.get assigns sc))
+                    Z3Number (Decimal (sc_val -. ctol) )
                   )));
-                q (Z3Assert(Z3Eq(
+                q (Z3Assert(Z3LTE(
+                    Z3Var (xid_to_z3_var sc),
+                    Z3Number (Decimal (sc_val +. ctol) )
+                  )));
+                q (Z3Assert(Z3GTE(
                     Z3Var (xid_to_z3_var off),
-                    Z3Number (Decimal (MAP.get assigns off))
+                    Z3Number (Decimal (off_val -. ctol))
+                  )));
+                q (Z3Assert(Z3LTE(
+                    Z3Var (xid_to_z3_var off),
+                    Z3Number (Decimal (off_val +. ctol))
                   )));
               end
         );
@@ -370,7 +389,7 @@ struct
           sts
 
       in
-      List.fold_right (fun cfg rest -> (partial_to_sts cfg) @ rest) partial_cfg base_prob 
+      List.fold_right (fun cfg rest -> rest @ (partial_to_sts cfg)) partial_cfg base_prob 
 
 
   let get_standard_model : z3assign list -> (int,float) map =

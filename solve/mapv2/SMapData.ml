@@ -58,6 +58,8 @@ type map_op =
   | SCGTE of number
   | SCNEQ of number
   | SCOr of map_op*map_op
+  | SCGT of number
+  | SCLT of number
 
 type map_cstr =
   | SCFalse
@@ -273,6 +275,17 @@ struct
             | _ -> raise (SMapExpr_error "xform_negate: cannot negate list")
           )
       in
+      let rec xform_prod const term =
+        if NUMBER.eq const (Integer 0) then
+          SELinOffset(Integer 0)
+        else if NUMBER.eq const (Integer 1) then
+          term
+        else
+          match term with
+          | SELinTerm(coeff,v) -> SELinTerm(NUMBER.mult coeff const,v)
+          | SELinOffset(coeff) -> SELinOffset(NUMBER.mult coeff const)
+          | SELinAdd(lst) -> SELinAdd(List.map (fun x -> xform_prod const x) lst) 
+      in
       let rec _work e =
         match e with
         | SEVar(v) -> Some (SELinTerm(Integer 1, v))
@@ -300,12 +313,10 @@ struct
               in
               begin
                 match simpl_la, simpl_lb with
-                | SELinOffset(n),SELinTerm(coeff,v) ->
-                  Some (SELinTerm(NUMBER.mult n coeff,v))
-                | SELinTerm(coeff,v), SELinOffset(n) ->
-                  Some (SELinTerm(NUMBER.mult n coeff,v))
-                | SELinOffset(n),SELinOffset(m) ->
-                  Some (SELinOffset(NUMBER.mult n m))
+                | SELinOffset(n),term ->
+                  Some (xform_prod n term)
+                | term,SELinOffset(n) ->
+                  Some (xform_prod n term)
                 | _ -> None
               end
             | _ -> None
@@ -319,10 +330,8 @@ struct
               in
               begin
                 match simpl_la, simpl_lb with
-                | SELinTerm(coeff,v), SELinOffset(n) ->
-                  Some (SELinTerm(NUMBER.div coeff n ,v))
-                | SELinOffset(n),SELinOffset(m) ->
-                  Some (SELinOffset(NUMBER.div n m))
+                | term,SELinOffset(n) ->
+                  Some (xform_prod (NUMBER.div (Integer 1) n) term)
                 | _ -> None
               end
             | _ -> None
@@ -337,6 +346,9 @@ struct
               in
               begin
                 match simpl_la, simpl_lb with
+                | SELinOffset(v),SELinOffset(p) ->
+                  Some (SELinOffset(NUMBER.pow v p))
+
                 | term, SELinOffset(v) ->
                   if NUMBER.eq v (Integer 0) then
                     Some (SELinOffset(Integer 1))
@@ -537,6 +549,8 @@ struct
       match op with
       | SCLTE(x) -> "<="^(string_of_number x)
       | SCGTE(x) -> ">="^(string_of_number x)
+      | SCLT(x) -> "<"^(string_of_number x)
+      | SCGT(x) -> ">"^(string_of_number x)
       | SCNEQ(x) -> "!="^(string_of_number x)
 
   let to_string : map_cstr -> string =

@@ -74,6 +74,14 @@ class OptimizeProblem:
         self.model.gte(expr1,expr2)
         return;
 
+    def lt(self,expr1,expr2):
+        self.model.gt(expr2,expr1)
+        return;
+
+    def gt(self,expr1,expr2):
+        self.model.gt(expr1,expr2)
+        return;
+
     def lower_bound(self,idx,mini):
         expr = "x[%d]" % idx
         self.linear_model.cstr(expr,mini,1e60);
@@ -116,6 +124,15 @@ class OptimizeProblem:
     def lin_lte(self,lin1,lin2):
         self.lte(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
         self.linear_model.gte(lin2,lin1);
+
+    def lin_gt(self,lin1,lin2):
+        self.gt(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
+        self.linear_model.gt(lin1,lin2);
+
+    def lin_lt(self,lin1,lin2):
+        self.lt(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
+        self.linear_model.gt(lin2,lin1);
+
 
     def lin_interval(self,sc,off,v,mini,maxi):
         expr = "x[%d]*%f + x[%d]" % (sc,v,off)
@@ -180,7 +197,7 @@ class OptimizeProblem:
             return;
 
         #return;
-        self.linear_sampler.generate()
+        self.linear_sampler.generate(ctol)
         if self.linear_sampler.feasible() == False:
             print("unsat");
             return;
@@ -193,27 +210,46 @@ class OptimizeProblem:
 
         print("=== First Solution for Constrained Problem ===")
         first_guess = self.safe_vect(self.model.init_guess())
-        result = self._solve_local(obj,orig_cstrs,first_guess);
-        is_succ = self.add_result_if_valid(orig_cstrs,result)
+        result = self._solve_local(obj,self.cstrs,first_guess);
+        is_succ = self.add_result_if_valid(self.cstrs,result)
 
         print("=== Solving Fully Constrained Problem ===")
         for i in range(0,self.tries):
-            next_guess = self.linear_sampler.sample()
-            result = self._solve_local(obj,orig_cstrs,next_guess);
-            is_succ = self.add_result_if_valid(orig_cstrs,result)
+            if len(self.results) >= self.n_results:
+                return;
+
+            next_guess = self.linear_sampler.sample(ctol).x
+            result = self._solve_local(obj,self.cstrs,next_guess);
+            is_succ = self.add_result_if_valid(self.cstrs,result)
             if is_succ:
-                self.model.test(cstrs,result.x,ctol=ctol,emit=True)
+                self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
 
         # TODO: Find minima if no solution is found.
 
     def solve_linear(self):
         ctol = self.processor.ctol
-        prob = self.linear_model.generate()
-        obj,cstr = prob.to_nonlinear()
+        lin_prob = self.linear_model.generate(ctol)
+        obj,cstr = self.model.generate(ctol)
         self.cstrs = cstr
-        result = self.processor.solve_linear(prob)
 
-        self.results.append(result);
+        if self.model.model_success() == False:
+            return;
+
+        self.linear_sampler.generate(ctol)
+        if self.linear_sampler.feasible() == False:
+            print("unsat");
+            return;
+
+        #return;
+        for i in range(0,self.tries):
+            if len(self.results) >= self.n_results:
+                return;
+
+            result = self.linear_sampler.sample(ctol)
+            is_succ = self.add_result_if_valid(self.cstrs,result)
+            if is_succ:
+                self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
+
 
     def solve(self):
         self.model.finish()

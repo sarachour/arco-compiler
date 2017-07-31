@@ -25,6 +25,8 @@ type sciopt_st =
   | SCINeq of string*string
   | SCIGTE of string*string
   | SCILTE of string*string
+  | SCIGT of string*string
+  | SCILT of string*string
   | SCIInterval of string*float*float
   | SCIObjective of string
   | SCISolve
@@ -36,6 +38,8 @@ type sciopt_st =
   | SCILinNeq of sciopt_linear_expr*sciopt_linear_expr 
   | SCILinGTE of sciopt_linear_expr*sciopt_linear_expr 
   | SCILinLTE of sciopt_linear_expr*sciopt_linear_expr 
+  | SCILinGT of sciopt_linear_expr*sciopt_linear_expr 
+  | SCILinLT of sciopt_linear_expr*sciopt_linear_expr 
   | SCILinObjective of sciopt_linear_expr
 
 

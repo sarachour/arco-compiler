@@ -76,6 +76,12 @@ struct
     fun ctx bin ->
       MAP.has ctx.export bin && (MAP.get ctx.export bin) == false
 
+  let add_cstr : cfggen_ctx -> hwcompinst -> map_cstr -> unit =
+    fun ctx inst cstr ->
+      match MAP.ifget ctx.cstrs inst with
+      | Some(curr_cstrs) -> noop (MAP.put ctx.cstrs inst (cstr::curr_cstrs))
+      | None -> noop (MAP.put ctx.cstrs inst [cstr])
+
   let equal_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> bool =
     fun ctx bin1 bin2 ->
       bin1 == bin2 ||

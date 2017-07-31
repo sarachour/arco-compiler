@@ -53,6 +53,11 @@ struct
             Printf.fprintf fh "prob.gte(\"%s\",\"%s\")\n" (expr1) (expr2)
           | SCILTE(expr1,expr2) ->
             Printf.fprintf fh "prob.lte(\"%s\",\"%s\")\n" (expr1) (expr2)
+          | SCIGT(expr1,expr2) ->
+            Printf.fprintf fh "prob.gt(\"%s\",\"%s\")\n" (expr1) (expr2)
+          | SCILT(expr1,expr2) ->
+            Printf.fprintf fh "prob.lt(\"%s\",\"%s\")\n" (expr1) (expr2)
+
           | SCIInterval(expr,min,max) ->
             Printf.fprintf fh "prob.interval(\"%s\",%f,%f)\n" (expr) min max
           | SCIObjective(v) ->
@@ -66,6 +71,12 @@ struct
             Printf.fprintf fh "prob.lin_lte(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
           | SCILinGTE(lhs,rhs) ->
             Printf.fprintf fh "prob.lin_gte(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
+              
+          | SCILinLT(lhs,rhs) ->
+            Printf.fprintf fh "prob.lin_lt(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
+          | SCILinGT(lhs,rhs) ->
+            Printf.fprintf fh "prob.lin_gt(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
+
           | SCILinNeq(lhs,rhs) ->
             Printf.fprintf fh "prob.lin_neq(%s,%s)\n" (lin_expr_to_dict lhs) (lin_expr_to_dict rhs)
           | SCILinObjective(expr) ->

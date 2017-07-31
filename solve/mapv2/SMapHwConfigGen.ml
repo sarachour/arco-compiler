@@ -117,13 +117,39 @@ struct
     connect: (cfggen_bin*cfggen_bin) list;
     disable:cfggen_bin list;
     disable_eq:(cfggen_bin*cfggen_bin) list;
+    cstr:map_cstr list;
     tag: string;
   }
   
   let generic_rewrite : cfggen_ctx ->
-    (cfggen_bin ->cfggen_bin -> cfggen_xform list) -> unit =
-    fun ctx rewrite ->
+    (cfggen_bin ->cfggen_bin -> cfggen_xform list) ->
+    (hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list) ->
+    unit =
+    fun ctx rewrite cstr_rewrite ->
       let rewritten = SET.make_dflt () in
+      let apply xform inst_maybe =
+        if SET.has rewritten xform.tag == false then
+          begin
+            Printf.printf " -> %s\n" xform.tag;
+            noop (SET.add rewritten xform.tag);
+            List.iter (fun (a,b) ->
+                SMapCfggenCtx.connect_bins ctx a b
+              ) xform.connect;
+            List.iter (fun a ->
+                SMapCfggenCtx.export_bin ctx a false;
+              ) xform.disable;
+            List.iter (fun (a,b) ->
+                SMapCfggenCtx.export_edge ctx a b false;
+              ) xform.disable_eq;
+            match inst_maybe with
+            | Some(inst) ->
+              List.iter (fun cstr ->
+                  SMapCfggenCtx.add_cstr ctx inst cstr
+                ) xform.cstr
+            | None -> ()
+          end
+      in
+
       let rec _work () =
         let cnt = SET.size rewritten in
         GRAPH.iter_node ctx.bins (fun node ->
@@ -132,23 +158,26 @@ struct
                 if node == othernode then () else
                 let xforms = rewrite node othernode in
                 List.iter (fun xform ->
-                    if SET.has rewritten xform.tag == false then
-                      begin
-                        Printf.printf " -> %s\n" xform.tag;
-                        noop (SET.add rewritten xform.tag);
-                        List.iter (fun (a,b) ->
-                            SMapCfggenCtx.connect_bins ctx a b
-                          ) xform.connect;
-                        List.iter (fun a ->
-                            SMapCfggenCtx.export_bin ctx a false;
-                          ) xform.disable;
-                        List.iter (fun (a,b) ->
-                            SMapCfggenCtx.export_edge ctx a b false;
-                          ) xform.disable_eq
-
-                      end
+                    apply xform None
                   ) xforms
               ) connected
+          );
+        MAP.iter ctx.cstrs (fun inst nodes ->
+            let app_nodes = List.filter (fun x ->
+                match x with
+                | SCCoverInterval(_) -> true
+                | SCCoverTime(_) -> true
+                | SCVarIneq(_) -> true
+                | SCExprIneq(_) -> true
+                | _ -> false
+              ) nodes
+            in
+            LIST.diag_iter app_nodes (fun n1 n2 ->
+                let xforms = cstr_rewrite inst n1 n2 in
+                List.iter (fun xform ->
+                    apply xform (Some inst)
+                  ) xforms;
+              ) 
           );
         let new_rewrites = (SET.size rewritten) - cnt in
         Printf.printf ("=> New Rewrites: %d\n") new_rewrites;
@@ -169,8 +198,19 @@ struct
       in
       rewrite
 
+  let merge_cstr_rewrites :
+    (hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list) list ->
+    (hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list) =
+    fun xforms -> 
+      let rewrite : hwcompinst -> map_cstr ->map_cstr -> cfggen_xform list =
+        fun inst node1 node2 ->
+          List.fold_right (fun xform results -> (xform inst node1 node2) @ results ) xforms []
+      in
+      rewrite
 
-  let a_eq_ab_rewrite : cfggen_ctx -> (cfggen_bin ->cfggen_bin -> cfggen_xform list )=
+
+  let a_eq_ab_rewrite : cfggen_ctx ->
+    (cfggen_bin ->cfggen_bin -> cfggen_xform list )=
     fun ctx ->
       let extract_term expr targ =
         SMapExpr.factor expr (fun e -> e = targ)
@@ -197,6 +237,7 @@ struct
                       connect=[(new_bin,SMBNumber(Integer 1))];
                       disable=[];
                       disable_eq=[(node1,node2)];
+                      cstr=[];
                       tag=tag new_bin
                     }]
                   end
@@ -220,6 +261,7 @@ struct
                       connect=[new_bin,SMBNumber(Integer 1)];
                       disable=[];
                       disable_eq=[(node1,node2)];
+                      cstr=[];
                       tag=tag new_bin;
                     }]
                   end
@@ -274,6 +316,7 @@ struct
                     connect=[(base1_bin,base2_bin)];
                     disable=[];
                     disable_eq=[(node1,node2)];
+                    cstr=[];
                     tag=tag base1_bin base2_bin
                   }]
 
@@ -323,6 +366,7 @@ struct
                   [{
                     connect=[(exp1_bin,exp2_bin)];
                     disable=[];
+                    cstr=[];
                     disable_eq=[(node1,node2)];
                     tag=tag exp1_bin exp2_bin
                   }]
@@ -366,6 +410,7 @@ struct
               [{
                 connect=[(expr1_bin,expr2_bin)];
                 disable=[];
+                cstr=[];
                 disable_eq=[(node1,node2)];
                 tag=tag expr1_bin expr2_bin
               }]
@@ -376,6 +421,7 @@ struct
               [{
                 connect=[(num_bin,expr_bin)];
                 disable=[];
+                cstr=[];
                 disable_eq=[(node1,node2)];
                 tag=tag expr_bin num_bin 
               }]
@@ -412,6 +458,7 @@ struct
                   [{
                     connect=[(expr1_bin,expr2_bin)];
                     disable=[];
+                    cstr=[];
                     disable_eq=[(node1,node2)];
                     tag=tag expr1_bin expr2_bin;
                   }]
@@ -445,6 +492,7 @@ struct
           | SMBMapVar(i,v),SMBNumber(n) ->
             if put_sub i v n then
               [{connect=[];disable=[];disable_eq=[];
+                cstr=[];
                 tag=Printf.sprintf "x=n: %s => %s"
                     (SMapCfggenCtx.string_of_bin node1) (string_of_number n)
                }]
@@ -453,6 +501,7 @@ struct
           | SMBNumber(n), SMBMapVar(i,v) ->
             if put_sub i v n then 
               [{connect=[];disable=[];disable_eq=[];
+                cstr=[];
                 tag=Printf.sprintf "x=n : %s => %s"
                     (SMapCfggenCtx.string_of_bin node2) (string_of_number n)
                }]
@@ -488,6 +537,7 @@ struct
                 connect=[(orig_bin,simpl_bin)];
                 disable=[(orig_bin)];
                 disable_eq=[];
+                cstr=[];
                 tag=Printf.sprintf "simplx: %s => %s"
                     (SMapCfggenCtx.string_of_bin orig_bin)
                     (SMapCfggenCtx.string_of_bin simpl_bin)
@@ -507,6 +557,76 @@ struct
       in
       xform
 
+
+  let neq_and_pos_rewrite :cfggen_ctx ->
+    (hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list) =
+    fun ctx ->
+      let rec xform : hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list =
+        fun inst cstr1 cstr2 ->
+          let tag = Printf.sprintf "pneg[%s]: (%s,%s)"
+              (HwLib.hwcompinst2str inst)
+              (SMapCstr.to_string cstr1)
+              (SMapCstr.to_string cstr2)
+          in
+          match cstr1, cstr2 with
+          | SCVarIneq(SCNEQ(Integer 0),v), SCVarIneq(SCGTE(Integer 0),v2) ->
+            if v = v2 then
+              [{
+                connect=[]; disable=[]; disable_eq=[];
+                cstr=[SCVarIneq(SCGT(Integer 0),v2)];
+                tag=tag
+              }]
+            else
+              []
+          | SCExprIneq(SCNEQ(Integer 0),e), SCExprIneq(SCGTE(Integer 0),e2) ->
+            if e = e2 then
+              [{
+                connect=[]; disable=[]; disable_eq=[];
+                cstr=[SCExprIneq(SCGT(Integer 0),e2)];
+                tag=tag
+              }]
+            else
+              []
+          | SCCoverInterval(mrng,hwrng,sc,off), SCExprIneq(SCNEQ(Integer 0),e) ->
+            let expr1 = SEAdd(SEMult(sc,SENumber mrng.min),off) in
+            let expr2 = SEAdd(SEMult(sc,SENumber mrng.max),off) in
+            if NUMBER.lte hwrng.min (Integer 0) then [] else
+            if expr1 = e then
+              [{
+                connect=[];disable=[];disable_eq=[];
+                cstr=[SCExprIneq(SCGT(Integer 0),e)];
+                tag=tag;
+              }]
+            else if expr2 = e then
+              [{
+                connect=[];disable=[];disable_eq=[];
+                cstr=[SCExprIneq(SCGT(Integer 0),e)];
+                tag=tag;
+              }]
+            else
+              []
+          | SCExprIneq(SCNEQ(Integer 0),e), SCCoverInterval(mrng,hwrng,sc,off) ->
+            let expr1 = SEAdd(SEMult(sc,SENumber mrng.min),off) in
+            let expr2 = SEAdd(SEMult(sc,SENumber mrng.max),off) in
+            if NUMBER.lte hwrng.min (Integer 0) then [] else
+            if expr1 = e then
+              [{
+                connect=[];disable=[];disable_eq=[];
+                cstr=[SCExprIneq(SCGT(Integer 0),e)];
+                tag=tag;
+              }]
+            else if expr2 = e then
+              [{
+                connect=[];disable=[];disable_eq=[];
+                cstr=[SCExprIneq(SCGT(Integer 0),e)];
+                tag=tag;
+              }]
+            else
+              []
+          | _ -> 
+            [] 
+      in
+      xform 
 
   let simplify : cfggen_ctx -> unit =
     fun ctx ->
@@ -533,9 +653,12 @@ struct
         collect_const_rewrite ctx numer_assign;
         sub_const_rewrite ctx numer_assign;
       ] in
-      generic_rewrite ctx (merge_rewrites phase1);
-      generic_rewrite ctx (merge_rewrites phase2);
-      generic_rewrite ctx (merge_rewrites phase3);
+      let c_phase3 = [
+        neq_and_pos_rewrite ctx; 
+      ] in
+      generic_rewrite ctx (merge_rewrites phase1) (merge_cstr_rewrites []);
+      generic_rewrite ctx (merge_rewrites phase2) (merge_cstr_rewrites []);
+      generic_rewrite ctx (merge_rewrites phase3) (merge_cstr_rewrites c_phase3);
       ()
 end
 

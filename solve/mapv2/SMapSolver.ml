@@ -302,7 +302,8 @@ struct
       in
       _work 1.0 25
 
-  let get_validated_model : gltbl -> mapslvr_ctx  -> int -> sciopt_result -> (wireid, linear_transform) map option =
+  let get_validated_model : gltbl -> mapslvr_ctx  -> int -> sciopt_result ->
+    (wireid, linear_transform) map option =
     fun tbl slvr_ctx compute_time mapsln ->
       (*determine if we should validate a nonlinear optimizer solution with dReal*)
       let do_validate = Globals.get_glbl_bool "jaunt-validate" in
@@ -330,12 +331,33 @@ struct
       | None -> None
 
 
-  
+
+  let optimize_compute_reduce_degrees_of_freedom :
+    gltbl -> mapslvr_ctx -> (wireid,linear_transform) map option =
+    fun tbl slvr_ctx ->
+      let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
+      let mapping = slvr_ctx.xidmap in
+      let compute_time = Globals.get_glbl_int "jaunt-optimize-reddof-timeout" in
+      let z3prob_0offset = Z3SMapSolver.mkpartial_constrain_domain slvr_ctx z3prob
+          [Z3MPNoOffset]
+      in
+      Printf.printf "[OPTIMIZE] === FIND SOLUTION WITH NO OFFSET === \n";
+      let mapsln : z3sln = Z3Lib.exec "map" z3prob_0offset compute_time true in
+      begin
+        match mapsln.model with
+        | Some(model) ->
+          let stdmodel = Z3SMapSolver.get_standard_model model in
+          Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
+        | None ->
+          None
+      end
+
   let optimize_compute_local_minima :
     gltbl -> mapslvr_ctx -> (wireid,linear_transform) map option =
     fun tbl slvr_ctx  ->
       let compute_time = Globals.get_glbl_int "jaunt-optimize-localopt-timeout" in
       let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx in
+      Printf.printf "[OPTIMIZE] === FIND CANDIDATE MINIMA === \n";
       let mapslns : sciopt_result list =
         ScipyOptimizeLib.exec "map" scipy_prob compute_time
       in
@@ -353,27 +375,32 @@ struct
       let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
       let mapping = slvr_ctx.xidmap in
       let compute_time = Globals.get_glbl_int "jaunt-optimize-linearize-timeout" in
-      let linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx in
+      let n_results = Globals.get_glbl_int "jaunt-optimize-linearize-results" in
+      let linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx n_results in
       let linear_scipy_obj = ScioptSMapSolver.gen_obj_none slvr_ctx in
       let linear_scipy_prob = linear_scipy_cstr @ [linear_scipy_obj] in
-      let initial_guess : sciopt_result list =
+      let linear_pts: sciopt_result list =
         ScipyOptimizeLib.exec "lopt_map" linear_scipy_prob compute_time in
       begin
-        Printf.printf "-> solve linearized problem \n";
-        match initial_guess with
-        | [lin_result] ->
-          let partial_z3prob = Z3SMapSolver.mkpartial_constrain_unsat_cover
-              slvr_ctx z3prob (OPTION.force_conc lin_result.vect)
-          in
-          let mapsln : z3sln = Z3Lib.exec "map" partial_z3prob compute_time true in
-          begin
-            match mapsln.model with
-            | Some(model) ->
-              let stdmodel = Z3SMapSolver.get_standard_model model in
-              true,Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-            | None ->
-              true,None
-          end
+        Printf.printf "[OPTIMIZE] === SOLVE LINEAR PROBLEM === \n";
+        match linear_pts with
+        |  h::t ->
+          List.fold_right (fun lin_result (sat_feas,final_result) ->
+              if final_result <> None then  (sat_feas,final_result) else
+                let partial_z3prob = Z3SMapSolver.mkpartial_constrain_unsat_cover
+                    slvr_ctx z3prob (OPTION.force_conc lin_result.vect) lin_result.tolerance
+                in
+                let mapsln : z3sln = Z3Lib.exec "map" partial_z3prob compute_time true in
+                begin
+                  match mapsln.model with
+                  | Some(model) ->
+                    let stdmodel = Z3SMapSolver.get_standard_model model in
+                    true,Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
+                  | None ->
+                    true,None
+                end
+            ) linear_pts (true,None)
+
         | _ -> false, None
       end
 
@@ -382,6 +409,7 @@ struct
       Printf.printf "-> fallback to z3-unconstrained.\n";
       let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
       let mapping = slvr_ctx.xidmap in
+        Printf.printf "[FALLBACK] === SOLVE UNCONSTRAINED PROBLEM === \n";
       let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
       match mapsln.model with
       | Some(model) ->
@@ -418,6 +446,11 @@ struct
           let sln =
             if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-enabled" then
               optimize_compute_local_minima tbl slvr_ctx
+            else sln
+          in
+          let sln =
+            if sln = None && Globals.get_glbl_bool "jaunt-optimize-reddof-enabled" then
+              optimize_compute_reduce_degrees_of_freedom tbl slvr_ctx
             else sln
           in
           let sln =
