@@ -224,6 +224,20 @@ class OptimizeProblem:
             if is_succ:
                 self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
 
+        print("=== Returning Best Scoring Points ===")
+        minima_by_score = []
+        for result in self.minima:
+            _ , tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
+            minima_by_score.append((tol,result))
+
+        best_to_worst = sorted(minima_by_score,key=lambda (k,v):k)
+        for score,result in best_to_worst:
+            print(score);
+            if len(self.results) >= self.n_results:
+                return;
+
+            if not (result in self.results):
+                self.results.append(result)
         # TODO: Find minima if no solution is found.
 
     def solve_linear(self):
@@ -269,19 +283,15 @@ class OptimizeProblem:
         if result == None:
             return
 
-        is_succ,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
-        if is_succ:
-            fh.write("success\n")
-            i = 0;
-            fh.write("%e\n" % tol)
-            result_vect = self.model.result(result.x);
-            print(result_vect);
-            for ident in result.x:
-                fh.write("%d=%.16e\n" % (i,ident))
-                i+=1;
-        else:
-            fh.write("failure\n")
-            fh.write("%d\n" % self.result.status)
+        _,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
+        fh.write("success\n")
+        i = 0;
+        fh.write("%e\n" % tol)
+        result_vect = self.model.result(result.x);
+        print(result_vect);
+        for ident in result.x:
+            fh.write("%d=%.16e\n" % (i,ident))
+            i+=1;
 
     def write(self,filename):
         print("=== Writing %d Results ===" % len(self.results));
