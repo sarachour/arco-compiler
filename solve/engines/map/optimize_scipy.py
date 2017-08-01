@@ -218,7 +218,12 @@ class OptimizeProblem:
             if len(self.results) >= self.n_results:
                 return;
 
-            next_guess = self.linear_sampler.sample(ctol).x
+            sample_pt = self.linear_sampler.sample(ctol)
+            if sample_pt == None:
+                continue;
+
+            next_guess = sample_pt.x
+
             result = self._solve_local(obj,self.cstrs,next_guess);
             is_succ = self.add_result_if_valid(self.cstrs,result)
             if is_succ:
@@ -242,20 +247,25 @@ class OptimizeProblem:
 
     def solve_linear(self):
         ctol = self.processor.ctol
-        lin_prob = self.linear_model.generate(ctol)
         obj,cstr = self.model.generate(ctol)
         self.cstrs = cstr
 
         if self.model.model_success() == False:
             return;
 
-        self.linear_sampler.generate(ctol)
+        result = self.linear_sampler.generate(ctol)
+        is_succ = self.add_result_if_valid(self.cstrs,result)
+        if is_succ:
+            print("-> initial\n")
+            self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
+
         if self.linear_sampler.feasible() == False:
             print("unsat");
             return;
 
         #return;
         for i in range(0,self.tries):
+            print("-> attempt %d\n" % i)
             if len(self.results) >= self.n_results:
                 return;
 

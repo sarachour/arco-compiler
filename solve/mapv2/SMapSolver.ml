@@ -390,7 +390,7 @@ struct
                 let partial_z3prob = Z3SMapSolver.mkpartial_constrain_unsat_cover
                     slvr_ctx z3prob (OPTION.force_conc lin_result.vect) lin_result.tolerance
                 in
-                let mapsln : z3sln = Z3Lib.exec "map" partial_z3prob compute_time true in
+                let mapsln : z3sln = Z3Lib.tune "map" partial_z3prob compute_time true in
                 begin
                   match mapsln.model with
                   | Some(model) ->

@@ -497,6 +497,47 @@ struct
     end
 
 
+  (*use unsat proof to remove tunable constraints *)
+  let tune (root:string) (stmts:z3st list) timeout use_dreal : z3sln=
+    let stmts =
+      if use_dreal then
+        (Z3Stmt("(set-logic QF_NRA)")::stmts) @ [Z3SAT; Z3Exit]
+      else
+        stmts @ [Z3SAT; Z3DispModel]
+    in
+    let idx = string_of_int (new_idx ()) in 
+    let smtfile =  "z3-prob-"^idx^"."^root^".smt2" in
+    let resfile = "z3-sln-"^idx^"."^root^".res" in
+    let oc = open_out smtfile in
+    (*solve for fif mintues*)
+    (*let x = List.sort sortsts (LIST.uniq x) in*)
+    z3stmts2buf oc stmts;
+    close_out oc;
+    print "[Z3]" ("---> Executing SMT Solver prob="^(idx)^"\n");
+    z3_print_debug "--->" "Executing SMT Solver\n";
+    let cmd = 
+      if use_dreal then
+          "python smt_tuner.py --solver dreal --input '"^smtfile^"' --output '"^resfile^"' --timeout "^
+                    (string_of_int timeout)
+      else
+        "python smt_tuner.py --solver z3 --input '"^smtfile^"' --output '"^resfile^"' --timeout "^
+                    (string_of_int timeout)
+    in
+    print "[z3]" (cmd^"\n");
+    flush_all ();
+    Sys.command cmd;
+    z3_print_debug "--->" "Finished Search\n";
+    flush_all ();
+    begin
+      let z =
+        if use_dreal then ParserGenerator.file_to_drealsln resfile
+        else ParserGenerator.file_to_z3sln resfile
+      in
+      z
+    end
+
+
+
   let save_z3_prob (root:string) (stmts:z3st list) (expr:z3expr) use_dreal =
     let nstmts =
       if use_dreal then

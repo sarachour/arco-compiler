@@ -302,7 +302,7 @@ struct
         mival.min < hwival.min || mival.max > hwival.max
       in
       let opt_use_cover = get_option "use-cover" in
-      let sts = QUEUE.from_list base_prob in
+      let sts = QUEUE.make () in
       let q x = noop (QUEUE.enqueue sts x) in
       q (Z3Comment("=== Partial UNSAT Cstr ===="));
       (*constrain any cover assignments that are obviously violated*)
@@ -311,25 +311,29 @@ struct
             if opt_use_cover && violates_cover hwival mival then
               begin
                 let sc_val = MAP.get assigns sc and off_val = MAP.get assigns off in
+                q (Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var sc)));
                 q (Z3Assert(Z3GTE(
                     Z3Var (xid_to_z3_var sc),
                     Z3Number (Decimal (sc_val -. ctol) )
                   )));
+                q (Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var sc)));
                 q (Z3Assert(Z3LTE(
                     Z3Var (xid_to_z3_var sc),
                     Z3Number (Decimal (sc_val +. ctol) )
                   )));
+                q (Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var off)));
                 q (Z3Assert(Z3GTE(
                     Z3Var (xid_to_z3_var off),
                     Z3Number (Decimal (off_val -. ctol))
                   )));
+                q (Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var off)));
                 q (Z3Assert(Z3LTE(
                     Z3Var (xid_to_z3_var off),
                     Z3Number (Decimal (off_val +. ctol))
                   )));
               end
         );
-      QUEUE.to_list sts
+      base_prob @ (QUEUE.to_list sts)
 
   let mkpartial_constrain_domain : mapslvr_ctx -> z3st list ->  z3map_partial list -> z3st list =
     fun ctx base_prob partial_cfg ->
