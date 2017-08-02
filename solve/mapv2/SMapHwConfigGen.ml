@@ -209,6 +209,21 @@ struct
       rewrite
 
 
+  let ineq_var_rewrite : cfggen_ctx ->
+    ((cfggen_bin) -> cfggen_bin -> cfggen_xform list) =
+    fun ctx ->
+      let rec xform :cfggen_bin -> cfggen_bin -> cfggen_xform list =
+        fun node1 node2 ->
+          let tag inst v op = Printf.sprintf "ineq.rw[%s]: (%s) :> %s"
+              (HwLib.hwcompinst2str inst)
+              (SMapCfggenCtx.string_of_bin v)
+              (SMapCstr.string_of_op op)
+          in
+          []
+      in
+      xform
+
+
   let a_eq_ab_rewrite : cfggen_ctx ->
     (cfggen_bin ->cfggen_bin -> cfggen_xform list )=
     fun ctx ->
