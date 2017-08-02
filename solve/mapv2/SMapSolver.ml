@@ -353,30 +353,36 @@ struct
       end
 
   let optimize_compute_local_minima :
-    gltbl -> mapslvr_ctx -> (wireid,linear_transform) map option =
-    fun tbl slvr_ctx  ->
+    gltbl -> mapslvr_ctx -> z3map_partial list -> (wireid,linear_transform) map option =
+    fun tbl slvr_ctx partial ->
       let compute_time = Globals.get_glbl_int "jaunt-optimize-localopt-timeout" in
       let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx in
-      Printf.printf "[OPTIMIZE] === FIND CANDIDATE MINIMA === \n";
-      let mapslns : sciopt_result list =
-        ScipyOptimizeLib.exec "map" scipy_prob compute_time
+      let conc_scipy_prob : sciopt_st list = ScioptSMapSolver.mkpartial_constrain_domain
+          slvr_ctx scipy_prob partial
       in
-      let final_result = List.fold_right (fun result validated_result ->
+      Printf.printf "[OPTIMIZE] === FIND CANDIDATE MINIMA === \n";
+      let conc_mapslns : sciopt_result list =
+        ScipyOptimizeLib.exec "map" conc_scipy_prob compute_time
+      in
+      let conc_result = List.fold_right (fun result validated_result ->
           match validated_result with
           | None -> get_validated_model tbl slvr_ctx compute_time result
           | Some(_) -> validated_result
-        ) mapslns None
+        ) conc_mapslns None
       in
-      final_result
+      conc_result
 
   let optimize_compute_linearized_cover_assign :
-    gltbl -> mapslvr_ctx -> bool*((wireid,linear_transform) map option) =
-    fun tbl slvr_ctx ->
+    gltbl -> mapslvr_ctx -> z3map_partial list -> bool*((wireid,linear_transform) map option) =
+    fun tbl slvr_ctx partial ->
       let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
       let mapping = slvr_ctx.xidmap in
       let compute_time = Globals.get_glbl_int "jaunt-optimize-linearize-timeout" in
       let n_results = Globals.get_glbl_int "jaunt-optimize-linearize-results" in
-      let linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx n_results in
+      let base_linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx n_results in
+      let linear_scipy_cstr= ScioptSMapSolver.mkpartial_constrain_domain
+          slvr_ctx base_linear_scipy_cstr partial
+      in
       let linear_scipy_obj = ScioptSMapSolver.gen_obj_none slvr_ctx in
       let linear_scipy_prob = linear_scipy_cstr @ [linear_scipy_obj] in
       let linear_pts: sciopt_result list =
@@ -438,14 +444,19 @@ struct
         (*find solution for linearized problem and s*)
         let sat_feas,sln =
           if Globals.get_glbl_bool "jaunt-optimize-linearize-enabled" then
-            optimize_compute_linearized_cover_assign tbl slvr_ctx
+            optimize_compute_linearized_cover_assign tbl slvr_ctx [Z3MPNoOffset]
           else
             true,None
         in
         if sat_feas = false then None else
           let sln =
             if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-enabled" then
-              optimize_compute_local_minima tbl slvr_ctx
+              optimize_compute_local_minima tbl slvr_ctx [Z3MPNoOffset]
+            else sln
+          in
+          let sln =
+            if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-enabled" then
+              optimize_compute_local_minima tbl slvr_ctx []
             else sln
           in
           let sln =
@@ -461,67 +472,6 @@ struct
           in
           sln
           
-(*
-        match solver with
-        | "partial-smt" ->
-          begin
-            let z3prob = Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
-            let unsat_mappings = [] in
-            let linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx in
-            let linear_scipy_obj = ScioptSMapSolver.gen_obj_none slvr_ctx in
-            let linear_scipy_prob = linear_scipy_cstr @ [linear_scipy_obj] in
-            let initial_guess : sciopt_result list =
-              ScipyOptimizeLib.exec "lmap" linear_scipy_prob compute_time in
-            begin
-              match initial_guess with
-              | [lin_result] ->
-                let partial_z3prob = Z3SMapSolver.mkpartial_constrain_unsat_cover
-                    slvr_ctx z3prob (OPTION.force_conc lin_result.vect)
-                in
-                let mapsln : z3sln = Z3Lib.exec "map" partial_z3prob compute_time true in
-                match mapsln.model with
-                | Some(model) ->
-                  let stdmodel = Z3SMapSolver.get_standard_model model in
-                  Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-                | None ->
-                  raise (SMapSolver_error "unimpl iterative")
-            end
-          end
-
-        | "smt" ->
-          begin
-            let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
-            let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
-            match mapsln.model with
-            | Some(model) ->
-              let stdmodel = Z3SMapSolver.get_standard_model model in
-              Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-            | None -> None
-          end
-
-        | "scipy" ->
-            let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx in
-            let mapslns : sciopt_result list =
-              ScipyOptimizeLib.exec "map" scipy_prob compute_time in
-            let final_result = List.fold_right (fun result validated_result ->
-                match validated_result with
-                | None -> get_validated_model tbl slvr_ctx compute_time result
-                | Some(_) -> validated_result
-              ) mapslns None
-            in
-            begin
-              match final_result with
-              | Some(r) -> final_result
-              | None ->
-                if do_fallback then 
-                  
-                else
-                  None
-            end
-        | _ ->
-          raise (SMapSolver_error ("unexpected method: "^solver))
-*)
-
   let compute_transform : gltbl ->  cfggen_ctx -> int ->
     (wireid, linear_transform) map option=
     fun tbl ctx compute_time ->

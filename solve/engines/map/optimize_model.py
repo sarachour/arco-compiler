@@ -645,3 +645,74 @@ class OptimizeNonlinearModel:
         print("pass:"+str(max_error <= error_tol))
         print("error:"+str(max_error));
         return (max_error <= error_tol, max_error)
+
+
+
+
+    def rewrite(self):
+         xlate, x = self.variables()
+         nmap = {};
+         sym_equivs = [];
+         
+         print("=== Orig =====")
+         for equiv in self._eq:
+             sym_equiv = map(lambda e : self.evaluate(e,x),equiv)
+             sym_equivs.append(sym_equiv);
+             print(sym_equiv);
+ 
+         rewritten = True;
+         all_subs = []
+         print("=== Simpl Const =====")
+         while rewritten:
+             subs,diffs,sym_equivs = self.simpl_constants(sym_equivs,xlate,x)
+             rewritten = (diffs > 0)
+             all_subs += subs
+             print("==========")
+
+         rewritten = True;
+         print("=== Simpl Var =====")
+         while rewritten:
+             subs,diffs,sym_equivs = self.simpl_vars(sym_equivs,xlate,x)
+             rewritten = (diffs > 0)
+             all_subs += subs
+             print("==========")
+
+         print("=== Dedup =====")
+         sym_equivs = self.remove_dups(sym_equivs);
+         print(all_subs);
+         print("=== Subs =====")
+         for (v,num) in all_subs:
+             exprs =  [str(v),str(num)]
+             print(exprs)
+             self._eq.append(exprs);
+
+         print("=== Eq =====")
+         self._eq  = [];
+         for equiv in sym_equivs:
+             exprs = map(lambda e : str(e), equiv)
+             print(exprs)
+             self._eq.append(exprs)
+
+         neq = self._neq;
+         self._neq = [];
+         print("=== Neq =====")
+         for (a,b,l) in neq:
+             an = self.replace(self.evaluate(a,x),all_subs)
+             bn = self.replace(self.evaluate(b,x),all_subs)
+             if not ((an,bn) in self._neq or (bn,an) in self._neq):
+                 print(an,bn)
+                 self._neq.append((str(an),str(bn),l))
+
+         print("=== Geq =====")
+         geq = self._geq;
+         self._geq = [];
+         for (a,b,l) in geq:
+             an = self.replace(self.evaluate(a,x),all_subs)
+             bn = self.replace(self.evaluate(b,x),all_subs)
+             if an == bn:
+                 continue;
+
+             if not ((an,bn) in self._geq or (bn,an) in self._geq):
+                 print(an,bn)
+                 self._geq.append((str(an),str(bn),l))
+

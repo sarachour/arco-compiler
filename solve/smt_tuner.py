@@ -2,6 +2,7 @@ import argparse
 import subprocess
 import re
 import random
+import numpy as np
 
 class TunableSMTProblem:
 
@@ -126,7 +127,9 @@ class DRealStatus:
         if len(smt_vars) > 0:
             self.reason = [smt_vars]
 
+
     def __init__(self,result,proof,model,log):
+        self.reason = None
         with open(result,'r') as f:
             self.status = "timeout"
             for line in f:
@@ -227,47 +230,83 @@ class DRealIterativeSolver:
 
         return list(set(variables))
 
-    def execute_loop(self,exclude):
-        if self.is_sat:
-            return;
 
-        exclude.sort()
-        key = str(exclude)
-        if key in self.explored:
-            return
-        else:
-            self.explored.append(key)
+    def execute_loop_inner(self,exclude):
+        if self.is_sat:
+            return None;
 
         if self.num_execs == 0:
             self.copy_result();
-            return
+            return None
 
-        print("=> execute: "+key)
+        exclude.sort()
+        key = str(exclude)
 
+        if len(exclude) > 0 and key in self.explored:
+            return None
+        else:
+            self.explored.append(key)
+
+        print("=> execute[%d]: %s" % (self.num_execs,key))
         sat,reason = self.execute_once(exclude)
         self.num_execs -= 1;
+
         if sat == False and reason == None:
             self.copy_result();
+            return None;
 
         elif sat == False:
-            new_vars = self.choose_smt_var(exclude,reason)
-            for new_var in new_vars:
-                if self.is_sat:
-                    return;
-                new_exclude = exclude+[new_var]
-                self.execute_loop(new_exclude)
+            return self.choose_smt_var(exclude,reason)
+
         else:
             print("SAT!")
             self.is_sat = True;
             self.copy_result();
             self.copy_model();
+            return None;
+
+    def execute_loop_depth(self):
+
+        ## change to depth first strategy
+        old_buf = self.buf;
+        new_buf = []
+        for exclude in old_buf:
+            recurse = self.execute_loop_inner(exclude);
+            if recurse != None:
+                for new_var in recurse:
+                    self.buf = [(exclude + [new_var])]
+                    self.execute_loop_depth();
+
+
+        
+    def execute_loop_breadth(self):
+        ## change to depth first strategy
+        old_buf = self.buf;
+        new_buf = []
+        for exclude in old_buf:
+            recurse = self.execute_loop_inner(exclude);
+            if recurse != None:
+                for new_var in recurse:
+                    new_buf.append((exclude + [new_var]))
+
+        self.buf = new_buf;
+        if len(self.buf) > 0:
+            self.execute_loop_breadth()
 
     def execute(self):
         self.is_sat = False;
         self.explored = [];
-        # number of executions
-        self.num_execs = 100;
-        self.execute_loop([])
+
+        
+        
+        #self.buf = [[]];
+        #self.num_execs = 50;
+        #self.execute_loop_depth()
+
+        self.buf = [[]];
+        self.num_execs = 5;
+        self.execute_loop_depth()
+
         if self.is_sat == False:
             print("UNSAT!");
 

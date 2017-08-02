@@ -227,6 +227,68 @@ struct
     fun ctx ->
       SCILinObjective(SCILinOffset(0.0))
 
+
+  let mkpartial_constrain_domain : mapslvr_ctx -> sciopt_st list ->  z3map_partial list -> sciopt_st list =
+    fun ctx base_prob partial_cfg ->
+      let covers_to_sts: (int->int->map_range ->map_range -> 'a option) -> 'a list =
+        fun fn ->
+          SET.fold ctx.sts (fun cstr rest -> match cstr with
+              | SMVCover(scid,ofid,mival,hival) ->
+                begin
+                  match fn scid ofid mival hival with
+                  | Some(res) -> res::rest
+                  | None -> rest
+                end
+            ) []
+      in
+      let partial_to_sts cfg =
+        match cfg with
+        | Z3MPNoScale ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(
+                     SCILinEq(SCILinTerm(1.0,sc_id), SCILinOffset(1.0))
+                   )
+                 
+              )
+          in
+          sts
+
+        | Z3MPNoOffset ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(
+                   SCILinEq(
+                     SCILinTerm(1.0,off_id), (SCILinOffset 0.0))
+                   )
+                 
+              )
+          in
+          sts
+
+        | Z3MPPositiveOffset ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(
+                     SCILinGTE(SCILinTerm(1.0,off_id), (SCILinOffset 0.0))
+                   )
+              )
+          in
+          sts
+
+        | Z3MPPositiveScale ->
+          let sts = covers_to_sts
+              (fun sc_id off_id math_range hw_range ->
+                 Some(
+                     SCILinGTE(SCILinTerm(1.0,sc_id), SCILinOffset( 0.0))
+                   )
+              )
+          in
+          sts
+
+      in
+      List.fold_right (fun cfg rest -> rest @ (partial_to_sts cfg)) partial_cfg base_prob 
+
   let to_linear_scipy :mapslvr_ctx -> int -> sciopt_st list =
     fun ctx nresults ->
       let opt_use_cover = get_option "use-cover" in

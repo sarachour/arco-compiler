@@ -30,6 +30,14 @@ type cfggen_ctx = {
   export_eq: (cfggen_bin*cfggen_bin,bool) map;
   mutable success: bool;
 }
+
+type z3map_partial =
+  | Z3MPNoScale 
+  | Z3MPNoOffset
+  | Z3MPPositiveOffset
+  | Z3MPPositiveScale
+    
+
 module SMapCfggenCtx =
 struct
 
@@ -46,6 +54,8 @@ struct
   let expr_to_bin : hwcompinst -> map_expr -> cfggen_bin =
     fun inst expr -> match expr with
       | SEVar(v) -> SMBMapVar(inst,v)
+      | SENumber(Decimal 1.0) -> SMBNumber(Integer 1)
+      | SENumber(Decimal 0.0) -> SMBNumber(Integer 0)
       | SENumber(n) -> SMBNumber(n)
       | _ -> SMBMapExpr(inst,expr)
         
@@ -237,13 +247,26 @@ struct
 
   let is_edge_exported: mapslvr_ctx -> mapslvr_bin -> mapslvr_bin -> bool =
     fun ctx e1 e2 ->
-      if MAP.has ctx.export_eq (e1,e2)
-      then MAP.get ctx.export_eq (e1,e2)
-      else true
+     let export =  if MAP.has ctx.export_eq (e1,e2)
+       then MAP.get ctx.export_eq (e1,e2)
+       else true
+     in
+     (*Printf.printf "export (%s,%s) -> %b\n"
+       (string_of_bin e1)
+       (string_of_bin e2)
+       export;*)
+     export
 
 
   let is_node_exported: mapslvr_ctx -> mapslvr_bin -> bool=
     fun ctx bin ->
-      if MAP.has ctx.export bin then MAP.get ctx.export bin else true
+      let export =
+        if MAP.has ctx.export bin then MAP.get ctx.export bin else true
+      in
+      (*Printf.printf "export (%s) -> %b\n"
+        (string_of_bin bin)
+        export;*)
+      export
+
 end
 

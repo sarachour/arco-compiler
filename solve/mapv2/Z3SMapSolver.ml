@@ -288,12 +288,6 @@ struct
       prob
 
 
-  type z3map_partial =
-    | Z3MPNoScale 
-    | Z3MPNoOffset
-    | Z3MPPositiveOffset
-    | Z3MPPositiveScale
-
 
   (*partially constrain*)
   let mkpartial_constrain_unsat_cover : mapslvr_ctx -> z3st list -> (int,float) map -> float -> z3st list =

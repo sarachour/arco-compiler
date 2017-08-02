@@ -22,7 +22,7 @@ class OptimizeProblem:
         tol = 1e-6;
         # The error allowed for the sum of constraints.
         ctol = 1e-8;
-        iters = 1000;
+        iters = 3000;
         max_time = 15;
 
         self.processor = OptimizeProcess(max_time,tol,ctol,iters);
@@ -30,7 +30,7 @@ class OptimizeProblem:
 
         self.model.objective("0");
         self.linear_model.objective({"offset":0});
-        # other parameters
+        # oth#er parameters
         self.method = "COBYLA"
         self.tries = 100;
         self.n_results = 3;
@@ -41,7 +41,8 @@ class OptimizeProblem:
         if key == "method":
             self.method = v
         elif key == "iters":
-            self.processor.iters = v
+            return
+            #self.processor.iters = v
         elif key == "ctol":
             self.processor.ctol = v
         elif key == "tol":
@@ -59,6 +60,7 @@ class OptimizeProblem:
     
     
     def eq(self,expr1, expr2):
+        print(expr1 + "=" + expr2)
         self.model.eq(expr1,expr2)
         return;
     
@@ -109,7 +111,12 @@ class OptimizeProblem:
 
             idx = int(k)
             v = lin[k]
-            terms.append("x[%d]*%f" %(idx,v))
+            if v == 0.0:
+                continue
+            if v == 1.0:
+                terms.append("x[%d]" % idx)
+            else:
+                terms.append("x[%d]*%f" %(idx,v))
 
         return "+".join(terms)
 
@@ -278,7 +285,7 @@ class OptimizeProblem:
     def solve(self):
         self.model.finish()
 
-        #self.model.rewrite()
+        self.model.rewrite()
         self.results = [];
         self.minima = [];
         if self.method == "LINOPT":

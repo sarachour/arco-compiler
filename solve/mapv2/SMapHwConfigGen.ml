@@ -217,10 +217,11 @@ struct
       in
       let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
         fun node1 node2 ->
-          let tag newb = Printf.sprintf "a=ab: (%s = %s) -> (%s = 1)"
-                      (SMapCfggenCtx.string_of_bin node1)
-                      (SMapCfggenCtx.string_of_bin node2)
-                      (SMapCfggenCtx.string_of_bin newb)
+          let tag inst newb = Printf.sprintf "a=ab[%s]: (%s = %s) -> (%s = 1)"
+              (HwLib.hwcompinst2str inst)
+              (SMapCfggenCtx.string_of_bin node1)
+              (SMapCfggenCtx.string_of_bin node2)
+              (SMapCfggenCtx.string_of_bin newb)
           in
           match node1,node2 with
           | SMBMapExpr(i,expr1),SMBMapExpr(j,expr2) ->
@@ -238,7 +239,7 @@ struct
                       disable=[];
                       disable_eq=[(node1,node2)];
                       cstr=[];
-                      tag=tag new_bin
+                      tag=tag i new_bin
                     }]
                   end
 
@@ -262,7 +263,7 @@ struct
                       disable=[];
                       disable_eq=[(node1,node2)];
                       cstr=[];
-                      tag=tag new_bin;
+                      tag=tag i new_bin;
                     }]
                   end
 
@@ -293,7 +294,8 @@ struct
       in
       let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
         fun node1 node2 ->
-          let tag new_base1 new_base2 = Printf.sprintf "a**n=b**n: (%s=%s) -> (%s=%s)"
+          let tag inst new_base1 new_base2 = Printf.sprintf "a**n=b**n[%s]: (%s=%s) -> (%s=%s)"
+              (HwLib.hwcompinst2str inst)
               (SMapCfggenCtx.string_of_bin node1)
               (SMapCfggenCtx.string_of_bin node2)
               (SMapCfggenCtx.string_of_bin new_base1)
@@ -317,7 +319,7 @@ struct
                     disable=[];
                     disable_eq=[(node1,node2)];
                     cstr=[];
-                    tag=tag base1_bin base2_bin
+                    tag=tag i base1_bin base2_bin
                   }]
 
                 | Some(_),Some(_) -> raise (SMapHwConfigGen_error "expected two power terms")
@@ -344,7 +346,8 @@ struct
       in
       let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
         fun node1 node2 ->
-          let tag new_exp1 new_exp2 = Printf.sprintf "a**n=a**m: (%s,%s) -> (%s,%s)"
+          let tag inst new_exp1 new_exp2 = Printf.sprintf "a**n=a**m[%s]: (%s,%s) -> (%s,%s)"
+              (HwLib.hwcompinst2str inst)
               (SMapCfggenCtx.string_of_bin node1)
               (SMapCfggenCtx.string_of_bin node2)
               (SMapCfggenCtx.string_of_bin new_exp1)
@@ -368,7 +371,7 @@ struct
                     disable=[];
                     cstr=[];
                     disable_eq=[(node1,node2)];
-                    tag=tag exp1_bin exp2_bin
+                    tag=tag i exp1_bin exp2_bin
                   }]
 
                 | Some(_),Some(_) -> raise (SMapHwConfigGen_error "expected two power terms")
@@ -396,7 +399,8 @@ struct
       in 
       let rec xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
         fun node1 node2 ->
-          let tag new_exp1 new_exp2 = Printf.sprintf "a/b=n>a=b: (%s,%s) -> (%s,%s)"
+          let tag inst new_exp1 new_exp2 = Printf.sprintf "a/b=n>a=b[%s]: (%s,%s) -> (%s,%s)"
+              (HwLib.hwcompinst2str inst)
               (SMapCfggenCtx.string_of_bin node1)
               (SMapCfggenCtx.string_of_bin node2)
               (SMapCfggenCtx.string_of_bin new_exp1)
@@ -412,7 +416,7 @@ struct
                 disable=[];
                 cstr=[];
                 disable_eq=[(node1,node2)];
-                tag=tag expr1_bin expr2_bin
+                tag=tag i expr1_bin expr2_bin
               }]
               
             | None, Some(denom) ->
@@ -423,7 +427,7 @@ struct
                 disable=[];
                 cstr=[];
                 disable_eq=[(node1,node2)];
-                tag=tag expr_bin num_bin 
+                tag=tag i expr_bin num_bin 
               }]
             | _ -> []
           in
@@ -460,7 +464,7 @@ struct
                     disable=[];
                     cstr=[];
                     disable_eq=[(node1,node2)];
-                    tag=tag expr1_bin expr2_bin;
+                    tag=tag i expr1_bin expr2_bin;
                   }]
                 | None -> []
               end
@@ -493,7 +497,8 @@ struct
             if put_sub i v n then
               [{connect=[];disable=[];disable_eq=[];
                 cstr=[];
-                tag=Printf.sprintf "x=n: %s => %s"
+                tag=Printf.sprintf "x=n[%s]: %s => %s"
+                    (HwLib.hwcompinst2str i)
                     (SMapCfggenCtx.string_of_bin node1) (string_of_number n)
                }]
             else
@@ -502,7 +507,8 @@ struct
             if put_sub i v n then 
               [{connect=[];disable=[];disable_eq=[];
                 cstr=[];
-                tag=Printf.sprintf "x=n : %s => %s"
+                tag=Printf.sprintf "x=n[%s]: %s => %s"
+                    (HwLib.hwcompinst2str i)
                     (SMapCfggenCtx.string_of_bin node2) (string_of_number n)
                }]
             else
@@ -536,9 +542,10 @@ struct
               [{
                 connect=[(orig_bin,simpl_bin)];
                 disable=[(orig_bin)];
-                disable_eq=[];
+                disable_eq=[(orig_bin,simpl_bin)];
                 cstr=[];
-                tag=Printf.sprintf "simplx: %s => %s"
+                tag=Printf.sprintf "simplx[%s]: %s => %s"
+                    (HwLib.hwcompinst2str inst)
                     (SMapCfggenCtx.string_of_bin orig_bin)
                     (SMapCfggenCtx.string_of_bin simpl_bin)
               }]
