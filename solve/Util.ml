@@ -273,7 +273,7 @@ struct
     | Integer(x),Integer(y) -> x > y
     | Decimal(x),Decimal(y) -> x > y
     | Integer(x),Decimal(y) -> float_of_int x > y
-    | Decimal(x),Integer(y) -> float_of_int y > x
+    | Decimal(x),Integer(y) -> float_of_int y < x
 
 
   
@@ -281,13 +281,13 @@ struct
     | Integer(x),Integer(y) -> x < y
     | Decimal(x),Decimal(y) -> x < y
     | Integer(x),Decimal(y) -> float_of_int x < y
-    | Decimal(x),Integer(y) -> float_of_int y < x
+    | Decimal(x),Integer(y) -> float_of_int y > x
 
   let gte a b = match a,b with
     | Integer(x),Integer(y) -> x >= y
     | Decimal(x),Decimal(y) -> x >= y
     | Integer(x),Decimal(y) -> float_of_int x >= y
-    | Decimal(x),Integer(y) -> float_of_int y >= x
+    | Decimal(x),Integer(y) -> float_of_int y <= x
 
 
   
@@ -295,7 +295,7 @@ struct
     | Integer(x),Integer(y) -> x <= y
     | Decimal(x),Decimal(y) -> x <= y
     | Integer(x),Decimal(y) -> float_of_int x <= y
-    | Decimal(x),Integer(y) -> float_of_int y <= x
+    | Decimal(x),Integer(y) -> float_of_int y >= x
 
   let eq a b = match a,b with
     | Integer(x),Integer(y) -> x = y
@@ -1539,6 +1539,17 @@ struct
     children @ parents
 
 
+
+  let group (type a) (type b) (g:(a,b) graph) (node:a) : a set =
+      let rec get_subset (members:a set) (currnode:a) : a set =
+        noop (SET.add members currnode);
+        let conn = connected g currnode in
+        let conn_nonmembers = List.filter (fun x -> SET.has members x = false) conn in
+        if List.length conn_nonmembers = 0 then members else
+          let nset = List.fold_right (fun x ns -> get_subset ns x) conn_nonmembers members in
+          nset
+      in
+      get_subset (SET.make_dflt ()) node
 
     (*get disjoint graph nodes*)
   let disjoint (type a) (type b) (g:(a,b) graph) : (a set) list =

@@ -488,12 +488,18 @@ class OptimizeNonlinearModel:
 
             for e1 in equiv:
                 for e2 in equiv:
-                    if not (e1 == e2):
+                    if (e1 == e2):
+                        continue;
+
+                    else:
                         if fxn_type == "smooth":
                             c = self._mkcstr("0-(((%s) - (%s))**2)**0.5" % (e1,e2))
                         else:
                             c = self._mkcstr("0-abs((%s) - (%s))" % (e1,e2))
-                        cstrs.append(c)
+
+                    cstrs.append(c)
+
+
 
         for (a,b,l) in self._neq:
             if label == None or l in label:
@@ -505,6 +511,7 @@ class OptimizeNonlinearModel:
                 cstrs.append(c)
 
         for (a,b,l) in self._geq:
+            # a > b -> (a - b) > 0
             if label == None or l in label:
                 c = self._mkcstr("(%s) - (%s)" % (a,b))
                 cstrs.append(c)
@@ -520,7 +527,6 @@ class OptimizeNonlinearModel:
 
 
     def result(self,vect):
-        print(self.mask_const)
         for idx in range(0,len(vect)):
             v = self.mask_const[idx]
             if not (v == None):
@@ -611,8 +617,9 @@ class OptimizeNonlinearModel:
 
     def test(self,cstrs,x,ctol=1e-6,emit=False):
         print("---> Testing")
-        for i in range(0,len(x)):
-            print("x[%d] = %f\n" % (i,x[i]))
+        if False:
+            for i in range(0,len(x)):
+                print("x[%d] = %f\n" % (i,x[i]))
 
         max_error = 0;
         error_tol = ctol;
@@ -622,9 +629,8 @@ class OptimizeNonlinearModel:
             val = cstr['fun'](x)
 
             if math.isnan(val) or math.isinf(val):
-                val = 0-error_tol*100000; 
+                val = 0; 
 
-            print(val)
             if cstr['type'] == "ineq":
                 if val < 0.0:
                     error = abs(val)
@@ -637,7 +643,7 @@ class OptimizeNonlinearModel:
                 this_test = (val == 0.0 )
 
             max_error = max(max_error,error)
-            if emit == True:
+            if False: 
                 print("  "+cstr['code']+" => "+str(this_test))
                 print("     ->"+str(error))
                 print("");

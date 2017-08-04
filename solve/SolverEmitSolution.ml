@@ -112,6 +112,7 @@ let to_mat_file slntbl out i format mappings =
 let proc_sln (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Concrete slntbl ---";
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
+  slvr_print_inter "---- Finished Computing Connection MAppings---";
   let sln_sum : string= SlnLib.sln2str slntbl.sln_ctx ident MathLib.mid2str in
   let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
   IO.save (out^"_"^(string_of_int i)^"_sln.sum") sln_sum;
@@ -128,8 +129,10 @@ let proc_sln (out:string) (slntbl:gltbl) (i:int) =
 
 let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Concrete slntbl ---";
+  flush_all(); 
   let conc_sln = HwConnRslvrLib.get_sln slntbl in
   slvr_print_inter "---- Calculating Mappings ---";
+  flush_all(); 
   let mappings = SMapMain.infer slntbl in
   (*MapMain.save_z3_problem slntbl out i;*)
   (*
@@ -140,6 +143,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   to_mat_file slntbl out i SFRngDigMapODE mappings;
   to_mat_file slntbl out i SFIdealMapODE mappings;
   slvr_print_inter "---- Generating Summary File ---";
+  flush_all(); 
   let cmp_sum :string = SolverCompLib.ccomps2str slntbl in
   begin
     match mappings with
@@ -152,6 +156,7 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
     | None -> ()
   end;
   Printf.printf "===== Mapping Step Finished ======\n";
+  flush_all(); 
   ()
 
 

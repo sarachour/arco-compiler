@@ -9,6 +9,8 @@ type cfggen_bin =
     | SMBNumber of number
     | SMBTimeConstant
     | SMBMapVar of hwcompinst*map_var
+    | SMBIneq of hwcompinst*map_op*map_expr
+    | SMBCoverTime of number option*number option
 
   
 
@@ -50,6 +52,14 @@ struct
     | SMBMapVar(inst,v) ->
       (HwLib.hwcompinst2str inst)^"."^
       (SMapVar.to_string v)
+    | SMBIneq(inst,op,e) ->
+      (HwLib.hwcompinst2str inst)^"."^
+      (SMapExpr.to_string e)^":"^
+      (SMapCstr.string_of_op op)
+    | SMBCoverTime(n1,n2) ->
+      "tau."^
+      (OPTION.tostr n1 string_of_number)^" -> "^
+      (OPTION.tostr n1 string_of_number)
 
   let expr_to_bin : hwcompinst -> map_expr -> cfggen_bin =
     fun inst expr -> match expr with
@@ -113,8 +123,31 @@ struct
       if SEVar(vr) = expr2 then true else
         equal_bins ctx (SMBMapVar(inst,vr)) (SMBMapExpr(inst,expr2))
 
+  let get_cstrs :cfggen_ctx -> cfggen_bin -> cfggen_bin list =
+    fun ctx bin ->
+      let conn = GRAPH.group ctx.bins bin in
+      let cstrs = SET.filter conn (fun bin2 -> match bin2 with
+          | SMBIneq(_) -> true
+          | SMBCoverTime(_) -> true
+          | _ -> false
+
+        ) 
+      in
+      cstrs
+
   let ineq_expr : cfggen_ctx -> hwcompinst -> map_op  -> map_expr -> bool =
     fun ctx inst op expr ->
+      let bin = SMBMapExpr(inst,expr) in
+      let cstrs = get_cstrs ctx bin in
+      let matched = List.filter (fun q ->
+          match q with
+          | SMBIneq(_,op2,_) -> op2 = op
+          | _ -> false
+        ) cstrs
+      in
+      List.length matched > 0
+      (*
+      let conn = GRAPH.connected ctx.bins bin in
       let cstrs = MAP.ifget ctx.cstrs inst in
       match cstrs with
       | Some(cstrlst) ->
@@ -129,10 +162,21 @@ struct
         in
         List.length matches > 0
       | None -> false
+      *)
 
   let ineq_var : cfggen_ctx -> hwcompinst -> map_op  -> map_var-> bool =
     fun ctx inst op vr ->
       let cstrs = MAP.ifget ctx.cstrs inst in
+      let bin = SMBMapVar(inst,vr) in
+      let cstrs = get_cstrs ctx bin in
+      let matched = List.filter (fun q ->
+          match q with
+          | SMBIneq(_,op2,_) -> op2 = op
+          | _ -> false
+        ) cstrs
+      in
+      List.length matched > 0
+      (*
       match cstrs with
       | Some(cstrlst) ->
         let matches = List.filter (fun cstr ->
@@ -151,6 +195,7 @@ struct
         in
         List.length matches > 0
       | None -> false
+      *)
 
   let connect_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> unit =
     fun ctx bin1 bin2 ->

@@ -752,11 +752,16 @@ struct
     match ms.state.global with
     | Some(id) ->
       let ptbl = get_existing_global_solution ms id.mvr_seq id.ident in
-      SolverEmitSolution.proc_sln ms.name ptbl ms.nslns; 
-      SolverEmitSolution.proc_sln_mappings ms.name ptbl ms.nslns; 
-      ms.nslns <- ms.nslns + 1;
-      SearchLib.move_cursor ms.search ms.state curs;
+      begin
+        SolverEmitSolution.proc_sln ms.name ptbl ms.nslns;
+        Printf.printf "--- Emitting Mappings ----\n";
+        SolverEmitSolution.proc_sln_mappings ms.name ptbl ms.nslns; 
+        Printf.printf "--- Finished ----\n";
+        ms.nslns <- ms.nslns + 1;
+        SearchLib.move_cursor ms.search ms.state curs;
       ()
+      end
+
     | None ->
       ()
 

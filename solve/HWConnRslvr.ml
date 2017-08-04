@@ -173,7 +173,7 @@ struct
     (*the assigned instances must be in the range to make a connection*)
 
 
-  let timeout = 6*50;;
+  let timeout = 10;;
 
   let consistent gltbl =
     let tbl,stmts = to_smt_prob gltbl in
@@ -206,7 +206,12 @@ struct
 
   let get_sln gltbl =
     let tbl,decls = to_smt_prob gltbl in
+    debug "== Generated Constraints\n";
+    debug "== Created Z3 Instance\n";
+    flush_all(); 
     let z : z3sln = Z3Lib.exec "wiring" decls timeout false in
+    debug "== Finished \n";
+    flush_all(); 
     match z.sat with
     | Z3SAT ->
       begin
@@ -214,7 +219,9 @@ struct
         | Some(m) ->
           let z3mdl = m in
           let mapping = z32cstr tbl z3mdl in
+          debug "== Emitted Mapping \n";
           mapping
+
         | None -> error "get_sln" "no solution"
       end
 

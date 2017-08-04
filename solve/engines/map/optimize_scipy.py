@@ -1,12 +1,12 @@
 from scipy import optimize
 from optimize_model import OptimizeLinearModel
 from optimize_model import OptimizeNonlinearModel
-from optimize_process import OptimizeProcess
+from optimize_process import OptimizeProcess,MockResult
 from optimize_sample import OptimizeLinearSampler
 from optimize_classifier import OptimizeClassifier
 import sys
 import math
-
+import random
 
 import time
 from multiprocessing import Process, Queue
@@ -22,7 +22,7 @@ class OptimizeProblem:
         tol = 1e-6;
         # The error allowed for the sum of constraints.
         ctol = 1e-8;
-        iters = 3000;
+        iters = 2000;
         max_time = 15;
 
         self.processor = OptimizeProcess(max_time,tol,ctol,iters);
@@ -41,8 +41,7 @@ class OptimizeProblem:
         if key == "method":
             self.method = v
         elif key == "iters":
-            return
-            #self.processor.iters = v
+            self.processor.iters = v
         elif key == "ctol":
             self.processor.ctol = v
         elif key == "tol":
@@ -180,14 +179,28 @@ class OptimizeProblem:
     def add_result_if_valid(self,cstrs,result,emit=False):
         ctol = self.processor.ctol
         if result != None:
-            print(result)
-            self.minima.append(result)
             is_succ,tol = self.model.test(cstrs,result.x,ctol=ctol,emit=emit)
+            self.minima.append((tol,result))
             if is_succ:
                 self.results.append(result)
             return is_succ
 
-   
+        return False
+
+    def get_best_result(self):
+        if len(self.minima) > 0:
+            tb,vb = min(self.minima,key=lambda (t,v): t)
+            return vb.x
+        else:
+            return self.model.init_guess()
+
+    def get_random_result(self):
+        if len(self.minima) > 0:
+            tb,vb = min(self.minima,key=lambda (t,v): random.random())
+            return vb.x
+        else:
+            return self.model.init_guess()
+
     def safe_vect(self,v):
         v2 = v[:]
         for i in range(0,len(v)):
@@ -195,22 +208,31 @@ class OptimizeProblem:
 
         return v
 
+    def perturb_vector(self,vect,percent=5):
+        pert_vect = np.array(vect,copy=True)
+        for idx in range(0,len(vect)):
+            pct = np.random.normal(0,percent*2) - percent 
+            pert_vect[idx] += pct*0.01*vect[idx];
+
+        return pert_vect
+
     def solve_nonlinear(self):
         ctol = self.processor.ctol
         orig_obj,orig_cstrs = self.model.generate(self.processor.ctol)
 
         self.cstrs = orig_cstrs;
         if self.model.model_success() == False:
+            print("[[MODEL FAILED]]");
             return;
 
         #return;
         self.linear_sampler.generate(ctol)
         if self.linear_sampler.feasible() == False:
-            print("unsat");
+            print("[[UNSAT]]");
             return;
 
-        classifier = OptimizeClassifier(self.model)
-        obj,cstrs= classifier.derive_objective(orig_cstrs)
+        #classifier = OptimizeClassifier(self.model)
+        #der_obj,_= classifier.derive_objective(orig_cstrs)
 
         # scratch derived objective
         obj = orig_obj
@@ -220,35 +242,53 @@ class OptimizeProblem:
         result = self._solve_local(obj,self.cstrs,first_guess);
         is_succ = self.add_result_if_valid(self.cstrs,result)
 
+        if self.processor.timed_out():
+            self.max_time = self.max_time*2;
+
+        if is_succ:
+            print("-> added result -> meets ctol.")
+
+
         print("=== Solving Fully Constrained Problem ===")
         for i in range(0,self.tries):
             if len(self.results) >= self.n_results:
                 return;
 
-            sample_pt = self.linear_sampler.sample(ctol)
-            if sample_pt == None:
+            #sample_pt = self.linear_sampler.sample(ctol)
+            #if sample_pt == None:
                 continue;
 
-            next_guess = sample_pt.x
+            #next_guess = sample_pt.x
+            next_guess = self.perturb_vector(self.get_best_result(),percent=1.0);
 
             result = self._solve_local(obj,self.cstrs,next_guess);
+
+            if self.processor.timed_out():
+                self.max_time = self.max_time*2;
+                continue;
+
             is_succ = self.add_result_if_valid(self.cstrs,result)
+
             if is_succ:
-                self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
+                print("-> added result -> meets ctol.")
+                self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
 
-        print("=== Returning Best Scoring Points ===")
-        minima_by_score = []
-        for result in self.minima:
-            _ , tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
-            minima_by_score.append((tol,result))
 
-        best_to_worst = sorted(minima_by_score,key=lambda (k,v):k)
+        
+        best_to_worst = sorted(self.minima,key=lambda (k,v):k)
+        print("=== Score Order ===")
+        for score,result in best_to_worst:
+            print(score)
+
+        print("=== Emitting Results (# results : %d) ===" % (len(self.results)))
         for score,result in best_to_worst:
             print(score);
             if len(self.results) >= self.n_results:
                 return;
 
             if not (result in self.results):
+                _,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
+                print(score,tol)
                 self.results.append(result)
         # TODO: Find minima if no solution is found.
 
@@ -264,7 +304,7 @@ class OptimizeProblem:
         is_succ = self.add_result_if_valid(self.cstrs,result)
         if is_succ:
             print("-> initial\n")
-            self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
+            self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
 
         if self.linear_sampler.feasible() == False:
             print("unsat");
@@ -279,12 +319,11 @@ class OptimizeProblem:
             result = self.linear_sampler.sample(ctol)
             is_succ = self.add_result_if_valid(self.cstrs,result)
             if is_succ:
-                self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
+                self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
 
 
     def solve(self):
         self.model.finish()
-
         self.model.rewrite()
         self.results = [];
         self.minima = [];
@@ -299,8 +338,7 @@ class OptimizeProblem:
 
         if result == None:
             return
-
-        _,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=True)
+        _,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
         fh.write("success\n")
         i = 0;
         fh.write("%e\n" % tol)

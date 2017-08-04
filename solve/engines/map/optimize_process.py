@@ -1,10 +1,15 @@
 from scipy import optimize
 from optimize_model import OptimizeLinearModel
 from optimize_model import OptimizeNonlinearModel
+
+try:
+        import nlopt
+except Exception as (e):
+    print("[warn]: nlopt not found")
+
 import sys
 import math
 
-import nlopt
 import numdifftools as nd
 
 import time
@@ -21,6 +26,7 @@ class OptimizeProcess:
         self._ctol = ctol
         self._iters = iters;
         self._max_time = max_time;
+        self.timeout = False;
 
 
     @property
@@ -55,6 +61,10 @@ class OptimizeProcess:
     def ctol(self,value):
         self._ctol = value
 
+
+    def timed_out(self):
+        return self.timeout;
+
     def _execute(self,func,max_time,args):
         proc = Process(target=func,args=args);
         t0 = time.time();
@@ -68,9 +78,11 @@ class OptimizeProcess:
 
         if proc.is_alive():
             print("-> Terminate")
+            self.timeout = True;
             proc.terminate()
             result = None
         else:
+            self.timeout = False;
             result = self.queue.get()
 
         return result

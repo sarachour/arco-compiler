@@ -364,7 +364,7 @@ struct
         | _ -> 
           raise (SMapExpr_error "unimpl")
       in
-      _work expr
+      OPTION.map (_work expr) linear_simplify
 
   let linear_simplify : linear_map_expr -> linear_map_expr =
     fun expr ->
@@ -443,7 +443,7 @@ struct
       | first_term::rest->
         List.fold_right (fun term rest -> SEMult(term,rest)) rest first_term 
       | [] ->
-         raise (SMapExpr_error "product_of, must have more than one element")
+        SENumber(Integer 1)
 
   let simpl : map_expr -> map_expr =
     fun expr ->
@@ -552,6 +552,46 @@ struct
       | SCLT(x) -> "<"^(string_of_number x)
       | SCGT(x) -> ">"^(string_of_number x)
       | SCNEQ(x) -> "!="^(string_of_number x)
+
+  let rec compat_op : map_op -> map_op -> bool =
+    fun op1 op2 ->
+      match op1, op2 with
+      | SCGTE(a),SCLTE(b) -> compat_op op2 op1
+      | SCGT(a),SCLT(b) -> compat_op op2 op1
+      | SCOr(a,b),SCOr(c,d) ->
+        (compat_op a c) && (compat_op a d) &&
+        (compat_op b c) && (compat_op b d)
+      | _ -> true
+
+  let rec compute_op : map_op -> number -> bool =
+    fun op n ->
+      match op with
+      | SCLTE(n2) -> NUMBER.lte n n2
+      | SCGTE(n2) -> NUMBER.gte n n2
+      | SCLT(n2) -> NUMBER.lt n n2
+      | SCGT(n2) -> NUMBER.gt n n2
+      | SCNEQ(n2) -> NUMBER.neq n n2
+      | SCOr(a,b) -> compute_op a n || compute_op b n
+
+  let rec op_map : map_op -> (number -> number) -> map_op =
+    fun op fn ->
+      match op with
+      | SCLTE(n) -> SCLTE(fn n)
+      | SCGTE(n) -> SCGTE(fn n)
+      | SCLT(n) -> SCLT(fn n)
+      | SCGT(n) -> SCGT(fn n)
+      | SCNEQ(n) -> SCNEQ(fn n)
+      | SCOr(a,b) -> SCOr(op_map a fn, op_map b fn)
+
+  let rec op_const : map_op -> number =
+    fun op ->
+      match op with
+      | SCLTE(n) -> n
+      | SCGTE(n) -> n
+      | SCLT(n) -> n
+      | SCGT(n) -> n
+      | SCNEQ(n) -> n
+      | _ -> raise (SMapCstr_error "or not allowed")
 
   let to_string : map_cstr -> string =
     fun cstr ->

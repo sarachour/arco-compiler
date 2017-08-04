@@ -34,8 +34,9 @@ time t : s
 
 %input KMp : M
 %def KMp mag = [20,20] M
+param KMp : 1/s = 20
 %Set KMp to 20
-param KMp : 1/s = 40
+%param KMp : 1/s = 40
 
 
 

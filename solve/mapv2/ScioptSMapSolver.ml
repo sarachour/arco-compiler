@@ -189,9 +189,10 @@ struct
       let ctol = get_glbl_float "jaunt-scipy-ctol" in
       let xtol = get_glbl_float "jaunt-scipy-xtol" in
       let results = get_glbl_int "jaunt-scipy-results" in
+      let iters = get_glbl_int  "jaunt-scipy-iters" in
       q (SCIInitialize(nvars));
       q (SCISetMethod(SCICOBYLA));
-      q (SCISetIters(1000));
+      q (SCISetIters(iters));
       q (SCISetTries(tries));
       q (SCISetResults(results));
       q (SCISetCstrTol(ctol));
@@ -204,9 +205,10 @@ struct
       let tries = get_glbl_int "jaunt-scipy-tries" in
       let ctol = get_glbl_float "jaunt-scipy-ctol" in
       let xtol = get_glbl_float "jaunt-scipy-xtol" in
+      let iters = get_glbl_int "jaunt-scipy-linear-iters" in
       q (SCIInitialize(nvars));
       q (SCISetMethod(SCILinOpt));
-      q (SCISetIters(1000));
+      q (SCISetIters(iters));
       q (SCISetTries(tries));
       q (SCISetResults(results));
       q (SCISetCstrTol(ctol));
@@ -320,7 +322,8 @@ struct
           LIST.diag_iter (SET.to_list bins) (fun bin1 bin2 ->
               if SMapSlvrCtx.is_edge_exported ctx bin1 bin2 &&
                  SMapSlvrCtx.is_node_exported ctx bin1 &&
-                 SMapSlvrCtx.is_node_exported ctx bin2
+                 SMapSlvrCtx.is_node_exported ctx bin2 &&
+                 bin1 <> bin2
               then
                 let expr1_maybe = slvr_bin_to_linear_sciopt_expr bin1 in
                 let expr2_maybe = slvr_bin_to_linear_sciopt_expr bin2 in
@@ -372,23 +375,12 @@ struct
         );
       List.iter (fun (bins:mapslvr_bin set) ->
           let is_tc = REF.mk false in
-          let exported_lin_expr =
-            SET.fold bins (fun bin exported ->
-                (*update tc variable*)
-                REF.upd is_tc (fun v -> v || slvr_bin_is_time_const bin);
-                (*determine if exportable*)
-                if SMapSlvrCtx.is_node_exported ctx bin then
-                  match slvr_bin_to_linear_sciopt_expr bin with
-                  | Some(lin_expr) -> lin_expr::exported
-                  | None -> exported
-                else
-                  exported
-              ) []
-          in
           let exported_expr =
             SET.fold bins (fun bin exported ->
                 (*update tc variable*)
-                REF.upd is_tc (fun v -> v || slvr_bin_is_time_const bin);
+                REF.upd is_tc (fun v ->
+                    slvr_bin_is_time_const bin || v 
+                  );
                 (*determine if exportable*)
                 if SMapSlvrCtx.is_node_exported ctx bin then
                   match slvr_bin_to_sciopt_expr bin with
@@ -398,14 +390,21 @@ struct
                   exported
               ) []
           in
-          let best_expr = LIST.min exported_expr
-              (fun sciopt_expr -> String.length (sciopt_expr))
+          let exported_lin_expr =
+            SET.fold bins (fun bin exported ->
+                (*determine if exportable*)
+                if SMapSlvrCtx.is_node_exported ctx bin then
+                  match slvr_bin_to_linear_sciopt_expr bin with
+                  | Some(lin_expr) -> lin_expr::exported
+                  | None -> exported
+                else
+                  exported
+              ) []
           in
+          let exported_bins = SET.filter bins (fun b -> SMapSlvrCtx.is_node_exported ctx  b) in
           (*equivalence constraints*)
-          LIST.diag_iter (SET.to_list bins) (fun bin1 bin2 ->
-              if SMapSlvrCtx.is_edge_exported ctx bin1 bin2 &&
-                 SMapSlvrCtx.is_node_exported ctx bin1 &&
-                 SMapSlvrCtx.is_node_exported ctx bin2
+          LIST.diag_iter (exported_bins) (fun bin1 bin2 ->
+              if SMapSlvrCtx.is_edge_exported ctx bin1 bin2 
               then
                 let lin_expr1_maybe = slvr_bin_to_linear_sciopt_expr bin1 in
                 let lin_expr2_maybe = slvr_bin_to_linear_sciopt_expr bin2 in
@@ -425,45 +424,56 @@ struct
                 end
 
             );
-          SET.iter bins (fun (bin:mapslvr_bin) ->
+          List.iter  (fun (bin:mapslvr_bin) ->
               match bin with
-              | SMVOp(op,_) ->
-                begin
-                  List.iter (fun expr ->
-                      match op with
-                      | SCNEQ(_) -> ()
-                      | SCGTE(n) -> q (SCILinGTE(expr,SCILinOffset (float_of_number n)))
-                      | SCGT(n) -> q (SCILinGT(expr,SCILinOffset (float_of_number n)))
-                      | SCLTE(n) -> q (SCILinLTE(expr,SCILinOffset (float_of_number n)))
-                      | SCLT(n) -> q (SCILinLT(expr,SCILinOffset (float_of_number n)))
-                      | SCOr(a,b) -> raise (ScioptSMapSolver_error "unsupported:or")
-                    ) exported_lin_expr;
-                  List.iter (fun expr ->
-                      match op with
-                      | SCNEQ(n) -> q (SCINeq(expr,string_of_number n))
-                      | SCGTE(n) -> q (SCIGTE(expr,string_of_number n))
-                      | SCGT(n) -> q (SCIGT(expr,string_of_number n))
-                      | SCLTE(n) -> q (SCILTE(expr,string_of_number n))
-                      | SCLT(n) -> q (SCILT(expr,string_of_number n))
-                      | SCOr(a,b) -> raise (ScioptSMapSolver_error "unsupported:or")
-                    ) exported_expr
-                end
+              | SMVOp(op,sm_expr) ->
+                  begin
+                    let lin_expr_maybe = xid_expr_to_linear_sciopt_expr sm_expr in
+                    match lin_expr_maybe with
+                    | Some(lin_expr) ->
+                      begin
+                        match op with
+                        | SCNEQ(n) ->
+                          let expr = xid_expr_to_sciopt_expr sm_expr in
+                          q (SCINeq(expr,string_of_number n))
+                        | SCGTE(n) -> q (SCILinGTE(lin_expr,SCILinOffset (float_of_number n)))
+                        | SCGT(n) -> q (SCILinGT(lin_expr,SCILinOffset (float_of_number n)))
+                        | SCLTE(n) -> q (SCILinLTE(lin_expr,SCILinOffset (float_of_number n)))
+                        | SCLT(n) -> q (SCILinLT(lin_expr,SCILinOffset (float_of_number n)))
+                        | SCOr(a,b) -> raise (ScioptSMapSolver_error "unsupported:or")
+                      end
+                    | None ->
+                      begin
+                        let expr = xid_expr_to_sciopt_expr sm_expr in
+                        match op with
+                        | SCNEQ(n) -> q (SCINeq(expr,string_of_number n))
+                        | SCGTE(n) -> q (SCIGTE(expr,string_of_number n))
+                        | SCGT(n) -> q (SCIGT(expr,string_of_number n))
+                        | SCLTE(n) -> q (SCILTE(expr,string_of_number n))
+                        | SCLT(n) -> q (SCILT(expr,string_of_number n))
+                        | SCOr(a,b) -> raise (ScioptSMapSolver_error "unsupported:or")
+                      end
+                  end
+
 
               | SMVCoverTime(min,max) ->
                 begin
-                  List.iter (fun expr ->
+                  if REF.dr is_tc then
                       if opt_use_cover then
-                        qall (time_cstr_to_sciopt expr min max)
-                    ) exported_expr;
-                  List.iter (fun expr ->
-                      if opt_use_cover then
-                        qall (lin_time_cstr_to_sciopt expr min max)
-                    ) exported_lin_expr 
+                        begin
+                          if List.length exported_lin_expr > 0 then
+                            qall (lin_time_cstr_to_sciopt (List.nth exported_lin_expr 0) min max)
+                          else if List.length exported_expr > 0 then
+                            qall (time_cstr_to_sciopt (List.nth exported_expr 0) min max)
+                          else
+                            ()
+                        end
+
                 end
 
               | _ -> ()
               
-            ); 
+            ) exported_bins; 
           (*maximize speed*)
           ()
         ) disjoint;

@@ -179,7 +179,7 @@ class DRealIterativeSolver:
 
     def _execute(self,exclude):
         self._init_files(exclude);
-        cmd_templ = "./timebomb.sh 'dReal --model --proof \"%s\" > \"%s\" 2> \"%s\"' %d"
+        cmd_templ = "python timebomb.py --cmd 'dReal --model --proof \"%s\"' -o '%s' -e '%s' --timeout %d"
         cmd = cmd_templ % (self.infile,self.result,self.log,self.timeout)
         subprocess.call(cmd,shell=True)
         status = DRealStatus(self.result,self.proof,self.model,self.log);
@@ -187,7 +187,7 @@ class DRealIterativeSolver:
 
     def _debug(self,exclude):
         self._init_files(exclude);
-        cmd_templ = "./timebomb.sh 'dReal --model --debug --proof \"%s\" > \"%s\" 2> \"%s\"' %d"
+        cmd_templ = "python timebomb.py --cmd 'dReal --model --proof \"%s\"' -o '%s' -e '%s' --timeout %d"
         cmd = cmd_templ % (self.infile,self.result,self.log,self.timeout)
         subprocess.call(cmd,shell=True)
         status = DRealStatus(self.result,self.proof,self.model,self.log);
@@ -208,6 +208,7 @@ class DRealIterativeSolver:
         if status.is_unsat() and status.has_reason() == False:
             status = self._debug(exclude);
             if status.has_reason() == False:
+                self.terminated += 1;
                 return False,None
             else:
                 return False,status.get_reason()
@@ -219,6 +220,7 @@ class DRealIterativeSolver:
             return True,None
 
         else:
+            self.terminated += 1;
             return False,None
 
     def choose_smt_var(self,excluded,reasons):
@@ -235,7 +237,7 @@ class DRealIterativeSolver:
         if self.is_sat:
             return None;
 
-        if self.num_execs == 0:
+        if self.num_execs == 0 or self.terminated >= self.max_terminated:
             self.copy_result();
             return None
 
@@ -296,15 +298,14 @@ class DRealIterativeSolver:
     def execute(self):
         self.is_sat = False;
         self.explored = [];
-
-        
         
         #self.buf = [[]];
         #self.num_execs = 50;
-        #self.execute_loop_depth()
-
+        #self.execute_loop_breadth()
+        self.terminated = 0;
+        self.max_terminated = 1;
         self.buf = [[]];
-        self.num_execs = 5;
+        self.num_execs = 32;
         self.execute_loop_depth()
 
         if self.is_sat == False:

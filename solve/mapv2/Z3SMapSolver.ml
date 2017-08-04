@@ -197,45 +197,46 @@ struct
                 | _ -> ()
             );
           SET.iter bins (fun (bin:mapslvr_bin) ->
-              match bin with
-              | SMVOp(op,_) ->
-                let ineqs = List.map (
-                    fun expr ->
-                      match op with
-                      | SCNEQ(n) ->
-                        Z3Assert(
-                          Z3Or(
-                            Z3LTE(expr,number_to_z3_expr (NUMBER.add n neg_eps)),
-                            Z3GTE(expr,number_to_z3_expr (NUMBER.add n eps))
-                          )
+              if SMapSlvrCtx.is_node_exported slvr_ctx bin = false then ()
+              else
+                match bin with
+                | SMVOp(op,sm_expr) ->
+                  begin
+                    let expr = xid_expr_to_z3_expr sm_expr in
+                    let ineq = match op with
+                    | SCNEQ(n) ->
+                      Z3Assert(
+                        Z3Or(
+                          Z3LTE(expr,number_to_z3_expr (NUMBER.add n neg_eps)),
+                          Z3GTE(expr,number_to_z3_expr (NUMBER.add n eps))
                         )
-                      | SCGTE(n) ->
-                        Z3Assert(Z3GTE(expr,number_to_z3_expr n ))
+                      )
+                    | SCGTE(n) ->
+                      Z3Assert(Z3GTE(expr,number_to_z3_expr n ))
 
-                      | SCLTE(n) ->
-                        Z3Assert(Z3LTE(expr,number_to_z3_expr n))
+                    | SCLTE(n) ->
+                      Z3Assert(Z3LTE(expr,number_to_z3_expr n))
 
-                      | SCGT(n) ->
-                        Z3Assert(Z3GTE(expr,number_to_z3_expr
-                                         (NUMBER.add n eps)
-                                      ))
+                    | SCGT(n) ->
+                      Z3Assert(Z3GT(expr,number_to_z3_expr
+                                      (NUMBER.add n eps)
+                                    ))
 
-                      | SCLT(n) ->
-                        Z3Assert(Z3LTE(expr,number_to_z3_expr
-                                         (NUMBER.add n neg_eps)
-                                      ))
+                    | SCLT(n) ->
+                      Z3Assert(Z3LT(expr,number_to_z3_expr
+                                      (NUMBER.add n neg_eps)
+                                    ))
 
-                  ) [best_expr] 
-                in
-                  noop (SET.add_all not_equals ineqs)
-                    
-              | SMVCoverTime(min,max) ->
-                List.iter (
-                  fun expr ->
-                    if opt_use_cover then
-                      noop (QUEUE.enqueue_all time_cover (time_cstr_to_z3 expr min max))
-                ) [best_expr]
-              | _ -> ()
+                  in
+                    noop (SET.add not_equals ineq)
+                  end
+                | SMVCoverTime(min,max) ->
+                  List.iter (
+                    fun expr ->
+                      if opt_use_cover then
+                        noop (QUEUE.enqueue_all time_cover (time_cstr_to_z3 expr min max))
+                  ) [best_expr]
+                | _ -> ()
             );
         ) bin_set;
       SET.iter slvr_ctx.sts (fun st -> match st with
@@ -269,11 +270,13 @@ struct
               if value >= neg_delta && value <= delta then
                 0.0 else value
             in
+            Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var idx))::
             Z3Assert(Z3LTE(
                   Z3Var (xid_to_z3_var idx),
                   Z3Number
                     (NUMBER.from_float  (value +. delta))
                 ))::
+            Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var idx))::
               Z3Assert(Z3GTE(
                   Z3Var (xid_to_z3_var idx),
                   Z3Number

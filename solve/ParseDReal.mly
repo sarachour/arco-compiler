@@ -77,6 +77,9 @@ stmts:
   | SOLUTION COLON EOL {
     {sat=Z3SAT;model=None}
   }
+  | UNKNOWN EOL {
+    {sat=Z3Unknown;model=None}
+  }
   | stmts UNKNOWN EOL {
     {sat=Z3Unknown;model=None}
   }

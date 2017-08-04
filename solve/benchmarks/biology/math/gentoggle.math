@@ -47,6 +47,7 @@ input K2P : unit
 def K2P mag = [1,1] unit
 
 rel umodif = (U)*(1/((1+(IPTG/K) )^nu))
+def umodif mag = [0,15.6] unit
 
 rel UTF = (Cu*a1)*((K2P^beta)/((K2P^beta) +(V^beta)))
 rel VTF = (Cv*a2)*((K2^gamma)/((K2^gamma) + (umodif^gamma)))

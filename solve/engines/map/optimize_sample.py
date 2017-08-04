@@ -4,6 +4,11 @@ from scipy.spatial import ConvexHull
 import random
 import itertools 
 import numpy as np
+
+class MockResult:
+    def __init__(self,x):
+        self.x =x;
+
 class OptimizeLinearSampler:
     def __init__(self,model,proc):
         self.dim = model.dim;
@@ -64,8 +69,14 @@ class OptimizeLinearSampler:
         if self.is_sat == False:
             return None;
 
-        for i in range(0,5):
+        for i in range(0,3):
             x = self.try_nl_sample(ctol,objective)
+
+            if self.proc.timed_out():
+                return MockResult(self.random_weight())
+
             if x != None:
                 return x;
+
+        return MockResult(self.random_weight());
 

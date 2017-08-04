@@ -420,7 +420,19 @@ struct
 
       | Z3Bool(a) ->
         Z3Bool(a)
-  
+
+  let mkcmd : string -> string -> string -> int -> string =
+    fun solver input out timeout ->
+      let cmd =
+        if solver = "dreal" then
+          Printf.sprintf "dReal --precision 0.01 --model %s" input
+        else
+          Printf.sprintf "z3 -smt2 %s" input
+      in
+      Printf.sprintf
+        "python timebomb.py --cmd '%s' --out '%s' --timeout %d"
+        cmd out timeout
+
   let sat (root:string) (stmts:z3st list) timeout use_dreal : z3status =
     let stmts =
       if use_dreal then
@@ -440,12 +452,9 @@ struct
     flush_all ();
     begin
       if use_dreal then
-        Sys.command ("./timebomb.sh 'dReal --precision 0.001 --model "^
-                     smtfile^" > "^resfile^"' "^
-                    (string_of_int timeout))
+        Sys.command (mkcmd "dreal" smtfile resfile timeout)
       else
-       Sys.command ("./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
-                    (string_of_int timeout))
+        Sys.command (mkcmd "z3" smtfile resfile timeout)
     end;
     z3_print_debug "---> Finished Search\n";
     flush_all ();
@@ -475,13 +484,11 @@ struct
     close_out oc;
     print "[Z3]" ("---> Executing SMT Solver prob="^(idx)^"\n");
     z3_print_debug "--->" "Executing SMT Solver\n";
-    let cmd = 
+    let cmd =
       if use_dreal then
-          "./timebomb.sh 'dReal --model "^smtfile^" > "^resfile^"' "^
-                    (string_of_int timeout)
+        mkcmd "dreal" smtfile resfile timeout
       else
-          "./timebomb.sh 'z3 -smt2 "^smtfile^" > "^resfile^"' "^
-                     (string_of_int timeout)
+        mkcmd "z3" smtfile resfile timeout
     in
     print "[z3]" (cmd^"\n");
     flush_all ();

@@ -125,6 +125,13 @@ struct
              | SMBNumber(n) ->
                SMVMapExpr(SENumber(n))
 
+             | SMBIneq(inst,op,me) ->
+               let xid = map_expr_to_xid_expr slvr_ctx inst me in
+               SMVOp(op,xid)
+
+             | SMBCoverTime(n1,n2) ->
+               SMVCoverTime(n1,n2)
+
              | SMBTimeConstant -> SMVTimeConstant
           )
       in
@@ -135,6 +142,7 @@ struct
           LIST.iter (fun cstr ->
               (*Printf.printf "  cstr: %s\n" (SMapCstr.to_string cstr);*)
               match cstr with
+              (*
               | SCExprIneq(op,me) ->
                 begin
                   let xidexpr = (map_expr_to_xid_expr slvr_ctx inst me) in
@@ -145,7 +153,7 @@ struct
                   GRAPH.mkedge slvr_ctx.bins xidexpr_bin op_bin ();
                   ()
                 end
-                
+
               | SCVarIneq(op,mv) ->
                 begin
                   let xidvar = (map_var_to_xid_var slvr_ctx inst mv) in
@@ -156,8 +164,18 @@ struct
                   GRAPH.mkedge slvr_ctx.bins xidvar_bin op_bin ();
                   ()
                 end
-                
-              
+
+              | SCCoverTime(min,max) ->
+                begin
+                  let cstr_bin = SMVCoverTime(min,max) in
+                  if GRAPH.hasnode slvr_ctx.bins cstr_bin = false then
+                    noop (GRAPH.mknode slvr_ctx.bins cstr_bin);
+                  if GRAPH.hasnode slvr_ctx.bins SMVTimeConstant then
+                    noop (GRAPH.mkedge slvr_ctx.bins SMVTimeConstant cstr_bin);
+                  ()
+                end
+ 
+              *)
               | SCCoverInterval(hwival,mival,SEVar sc,SEVar off) ->
                 begin
                   let sc_xid = (map_var_to_xid_var slvr_ctx inst sc) in
@@ -168,16 +186,7 @@ struct
 
               | SCTrue -> () 
               | SCFalse -> slvr_ctx.success <- false 
-              | SCCoverTime(min,max) ->
-                begin
-                  let cstr_bin = SMVCoverTime(min,max) in
-                  if GRAPH.hasnode slvr_ctx.bins cstr_bin = false then
-                    noop (GRAPH.mknode slvr_ctx.bins cstr_bin);
-                  if GRAPH.hasnode slvr_ctx.bins SMVTimeConstant then
-                    noop (GRAPH.mkedge slvr_ctx.bins SMVTimeConstant cstr_bin);
-                  ()
-                end
-
+             
 
               | _ -> ()
           ) cstrs
@@ -189,6 +198,10 @@ struct
               let slvr_bin = match bin with
                 | SMBMapExpr(inst,e) ->
                   SMVMapExpr(map_expr_to_xid_expr slvr_ctx inst e)
+                | SMBIneq(inst,op,e) ->
+                  SMVOp(op,map_expr_to_xid_expr slvr_ctx inst e)
+                | SMBCoverTime(n1,n2) ->
+                  SMVCoverTime(n1,n2)
                 | SMBMapVar(inst,e) ->
                   raise (SMapSolver_error "unexpected: must export var")
               in
@@ -206,7 +219,8 @@ struct
                   SMVMapVar(map_var_to_xid_var slvr_ctx inst v)
                 | SMBNumber(n) ->
                   SMVMapExpr(SENumber n)
-
+                | SMBIneq(inst,op,e) ->
+                  SMVOp(op,map_expr_to_xid_expr slvr_ctx inst e)
               in
               let slvr_bin2 = match bin2 with
                 | SMBMapExpr(inst,e) ->
@@ -215,6 +229,9 @@ struct
                   SMVMapVar(map_var_to_xid_var slvr_ctx inst v)
                 | SMBNumber(n) ->
                   SMVMapExpr(SENumber n)
+                | SMBIneq(inst,op,e) ->
+                  SMVOp(op,map_expr_to_xid_expr slvr_ctx inst e)
+
               in
               SMapSlvrCtx.export_edge slvr_ctx slvr_bin1 slvr_bin2 false;
           end
@@ -284,7 +301,7 @@ struct
     fun compute_time slvr_ctx stdmodel prec ->
       let evaluate prec = 
         let z3prob = Z3SMapSolver.slvr_ctx_to_z3_validate slvr_ctx stdmodel prec in
-        let mapsln : z3sln = Z3Lib.exec "mapver" z3prob compute_time true in
+        let mapsln : z3sln = Z3Lib.tune "mapver" z3prob compute_time true in
         match mapsln.model with
         | Some(model) -> true,Z3SMapSolver.get_standard_model model
         | None -> false,stdmodel
@@ -300,7 +317,7 @@ struct
         else
           _work (mult *. 10.0) (maxtries-1)
       in
-      _work 1.0 25
+      _work 0.1 25
 
   let get_validated_model : gltbl -> mapslvr_ctx  -> int -> sciopt_result ->
     (wireid, linear_transform) map option =
@@ -450,7 +467,7 @@ struct
         in
         if sat_feas = false then None else
           let sln =
-            if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-enabled" then
+            if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-nooff-enabled" then
               optimize_compute_local_minima tbl slvr_ctx [Z3MPNoOffset]
             else sln
           in
