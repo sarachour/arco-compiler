@@ -501,13 +501,39 @@ struct
 
     (*n^m*)
     | SVNumber(n),SVNumber(m) ->
+      (* allow exponential scaling 
       let scale = SEVar (get_freevar()) in
       let offset = SEVar (get_freevar()) in
+      *)
+      let offset = SENumber(Integer 0) in
+      let scale = SEPow(res1.scale,SENumber m) in
       let m_exp_aff = mk_affine res2.scale res2.offset (SENumber m) in
       let m_base_aff =mk_affine res1.scale res1.offset (SENumber n) in
       let res_value = NUMBER.pow n m in
-      let res_aff = mk_affine scale offset (SENumber res_value) in
       let value = mk_loc_val_of_number (res_value) in
+      let base_cstrs = if NUMBER.gt m (Integer 0) then
+          [
+            mk_equal0 res1.offset;
+            mk_equal (SENumber m) m_exp_aff;
+          ]
+        else
+          [
+            mk_equal0 res1.offset;
+            mk_equal (SENumber m) m_exp_aff;
+            mk_gte res1.scale (Integer 0);
+            mk_not_equal0 res1.scale;
+          ]
+      in
+      let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in
+      if NUMBER.eq n (Integer 0) then
+        mkfailure()
+      else
+        mkresult args scale offset (value) cstrs
+
+
+      (*allow exponential scaling*)
+      (*
+      let res_aff = mk_affine scale offset (SENumber res_value) in
       let base_cstrs = [
         mk_equal res_aff (SEPow(m_base_aff,m_exp_aff));
         mk_gte m_base_aff (Integer 0)
@@ -517,6 +543,7 @@ struct
         mkresult args scale offset (value) cstrs
       else
         mkfailure()
+      *)
 
     | SVSymbol(x), SVNumber(m) ->
       let offset = SENumber(Integer 0) in

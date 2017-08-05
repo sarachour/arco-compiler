@@ -301,7 +301,7 @@ struct
     fun compute_time slvr_ctx stdmodel prec ->
       let evaluate prec = 
         let z3prob = Z3SMapSolver.slvr_ctx_to_z3_validate slvr_ctx stdmodel prec in
-        let mapsln : z3sln = Z3Lib.tune "mapver" z3prob compute_time true in
+        let mapsln : z3sln = Z3Lib.exec "mapver" z3prob compute_time true in
         match mapsln.model with
         | Some(model) -> true,Z3SMapSolver.get_standard_model model
         | None -> false,stdmodel

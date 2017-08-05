@@ -105,7 +105,6 @@ class OptimizeProcess:
             constraints=cstrs,
             tol=self.tol,
             options={
-                'rhobeg':10,
                 'maxiter':self.iters,
                 'disp': False,
                 'catol':self.ctol,

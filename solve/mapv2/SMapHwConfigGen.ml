@@ -712,7 +712,7 @@ struct
         in
         match node1, node2 with
         | SMBIneq(i,op,e),SMBMapExpr(j,new_expr) ->
-          if e = new_expr || SMapCfggenCtx.is_node_exported node2 = false then [] else
+          if e = new_expr || SMapCfggenCtx.is_node_exported ctx node2 = false then [] else
             [{
               connect=[(node2,SMBIneq(j,op,new_expr))];
               disable=[];
@@ -723,7 +723,7 @@ struct
 
         | SMBIneq(i,op,e),SMBMapVar(j,v) ->
           let new_expr = SEVar(v) in
-          if e = new_expr || SMapCfggenCtx.is_node_exported node2 = false then [] else
+          if e = new_expr || SMapCfggenCtx.is_node_exported ctx node2 = false then [] else
             [{
               connect=[(node2,SMBIneq(j,op,new_expr))];
               disable=[];
@@ -1133,18 +1133,7 @@ struct
       ;
       bind_time_constraints_to_wires tbl ctx sln.generate;
       bind_time_constraints_to_wires tbl ctx sln.route;
-      bind_numbers_to_params tbl ctx;
-      (* Merge variables joined through a connection *)
-      MAP.iter sln.conns.src2dest (fun (src:wireid) (dests:wireid set) ->
-          SET.iter dests (fun (dest:wireid) ->
-              SMapCfggenCtx.connect_bins ctx
-                (SMBMapVar(src.comp,SMScale(src.port)))
-                (SMBMapVar(dest.comp,SMScale(dest.port)));
-              SMapCfggenCtx.connect_bins ctx
-                (SMBMapVar(src.comp,SMOffset(src.port)))
-                (SMBMapVar(dest.comp,SMOffset(dest.port)));
-           )
-        );
+      bind_numbers_to_params tbl ctx; 
       (* begin evaluation process *)
       let config_success = REF.mk true in
       let evaluate_port : hwcompinst -> map_comp_ctx -> string -> unit =
@@ -1166,7 +1155,6 @@ struct
           MAP.put ctx.cstrs inst (remaining_cstrs@curr_cstrs);
           ()
       in
-      
       (*evaluate components to get results*)
       MAP.iter ctx.insts (fun (inst:hwcompinst) (inst_data:map_comp_ctx) ->
           let spec : map_comp = MAP.get tblspec.comps inst.name in
@@ -1183,6 +1171,21 @@ struct
               flush_all();
               evaluate_port inst inst_data port 
           )
+        );
+      Printf.printf "== Connect Graph ==\n";
+      (* Merge variables joined through a connection *)
+      MAP.iter sln.conns.src2dest (fun (src:wireid) (dests:wireid set) ->
+          SET.iter dests (fun (dest:wireid) ->
+              Printf.printf "connect %s <-> %s\n"
+                (HwLib.wireid2str src)
+                (HwLib.wireid2str dest);
+              SMapCfggenCtx.connect_bins ctx
+                (SMBMapVar(src.comp,SMScale(src.port)))
+                (SMBMapVar(dest.comp,SMScale(dest.port)));
+              SMapCfggenCtx.connect_bins ctx
+                (SMBMapVar(src.comp,SMOffset(src.port)))
+                (SMBMapVar(dest.comp,SMOffset(dest.port)));
+           )
         );
       Printf.printf "== Simplify Graph ==\n";
       flush_all();

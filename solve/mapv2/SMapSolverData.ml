@@ -220,6 +220,30 @@ struct
       MAP.put ctx.export_eq (e2,e1) v;
       ()
 
+
+  let is_edge_exported: cfggen_ctx -> cfggen_bin -> cfggen_bin -> bool =
+    fun ctx e1 e2 ->
+     let export =  if MAP.has ctx.export_eq (e1,e2)
+       then MAP.get ctx.export_eq (e1,e2)
+       else true
+     in
+     (*Printf.printf "export (%s,%s) -> %b\n"
+       (string_of_bin e1)
+       (string_of_bin e2)
+       export;*)
+     export
+
+
+  let is_node_exported: cfggen_ctx -> cfggen_bin -> bool=
+    fun ctx bin ->
+      let export =
+        if MAP.has ctx.export bin then MAP.get ctx.export bin else true
+      in
+      (*Printf.printf "export (%s) -> %b\n"
+        (string_of_bin bin)
+        export;*)
+      export
+
 end
 
 type mapslvr_bin =

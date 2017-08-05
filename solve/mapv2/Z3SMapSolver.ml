@@ -187,7 +187,8 @@ struct
           LIST.diag_iter (SET.to_list bins) (fun bin1 bin2 ->
               if SMapSlvrCtx.is_edge_exported slvr_ctx bin1 bin2 &&
                  SMapSlvrCtx.is_node_exported slvr_ctx bin1 &&
-                 SMapSlvrCtx.is_node_exported slvr_ctx bin2
+                 SMapSlvrCtx.is_node_exported slvr_ctx bin2 &&
+                 bin1 <> bin2
               then
                 let expr1_maybe = slvr_bin_to_z3expr bin1 in
                 let expr2_maybe = slvr_bin_to_z3expr bin2 in
@@ -207,8 +208,8 @@ struct
                     | SCNEQ(n) ->
                       Z3Assert(
                         Z3Or(
-                          Z3LTE(expr,number_to_z3_expr (NUMBER.add n neg_eps)),
-                          Z3GTE(expr,number_to_z3_expr (NUMBER.add n eps))
+                          Z3LT(expr,number_to_z3_expr (NUMBER.add n neg_eps)),
+                          Z3GT(expr,number_to_z3_expr (NUMBER.add n eps))
                         )
                       )
                     | SCGTE(n) ->
@@ -406,7 +407,7 @@ struct
               | Z3QFloat(f) ->
                 MAP.put xid_to_val xid (f)
               | Z3QInterval(Z3QRange(min,max)) ->
-                MAP.put xid_to_val xid ((MATH.max[min;max]))
+                MAP.put xid_to_val xid ((MATH.mean [min;max]))
               (*anything with infinity is basically a don't care.*)
               | Z3QInterval(Z3QAny) ->
                 MAP.put xid_to_val xid (0.0)

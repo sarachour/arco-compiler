@@ -23,9 +23,9 @@ class OptimizeProblem:
         # The error allowed for the sum of constraints.
         ctol = 1e-8;
         iters = 2000;
-        max_time = 15;
+        self.max_time = 15;
 
-        self.processor = OptimizeProcess(max_time,tol,ctol,iters);
+        self.processor = OptimizeProcess(self.max_time,tol,ctol,iters);
         self.linear_sampler = OptimizeLinearSampler(self.linear_model,self.processor)
 
         self.model.objective("0");
@@ -241,9 +241,12 @@ class OptimizeProblem:
         first_guess = self.safe_vect(self.model.init_guess())
         result = self._solve_local(obj,self.cstrs,first_guess);
         is_succ = self.add_result_if_valid(self.cstrs,result)
+        print(result)
 
         if self.processor.timed_out():
-            self.max_time = self.max_time*2;
+            print("-> decrease number iters.")
+            self.processor.iters -= self.processor.iters*0.5
+            #self.max_time = self.max_time*2;
 
         if is_succ:
             print("-> added result -> meets ctol.")
@@ -254,17 +257,21 @@ class OptimizeProblem:
             if len(self.results) >= self.n_results:
                 return;
 
+            print("=== Iter %d ===" % i)
             #sample_pt = self.linear_sampler.sample(ctol)
             #if sample_pt == None:
-                continue;
+            #    continue;
 
             #next_guess = sample_pt.x
-            next_guess = self.perturb_vector(self.get_best_result(),percent=1.0);
+            next_guess = self.perturb_vector(self.get_best_result(),percent=0.5);
 
             result = self._solve_local(obj,self.cstrs,next_guess);
 
+            print(result)
             if self.processor.timed_out():
-                self.max_time = self.max_time*2;
+                print("-> decrease number iters.")
+                self.processor.iters -= self.processor.iters*0.5
+                #self.max_time = self.max_time*2;
                 continue;
 
             is_succ = self.add_result_if_valid(self.cstrs,result)
@@ -279,6 +286,8 @@ class OptimizeProblem:
         print("=== Score Order ===")
         for score,result in best_to_worst:
             print(score)
+
+        return;
 
         print("=== Emitting Results (# results : %d) ===" % (len(self.results)))
         for score,result in best_to_worst:
