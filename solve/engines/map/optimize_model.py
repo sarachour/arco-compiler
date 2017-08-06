@@ -371,81 +371,6 @@ class OptimizeNonlinearModel:
     def gt(self,a,b,label=None):
         self._gt.append((a,b,label))
 
-    def variables(self):
-        xlate = {};
-        x = []
-        for i in range(0,self.dim):
-            sym = Symbol("x[%d]" % i)
-            xlate[sym] = i
-            x.append(sym)
-
-        return xlate,x
-
-    def evaluate(self,str_expr,x):
-        expr = sp.sympify(str_expr,{"x":x})
-        return expr;
-
-    def replace(self,expr,repl):
-        simpl = expr.subs(repl)
-        self.success = self.success and simpl.is_real
-        return simpl
-
-    def _reduce_number_list(self,numbers):
-        num = None;
-        for n in numbers:
-            if num == None or n == num:
-                num = n
-            else:
-                self.success = False
-                num = None
-
-        return num;
-
-    def simpl_constants(self,equivs,xlate,x):
-        nmap = {};
-        new_equivs = []
-        diffs = 0
-        for equiv in equivs:
-            numbers = filter(lambda e:e.is_constant(),equiv)
-            number = self._reduce_number_list(numbers); 
-            if number <> None:
-                print(number)
-                for eq in equiv:
-                    if eq.is_Symbol:
-                        self.mask_const[xlate[eq]] = number
-                        nmap[eq] = number
-                        diffs += 1;
-
-                    
-        for equiv in equivs:
-            new_equiv = map(lambda e : self.replace(e,nmap), equiv)
-            print(new_equiv)
-            new_equivs.append(new_equiv)
-
-        return nmap.items(),diffs, new_equivs
-
-    def simpl_vars(self,equivs,xlate,x):
-        smap = {};
-        new_equivs = []
-        diffs = 0
-        for equiv in equivs:
-            symbols = filter(lambda e:e.is_Symbol,equiv)
-            if len(symbols) > 1:
-                repl_symbol = symbols[0]
-                rest = symbols[1:]
-                for sym in rest:
-                    if sym <> repl_symbol:
-                        self.mask_var[xlate[sym]] = xlate[repl_symbol]
-                        smap[sym] =repl_symbol 
-                        diffs += 1
-                    
-        for equiv in equivs:
-            new_equiv = map(lambda e : self.replace(e,smap), equiv)
-            print(new_equiv)
-            new_equivs.append(new_equiv)
-
-        return smap.items(),diffs, new_equivs
-
     def model_success(self):
         return self.success
 
@@ -540,34 +465,6 @@ class OptimizeNonlinearModel:
         return vect;
 
 
-    def generate_nocstr(self,label=None,equiv=True):
-        obj,icstrs = self.generate();
-        cstrs = []
-        for equiv in self._eq:
-            # disable equivalence constraints
-            if equiv == False:
-                continue;
-
-            for e1 in equiv:
-                for e2 in equiv:
-                    if not (e1 == e2):
-                        c = "((%s) - (%s))**2" % (e1,e2)
-                        cstrs.append(c)
-
-        for (a,b,l) in self._neq:
-            if label == None or l in label:
-                c = "max(0,((%s) - (%s))**2 - %e)" % (a,b,1e-64)
-                cstrs.append(c)
-
-        for (a,b,l) in self._geq:
-            if label == None or l in label:
-                c = "max(0,(%s) - (%s))" % (a,b)
-                cstrs.append(c)
-
-
-        prog = "+".join(cstrs);
-        objfun = eval("lambda x : %s\n" % prog)
-        return objfun,icstrs;
 
     def init_guess(self):
         return self.init;
@@ -721,4 +618,81 @@ class OptimizeNonlinearModel:
              if not ((an,bn) in self._geq or (bn,an) in self._geq):
                  print(an,bn)
                  self._geq.append((str(an),str(bn),l))
+
+
+
+    def variables(self):
+        xlate = {};
+        x = []
+        for i in range(0,self.dim):
+            sym = Symbol("x[%d]" % i)
+            xlate[sym] = i
+            x.append(sym)
+
+        return xlate,x
+
+    def evaluate(self,str_expr,x):
+        expr = sp.sympify(str_expr,{"x":x})
+        return expr;
+
+    def replace(self,expr,repl):
+        simpl = expr.subs(repl)
+        self.success = self.success and simpl.is_real
+        return simpl
+
+    def _reduce_number_list(self,numbers):
+        num = None;
+        for n in numbers:
+            if num == None or n == num:
+                num = n
+            else:
+                self.success = False
+                num = None
+
+        return num;
+
+    def simpl_constants(self,equivs,xlate,x):
+        nmap = {};
+        new_equivs = []
+        diffs = 0
+        for equiv in equivs:
+            numbers = filter(lambda e:e.is_constant(),equiv)
+            number = self._reduce_number_list(numbers); 
+            if number <> None:
+                print(number)
+                for eq in equiv:
+                    if eq.is_Symbol:
+                        self.mask_const[xlate[eq]] = number
+                        nmap[eq] = number
+                        diffs += 1;
+
+                    
+        for equiv in equivs:
+            new_equiv = map(lambda e : self.replace(e,nmap), equiv)
+            print(new_equiv)
+            new_equivs.append(new_equiv)
+
+        return nmap.items(),diffs, new_equivs
+
+    def simpl_vars(self,equivs,xlate,x):
+        smap = {};
+        new_equivs = []
+        diffs = 0
+        for equiv in equivs:
+            symbols = filter(lambda e:e.is_Symbol,equiv)
+            if len(symbols) > 1:
+                repl_symbol = symbols[0]
+                rest = symbols[1:]
+                for sym in rest:
+                    if sym <> repl_symbol:
+                        self.mask_var[xlate[sym]] = xlate[repl_symbol]
+                        smap[sym] =repl_symbol 
+                        diffs += 1
+                    
+        for equiv in equivs:
+            new_equiv = map(lambda e : self.replace(e,smap), equiv)
+            print(new_equiv)
+            new_equivs.append(new_equiv)
+
+        return smap.items(),diffs, new_equivs
 

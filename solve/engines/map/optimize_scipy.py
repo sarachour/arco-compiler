@@ -12,12 +12,72 @@ import time
 from multiprocessing import Process, Queue
 import numpy as np
 
+class OptimizeCounter:
+    def __init__(self):
+        self._eq = 0;
+        self._neq = 0;
+        self._gt = 0;
+        self._gte = 0;
+        self._lt = 0;
+        self._lte = 0;
+        self._n = 0;
+
+    def eq(self):
+        self._eq += 1;
+        self._n += 1;
+
+    def neq(self):
+        self._neq += 1;
+        self._n += 1;
+
+    def gte(self):
+        self._gte += 1;
+        self._n += 1;
+
+    def gt(self):
+        self._gt += 1;
+        self._n += 1;
+
+    def lte(self):
+        self._lte += 1;
+        self._n += 1;
+
+    def lt(self):
+        self._lt += 1;
+        self._n += 1;
+
+
+    def n(self):
+        return self._n
+
+    def summarize(self):
+        print("unimpl")
+
+class OptimizeStats:
+    def __init__(self):
+        self.nl = OptimizeCounter()
+        self.lin = OptimizeCounter()
+
+    def summary(self):
+        if self.nl.n() == 0:
+            print(" => Linear Problem")
+            print(" => # Convex Hulls %f\n" % (2**self.lin._neq))
+            print(" => # Cstrs: %d\n" % self.lin.n())
+        else:
+            print(" => Nonlinear Problem")
+            print(" => # Linear Cstrs: %d\n" % self.lin.n())
+            print(" => # Nonlinear Cstrs: %d\n" % self.nl.n())
+            print("=== Linear Summary ===")
+            self.lin.summarize()
+            print("=== Nonlinear Summary ===")
+            self.nl.summarize()
 
 class OptimizeProblem:
 
     def __init__(self,n):
         self.model = OptimizeNonlinearModel(n);
         self.linear_model = OptimizeLinearModel(n);
+        self.stats = OptimizeStats()
 
         tol = 1e-6;
         # The error allowed for the sum of constraints.
@@ -34,6 +94,7 @@ class OptimizeProblem:
         self.method = "COBYLA"
         self.tries = 100;
         self.n_results = 3;
+        self._reflow = {};
         self.result = None;
 
 
@@ -53,6 +114,9 @@ class OptimizeProblem:
 
     def var(self, name):
         return;
+
+    def reflow(self,origidx,refidx):
+        self._reflow[origidx] =refidx 
 
     def initial(self,idx,ic):
         self.model.initial(idx,ic)
@@ -139,6 +203,8 @@ class OptimizeProblem:
         self.lt(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
         self.linear_model.gt(lin2,lin1);
 
+    def lin_neq(self,lin1,lin2):
+        self.neq(self.__lin_dict_to_expr(lin1),self.__lin_dict_to_expr(lin2))
 
     def lin_interval(self,sc,off,v,mini,maxi):
         expr = "x[%d]*%f + x[%d]" % (sc,v,off)
@@ -177,7 +243,7 @@ class OptimizeProblem:
             return self.processor.solve_mma(obj,self.model.bound,cstrs,init_guess);
 
     def add_result_if_valid(self,cstrs,result,emit=False):
-        ctol = self.processor.ctol
+        ctol = self.processor.ctol*1
         if result != None:
             is_succ,tol = self.model.test(cstrs,result.x,ctol=ctol,emit=emit)
             self.minima.append((tol,result))
@@ -208,17 +274,24 @@ class OptimizeProblem:
 
         return v
 
-    def perturb_vector(self,vect,percent=5):
+    def perturb_vector(self,vect,percent=5,idx = None):
         pert_vect = np.array(vect,copy=True)
-        for idx in range(0,len(vect)):
-            pct = np.random.normal(0,percent*2) - percent 
+        if idx != None:
+            pct = np.random.normal(0,percent*2) - percent
+            pct2 = np.random.normal(0,percent*2) - percent
             pert_vect[idx] += pct*0.01*vect[idx];
+
+        for idx in range(0,len(vect)):
+            pct = np.random.normal(0,percent*2) - percent
+            pct2 = np.random.normal(0,percent*2) - percent
+            pert_vect[idx] += pct*0.01*vect[idx]; 
 
         return pert_vect
 
     def solve_nonlinear(self):
-        ctol = self.processor.ctol
+        ctol = self.processor.ctol*1
         orig_obj,orig_cstrs = self.model.generate(self.processor.ctol)
+        get_tol = lambda (k,v) : k;
 
         self.cstrs = orig_cstrs;
         if self.model.model_success() == False:
@@ -240,9 +313,9 @@ class OptimizeProblem:
         print("=== First Solution for Constrained Problem ===")
         first_guess = self.safe_vect(self.model.init_guess())
         result = self._solve_local(obj,self.cstrs,first_guess);
-        is_succ = self.add_result_if_valid(self.cstrs,result)
-        print(result)
+        is_succ= self.add_result_if_valid(self.cstrs,result)
 
+        print(result)
         if self.processor.timed_out():
             print("-> decrease number iters.")
             self.processor.iters -= self.processor.iters*0.5
@@ -253,32 +326,39 @@ class OptimizeProblem:
 
 
         print("=== Solving Fully Constrained Problem ===")
-        for i in range(0,self.tries):
-            if len(self.results) >= self.n_results:
-                return;
+        for j in range(0,self.model.dim):
+            for do_min in [False,True]:
+                print("=== Dim %d (do_min=%s) ===" % (j,str(do_min)))
+                #if do_min:
+                #    obj = lambda x : abs(x[j] - first_guess[j])
+                #else:
+                #    obj = lambda x : 0-x[j]
 
-            print("=== Iter %d ===" % i)
-            #sample_pt = self.linear_sampler.sample(ctol)
-            #if sample_pt == None:
-            #    continue;
+                for i in range(0,self.tries):
+                    if len(self.results) >= self.n_results:
+                        return;
 
-            #next_guess = sample_pt.x
-            next_guess = self.perturb_vector(self.get_best_result(),percent=0.5);
+                    print("=== Iter %d ===" % i)
 
-            result = self._solve_local(obj,self.cstrs,next_guess);
+                    if do_min:
+                        next_guess = self.perturb_vector(self.get_best_result(), percent=0.1);
+                    else:
+                        next_guess = self.perturb_vector(first_guess, percent=1);
 
-            print(result)
-            if self.processor.timed_out():
-                print("-> decrease number iters.")
-                self.processor.iters -= self.processor.iters*0.5
-                #self.max_time = self.max_time*2;
-                continue;
+                
+                    result = self._solve_local(obj,self.cstrs,next_guess);
+                
+                    print(result)
+                    if self.processor.timed_out():
+                        print("-> decrease number iters.")
+                        self.processor.iters -= self.processor.iters*0.5
+                        #self.max_time = self.max_time*2;
+                        continue;
 
-            is_succ = self.add_result_if_valid(self.cstrs,result)
-
-            if is_succ:
-                print("-> added result -> meets ctol.")
-                self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
+                    is_succ = self.add_result_if_valid(self.cstrs,result)
+                    if is_succ:
+                        print("-> added result -> meets ctol.")
+                        self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
 
 
         
@@ -287,7 +367,7 @@ class OptimizeProblem:
         for score,result in best_to_worst:
             print(score)
 
-        return;
+        #return;
 
         print("=== Emitting Results (# results : %d) ===" % (len(self.results)))
         for score,result in best_to_worst:
@@ -302,7 +382,7 @@ class OptimizeProblem:
         # TODO: Find minima if no solution is found.
 
     def solve_linear(self):
-        ctol = self.processor.ctol
+        ctol = self.processor.ctol*10
         obj,cstr = self.model.generate(ctol)
         self.cstrs = cstr
 
@@ -349,13 +429,13 @@ class OptimizeProblem:
             return
         _,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
         fh.write("success\n")
-        i = 0;
         fh.write("%e\n" % tol)
         result_vect = self.model.result(result.x);
         print(result_vect);
-        for ident in result.x:
-            fh.write("%d=%.16e\n" % (i,ident))
-            i+=1;
+        for idx in range(0,len(result.x)):
+            ref_idx = self._reflow[idx]
+            value = result.x[idx]
+            fh.write("%d=%.16e\n" % (ref_idx,value))
 
     def write(self,filename):
         print("=== Writing %d Results ===" % len(self.results));

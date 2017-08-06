@@ -425,7 +425,7 @@ struct
     fun solver input out timeout ->
       let cmd =
         if solver = "dreal" then
-          Printf.sprintf "dReal --precision 0.01 --model %s" input
+          Printf.sprintf "dReal --precision 0.001 --model %s" input
         else
           Printf.sprintf "z3 -smt2 %s" input
       in

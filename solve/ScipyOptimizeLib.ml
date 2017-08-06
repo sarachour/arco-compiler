@@ -43,6 +43,9 @@ struct
             Printf.fprintf fh "prob.set_prop('method','%s')\n" (string_of_sciopt_method value) 
           | SCIInitGuess(idx,value) ->
             Printf.fprintf fh "prob.initial(%d,%e)\n" idx value
+          | SCIReflowVar(idx,refidx) ->
+            Printf.fprintf fh "prob.reflow(%d,%d)\n" idx refidx
+
           | SCIBound(vmin,vmax) ->
             Printf.fprintf fh "prob.bound(%e,%e)\n" vmin vmax
           | SCIEq(expr1,expr2) ->

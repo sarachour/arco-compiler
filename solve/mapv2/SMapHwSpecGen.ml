@@ -79,6 +79,9 @@ module SMapHwSpecLateBind =
 struct
   let freevar_idx = REF.mk 0;;
 
+  let clear_freevar () =
+    REF.upd freevar_idx (fun x -> 0)
+
   let get_freevar () =
     let v = SMFreeVar(REF.dr freevar_idx) in
     REF.upd freevar_idx (fun x -> x + 1);

@@ -145,7 +145,9 @@ struct
   let round x : float =
     let v = snd (modf (x +. copysign 0.5 x)) in
     v
-  
+
+  let abs x = if x < 0.0 then 0.0 -. x else x
+
   let round_up x : float = 
     ceil x 
 
@@ -226,6 +228,9 @@ struct
     | Decimal(a),Integer(b) -> Decimal((float_of_int b)**a)
     | Decimal(a),Decimal(b) -> Decimal(a**b)
 
+  let root a b =
+    pow a (div (Integer 1) b)
+
   let mult a b = match a, b with
     | Integer(a),Integer(b) -> Integer(a*b)
     | Integer(a),Decimal(b) -> Decimal((float_of_int a)*.b)
@@ -247,6 +252,15 @@ struct
   let neg a  = match a with
     | Integer(a) -> Integer(0-a)
     | Decimal(a) -> Decimal(0. -. a)
+
+  let abs a  = match a with
+    | Integer(a) -> let ap = if a < 0 then 0-a else a in
+      Integer(ap)
+    | Decimal(a) -> let ap = if a < 0.0 then 0.0-.a else a in
+      Decimal(ap)
+
+
+  let is_neg a = (float_of_number a) < 0.0
 
   let is_zero x = match x with
     | Integer(0) -> true
@@ -598,6 +612,12 @@ struct
 
   let last x =
     List.nth x (List.length x - 1)
+
+  let intersect x y : 'a list =
+    List.filter (fun el -> has x el && has y el) (x @ y)
+
+  let subtract (par:'a list) (child:'a list) : 'a list =
+    List.filter (fun el -> has child el = false) par
 
   let rec except_last x = match x with
     | [h] -> []

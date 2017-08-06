@@ -19,7 +19,8 @@ type sciopt_st =
   | SCISetMethod of sciopt_method
   | SCISetCstrTol of float
   | SCISetMinTol of float
-  | SCIInitGuess of int*float 
+  | SCIInitGuess of int*float
+  | SCIReflowVar of int*int
   | SCIBound of float*float
   | SCIEq of string*string
   | SCINeq of string*string

@@ -108,6 +108,11 @@ struct
       (GRAPH.hasnode ctx.bins bin1 && GRAPH.hasnode ctx.bins bin2 &&
        GRAPH.reachable ctx.bins bin1 bin2 (GRAPH.size ctx.bins))
 
+  let group : cfggen_ctx -> cfggen_bin -> cfggen_bin list =
+    fun ctx bin ->
+      if GRAPH.hasnode ctx.bins bin = false then [] else
+        SET.to_list (GRAPH.group ctx.bins bin)
+
   let equal_exprs : cfggen_ctx -> hwcompinst -> map_expr -> map_expr -> bool =
     fun ctx inst expr1 expr2 ->
       if expr1 = expr2 then true else
@@ -125,6 +130,7 @@ struct
 
   let get_cstrs :cfggen_ctx -> cfggen_bin -> cfggen_bin list =
     fun ctx bin ->
+      if GRAPH.hasnode ctx.bins bin = false then [] else
       let conn = GRAPH.group ctx.bins bin in
       let cstrs = SET.filter conn (fun bin2 -> match bin2 with
           | SMBIneq(_) -> true

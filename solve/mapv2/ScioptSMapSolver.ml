@@ -35,16 +35,27 @@ struct
           | _ -> curr_guess
         ) maps 1.0
 
-  let xid_to_sciopt_expr : int -> string =
-    fun idx ->
-      Printf.sprintf "x[%d]" idx
+  let compute_label : cfggen_mapvar list -> string =
+    fun vars ->
+      LIST.tostr SMapCfggenCtx.string_of_mapvar "," vars
 
-  let xid_to_linear_sciopt_expr : int -> sciopt_linear_expr =
-    fun idx ->
-      SCILinTerm(1.0, idx)
+  let reflow_xid : (int,int) map -> int -> int =
+    fun reflow idx ->
+      if MAP.has reflow idx then
+        MAP.get reflow idx
+      else
+        raise (ScioptSMapSolver_error "expected reflow id")
 
-  let xid_expr_to_sciopt_expr : map_expr -> string =
-    fun expr ->
+  let xid_to_sciopt_expr : (int,int) map -> int -> string =
+    fun reflow idx ->
+      Printf.sprintf "x[%d]" (reflow_xid reflow idx)
+
+  let xid_to_linear_sciopt_expr : (int,int) map -> int -> sciopt_linear_expr =
+    fun reflow idx ->
+      SCILinTerm(1.0, reflow_xid reflow idx)
+
+  let xid_expr_to_sciopt_expr : (int,int) map -> map_expr -> string =
+    fun reflow expr ->
       let rec _proc : map_expr -> string =
         fun e -> match e with
           | SEAdd(a,b) -> Printf.sprintf "(%s)+(%s)" (_proc a) (_proc b)
@@ -52,22 +63,23 @@ struct
           | SEDiv(a,b) -> Printf.sprintf "(%s)/(%s)" (_proc a) (_proc b)
           | SEPow(a,b) -> Printf.sprintf "(%s)**(%s)" (_proc a) (_proc b)
           | SESub(a,b) -> Printf.sprintf "(%s)-(%s)" (_proc a) (_proc b)
-          | SEVar(SMFreeVar a) -> Printf.sprintf "%s" (xid_to_sciopt_expr a)
+          | SEVar(SMFreeVar a) -> Printf.sprintf "%s"
+                                    (xid_to_sciopt_expr reflow a)
           | SEVar(_) -> raise (ScioptSMapSolver_error "the expression should be processed.")
           | SENumber(a) -> Printf.sprintf "%s" (string_of_float (float_of_number a))
       in
       _proc expr
 
 
-  let xid_expr_to_linear_sciopt_expr : map_expr -> sciopt_linear_expr option =
-    fun expr ->
+  let xid_expr_to_linear_sciopt_expr : (int,int) map -> map_expr -> sciopt_linear_expr option =
+    fun reflow expr ->
       let lin_expr_m = SMapExpr.linearize expr in
       match lin_expr_m with
       | Some(lin_expr) ->
         begin
           let rec _work (e:linear_map_expr) = match e with
             | SELinTerm(coeff,SMFreeVar(idx)) ->
-              SCILinTerm(float_of_number coeff,idx)
+              SCILinTerm(float_of_number coeff,reflow_xid reflow idx)
 
             | SELinOffset(off) ->
               SCILinOffset(float_of_number off)
@@ -131,10 +143,11 @@ struct
           | None,None -> [] 
         end
 
-  let cover_cstr_to_sciopt : int->int-> map_range -> map_range -> sciopt_st list =
-    fun scale_xid offset_xid hwival mival ->
-      let scvar = (xid_to_sciopt_expr scale_xid) in
-      let ofvar = (xid_to_sciopt_expr offset_xid) in
+  let cover_cstr_to_sciopt : (int,int) map-> int->int-> map_range -> map_range -> sciopt_st list =
+    fun reflow orig_scale_xid orig_offset_xid hwival mival ->
+      let scale_xid = reflow_xid reflow orig_scale_xid and
+      offset_xid = reflow_xid reflow orig_offset_xid
+      in
       let hmin =  float_of_number hwival.min
       and hmax = float_of_number hwival.max in
       let mmin =  float_of_number mival.min
@@ -160,19 +173,19 @@ struct
     let _,maxval= LIST.max  float_of_int (MAP.keys ctx.xidmap)  in
     maxval + 1
 
-  let slvr_bin_to_sciopt_expr : mapslvr_bin -> string option=
-    fun bin ->
+  let slvr_bin_to_sciopt_expr : (int,int) map -> mapslvr_bin ->  string option=
+    fun reflow bin ->
       match bin with
-      | SMVMapVar(id) -> Some (xid_to_sciopt_expr id)
-      | SMVMapExpr(mapexpr) -> Some (xid_expr_to_sciopt_expr mapexpr)
+      | SMVMapVar(id) -> Some (xid_to_sciopt_expr reflow id)
+      | SMVMapExpr(mapexpr) -> Some (xid_expr_to_sciopt_expr reflow mapexpr)
       | SMVTimeConstant -> None 
       | _ -> None
 
-  let slvr_bin_to_linear_sciopt_expr : mapslvr_bin -> sciopt_linear_expr option=
-    fun bin ->
+  let slvr_bin_to_linear_sciopt_expr : (int,int) map -> mapslvr_bin -> sciopt_linear_expr option=
+    fun reflow bin ->
       match bin with
-      | SMVMapVar(id) -> Some (xid_to_linear_sciopt_expr id)
-      | SMVMapExpr(mapexpr) -> (xid_expr_to_linear_sciopt_expr mapexpr)
+      | SMVMapVar(id) -> Some (xid_to_linear_sciopt_expr reflow id)
+      | SMVMapExpr(mapexpr) -> (xid_expr_to_linear_sciopt_expr reflow mapexpr)
       | SMVTimeConstant -> None 
       | _ -> None
 
@@ -299,10 +312,16 @@ struct
       let qall x = noop (QUEUE.enqueue_all sts x ) in
       let disjoint = GRAPH.disjoint ctx.bins in
       let nvars = get_nvars ctx in
-      init_linear_scipy q nvars nresults;
+      let reflow_xid = MAP.make () in
+      init_linear_scipy q (MAP.size ctx.xidmap) nresults;
       MAP.iter ctx.xidmap (fun idx mapvars ->
           let init_guess = compute_guess mapvars in
-          q (SCIInitGuess(idx,init_guess))
+          let label = compute_label mapvars in
+          let ref_idx = MAP.size reflow_xid in
+          q (SCIComment(label));
+          q (SCIInitGuess(ref_idx,init_guess));
+          q (SCIReflowVar(ref_idx,idx));
+          noop (MAP.put reflow_xid idx ref_idx);
         );
       List.iter (fun (bins:mapslvr_bin set) ->
           let is_tc = REF.mk false in
@@ -312,7 +331,7 @@ struct
                 REF.upd is_tc (fun v -> v || slvr_bin_is_time_const bin);
                 (*determine if exportable*)
                 if SMapSlvrCtx.is_node_exported ctx bin then
-                  match slvr_bin_to_linear_sciopt_expr bin with
+                  match slvr_bin_to_linear_sciopt_expr reflow_xid bin with
                   | Some(expr) -> expr::exported
                   | None -> exported
                 else
@@ -325,8 +344,8 @@ struct
                  SMapSlvrCtx.is_node_exported ctx bin2 &&
                  bin1 <> bin2
               then
-                let expr1_maybe = slvr_bin_to_linear_sciopt_expr bin1 in
-                let expr2_maybe = slvr_bin_to_linear_sciopt_expr bin2 in
+                let expr1_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin1 in
+                let expr2_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin2 in
                 match expr1_maybe, expr2_maybe with
                 | Some(expr1),Some(expr2) ->
                   noop (q (SCILinEq(expr1,expr2)))
@@ -356,7 +375,7 @@ struct
       SET.iter ctx.sts (fun st -> match st with
               | SMVCover(sc,off,hwival,mival) ->
                 if opt_use_cover then
-                  qall (cover_cstr_to_sciopt sc off hwival mival)
+                  qall (cover_cstr_to_sciopt reflow_xid sc off hwival mival)
             );
       QUEUE.to_list sts
 
@@ -368,10 +387,16 @@ struct
       let qall x = noop (QUEUE.enqueue_all sts x ) in
       let disjoint = GRAPH.disjoint ctx.bins in
       let nvars = get_nvars ctx in
-      init_scipy q nvars;
+      let reflow_xid = MAP.make () in
+      init_scipy q (MAP.size ctx.xidmap);
       MAP.iter ctx.xidmap (fun idx mapvars ->
           let init_guess = compute_guess mapvars in
-          q (SCIInitGuess(idx,init_guess))
+          let label = compute_label mapvars in
+          let ref_idx = MAP.size reflow_xid in
+          q (SCIComment(label));
+          q (SCIInitGuess(ref_idx,init_guess));
+          q (SCIReflowVar(ref_idx,idx));
+          noop (MAP.put reflow_xid idx ref_idx);
         );
       List.iter (fun (bins:mapslvr_bin set) ->
           let is_tc = REF.mk false in
@@ -383,7 +408,7 @@ struct
                   );
                 (*determine if exportable*)
                 if SMapSlvrCtx.is_node_exported ctx bin then
-                  match slvr_bin_to_sciopt_expr bin with
+                  match slvr_bin_to_sciopt_expr reflow_xid bin with
                   | Some(expr) -> expr::exported
                   | None -> exported
                 else
@@ -394,7 +419,7 @@ struct
             SET.fold bins (fun bin exported ->
                 (*determine if exportable*)
                 if SMapSlvrCtx.is_node_exported ctx bin then
-                  match slvr_bin_to_linear_sciopt_expr bin with
+                  match slvr_bin_to_linear_sciopt_expr reflow_xid bin with
                   | Some(lin_expr) -> lin_expr::exported
                   | None -> exported
                 else
@@ -406,15 +431,15 @@ struct
           LIST.diag_iter (exported_bins) (fun bin1 bin2 ->
               if SMapSlvrCtx.is_edge_exported ctx bin1 bin2 
               then
-                let lin_expr1_maybe = slvr_bin_to_linear_sciopt_expr bin1 in
-                let lin_expr2_maybe = slvr_bin_to_linear_sciopt_expr bin2 in
+                let lin_expr1_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin1 in
+                let lin_expr2_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin2 in
                 begin
                   match lin_expr1_maybe, lin_expr2_maybe with
                   | Some(lin_expr1),Some(lin_expr2) ->
                     noop (q (SCILinEq(lin_expr1,lin_expr2)))
                   | _ ->
-                    let expr1_maybe = slvr_bin_to_sciopt_expr bin1 in
-                    let expr2_maybe = slvr_bin_to_sciopt_expr bin2 in
+                    let expr1_maybe = slvr_bin_to_sciopt_expr reflow_xid  bin1 in
+                    let expr2_maybe = slvr_bin_to_sciopt_expr reflow_xid bin2 in
                     begin
                       match expr1_maybe, expr2_maybe with
                       | Some(expr1),Some(expr2) ->
@@ -428,14 +453,12 @@ struct
               match bin with
               | SMVOp(op,sm_expr) ->
                   begin
-                    let lin_expr_maybe = xid_expr_to_linear_sciopt_expr sm_expr in
+                    let lin_expr_maybe = xid_expr_to_linear_sciopt_expr reflow_xid sm_expr in
                     match lin_expr_maybe with
                     | Some(lin_expr) ->
                       begin
                         match op with
-                        | SCNEQ(n) ->
-                          let expr = xid_expr_to_sciopt_expr sm_expr in
-                          q (SCINeq(expr,string_of_number n))
+                        | SCNEQ(n) -> q (SCILinNeq(lin_expr,SCILinOffset (float_of_number n)))
                         | SCGTE(n) -> q (SCILinGTE(lin_expr,SCILinOffset (float_of_number n)))
                         | SCGT(n) -> q (SCILinGT(lin_expr,SCILinOffset (float_of_number n)))
                         | SCLTE(n) -> q (SCILinLTE(lin_expr,SCILinOffset (float_of_number n)))
@@ -444,7 +467,7 @@ struct
                       end
                     | None ->
                       begin
-                        let expr = xid_expr_to_sciopt_expr sm_expr in
+                        let expr = xid_expr_to_sciopt_expr reflow_xid sm_expr in
                         match op with
                         | SCNEQ(n) -> q (SCINeq(expr,string_of_number n))
                         | SCGTE(n) -> q (SCIGTE(expr,string_of_number n))
@@ -481,7 +504,7 @@ struct
       SET.iter ctx.sts (fun st -> match st with
           | SMVCover(sc,off,hwival,mival) ->
             if opt_use_cover then
-            qall (cover_cstr_to_sciopt sc off hwival mival)
+            qall (cover_cstr_to_sciopt reflow_xid sc off hwival mival)
         );
       QUEUE.to_list sts 
 

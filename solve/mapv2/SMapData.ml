@@ -162,6 +162,25 @@ struct
       | SEDiv(a,b) -> "("^(to_string a)^"/"^(to_string b)^")"
       | _ -> "unimpl"
 
+  let map : map_expr -> (map_expr -> map_expr option) -> map_expr =
+    fun expr fn ->
+      let rec _work e =
+        match fn e with
+        | Some(e) -> e
+        | None ->
+          begin
+            match e with
+            | SEVar(v) -> SEVar(v)
+            | SENumber(n) -> SENumber(n)
+            | SEAdd(a,b) -> SEAdd(_work a, _work b)
+            | SESub(a,b) -> SESub(_work a, _work b)
+            | SEPow(a,b) -> SEPow(_work a, _work b)
+            | SEMult(a,b) -> SEMult(_work a, _work b)
+            | SEDiv(a,b) -> SEDiv(_work a, _work b)
+          end
+      in
+      _work expr
+
   let sub : map_expr -> (map_var -> map_expr option) -> map_expr =
     fun expr fn -> 
     let rec _work e = match e with
@@ -492,6 +511,7 @@ struct
               | expr,SENumber(n1) ->
                 if NUMBER.is_zero n1 then
                   SENumber(NUMBER.div (Decimal 1.0) (Decimal 0.0))
+
                 else if NUMBER.is_one n1 then
                   expr
                 else
@@ -508,11 +528,14 @@ struct
         | SEPow(a,b) ->
           proc a b (fun x y -> match x,y with
               | SENumber(a),SENumber(b) -> SENumber(NUMBER.pow a b)
-              | xe,SENumber(a) ->
-                if NUMBER.is_zero a then SENumber(Integer 1)
-                else if NUMBER.is_one a then xe
-                else if NUMBER.is_neg_one a then
+              | xe,SENumber(b) ->
+                if NUMBER.is_zero b then SENumber(Integer 1)
+                else if NUMBER.is_one b then xe
+                else if NUMBER.is_neg_one b then
                   _work (SEDiv(SENumber(Integer 1),xe))
+                else if NUMBER.is_neg b then
+                  _work (SEDiv(SENumber(Integer 1),SEPow(xe, SENumber (NUMBER.abs b))))
+
                 else SEPow(x,y)
 
               | SENumber(a),ye ->

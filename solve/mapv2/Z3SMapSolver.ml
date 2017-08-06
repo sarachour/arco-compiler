@@ -179,10 +179,7 @@ struct
                 else
                   exported
               ) []
-          in
-          let best_expr = LIST.min exported_expr
-              (fun z3expr -> String.length (Z3Lib.z3expr2str z3expr))
-          in
+          in 
           (*equivalence constraints*)
           LIST.diag_iter (SET.to_list bins) (fun bin1 bin2 ->
               if SMapSlvrCtx.is_edge_exported slvr_ctx bin1 bin2 &&
@@ -232,11 +229,15 @@ struct
                     noop (SET.add not_equals ineq)
                   end
                 | SMVCoverTime(min,max) ->
-                  List.iter (
-                    fun expr ->
-                      if opt_use_cover then
-                        noop (QUEUE.enqueue_all time_cover (time_cstr_to_z3 expr min max))
-                  ) [best_expr]
+                  if List.length exported_expr > 0 then
+                    let best_expr = LIST.min exported_expr
+                        (fun z3expr -> String.length (Z3Lib.z3expr2str z3expr))
+                    in
+                    List.iter (
+                      fun expr ->
+                        if opt_use_cover then
+                          noop (QUEUE.enqueue_all time_cover (time_cstr_to_z3 expr min max))
+                    ) [best_expr]
                 | _ -> ()
             );
         ) bin_set;
@@ -260,28 +261,30 @@ struct
       (problem)
 
 
-  let slvr_ctx_to_z3_validate : mapslvr_ctx -> (int,float) map -> float -> z3st list =
-    fun ctx sln prec ->
+  let slvr_ctx_to_z3_validate : mapslvr_ctx -> (int,float) map -> float -> float -> z3st list =
+    fun ctx sln prec ctol ->
       let base_prob = slvr_ctx_to_z3 ctx in
-      let delta = prec /. 2.0 in
-      let neg_delta = 0.0 -. delta in
+      let mk_max_val value =
+        let rel_err = (MATH.abs (value *. prec)) in
+        value +. (MATH.max [rel_err;ctol])
+      in
+      let mk_min_val value =
+        let rel_err = (MATH.abs (value *. prec)) in
+        value -. (MATH.max [rel_err;ctol])
+      in
       let sts = MAP.fold sln (fun idx value rest ->
           if MAP.has ctx.xidmap idx then
-            let value =
-              if value >= neg_delta && value <= delta then
-                0.0 else value
-            in
             Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var idx))::
             Z3Assert(Z3LTE(
                   Z3Var (xid_to_z3_var idx),
                   Z3Number
-                    (NUMBER.from_float  (value +. delta))
+                    (NUMBER.from_float  (mk_max_val value) )
                 ))::
             Z3Comment(Printf.sprintf "@tune %s" (xid_to_z3_var idx))::
               Z3Assert(Z3GTE(
                   Z3Var (xid_to_z3_var idx),
                   Z3Number
-                    (NUMBER.from_float  (value -. delta))
+                    (NUMBER.from_float  (mk_min_val value))
                 ))
               ::rest
           else
