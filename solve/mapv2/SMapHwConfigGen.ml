@@ -849,23 +849,25 @@ struct
           if SMapCfggenCtx.is_node_exported ctx node1 = false
              || SMapCfggenCtx.is_node_exported ctx node2 = false
              || SMapCfggenCtx.is_edge_exported ctx node1 node2 = false
-          then
-          let mxform1 = dispatch_bin node1 in
-          let mxform2 = dispatch_bin node2 in
-          begin
-            match mxform1,mxform2 with
-            | Some(xform1),Some(xform2) ->
-              [{
-                connect=xform1.connect @ xform2.connect;
-                disable=xform1.disable @ xform2.disable;
-                disable_eq=xform1.disable_eq @ xform2.disable_eq;
-                cstr=xform1.cstr @ xform2.cstr;
-                tag=xform1.tag ^","^xform2.tag
-              }]
-            | Some(xform1),None -> [xform1]
-            | None, Some(xform2)-> [xform2]
-            | None,None -> []
-          end
+          then []
+          else
+
+            let mxform1 = dispatch_bin node1 in
+            let mxform2 = dispatch_bin node2 in
+            begin
+              match mxform1,mxform2 with
+              | Some(xform1),Some(xform2) ->
+                [{
+                  connect=xform1.connect @ xform2.connect;
+                  disable=xform1.disable @ xform2.disable;
+                  disable_eq=xform1.disable_eq @ xform2.disable_eq;
+                  cstr=xform1.cstr @ xform2.cstr;
+                  tag=xform1.tag ^","^xform2.tag
+                }]
+              | Some(xform1),None -> [xform1]
+              | None, Some(xform2)-> [xform2]
+              | None,None -> []
+            end
       in
       xform
 
