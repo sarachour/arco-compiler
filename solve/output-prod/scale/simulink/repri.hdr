@@ -1,0 +1,12 @@
+benchmark,repri
+series,reference
+series,linear
+series,direct
+output,LacLp
+output,TetRp
+output,clp
+output,LacLm
+output,TetRm
+output,clm
+tc,1
+sample,0.001
