@@ -373,11 +373,14 @@ struct
         *)
         let m_expr = mk_affine res2.scale res2.offset (SENumber m) in
         let scale = SEVar (get_freevar()) in
-        let offset = SEMult(m_expr,res1.offset) in
-        let value = mk_loc_val_of_interval (IntervalLib.mult a (IntervalLib.num m)) in
+        let offset = SENumber(Integer 0) in
+        (*let offset = SEMult(m_expr,res1.offset) in*)
+        let value = mk_loc_val_of_interval
+            (IntervalLib.mult a (IntervalLib.num m)) in
         (*is irreversible if transformed value is zero*)
         let base_cstrs =  [
           mk_not_equal0 m_expr;
+          mk_equal0 (res1.offset);
           mk_equal (SEMult(scale,SENumber m)) (SEMult(res1.scale,m_expr));
         ] in
         let cstrs = mk_cstr_from_loc_val value scale offset base_cstrs in

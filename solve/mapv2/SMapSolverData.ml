@@ -104,9 +104,15 @@ struct
 
   let equal_bins : cfggen_ctx -> cfggen_bin -> cfggen_bin -> bool =
     fun ctx bin1 bin2 ->
-      bin1 == bin2 ||
-      (GRAPH.hasnode ctx.bins bin1 && GRAPH.hasnode ctx.bins bin2 &&
-       GRAPH.reachable ctx.bins bin1 bin2 (GRAPH.size ctx.bins))
+      if bin1 == bin2 then true
+      else if
+        (GRAPH.hasnode ctx.bins bin1 && GRAPH.hasnode ctx.bins bin2)
+      then
+        let group = GRAPH.group ctx.bins bin1 in
+        SET.has group bin2
+      else
+        false
+
 
   let group : cfggen_ctx -> cfggen_bin -> cfggen_bin list =
     fun ctx bin ->

@@ -309,7 +309,6 @@ class OptimizeProblem:
 
         # scratch derived objective
         obj = orig_obj
-
         print("=== First Solution for Constrained Problem ===")
         first_guess = self.safe_vect(self.model.init_guess())
         result = self._solve_local(obj,self.cstrs,first_guess);
@@ -343,6 +342,7 @@ class OptimizeProblem:
                     if do_min:
                         next_guess = self.perturb_vector(self.get_best_result(), percent=0.1);
                     else:
+                        #next_guess = self.linear_sampler.sample(ctol).x
                         next_guess = self.perturb_vector(first_guess, percent=1);
 
                 

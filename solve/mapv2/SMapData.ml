@@ -492,10 +492,12 @@ struct
           proc a b (fun x y -> match x,y with
               | SENumber(n1),SENumber(n2) ->
                 SENumber(NUMBER.mult n1 n2)
+
               | expr,SENumber(n1) ->
                 if NUMBER.is_zero n1 then SENumber(Integer 0)
                 else if NUMBER.is_one n1 then expr
                 else SEMult(x,y)
+
               | SENumber(n1),expr ->
                 if NUMBER.is_zero n1 then SENumber(Integer 0)
                 else if NUMBER.is_one n1 then expr

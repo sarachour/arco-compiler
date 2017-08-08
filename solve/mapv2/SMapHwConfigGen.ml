@@ -149,9 +149,9 @@ struct
 
   let generic_rewrite : cfggen_ctx ->
     (cfggen_bin ->cfggen_bin -> cfggen_xform list) ->
-    (hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list) ->
+    (cfggen_bin -> cfggen_xform list) ->
     unit =
-    fun ctx rewrite cstr_rewrite ->
+    fun ctx rewrite node_rewrite ->
       let rewritten = SET.make_dflt () in
       let apply xform gtag inst_maybe =
         let tag = xform.tag^" <= "^gtag in
@@ -167,10 +167,19 @@ struct
         let bin_sets = GRAPH.disjoint ctx.bins in
         let cnt = SET.size rewritten in
         List.iter (fun node_set ->
+            SET.iter (node_set) (fun node ->
+                let xforms = node_rewrite node in
+                let global_tag = Printf.sprintf "n.xform(%s)"
+                      (SMapCfggenCtx.string_of_bin node)
+                  in
+                List.iter (fun xform ->
+                      apply xform global_tag None
+                    ) xforms
+              );
             LIST.diag_iter (SET.to_list node_set) (fun node othernode ->
                 if node == othernode then () else
                   let xforms = rewrite node othernode in
-                  let global_tag = Printf.sprintf "xform(%s,%s)"
+                  let global_tag = Printf.sprintf "e.xform(%s,%s)"
                       (SMapCfggenCtx.string_of_bin node)
                       (SMapCfggenCtx.string_of_bin othernode)
                   in
@@ -178,6 +187,7 @@ struct
                       apply xform global_tag None
                     ) xforms
               )
+
           ) bin_sets;
         let new_rewrites = (SET.size rewritten) - cnt in
         Printf.printf ("=> New Rewrites: %d\n") new_rewrites;
@@ -199,13 +209,13 @@ struct
       in
       rewrite
 
-  let merge_cstr_rewrites :
-    (hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list) list ->
-    (hwcompinst -> map_cstr -> map_cstr -> cfggen_xform list) =
+  let merge_node_rewrites :
+    (cfggen_bin -> cfggen_xform list) list ->
+    (cfggen_bin -> cfggen_xform list) =
     fun xforms -> 
-      let rewrite : hwcompinst -> map_cstr ->map_cstr -> cfggen_xform list =
-        fun inst node1 node2 ->
-          List.fold_right (fun xform results -> (xform inst node1 node2) @ results ) xforms []
+      let rewrite : cfggen_bin -> cfggen_xform list =
+        fun node1 ->
+          List.fold_right (fun xform results -> (xform node1 ) @ results ) xforms []
       in
       rewrite
 
@@ -253,7 +263,8 @@ struct
       else
         let b1 = SMapCfggenCtx.expr_to_bin i e1 in
         let b2 = SMapCfggenCtx.expr_to_bin j e2 in
-        SMapCfggenCtx.equal_bins ctx b1 b2
+        let g = SMapCfggenCtx.group ctx b1 in
+        LIST.has g b2
 
   let has_equiv_term : cfggen_ctx -> hwcompinst -> map_expr -> hwcompinst -> map_expr list -> bool*map_expr list*map_expr list =
     fun ctx i e j elst ->
@@ -283,6 +294,13 @@ struct
         in
         new_exprs1,new_exprs2
       in
+      let print_rational n1 d1 n2 d2 =
+        Printf.printf ">> (%s)/(%s) = (%s)/(%s)\n"
+          (LIST.tostr SMapExpr.to_string "*" n1)
+          (LIST.tostr SMapExpr.to_string "*" d1)
+          (LIST.tostr SMapExpr.to_string "*" n2)
+          (LIST.tostr SMapExpr.to_string "*" d2)
+      in
       let common_terms i expr1 j expr2 =  
         let numer1,denom1 = SMapExpr.to_rational expr1 in
         let numer2,denom2 = SMapExpr.to_rational expr2 in
@@ -297,10 +315,12 @@ struct
         let f_denom2,f_denom1 = cross_reduce j denom2_r1 i denom1_r1 in
         let len x = List.length x in
         let res1 =
-            SEDiv(SMapExpr.product_of f_numer1, SMapExpr.product_of f_denom1)
+          SMapExpr.simpl
+            (SEDiv(SMapExpr.product_of f_numer1, SMapExpr.product_of f_denom1))
           in
           let res2 =
-            SEDiv(SMapExpr.product_of f_numer2, SMapExpr.product_of f_denom2)
+            SMapExpr.simpl
+              (SEDiv(SMapExpr.product_of f_numer2, SMapExpr.product_of f_denom2))
           in
           Printf.printf ">> %s=%s -> %s=%s\n"
             (SMapExpr.to_string expr1)
@@ -311,8 +331,7 @@ struct
            len denom1 > len f_denom1 || len denom2 > len f_denom2
         then
           begin
-            Printf.printf "== Success ==\n";
-            Some(SMapExpr.simpl res1,SMapExpr.simpl res2)
+            Some(res1,res2)
           end
         else
           None
@@ -472,7 +491,7 @@ struct
                   [{
                     connect=[(numer_bin, SMBIneq(i,op,numer_expr))];
                     disable_eq=[(node1,node2)];
-                    disable=[node2];
+                    disable=[];
                     cstr=[];
                     tag=tag
                   }]
@@ -768,37 +787,51 @@ struct
       in
       xform
 
-  let sub_term_rewrite: cfggen_ctx -> (cfggen_bin -> cfggen_bin -> cfggen_xform list) =
+  let sub_term_rewrite: cfggen_ctx -> (cfggen_bin -> cfggen_xform list) =
     fun ctx ->
       let freevars = MAP.make() in
+      let is_numeric s = match s with
+        | Some (SENumber(_)) -> true
+        | _ -> false
+      in
+      let is_freevar s = match s with
+        | Some (SEVar(SMFreeVar i)) -> true
+        | None -> false
+      in
       let rewrite_expr : hwcompinst -> map_expr -> map_expr option =
         fun inst expr ->
           match expr with
           | SEVar(_) -> None | SENumber(_) -> None
           | _ ->
             let bin = SMapCfggenCtx.expr_to_bin inst expr in
-            let grp = SMapCfggenCtx.group ctx (bin) in
-            let is_numeric s = match s with
-              | Some (SENumber(_)) -> true
-              | _ -> false
-            in
-            List.fold_right (fun el sln -> match el with
+            let grp = SMapCfggenCtx.group ctx (bin) in 
+            let sln1 = List.fold_right (fun el sln -> match el with
                 | SMBNumber(n) -> Some (SENumber(n))
                 | SMBMapVar(inst2,v) ->
                   if is_numeric sln then sln else
-                  if inst2 = inst then Some (SEVar(v)) else
-                    let fid : map_var = if MAP.has freevars (inst2,v)
-                      then
-                        MAP.get freevars (inst2,v)
-                      else
-                        SMapHwSpecLateBind.get_freevar()
-                    in
-                    begin
-                      noop (MAP.put freevars (inst2,v) fid);
-                      Some(SEVar (fid))
-                    end
-               | _ -> sln 
+                  if inst2 = inst then Some (SEVar(v))
+                  else sln
+                | _ -> sln
               ) grp None
+            in
+            if sln1 <> None then sln1 else
+              let sln2 = List.fold_right (fun el sln ->
+                  if sln <> None then sln else
+                    match el with
+                    | SMBMapVar(inst2,v) ->
+                      let fid : map_var =
+                        if MAP.has freevars (inst2,v)
+                        then MAP.get freevars (inst2,v)
+                        else SMapHwSpecLateBind.get_freevar()  
+                      in
+                      begin
+                        noop (MAP.put freevars (inst2,v) fid);
+                        Some(SEVar (fid))
+                      end
+                    | _ -> sln 
+                ) grp sln1
+              in
+              sln2
       in
       let simplify_xform: cfggen_bin -> hwcompinst -> map_expr -> cfggen_xform option =
         fun bin inst expr ->
@@ -811,13 +844,15 @@ struct
           else
             let s_new_expr = SMapExpr.simpl new_expr in
             let s_new_bin = SMapCfggenCtx.expr_to_bin inst s_new_expr in
-            Some {
-              connect=(bin,s_new_bin)::fv_conns;
-              disable_eq=[(s_new_bin,bin)];
-              disable=[bin];
-              cstr=[];
-              tag=Printf.sprintf "simpl_terms: %s" (SMapExpr.to_string s_new_expr)
-            }
+            if SMapCfggenCtx.equal_bins ctx s_new_bin bin then None
+            else
+              Some {
+                connect=(bin,s_new_bin)::fv_conns;
+                disable_eq=[(bin,s_new_bin)];
+                disable=[];
+                cstr=[];
+                tag=Printf.sprintf "simpl_terms: %s" (SMapExpr.to_string s_new_expr)
+              }
       in
       let simplify_ineq_xform: cfggen_bin -> hwcompinst -> map_op -> map_expr -> cfggen_xform option =
         fun bin inst op expr ->
@@ -830,13 +865,17 @@ struct
           else
             let s_new_expr = SMapExpr.simpl new_expr in
             let s_new_bin = SMBIneq(inst,op,s_new_expr) in
-            Some {
-              connect=(bin,s_new_bin)::fv_conns;
-              disable_eq=[(s_new_bin,bin)];
-              disable=[bin];
-              cstr=[];
-              tag=Printf.sprintf "simpl_terms: %s" (SMapExpr.to_string s_new_expr)
-            }
+            (**)
+            if SMapCfggenCtx.equal_bins ctx s_new_bin bin then None
+            else
+              Some {
+                connect=(bin,s_new_bin)::fv_conns;
+                disable_eq=[(bin,s_new_bin)];
+                disable=[];
+                cstr=[];
+                tag=Printf.sprintf "simpl_terms: %s"
+                    (SMapExpr.to_string s_new_expr)
+              }
       in
       let dispatch_bin node =
         match node with
@@ -844,36 +883,24 @@ struct
         | SMBIneq(i,op,e) -> simplify_ineq_xform node i op e
         | _ -> None
       in
-      let xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
-        fun node1 node2 -> 
-          if SMapCfggenCtx.is_node_exported ctx node1 = false
-             || SMapCfggenCtx.is_node_exported ctx node2 = false
-             || SMapCfggenCtx.is_edge_exported ctx node1 node2 = false
+      let xform : cfggen_bin -> cfggen_xform list =
+        fun node -> 
+          if SMapCfggenCtx.is_node_exported ctx node = false
           then []
           else
 
-            let mxform1 = dispatch_bin node1 in
-            let mxform2 = dispatch_bin node2 in
+            let mxform1 = dispatch_bin node in
             begin
-              match mxform1,mxform2 with
-              | Some(xform1),Some(xform2) ->
-                [{
-                  connect=xform1.connect @ xform2.connect;
-                  disable=xform1.disable @ xform2.disable;
-                  disable_eq=xform1.disable_eq @ xform2.disable_eq;
-                  cstr=xform1.cstr @ xform2.cstr;
-                  tag=xform1.tag ^","^xform2.tag
-                }]
-              | Some(xform1),None -> [xform1]
-              | None, Some(xform2)-> [xform2]
-              | None,None -> []
+              match mxform1 with
+              | Some(xform1) -> [xform1]
+              | None-> []
             end
       in
       xform
 
 
   let sub_const_rewrite: cfggen_ctx -> (string,cfggen_bin*number) map ->
-    (cfggen_bin -> cfggen_bin ->cfggen_xform list) =
+    (cfggen_bin ->cfggen_xform list) =
     fun ctx subs ->
       let get_sub : hwcompinst -> map_var -> number option =
         fun i v ->
@@ -930,23 +957,14 @@ struct
         | SMBIneq(i,op,e) -> simplify_ineq_xform node i op e
         | _ -> None
       in
-      let xform : cfggen_bin -> cfggen_bin -> cfggen_xform list =
-        fun node1 node2 -> 
+      let xform : cfggen_bin -> cfggen_xform list =
+        fun node1 -> 
+          if SMapCfggenCtx.is_node_exported ctx node1 = false then [] else
           let mxform1 = dispatch_bin node1 in
-          let mxform2 = dispatch_bin node2 in
           begin
-            match mxform1,mxform2 with
-            | Some(xform1),Some(xform2) ->
-              [{
-                connect=xform1.connect @ xform2.connect;
-                disable=xform1.disable @ xform2.disable;
-                disable_eq=xform1.disable_eq @ xform2.disable_eq;
-                cstr=xform1.cstr @ xform2.cstr;
-                tag=xform1.tag ^","^xform2.tag
-              }]
-            | Some(xform1),None -> [xform1]
-            | None, Some(xform2)-> [xform2]
-            | None,None -> []
+            match mxform1 with
+            | Some(xform1) -> [xform1]
+            | None -> []
           end
       in
       xform
@@ -957,7 +975,7 @@ struct
     fun ctx ->
       let rec xform node1 node2 =
         let tag =
-          Printf.sprintf "trivial_solve_ineq"
+          Printf.sprintf "trivial_solve"
         in
         if SMapCfggenCtx.is_node_exported ctx node1 = false
            || SMapCfggenCtx.is_node_exported ctx node2 = false
@@ -994,6 +1012,7 @@ struct
           | SMBNumber(n),SMBNumber(n2) ->
             begin
               if NUMBER.eq n n2 = false then
+                Printf.printf "trivially false\n";
                 ctx.success <- false;
               [{
                 connect=[];
@@ -1012,7 +1031,7 @@ struct
               let new_op = SMapCstr.op_map op (fun n -> new_n1) in
               [{
                 connect=[(SMBMapExpr(j,base),SMBIneq(j,new_op,base))];
-                disable=[node1];
+                disable=[];
                 disable_eq=[(node1,node2)];
                 cstr=[];
                 tag=tag;
@@ -1021,7 +1040,7 @@ struct
           | SMBIneq(i,SCNEQ(Integer 0),e),SMBMapExpr(j,SEDiv(numer,denom)) ->
               [{
                 connect=[(SMBMapExpr(j,numer),SMBIneq(j,SCNEQ(Integer 0),numer))];
-                disable=[node1];
+                disable=[];
                 disable_eq=[(node1,node2)];
                 cstr=[];
                 tag=tag;
@@ -1032,7 +1051,7 @@ struct
             if NUMBER.eq_int n1 0 && test_positive ctx j denom then
               [{
                 connect=[(SMBMapExpr(j,numer),SMBIneq(j,op,numer))];
-                disable=[node1];
+                disable=[];
                 disable_eq=[(node1,node2)];
                 cstr=[];
                 tag=tag;
@@ -1275,36 +1294,38 @@ struct
         collect_const_rewrite ctx numer_assign;
       ] in
       let phase2= [
-        sub_const_rewrite ctx numer_assign;
         collect_const_rewrite ctx numer_assign;
       ] 
       in
+      let simplify_rewrites = [
+        sub_const_rewrite ctx numer_assign;
+        sub_term_rewrite ctx;
+      ] in
       let phase3 = [
         (*algebra rewrite rules*)
-        sub_const_rewrite ctx numer_assign;
         collect_const_rewrite ctx numer_assign;
         ac_eq_ab_rewrite ctx;
         pow_base_eq_rewrite ctx;
         pow_exp_eq_rewrite ctx;
         a_over_b_eq_1_rewrite ctx;
         (*constant rewrite rules*)
-        frac_pow_const ctx;
+        (*frac_pow_const ctx;*)
         time_constant_rewrite ctx;
         frac_op_const ctx;
         solve_triv_rewrite ctx;
       ] 
       in
       (*after the expressions have been generate, propagate, rewrite and solve*)
+        (*
       let phase4 = [
-        sub_term_rewrite ctx;
-        (*propagate_ineq_rewrite ctx;*)
-        (*neq_and_pos_rewrite ctx;*)
-      ] @ phase3 
+        propagate_ineq_rewrite ctx;
+        neq_and_pos_rewrite ctx;
+      ] @ phase3
       in
-      generic_rewrite ctx (merge_rewrites phase1) (merge_cstr_rewrites []);
-      generic_rewrite ctx (merge_rewrites phase2) (merge_cstr_rewrites []);
-      generic_rewrite ctx (merge_rewrites phase3) (merge_cstr_rewrites []);
-      generic_rewrite ctx (merge_rewrites phase4) (merge_cstr_rewrites []);
+       *)
+      generic_rewrite ctx (merge_rewrites phase1) (merge_node_rewrites []);
+      generic_rewrite ctx (merge_rewrites phase2) (merge_node_rewrites simplify_rewrites);
+      generic_rewrite ctx (merge_rewrites phase3) (merge_node_rewrites simplify_rewrites);
       (*write back in any learned assignments after*)
       write_in_numerical ctx numer_assign;
       ()
@@ -1421,7 +1442,6 @@ struct
   let build_config : map_hw_spec -> gltbl ->  cfggen_ctx option =
     fun tblspec tbl ->
       let ctx : cfggen_ctx = SMapCfggenCtx.mkctx() in
-      SMapHwSpecLateBind.clear_freevar();
       let sln : (string,mid) sln = tbl.sln_ctx in
       Printf.printf "=== BUILDING MAP CONFIGURATION ===\n";
       flush_all();
@@ -1535,10 +1555,11 @@ struct
                 (SMBMapVar(dest.comp,SMOffset(dest.port)));
            )
         );
-      Printf.printf "== Simplify Graph ==\n";
+      Printf.printf "== SIMPLIFY GRAPH==\n";
       flush_all();
       (*Derive simpler rules from graph*)
-      SMapGraphSimplifier.simplify ctx;
+      if Globals.get_glbl_bool "jaunt-simplify" then
+        SMapGraphSimplifier.simplify ctx;
       (*found a trivially false clause*)
       if REF.dr config_success = false || ctx.success = false then
         None

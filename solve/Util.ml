@@ -219,13 +219,13 @@ struct
   let div x y = match x, y with
     | Integer(a),Integer(b) -> Decimal((float_of_int a)/.(float_of_int b))
     | Integer(a),Decimal(b) -> Decimal((float_of_int a)/.b)
-    | Decimal(a),Integer(b) -> Decimal((float_of_int b)/.a)
+    | Decimal(a),Integer(b) -> Decimal((a)/.(float_of_int b))
     | Decimal(a),Decimal(b) -> Decimal(a/.b)
 
   let pow a b = match a, b with
     | Integer(a),Integer(b) -> Decimal((float_of_int a)**(float_of_int b))
     | Integer(a),Decimal(b) -> Decimal((float_of_int a)**b)
-    | Decimal(a),Integer(b) -> Decimal((float_of_int b)**a)
+    | Decimal(a),Integer(b) -> Decimal((a)**(float_of_int b))
     | Decimal(a),Decimal(b) -> Decimal(a**b)
 
   let root a b =
@@ -234,7 +234,7 @@ struct
   let mult a b = match a, b with
     | Integer(a),Integer(b) -> Integer(a*b)
     | Integer(a),Decimal(b) -> Decimal((float_of_int a)*.b)
-    | Decimal(a),Integer(b) -> Decimal((float_of_int b)*.a)
+    | Decimal(a),Integer(b) -> Decimal(a*.(float_of_int b))
     | Decimal(a),Decimal(b) -> Decimal(a*.b)
 
   let add a b = match a, b with
@@ -287,7 +287,7 @@ struct
     | Integer(x),Integer(y) -> x > y
     | Decimal(x),Decimal(y) -> x > y
     | Integer(x),Decimal(y) -> float_of_int x > y
-    | Decimal(x),Integer(y) -> float_of_int y < x
+    | Decimal(x),Integer(y) -> x > float_of_int y 
 
 
   
@@ -295,7 +295,7 @@ struct
     | Integer(x),Integer(y) -> x < y
     | Decimal(x),Decimal(y) -> x < y
     | Integer(x),Decimal(y) -> float_of_int x < y
-    | Decimal(x),Integer(y) -> float_of_int y > x
+    | Decimal(x),Integer(y) -> x < float_of_int y
 
   let gte a b = match a,b with
     | Integer(x),Integer(y) -> x >= y
@@ -309,13 +309,13 @@ struct
     | Integer(x),Integer(y) -> x <= y
     | Decimal(x),Decimal(y) -> x <= y
     | Integer(x),Decimal(y) -> float_of_int x <= y
-    | Decimal(x),Integer(y) -> float_of_int y >= x
+    | Decimal(x),Integer(y) -> x <= float_of_int y 
 
   let eq a b = match a,b with
     | Integer(x),Integer(y) -> x = y
     | Decimal(x),Decimal(y) -> x = y
     | Integer(x),Decimal(y) -> float_of_int x = y
-    | Decimal(x),Integer(y) -> float_of_int y = x
+    | Decimal(x),Integer(y) -> x = float_of_int y 
 
   let eq_int x i = match x with
     | Integer(j) -> i = j

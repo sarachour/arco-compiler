@@ -299,28 +299,30 @@ struct
   (*compute a tight bound then gradually relax it*)
   let validate_model : int -> mapslvr_ctx -> (int,float) map -> float -> bool*(int,float) map =
     fun compute_time slvr_ctx stdmodel ctol ->
-      let evaluate prec = 
-        let z3prob = Z3SMapSolver.slvr_ctx_to_z3_validate slvr_ctx stdmodel prec ctol in
-        let mapsln : z3sln = Z3Lib.tune "mapver" z3prob compute_time true in
+      let evaluate prec tol = 
+        let z3prob =
+          Z3SMapSolver.slvr_ctx_to_z3_validate slvr_ctx stdmodel prec tol
+        in
+        let mapsln : z3sln = Z3Lib.exec "mapver" z3prob compute_time true in
         match mapsln.model with
         | Some(model) -> false,true,Z3SMapSolver.get_standard_model model
         | None ->
           if mapsln.sat = Z3Timeout then
-            false,false,stdmodel
+            true,false,stdmodel
           else
             false,false,stdmodel
       in
-      let rec _work prec_coeff maxtries =
+      let rec _work prec_coeff tol maxtries =
         let new_prec = prec_coeff in
-        let timeout,succ,model = evaluate new_prec in
+        let timeout,succ,model = evaluate new_prec tol in
         if succ then
           succ,model
         else if timeout || maxtries == 0 then
           succ,model
         else
-          _work (prec_coeff *. 10.0) (maxtries-1)
+          _work (prec_coeff *. 10.0) (tol *. 10.0) (maxtries-1)
       in
-      _work 0.001 15
+      _work 0.001 ctol 4
 
   let get_validated_model : gltbl -> mapslvr_ctx  -> int -> sciopt_result ->
     (wireid, linear_transform) map option =
@@ -338,7 +340,8 @@ struct
           if do_validate then
             begin
               let is_valid,accmodel =
-                validate_model compute_time slvr_ctx stdmodel mapsln.tolerance
+                validate_model compute_time slvr_ctx stdmodel
+                  mapsln.tolerance
               in
               if is_valid then
                 Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping accmodel)

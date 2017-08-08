@@ -172,26 +172,30 @@ struct
                 (*update tc variable*)
                 REF.upd is_tc (fun v -> v || slvr_bin_is_time_const bin);
                 (*determine if exportable*)
-                if SMapSlvrCtx.is_node_exported slvr_ctx bin then
+                if SMapSlvrCtx.is_node_exported slvr_ctx bin 
+                then
                   match slvr_bin_to_z3expr bin with
                   | Some(expr) -> expr::exported
                   | None -> exported
                 else
                   exported
               ) []
-          in 
+          in
+          let exported_bins = SET.filter bins
+              (fun b -> SMapSlvrCtx.is_node_exported slvr_ctx b)
+          in
           (*equivalence constraints*)
-          LIST.diag_iter (SET.to_list bins) (fun bin1 bin2 ->
+          LIST.diag_iter (exported_bins) (fun bin1 bin2 ->
               if SMapSlvrCtx.is_edge_exported slvr_ctx bin1 bin2 &&
-                 SMapSlvrCtx.is_node_exported slvr_ctx bin1 &&
-                 SMapSlvrCtx.is_node_exported slvr_ctx bin2 &&
                  bin1 <> bin2
               then
                 let expr1_maybe = slvr_bin_to_z3expr bin1 in
                 let expr2_maybe = slvr_bin_to_z3expr bin2 in
                 match expr1_maybe, expr2_maybe with
                 | Some(expr1),Some(expr2) ->
-                  noop (SET.add equals (Z3Assert(Z3Eq(expr1,expr2))))
+                  noop (SET.add equals (Z3Assert(
+                      Z3Eq(expr1,expr2)
+                    )))
                 | _ -> ()
             );
           SET.iter bins (fun (bin:mapslvr_bin) ->

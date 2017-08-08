@@ -418,7 +418,7 @@ struct
           let exported_lin_expr =
             SET.fold bins (fun bin exported ->
                 (*determine if exportable*)
-                if SMapSlvrCtx.is_node_exported ctx bin then
+                if SMapSlvrCtx.is_node_exported ctx bin || true then
                   match slvr_bin_to_linear_sciopt_expr reflow_xid bin with
                   | Some(lin_expr) -> lin_expr::exported
                   | None -> exported
@@ -429,7 +429,8 @@ struct
           let exported_bins = SET.filter bins (fun b -> SMapSlvrCtx.is_node_exported ctx  b) in
           (*equivalence constraints*)
           LIST.diag_iter (exported_bins) (fun bin1 bin2 ->
-              if SMapSlvrCtx.is_edge_exported ctx bin1 bin2 
+              if SMapSlvrCtx.is_edge_exported ctx bin1 bin2  &&
+                 bin1 <> bin2
               then
                 let lin_expr1_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin1 in
                 let lin_expr2_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin2 in

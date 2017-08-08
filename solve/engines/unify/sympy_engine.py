@@ -34,7 +34,7 @@ class SympyEngine(Engine):
            restrict_frac = 1.0;
            total_slns = 0;
            sln_ratio = 1;
-           target_ratio = 0.2;
+           target_ratio = 0.4;
 
            # control system for number of results
            for i in range(0,ntries):

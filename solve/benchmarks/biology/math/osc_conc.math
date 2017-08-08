@@ -60,18 +60,22 @@ def r3_delta mag = [1,1] unit
 type s
 time t : s
 
+%local Af_a : unit
+%local Af_r : unit
+%rel Af_r = r6_theta*DAp  + DR*r11_gamma
+%rel Af_a =   MA*r10_beta + DRp*r12_theta
+
 local Af : unit
-local Af_a : unit
-local Af_r : unit
 local Ar : unit
-rel Af_r = r6_theta*DAp  + DR*r11_gamma
-rel Af_a =   MA*r10_beta + DRp*r12_theta
-rel Af = Af_a + Af_r
+rel Af = (r6_theta*DAp  + DR*r11_gamma) + (MA*r10_beta + DRp*r12_theta)
 rel Ar = R*r1_gamma +  DA*r5_gamma
+
+
 rel ddt A =  Af - (Ar+r2_delta)*A init 0
 def A mag = [0,1] A 
 
 %rel ddt A =  ((( r6_theta*DAp) + ( MA*r10_beta) + ( A*DR*r11_gamma) + ( DRp*r12_theta))- (( A*R*r1_gamma) + ( A*r2_delta) + ( A*DA*r5_gamma))) init 0
+%def A mag = [0,1] A 
 
 rel ddt C = (( A*R*r1_gamma) - ( C*r3_delta)) init 0
 def C mag = [0,1] A  
