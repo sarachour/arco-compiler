@@ -3,32 +3,38 @@ import argparse
 import h5py
 import numpy as np
 import matplotlib.pyplot as mp 
-from matplotlib.backends.backend_pdf import PdfPages
 
 class Series:
     def __init__(self,x,y):
         self.x = x
         self.y = y
         self.color = "black"
-        self.pattern = "-"
+
+    def speed(self,x,tc):
+        return np.multiply(tc,self.x),self.y
+
+    def sample(self,x,tc,rate):
+        return self.x,self.y
 
     def style(self):
-        return "r^"
-
+        return "ko"
 class Dataset:
 
     def __init__(self):
         self.benchmark = None
         self.data = {}
         self.series = []
+        self.colors = {};
         self.outputs = []
-        self.tc = 1
-        self.y_axis = "time" 
-        self.x_axis = "value" 
-        self.sample = 1
+        self.tc = None
+        self.y_axis = "value" 
+        self.x_axis = "time" 
+        self.sample = None
 
     def add_output(self,f):
+        colorset = ["ro","bo","ko","r^","b^","k^","r--",'b--','k--']
         self.outputs.append(f)
+        self.colors[f] = colorset[len(self.colors)]
 
     def add_series(self,f):
         self.series.append(f)
@@ -39,20 +45,38 @@ class Dataset:
 
     def plot(self):
 
+        benchmark = self.benchmark
         for series in self.data:
             outputs = self.data[series]
             
             plt = mp.figure()
             mp.xlabel(self.x_axis)
             mp.ylabel(self.y_axis)
-            mp.title("%s / %s" % (series,self.benchmark))
+            mp.title("%s / %s" % (series,benchmark))
 
             for out in outputs:
-                series = outputs[out]
-                mp.plot(series.x,series.y,series.style())
+                d = outputs[out]
+                mp.plot(d.x,d.y,self.colors[out])
 
-            filename = 'figs/%s-%s.pdf' % (self.benchmark,series)
+            filename = 'figs/%s-%s.pdf' % (benchmark,series)
             mp.savefig(filename)
+
+
+            if "linear" in series and self.tc != None:
+                plt = mp.figure()
+                filename = 'figs/%s-%s-%s.pdf' % (benchmark,series,"speed")
+                mp.xlabel(self.x_axis)
+                mp.ylabel(self.y_axis)
+                mp.title("%s / %s speed" % (series,benchmark))
+                mp.savefig(filename)
+
+            if "linear" in series and self.sample != None and self.tc != None:
+                plt = mp.figure()
+                filename = 'figs/%s-%s-%s.pdf' % (benchmark,series,"sample")
+                mp.xlabel(self.x_axis)
+                mp.ylabel(self.y_axis)
+                mp.title("%s / %s sample" % (series,benchmark))
+                mp.savefig(filename)
 
 def read_header(header,dataset):
     f = open(header,'r')
@@ -62,19 +86,19 @@ def read_header(header,dataset):
         print(fields)
         key = fields[0]
         if key == "benchmark":
-            d.benchmark = fields[1]
+            d.benchmark = fields[1].strip()
 
         elif key == "series":
-            d.add_series(fields[1])
+            d.add_series(fields[1].strip())
 
         elif key == "output":
-            d.add_output(fields[1])
+            d.add_output(fields[1].strip())
 
         elif key == "xaxis":
-            d.x_axis = fields[1]
+            d.x_axis = fields[1].strip()
 
         elif key == "yaxis":
-            d.y_axis = fields[1]
+            d.y_axis = fields[1].strip()
             
         elif key == "tc":
             d.tc = float(fields[1])
@@ -98,7 +122,6 @@ def read_data(data_file,dataset):
                 data = np.array(f[el])
                 if len(data.shape) == 2:
                     if data.shape[1] > 30 and data.shape[1] < 1000:
-                        print(data.shape)
                         if index % 2 == 0:
                             time = data
                             index += 1;

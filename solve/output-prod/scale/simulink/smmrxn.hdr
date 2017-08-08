@@ -1,13 +1,10 @@
-benchmark,repri
+benchmark,smmrxn
 series,reference
 series,linear
 series,direct
-output,LacLp
-output,TetRp
-output,clp
-output,LacLm
-output,TetRm
-output,clm
+output,E
+output,S
+output,ES
 tc,1
 sample,0.001
 xaxis,Time (s)

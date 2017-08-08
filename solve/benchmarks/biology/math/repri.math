@@ -50,13 +50,13 @@ rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm)  init 0.12
 def TetRm mag = [0,3] M
 
 rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 60
-def LacLp mag = [0,100] M
+def LacLp mag = [0,140] M
 
 rel ddt clp = (k_tl*clm)-(kd_prot*clp) init 20
-def clp mag = [0,40] M
+def clp mag = [0,140] M
 
 rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 40
-def TetRp mag = [0,80] M
+def TetRp mag = [0,140] M
 
 rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
 rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
