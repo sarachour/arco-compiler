@@ -30,6 +30,36 @@ class OptimizeProblem:
                 return (coeff,int(idx))
 
         @staticmethod
+        def balance(args1,args2):
+            def update(other,key,delta):
+                if not key in other:
+                    other[key] = 0
+                other[key] += delta
+
+            expr1 = dict(args1)
+            expr2 = dict(args2)
+            print(args1,args2)
+            for k,v in args1.items():
+                if v < 0:
+                    update(expr1,k,-1*v)
+                    update(expr2,k,-1*v)
+
+            for k,v in args2.items():
+                if v < 0:
+                    update(expr1,k,-1*v)
+                    update(expr2,k,-1*v)
+
+            for k,v in expr1.items():
+                if v == 0 and k != 'offset':
+                    del expr1[k]
+
+            for k,v in expr2.items():
+                if v == 0 and k != 'offset':
+                    del expr2[k]
+
+            return expr1,expr2
+
+        @staticmethod
         def lin_expr_to_posy(vars,args):
             def combine(x,y):
                 if x == 0.0:
@@ -69,9 +99,13 @@ class OptimizeProblem:
         self._n = n
         self._vars = VectorVariable(n,'x')
         self._cstrs = []
-        self._opt = self._vars[1]
+        self._opt = reduce(lambda x,y : x + y, self._vars)
         self._buf = []
         self._to_id = {}
+        self._to_index = {}
+        for idx,v in enumerate(self._vars):
+            self._to_index[v] = idx
+
         self._assigns = {}
 
     def add_constraint(self,c):
@@ -124,11 +158,28 @@ class OptimizeProblem:
             raise Exception("unexpected")
             #self._buf.append({'type':'eq','args':[expr1,expr2]})
 
-    def lin_eq(self,expr1,expr2):
+    def get_variable_from_sig(self,e1):
+        args = e1.hmap.items()
+        if len(args) == 1:
+            term_dict,coeff =args[0]
+            terms = term_dict.items()
+            if len(terms) == 1:
+                var, exp = terms[0]
+                if exp == 1:
+                    return var
+                else:
+                    return None
+        else:
+            return None
+
+    def lin_eq(self,unbal_expr1,unbal_expr2):
         is_valid = lambda x : x is not None and x != 0.0
         is_monom = lambda x : isinstance(x,Monomial) or isinstance(x,int) or isinstance(x,float)
+        expr1,expr2 = OptimizeProblem.LinTermHandler.balance(unbal_expr1,unbal_expr2)
         e1 = OptimizeProblem.LinTermHandler.lin_expr_to_posy(self._vars,expr1)
         e2 = OptimizeProblem.LinTermHandler.lin_expr_to_posy(self._vars,expr2)
+
+
         if is_valid(e1) and is_valid(e2):
             if is_monom(e1) and is_monom(e2):
                 try:
@@ -143,15 +194,22 @@ class OptimizeProblem:
                 self._buf.append({'type':'eq', 'args':[e1,e2]})
 
         elif e1 == 0.0 and is_valid(e2):
+            var = self.get_variable_from_sig(e2)
+            if var:
+                self._assigns[var] = 0.0
             #self._assigns[e2] = e1
-            print('[lin_eq][WARN-REDUNDENT] %s = 0' % (e2))
+            print('[lin_eq][WARN-REDUNDENT] %s = 0 [%s]' % (e2,type(e2)))
         elif is_valid(e1) and e2 == 0.0:
-            print('[lin_eq][WARN-REDUNDENT] %s = 0' % (e1))
+            var = self.get_variable_from_sig(e1)
+            if var:
+                self._assigns[var] = 0.0
+            print('[lin_eq][WARN-REDUNDENT] %s = 0 [%s]' % (e1,type(e1)))
             #self._assigns[e1] = e2
 
-
+        elif e1 == 0.0 and e2 == 0.0:
+            return
         else:
-            print("[WARN] not : %s=%s" % (expr1,expr2))
+            print("[WARN] eq: %s=%s" % (expr1,expr2))
             #self._buf.append({'type':'lin_eq','args':[expr1,expr2]})
 
     def lin_lower_bound(self,scale,value,minimum):
@@ -274,7 +332,6 @@ class OptimizeProblem:
         if len(buf) == 0:
             return
 
-        print(self._assigns)
         for b in buf:
             if b['type'] == 'eq':
                 arg1,arg2 = b['args'][0:2]
@@ -313,7 +370,16 @@ class OptimizeProblem:
             fh.write("success\n")
             fh.write("%e\n" % 0.0)
             result_vect = self._sln(self._vars)
-            for idx,value in enumerate(result_vect):
+            write_vect = [0]*self._n
+            for var,value in zip(self._vars,result_vect):
+                idx = self._to_index[var]
+                write_vect[idx] = value
+                print(type(var))
+                if var.key in self._assigns:
+                    print("=> has assign")
+                    write_vect[idx] = self._assigns[var.key]
+
+            for idx,value in enumerate(write_vect):
                 id = self._to_id[idx]
                 fh.write("%d=%.16e\n" % (id,value))
 

@@ -63,7 +63,6 @@ module SMapMain = struct
         begin
           let is_sat = SMapSolver.compute_transform_exists tbl prob timeout in
           is_sat
-          
         end
 
       | None -> false
