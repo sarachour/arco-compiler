@@ -305,26 +305,17 @@ class OptimizeProblem:
         print(self._sln.table())
 
 
-    def write_result(self,fh):
-        ctol = self.processor.ctol
-
-        if result == None:
-            return
-        _,tol = self.model.test(self.cstrs,result.x,ctol=ctol,emit=False)
-        fh.write("success\n")
-        fh.write("%e\n" % tol)
-        result_vect = self.model.result(result.x);
-        print(result_vect);
-        for idx in range(0,len(result.x)):
-            ref_idx = self._reflow[idx]
-            value = result.x[idx]
-            fh.write("%d=%.16e\n" % (ref_idx,value))
-
-
-
     def write(self,filename):
-        print("=== Writing Solution ===");
-        fh = open(filename,'w');
+        print("=== Writing Solution ===")
+        fh = open(filename,'w')
         fh.write("%d\n" % self._n)
+        if self._sln:
+            fh.write("success\n")
+            fh.write("%e\n" % 0.0)
+            result_vect = self._sln(self._vars)
+            for idx,value in enumerate(result_vect):
+                id = self._to_id[idx]
+                fh.write("%d=%.16e\n" % (id,value))
+
+        print("=== Closed ===")
         fh.close()
-        print("=== Closed ===");
