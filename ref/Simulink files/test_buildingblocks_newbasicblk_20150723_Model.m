@@ -37,7 +37,7 @@ kr = kr1/KDrv;
 
 %%% our differential equation
 % change to matrix format!!
-dxdt = [-1*kf*x(1) + kr*x(2)*x(2);... %x(1)=A_dimer
+dvxdt = [-1*kf*x(1) + kr*x(2)*x(2);... %x(1)=A_dimer
         kf*x(1)*2 - kr*x(2)*x(2)*2]; %x(2)=A_monomer
     
 function dxdt = reaction_derivatives2(t,x) % dimerization with deg

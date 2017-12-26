@@ -1,7 +1,7 @@
 benchmark,smmrxn
 series,reference
-series,linear
 series,direct
+series,linear
 output,E
 output,S
 output,ES

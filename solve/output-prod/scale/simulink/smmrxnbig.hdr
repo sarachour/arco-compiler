@@ -1,10 +1,10 @@
-benchmark,gentoggle
-series,direct
+benchmark,smmrxnlg
 series,reference
+series,direct
 series,linear
-output,IPTG
-output,U
-output,V
+output,E
+output,S
+output,ES
 tc,1
 sample,0.001
 xaxis,Time (s)

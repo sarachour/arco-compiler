@@ -1,1 +1,1 @@
-from optimize_scipy import OptimizeProblem
+from optimize_gpkit import OptimizeProblem

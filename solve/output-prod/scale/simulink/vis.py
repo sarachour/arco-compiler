@@ -46,13 +46,29 @@ class Dataset:
     def plot(self):
 
         benchmark = self.benchmark
-        for series in self.data:
+	mp.rcParams.update({'font.size':24})
+
+	rng = []
+	ymin = 0
+	ymax = 0
+	for series in self.data:
+	    	outputs = self.data[series]
+		for out in outputs:
+			d = outputs[out]
+			ymin = min(np.amin(d.y),ymin)
+			ymax = max(np.amax(d.y),ymax)
+
+	
+	y_bounds = [ymin,ymax]
+
+	for series in self.data:
             outputs = self.data[series]
             
             plt = mp.figure()
             mp.xlabel(self.x_axis)
             mp.ylabel(self.y_axis)
-            mp.title("%s / %s" % (series,benchmark))
+            mp.ylim(y_bounds);
+	    mp.title("%s / %s" % (series,benchmark))
 
             for out in outputs:
                 d = outputs[out]

@@ -5,6 +5,7 @@ type sciopt_method =
   | SCICOBYLA
   | SCISLSQP
   | SCILinOpt
+  | SCIGeometric
 
 type sciopt_linear_expr =
   | SCILinTerm of float*int
@@ -74,4 +75,5 @@ let string_of_sciopt_method : sciopt_method -> string =
     | SCICOBYLA -> "COBYLA"
     | SCISLSQP -> "SLSQP"
     | SCILinOpt -> "LINOPT"
+    | SCIGeometric -> "GEOMETRIC"
 

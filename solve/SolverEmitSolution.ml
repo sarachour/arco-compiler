@@ -134,6 +134,10 @@ let proc_sln_mappings (out:string) (slntbl:gltbl) (i:int) =
   slvr_print_inter "---- Calculating Mappings ---";
   flush_all(); 
   let mappings = SMapMain.infer slntbl in
+  upd_glbl "jaunt-scale-range" (GlblPropString "+");
+  upd_glbl "jaunt-offset-range" (GlblPropString "0");
+  upd_glbl "jaunt-optimize-localopt-enabled" (GlblPropBool true);
+  SMapMain.infer slntbl;
   (*MapMain.save_z3_problem slntbl out i;*)
   (*
   to_mat_file slntbl out i SFCircMapSDE mappings;
