@@ -1,20 +1,58 @@
 from gpkit import VectorVariable, Variable, Model, Monomial, Posynomial
 from gpkit.nomials.math import MonomialEquality, PosynomialInequality
+from gpkit.constraints.bounded import Bounded
 import gpkit
+from math_expr_parser import Parser, Expression, Token, TNUMBER
 
 class OptimizeProblem:
+    class ExpressionHandler:
+        @staticmethod
+        def compile_to_posy(vars,expr,require_positive=False):
+            def to_symbol(v):
+                return "%s[%s]" % (v.key.descr['name'],v.key.descr['idx'][0])
+
+            symtbl = dict(map(lambda v: (to_symbol(v),v), vars))
+            def var_func(name):
+                if name in symtbl:
+                    return Monomial(symtbl[name],require_positive=require_positive)
+                else:
+                    print(symtbl)
+                    raise Exception("not in symbol table: %s" % name)
+
+            def val_func(value):
+                return value
+
+            try:
+                return expr.compile(var_func,val_func)
+
+            except ValueError as e:
+                print('[WARN] cannot coerce %s [%s]' % (expr,e))
+                return None
+
+            except TypeError as e:
+                print('[WARN] cannot coerce %s [%s]' % (expr,e))
+                return None
+
     class NLTermHandler:
+        parser = Parser()
 
         @staticmethod
-        def nl_expr_to_posy(vars,nl):
-            expr = eval(nl,{'x':vars})
+        def nl_expr_to_ast(nl):
+            expr = OptimizeProblem.NLTermHandler.parser.parse(nl)
             return expr
 
         @staticmethod
-        def nl_expr_to_number(vars,nl):
-            expr = eval(nl,{'x':vars})
-            if type(expr) == float or type(expr) == int:
-                return expr
+        def nl_expr_to_posy(vars,nl):
+            expr = OptimizeProblem.NLTermHandler.nl_expr_to_ast(nl)
+            posy = OptimizeProblem.ExpressionHandler.compile_to_posy(vars,expr)
+            return posy
+
+        @staticmethod
+        def nl_expr_to_number(nl):
+            expr = OptimizeProblem.NLTermHandler.parser.parse(nl)
+            value = expr.get_value()
+            if value is not None:
+                return value
             else:
                 return None
 
@@ -99,7 +137,10 @@ class OptimizeProblem:
         self._n = n
         self._vars = VectorVariable(n,'x')
         self._cstrs = []
-        self._opt = reduce(lambda x,y : x + y, self._vars)
+        terms = map(lambda v : v**(-1), self._vars)
+        prod = reduce(lambda x,y : x*y, terms)
+        self._opt = prod + prod**(-1)
+        print("OPT: %s" % str(self._opt))
         self._buf = []
         self._to_id = {}
         self._to_index = {}
@@ -120,13 +161,14 @@ class OptimizeProblem:
         if min < 0:
             print("[WARN] ignoring min=%s" % min)
 
-        amin = min if min > 0 else 1e-20
+        amin = min if min > 0 else None
 
         for i in range(0,self._n):
             c1 = (self._vars[i] <= max)
-            c2 = (self._vars[i] >= amin)
             self.add_constraint(c1)
-            self.add_constraint(c2)
+            if amin is not None:
+                c2 = (self._vars[i] >= amin)
+                self.add_constraint(c2)
 
     def initial(self,v,n):
         print('[WARN] ignoring initial guess %s=%s' % (v,n))
@@ -138,24 +180,30 @@ class OptimizeProblem:
         is_valid = lambda x : x is not None and x != 0.0
         is_monom = lambda x : isinstance(x,Monomial) or isinstance(x,int) or isinstance(x,float)
 
-        e1 = OptimizeProblem.NLTermHandler.nl_expr_to_posy(self._vars,expr1)
-        e2 = OptimizeProblem.NLTermHandler.nl_expr_to_posy(self._vars,expr2)
-        if is_valid(e1) and is_valid(e2):
-            if is_monom(e1) and is_monom(e2):
-                c = MonomialEquality(e1,'=',e2)
+        e1 = OptimizeProblem.NLTermHandler.nl_expr_to_ast(expr1)
+        e2 = OptimizeProblem.NLTermHandler.nl_expr_to_ast(expr2)
+        p1 = OptimizeProblem.ExpressionHandler.compile_to_posy(self._vars,e1)
+        p2 = OptimizeProblem.ExpressionHandler.compile_to_posy(self._vars,e2)
+        if is_valid(p1) and is_valid(p2):
+            if is_monom(p1) and is_monom(p2):
+                print('%s == %s' % (p1,p2))
+                c = MonomialEquality(p1,'=',p2)
                 self.add_constraint(c)
             else:
-                print('[eq] delay %s = %s' % (e1,e2))
-                self._buf.append({'type':'eq', 'args':[e1,e2]})
+                print('[eq] delay %s = %s' % (p1,p2))
+                self._buf.append({'type':'eq', 'args':[p1,p2]})
 
-        elif e1 == 0.0 and is_valid(e2):
-            assert(False)
-        elif is_valid(e1) and e2 == 0.0:
-            assert(False)
-        elif e1 == 0.0 and e2 == 0.0:
+        elif e1.is_zero() and is_valid(e2):
+            self._buf.append({'type':'eq', 'args':[e1,e2]})
+
+        elif is_valid(e1) and e2.is_zero():
+            self._buf.append({'type':'eq', 'args':[e1,e2]})
+
+        elif e1.is_zero() and e2.is_zero():
             return
         else:
-            raise Exception("unexpected")
+            self._buf.append({'type':'eq', 'args':[e1,e2]})
+            print("unexpected: %s == %s" % (e1,e2))
             #self._buf.append({'type':'eq','args':[expr1,expr2]})
 
     def get_variable_from_sig(self,e1):
@@ -197,13 +245,14 @@ class OptimizeProblem:
             var = self.get_variable_from_sig(e2)
             if var:
                 self._assigns[var] = 0.0
-            #self._assigns[e2] = e1
-            print('[lin_eq][WARN-REDUNDENT] %s = 0 [%s]' % (e2,type(e2)))
+            else:
+                print('[lin_eq][WARN-REDUNDENT] %s = 0 [%s]' % (e2,type(e2)))
         elif is_valid(e1) and e2 == 0.0:
             var = self.get_variable_from_sig(e1)
             if var:
                 self._assigns[var] = 0.0
-            print('[lin_eq][WARN-REDUNDENT] %s = 0 [%s]' % (e1,type(e1)))
+            else:
+                print('[lin_eq][WARN-REDUNDENT] %s = 0 [%s]' % (e1,type(e1)))
             #self._assigns[e1] = e2
 
         elif e1 == 0.0 and e2 == 0.0:
@@ -304,43 +353,80 @@ class OptimizeProblem:
             raise Exception("cannot test two expressions")
 
     def neq(self,expr1,expr2):
-        n1 = OptimizeProblem.NLTermHandler.nl_expr_to_number(self._vars,expr1)
-        n2 = OptimizeProblem.NLTermHandler.nl_expr_to_number(self._vars,expr2)
+        n1 = OptimizeProblem.NLTermHandler.nl_expr_to_number(expr1)
+        n2 = OptimizeProblem.NLTermHandler.nl_expr_to_number(expr2)
         if n1 != None and n2 != None:
             assert(n1 != n2)
         elif n1 == 0.0 or n2 == 0.0:
             return
         else:
-            raise Exception("cannot test two expressions")
+            raise Exception("cannot test two expressions: %s != %s" % (n1,n2))
 
     def gte(self,expr1,expr2):
-        n1 = OptimizeProblem.NLTermHandler.nl_expr_to_number(self._vars,expr1)
-        n2 = OptimizeProblem.NLTermHandler.nl_expr_to_number(self._vars,expr2)
-        if n1 != None and n2 != None:
-            assert(n1 != n2)
-        elif n2 == 0.0:
+        is_valid = lambda x : x is not None and x != 0.0
+        is_monom = lambda x : isinstance(x,Monomial) or isinstance(x,int) or isinstance(x,float)
+        e1 = OptimizeProblem.NLTermHandler.nl_expr_to_ast(expr1)
+        e2 = OptimizeProblem.NLTermHandler.nl_expr_to_ast(expr2)
+
+        p1 = OptimizeProblem.ExpressionHandler.compile_to_posy(self._vars,e1)
+        p2 = OptimizeProblem.ExpressionHandler.compile_to_posy(self._vars,e2)
+
+        if is_valid(p1) and is_valid(p2):
+            if is_monom(p1) and is_monom(p2):
+                c = MonomialEquality(p1,'=',p2)
+                self.add_constraint(c)
+            else:
+                print('[gte] delay %s = %s' % (p1,p2))
+                self._buf.append({'type':'gte', 'args':[p1,p2]})
+
+        elif e1.is_zero() and e2.is_zero():
             return
-        elif n1 == 0.0:
+        elif e2.is_zero():
+            return
+        elif e1.is_zero():
             assert(False)
         else:
-            raise Exception("cannot test two expressions")
+            self._buf.append({'type':'gte', 'args':[e1,e2]})
 
     def solve_buffer(self):
         is_number = lambda x : isinstance(x,int) or isinstance(x,float)
         is_monom = lambda x : isinstance(x,Monomial) or is_number(x)
+        def to_expr_dict(v,value):
+            vname = "%s[%s]" % (v.key.descr['name'],v.key.descr['idx'][0])
+            evalue = Token(TNUMBER, 0, 0, value)
+            return (vname,evalue)
+
+        me_assigns = dict(map(lambda (k,v): to_expr_dict(k,v), self._assigns.items()))
+        posy_assigns = self._assigns
+        def concretize(arg):
+            if not is_number(arg):
+                if isinstance(arg,Expression):
+                    sub_arg = arg.substitute_all(me_assigns).simplify()
+                    print("%s -> %s" % (str(arg),str(sub_arg)))
+                    posy = OptimizeProblem.ExpressionHandler\
+                        .compile_to_posy(self._vars,sub_arg,require_positive=False)
+                    if posy is not None:
+                        return posy
+                    else:
+                        print(' -> could not convert to posy')
+                        return None
+
+                else:
+                    return arg.sub(posy_assigns,require_positive=False)
+            else:
+                return arg
+
         buf = self._buf
         if len(buf) == 0:
-            return
+            return True
 
         for b in buf:
+            arg1,arg2 = b['args'][0:2]
+            print(b['type'],arg1.__class__.__name__,arg2.__class__.__name__)
+            print("%s %s %s" % (arg1,b['type'],arg2))
+            simpl_arg1 = concretize(arg1)
+            simpl_arg2 = concretize(arg2)
             if b['type'] == 'eq':
-                arg1,arg2 = b['args'][0:2]
-                print("%s == %s" % (arg1,arg2))
-                simpl_arg1 = arg1.sub(self._assigns,require_positive=False) \
-                    if not is_number(arg1) else arg1
-                simpl_arg2 = arg2.sub(self._assigns,require_positive=False) \
-                    if not is_number(arg2) else arg2
-                print("%s == %s" % (simpl_arg1,simpl_arg2))
                 if simpl_arg1 == simpl_arg2:
                     continue
                 if is_monom(simpl_arg1) and is_monom(simpl_arg2):
@@ -348,19 +434,37 @@ class OptimizeProblem:
                     self.add_constraint(c)
                     print('-> added!')
                 else:
-                    print('-> did not add')
-                    raise Exception('failed to add buffered ocnstraint')
+                    print('[FAILED] cannot convert %s == %s -> %s == %s' % (arg1,arg2,simpl_arg1,simpl_arg2))
+                    return False
+
+            elif b['type'] == 'gte':
+                if is_monom(simpl_arg2):
+                    c = PosynomialInequality(simpl_arg1,'>=',simpl_arg2)
+                    self.add_constraint(c)
+                    print('-> added')
+                else:
+                    print('[FAILED] cannot convert %s >= %s -> %s >= %s' % (arg1,arg2,simpl_arg1,simpl_arg2))
+                    return False
             else:
                 raise Exception('gte unhandled')
+        return True
 
 
     def solve(self):
         print('-- SOLVE -----')
-        self.solve_buffer()
-        model = Model(self._opt,self._cstrs)
-        self._sln = model.solve()
-        print(self._sln.table())
+        succ = self.solve_buffer()
+        if not succ:
+            self._sln = None
+            return
 
+        model = Model(self._opt,Bounded(self._cstrs))
+        try:
+            self._sln = model.solve()
+            print(self._sln.table())
+        except RuntimeWarning as w:
+            print('[FAILED TO SOLVE] %s' % w)
+            self._sln = None
+            model.debug()
 
     def write(self,filename):
         print("=== Writing Solution ===")
@@ -374,10 +478,11 @@ class OptimizeProblem:
             for var,value in zip(self._vars,result_vect):
                 idx = self._to_index[var]
                 write_vect[idx] = value
-                print(type(var))
+                print("%s = %s" % (var,value))
                 if var.key in self._assigns:
-                    print("=> has assign")
-                    write_vect[idx] = self._assigns[var.key]
+                    new_value = self._assigns[var.key]
+                    print("=> replace with %s=%s" % (var.key,new_value))
+                    write_vect[idx] = new_value
 
             for idx,value in enumerate(write_vect):
                 id = self._to_id[idx]

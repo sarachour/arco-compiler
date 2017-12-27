@@ -60,7 +60,7 @@ struct
         fun e -> match e with
           | SEAdd(a,b) -> Printf.sprintf "(%s)+(%s)" (_proc a) (_proc b)
           | SEMult(a,b) -> Printf.sprintf "(%s)*(%s)" (_proc a) (_proc b)
-          | SEDiv(a,b) -> Printf.sprintf "(%s)/(%s)" (_proc a) (_proc b)
+          | SEDiv(a,b) -> Printf.sprintf "(%s)*(%s)**(-1)" (_proc a) (_proc b)
           | SEPow(a,b) -> Printf.sprintf "(%s)**(%s)" (_proc a) (_proc b)
           | SESub(a,b) -> Printf.sprintf "(%s)-(%s)" (_proc a) (_proc b)
           | SEVar(SMFreeVar a) -> Printf.sprintf "%s"
