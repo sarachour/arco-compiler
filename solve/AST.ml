@@ -231,13 +231,13 @@ module ASTLib
           | Op2(Power,_,_) -> n+8
           | Op1(Exp,_) -> n+8
           | Op2(Div,_,_) -> n+6
-          | OpN(Mult,_) -> n+6
+          | OpN(Mult,_) -> n+4
           | OpN(Add,_) -> n+4
           | OpN(Sub,_) -> n+4
-          | Op1(Neg,_) -> n+3
+          | Op1(Neg,_) -> n+4
           | Term(_) -> n+3
-          | Integer(_) -> n+1
-          | Decimal(_) -> n+1
+          | Integer(_) -> n
+          | Decimal(_) -> n
           | _ -> n+1
         ) 0
       in

@@ -137,6 +137,7 @@ class OptimizeProblem:
         self._n = n
         self._vars = VectorVariable(n,'x')
         self._cstrs = []
+        self._success = True
         terms = map(lambda v : v**(-1), self._vars)
         prod = reduce(lambda x,y : x*y, terms)
         self._opt = prod + prod**(-1)
@@ -148,6 +149,15 @@ class OptimizeProblem:
             self._to_index[v] = idx
 
         self._assigns = {}
+
+    def fail(self,msg):
+        self._success = False
+        self._msg = msg
+
+    def objective(self,nl):
+        opt = OptimizeProblem.NLTermHandler.nl_expr_to_posy(self._vars,nl)
+        if opt:
+            self._opt = opt
 
     def add_constraint(self,c):
         if (type(c) == bool):
@@ -264,14 +274,16 @@ class OptimizeProblem:
     def lin_lower_bound(self,scale,value,minimum):
         flip_sign = False
         if value == 0.0:
-            assert(minimum <= 0.0)
+            if not (minimum <= 0.0):
+                self.fail("%s <= scf*%s => False" % (minimum,value))
             return
 
         elif minimum == 0.0 and value > 0.0:
             return
 
         elif minimum == 0.0 and value < 0.0:
-            assert(False)
+            self.fail("%s <= scf*%s => False" % (minimum,value))
+            return
 
         elif minimum < 0.0 and value > 0.0:
             print('[WARN] minimum will be ignored')
@@ -279,6 +291,13 @@ class OptimizeProblem:
 
         elif minimum < 0.0 and value < 0.0:
             flip_sign = True
+
+        elif minimum > 0.0 and value > 0.0:
+            flip_sign = False
+
+        elif minimum > 0.0 and value < 0.0:
+            self.fail("%s <= scf*%s => False" % (minimum,value))
+            return
 
         if not flip_sign:
             self.add_constraint(value*self._vars[scale] >= minimum)
@@ -293,7 +312,7 @@ class OptimizeProblem:
             return
 
         elif maximum == 0.0 and value > 0.0:
-            assert(False)
+            self.fail("scf*%s <= %s => False" % (value,maximum))
             return
 
         elif maximum == 0.0 and value < 0.0:
@@ -301,6 +320,13 @@ class OptimizeProblem:
 
         elif maximum < 0.0 and value < 0.0:
             flip_sign = True
+
+        elif maximum < 0.0 and value > 0.0:
+            self.fail("scf*%s <= %s => False" % (value,maximum))
+            return
+
+        elif maximum > 0.0 and value > 0.0:
+            flip_sign = False
 
         elif maximum > 0.0 and value < 0.0:
             return
@@ -334,7 +360,8 @@ class OptimizeProblem:
             return
 
         elif e1 == 0.0 and is_valid(e2):
-            assert(False)
+            self.fail("%s >= %s => False" % (e1,e2))
+            return
 
         elif e1 == 0.0 and e2 == 0.0:
             return
@@ -384,7 +411,8 @@ class OptimizeProblem:
         elif e2.is_zero():
             return
         elif e1.is_zero():
-            assert(False)
+            self.fail("%s >= %s => False" % (e1,e2))
+            return
         else:
             self._buf.append({'type':'gte', 'args':[e1,e2]})
 
@@ -452,6 +480,11 @@ class OptimizeProblem:
 
     def solve(self):
         print('-- SOLVE -----')
+        if not self._success:
+            print('[FAILED TO CONSTRUCT] %s' % self._msg)
+            self._sln = None
+            return
+
         succ = self.solve_buffer()
         if not succ:
             self._sln = None

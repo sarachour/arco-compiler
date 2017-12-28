@@ -1,0 +1,39 @@
+base,mmrxn
+series,4,mmrxn.ideal.mat,ideal,1
+series,1,mmrxn.map.slow.mat,min tc,1
+series,2,mmrxn.map.fast.mat,max tc,10
+series,3,mmrxn.hw.mat,no jaunt,1
+series,5,mmrxn.map.fast.mat,jaunt,1
+output,circuit:1,E
+output,circuit:2,S
+output,circuit:3,ES
+output,circuit:4,P
+make,graph,1
+graph,1,title,idealized mmrxn
+graph,1,normalize
+graph,1,series,3
+make,graph,2
+graph,2,title,hardware mmrxn
+graph,2,series,4
+graph,2,normalize
+make,graph,3
+graph,3,title,scaled mmrxn
+graph,3,series,5
+graph,3,normalize
+make,graph,4
+graph,4,title,max speed mmrxn
+graph,4,series,2
+graph,4,series,3
+graph,4,normalize
+graph,4,series-opacity,3,0.2
+graph,4,series-color,3,#7f8c8d
+make,graph,5
+graph,5,title,min speed mmrxn
+graph,5,series,1
+graph,5,series,3
+graph,5,normalize
+graph,5,series-opacity,3,0.3
+graph,5,series-color,3,#7f8c8d
+
+
+

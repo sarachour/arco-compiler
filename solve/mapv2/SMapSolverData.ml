@@ -258,6 +258,11 @@ struct
 
 end
 
+type mapslvr_opt =
+  | SMOMinTC
+  | SMOMaxTC
+  | SMONone
+
 type mapslvr_bin =
   | SMVMapExpr of map_expr
   | SMVMapVar of int

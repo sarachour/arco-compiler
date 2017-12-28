@@ -355,37 +355,14 @@ struct
 
 
 
-  let optimize_compute_reduce_degrees_of_freedom :
-    gltbl -> mapslvr_ctx -> (wireid,linear_transform) map option =
-    fun tbl slvr_ctx ->
-      let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
-      let mapping = slvr_ctx.xidmap in
-      let compute_time = Globals.get_glbl_int "jaunt-optimize-reddof-timeout" in
-      let z3prob_0offset = Z3SMapSolver.mkpartial_constrain_domain slvr_ctx z3prob
-          [Z3MPNoOffset]
-      in
-      Printf.printf "[OPTIMIZE] === FIND SOLUTION WITH NO OFFSET === \n";
-      let mapsln : z3sln = Z3Lib.exec "map" z3prob_0offset compute_time true in
-      begin
-        match mapsln.model with
-        | Some(model) ->
-          let stdmodel = Z3SMapSolver.get_standard_model model in
-          Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-        | None ->
-          None
-      end
-
-  let optimize_compute_local_minima :
-    gltbl -> mapslvr_ctx -> z3map_partial list -> (wireid,linear_transform) map option =
-    fun tbl slvr_ctx partial ->
+  let compute_mapping_with_sciopt :
+    gltbl -> mapslvr_ctx -> mapslvr_opt -> (wireid,linear_transform) map option =
+    fun tbl slvr_ctx optimize ->
       let compute_time = Globals.get_glbl_int "jaunt-optimize-localopt-timeout" in
-      let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx in
-      let conc_scipy_prob : sciopt_st list = ScioptSMapSolver.mkpartial_constrain_domain
-          slvr_ctx scipy_prob partial
-      in
+      let scipy_prob = ScioptSMapSolver.to_scipy slvr_ctx optimize in
       Printf.printf "[OPTIMIZE] === FIND CANDIDATE MINIMA === \n";
       let conc_mapslns : sciopt_result list =
-        ScipyOptimizeLib.exec "map" conc_scipy_prob compute_time
+        ScipyOptimizeLib.exec "map" scipy_prob compute_time
       in
       let conc_result = List.fold_right (fun result validated_result ->
           match validated_result with
@@ -395,60 +372,8 @@ struct
       in
       conc_result
 
-  let optimize_compute_linearized_cover_assign :
-    gltbl -> mapslvr_ctx -> z3map_partial list -> bool*((wireid,linear_transform) map option) =
-    fun tbl slvr_ctx partial ->
-      let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
-      let mapping = slvr_ctx.xidmap in
-      let compute_time = Globals.get_glbl_int "jaunt-optimize-linearize-timeout" in
-      let n_results = Globals.get_glbl_int "jaunt-optimize-linearize-results" in
-      let base_linear_scipy_cstr = ScioptSMapSolver.to_linear_scipy slvr_ctx n_results in
-      let linear_scipy_cstr= ScioptSMapSolver.mkpartial_constrain_domain
-          slvr_ctx base_linear_scipy_cstr partial
-      in
-      let linear_scipy_obj = ScioptSMapSolver.gen_obj_none slvr_ctx in
-      let linear_scipy_prob = linear_scipy_cstr @ [linear_scipy_obj] in
-      let linear_pts: sciopt_result list =
-        ScipyOptimizeLib.exec "lopt_map" linear_scipy_prob compute_time in
-      begin
-        Printf.printf "[OPTIMIZE] === SOLVE LINEAR PROBLEM === \n";
-        match linear_pts with
-        |  h::t ->
-          List.fold_right (fun lin_result (sat_feas,final_result) ->
-              if final_result <> None then  (sat_feas,final_result) else
-                let partial_z3prob = Z3SMapSolver.mkpartial_constrain_unsat_cover
-                    slvr_ctx z3prob (OPTION.force_conc lin_result.vect) lin_result.tolerance
-                in
-                let mapsln : z3sln = Z3Lib.tune "map" partial_z3prob compute_time true in
-                begin
-                  match mapsln.model with
-                  | Some(model) ->
-                    let stdmodel = Z3SMapSolver.get_standard_model model in
-                    true,Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-                  | None ->
-                    true,None
-                end
-            ) linear_pts (true,None)
-
-        | _ -> false, None
-      end
-
-  let compute_unconstrained : gltbl -> mapslvr_ctx -> int -> (wireid,linear_transform) map option =
-    fun tbl slvr_ctx compute_time ->
-      Printf.printf "-> fallback to z3-unconstrained.\n";
-      let z3prob=  Z3SMapSolver.slvr_ctx_to_z3 slvr_ctx in
-      let mapping = slvr_ctx.xidmap in
-        Printf.printf "[FALLBACK] === SOLVE UNCONSTRAINED PROBLEM === \n";
-      let mapsln : z3sln = Z3Lib.exec "map" z3prob compute_time true in
-      match mapsln.model with
-      | Some(model) ->
-        let stdmodel = Z3SMapSolver.get_standard_model model in
-        Some (build_linmap_transform tbl.sln_ctx tbl.map_ctx mapping stdmodel)
-      | None -> None
-
-
-  let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> (wireid,linear_transform) map option =
-    fun tbl ctx compute_time ->
+  let cfggen_ctx_to_sln : gltbl -> cfggen_ctx -> int -> mapslvr_opt -> (wireid,linear_transform) map option =
+    fun tbl ctx compute_time optimize ->
       let slvr_ctx = SMapSlvrCtx.mk_ctx () in
       convert_mapvar_graph_to_xid_graph slvr_ctx ctx;
       (*print_slvr_bins slvr_ctx;*)
@@ -457,51 +382,22 @@ struct
         None
       else
         let mapping = slvr_ctx.xidmap in
-        let solver = Globals.get_glbl_string "jaunt-solve-method" in 
-        (*use the unconstrined problem as a fallback if dReal with the local solution doesn't work*)
-        let do_fallback = Globals.get_glbl_bool "jaunt-fallback" in
-        (*add the cover constraints. Without these, we are only propagation *)
         let incorp_cover = Globals.get_glbl_bool "enable-jaunt-cover" in
         Z3SMapSolver.set_option "use-cover" incorp_cover;
         ScioptSMapSolver.set_option "use-cover" incorp_cover;
         (*find solution for linearized problem and s*)
-        let sat_feas,sln =
-          if Globals.get_glbl_bool "jaunt-optimize-linearize-enabled" then
-            optimize_compute_linearized_cover_assign tbl slvr_ctx [Z3MPNoOffset]
-          else
-            true,None
-        in
-        if sat_feas = false then None else
-          let sln =
-            if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-nooff-enabled" then
-              optimize_compute_local_minima tbl slvr_ctx [Z3MPNoOffset]
-            else sln
-          in
-          let sln =
-            if sln = None && Globals.get_glbl_bool "jaunt-optimize-localopt-enabled" then
-              optimize_compute_local_minima tbl slvr_ctx []
-            else sln
-          in
-          let sln =
-            if sln = None && Globals.get_glbl_bool "jaunt-optimize-reddof-enabled" then
-              optimize_compute_reduce_degrees_of_freedom tbl slvr_ctx
-            else sln
-          in
-          let sln =
-            if sln = None && Globals.get_glbl_bool "jaunt-fallback" then
-              compute_unconstrained tbl slvr_ctx compute_time
-            else
-              sln
-          in
-          sln
-          
-  let compute_transform : gltbl ->  cfggen_ctx -> int ->
+         let sln =
+             compute_mapping_with_sciopt tbl slvr_ctx optimize
+         in
+         sln
+
+  let compute_transform : gltbl ->  cfggen_ctx -> int -> mapslvr_opt ->
     (wireid, linear_transform) map option=
-    fun tbl ctx compute_time ->
-      cfggen_ctx_to_sln tbl ctx compute_time
-      
+    fun tbl ctx compute_time optimize ->
+      cfggen_ctx_to_sln tbl ctx compute_time optimize
+
   let compute_transform_exists : gltbl -> cfggen_ctx -> int -> bool =
     fun tbl ctx compute_time ->
-      (cfggen_ctx_to_sln tbl ctx compute_time) <> None
-      
+      (cfggen_ctx_to_sln tbl ctx compute_time SMONone) <> None
+
 end

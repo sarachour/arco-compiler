@@ -198,34 +198,8 @@ struct
 
   let init_scipy : (sciopt_st -> unit) -> int -> unit =
     fun q nvars ->
-      let tries = get_glbl_int "jaunt-scipy-tries" in
-      let ctol = get_glbl_float "jaunt-scipy-ctol" in
-      let xtol = get_glbl_float "jaunt-scipy-xtol" in
-      let results = get_glbl_int "jaunt-scipy-results" in
-      let iters = get_glbl_int  "jaunt-scipy-iters" in
       q (SCIInitialize(nvars));
       q (SCISetMethod(SCICOBYLA));
-      q (SCISetIters(iters));
-      q (SCISetTries(tries));
-      q (SCISetResults(results));
-      q (SCISetCstrTol(ctol));
-      q (SCISetMinTol(xtol));
-      q (SCIBound(SMapSlvrOpts.vmin, SMapSlvrOpts.vmax));
-      ()
-      
-  let init_linear_scipy : (sciopt_st -> unit) -> int -> int -> unit =
-    fun q nvars results ->
-      let tries = get_glbl_int "jaunt-scipy-tries" in
-      let ctol = get_glbl_float "jaunt-scipy-ctol" in
-      let xtol = get_glbl_float "jaunt-scipy-xtol" in
-      let iters = get_glbl_int "jaunt-scipy-linear-iters" in
-      q (SCIInitialize(nvars));
-      q (SCISetMethod(SCILinOpt));
-      q (SCISetIters(iters));
-      q (SCISetTries(tries));
-      q (SCISetResults(results));
-      q (SCISetCstrTol(ctol));
-      q (SCISetMinTol(xtol));
       q (SCIBound(SMapSlvrOpts.vmin, SMapSlvrOpts.vmax));
       ()
 
@@ -243,144 +217,8 @@ struct
       SCILinObjective(SCILinOffset(0.0))
 
 
-  let mkpartial_constrain_domain : mapslvr_ctx -> sciopt_st list ->  z3map_partial list -> sciopt_st list =
-    fun ctx base_prob partial_cfg ->
-      let covers_to_sts: (int->int->map_range ->map_range -> 'a option) -> 'a list =
-        fun fn ->
-          SET.fold ctx.sts (fun cstr rest -> match cstr with
-              | SMVCover(scid,ofid,mival,hival) ->
-                begin
-                  match fn scid ofid mival hival with
-                  | Some(res) -> res::rest
-                  | None -> rest
-                end
-            ) []
-      in
-      let partial_to_sts cfg =
-        match cfg with
-        | Z3MPNoScale ->
-          let sts = covers_to_sts
-              (fun sc_id off_id math_range hw_range ->
-                 Some(
-                     SCILinEq(SCILinTerm(1.0,sc_id), SCILinOffset(1.0))
-                   )
-                 
-              )
-          in
-          sts
-
-        | Z3MPNoOffset ->
-          let sts = covers_to_sts
-              (fun sc_id off_id math_range hw_range ->
-                 Some(
-                   SCILinEq(
-                     SCILinTerm(1.0,off_id), (SCILinOffset 0.0))
-                   )
-                 
-              )
-          in
-          sts
-
-        | Z3MPPositiveOffset ->
-          let sts = covers_to_sts
-              (fun sc_id off_id math_range hw_range ->
-                 Some(
-                     SCILinGTE(SCILinTerm(1.0,off_id), (SCILinOffset 0.0))
-                   )
-              )
-          in
-          sts
-
-        | Z3MPPositiveScale ->
-          let sts = covers_to_sts
-              (fun sc_id off_id math_range hw_range ->
-                 Some(
-                     SCILinGTE(SCILinTerm(1.0,sc_id), SCILinOffset( 0.0))
-                   )
-              )
-          in
-          sts
-
-      in
-      List.fold_right (fun cfg rest -> rest @ (partial_to_sts cfg)) partial_cfg base_prob 
-
-  let to_linear_scipy :mapslvr_ctx -> int -> sciopt_st list =
-    fun ctx nresults ->
-      let opt_use_cover = get_option "use-cover" in
-      let sts : sciopt_st queue = QUEUE.make () in
-      let q x = noop (QUEUE.enqueue sts x ) in
-      let qall x = noop (QUEUE.enqueue_all sts x ) in
-      let disjoint = GRAPH.disjoint ctx.bins in
-      let nvars = get_nvars ctx in
-      let reflow_xid = MAP.make () in
-      init_linear_scipy q (MAP.size ctx.xidmap) nresults;
-      MAP.iter ctx.xidmap (fun idx mapvars ->
-          let init_guess = compute_guess mapvars in
-          let label = compute_label mapvars in
-          let ref_idx = MAP.size reflow_xid in
-          q (SCIComment(label));
-          q (SCIInitGuess(ref_idx,init_guess));
-          q (SCIReflowVar(ref_idx,idx));
-          noop (MAP.put reflow_xid idx ref_idx);
-        );
-      List.iter (fun (bins:mapslvr_bin set) ->
-          let is_tc = REF.mk false in
-          let exported_expr =
-            SET.fold bins (fun bin exported ->
-                (*update tc variable*)
-                REF.upd is_tc (fun v -> v || slvr_bin_is_time_const bin);
-                (*determine if exportable*)
-                if SMapSlvrCtx.is_node_exported ctx bin then
-                  match slvr_bin_to_linear_sciopt_expr reflow_xid bin with
-                  | Some(expr) -> expr::exported
-                  | None -> exported
-                else
-                  exported
-              ) []
-          in
-          LIST.diag_iter (SET.to_list bins) (fun bin1 bin2 ->
-              if SMapSlvrCtx.is_edge_exported ctx bin1 bin2 &&
-                 SMapSlvrCtx.is_node_exported ctx bin1 &&
-                 SMapSlvrCtx.is_node_exported ctx bin2 &&
-                 bin1 <> bin2
-              then
-                let expr1_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin1 in
-                let expr2_maybe = slvr_bin_to_linear_sciopt_expr reflow_xid bin2 in
-                match expr1_maybe, expr2_maybe with
-                | Some(expr1),Some(expr2) ->
-                  noop (q (SCILinEq(expr1,expr2)))
-                | _ -> ()
-            );
-          SET.iter bins (fun (bin:mapslvr_bin) ->
-              match bin with
-              | SMVOp(op,_) ->
-                List.iter (fun expr ->
-                    match op with
-                    | SCNEQ(n) -> () 
-                    | SCGTE(n) -> q (SCILinGTE(expr,SCILinOffset (float_of_number n)))
-                    | SCGT(n) -> q (SCILinGT(expr,SCILinOffset (float_of_number n)))
-                    | SCLTE(n) -> q (SCILinLTE(expr,SCILinOffset (float_of_number n)))
-                    | SCLT(n) -> q (SCILinLT(expr,SCILinOffset (float_of_number n)))
-                    | SCOr(a,b) -> raise (ScioptSMapSolver_error "unsupported:or")
-                  ) exported_expr
-              | SMVCoverTime(min,max) ->
-                List.iter (fun expr ->
-                      qall (lin_time_cstr_to_sciopt expr min max)
-                  ) exported_expr
-              | _ -> ()
-                     
-            );
-          ()
-        ) disjoint;
-      SET.iter ctx.sts (fun st -> match st with
-              | SMVCover(sc,off,hwival,mival) ->
-                if opt_use_cover then
-                  qall (cover_cstr_to_sciopt reflow_xid sc off hwival mival)
-            );
-      QUEUE.to_list sts
-
-  let to_scipy : mapslvr_ctx ->  sciopt_st list =
-    fun ctx ->
+  let to_scipy : mapslvr_ctx -> mapslvr_opt -> sciopt_st list =
+    fun ctx objective ->
       let opt_use_cover = get_option "use-cover" in
       let sts : sciopt_st queue = QUEUE.make () in
       let q x = noop (QUEUE.enqueue sts x ) in
@@ -390,13 +228,31 @@ struct
       let reflow_xid = MAP.make () in
       init_scipy q (MAP.size ctx.xidmap);
       MAP.iter ctx.xidmap (fun idx mapvars ->
-          let init_guess = compute_guess mapvars in
           let label = compute_label mapvars in
           let ref_idx = MAP.size reflow_xid in
           q (SCIComment(label));
-          q (SCIInitGuess(ref_idx,init_guess));
           q (SCIReflowVar(ref_idx,idx));
           noop (MAP.put reflow_xid idx ref_idx);
+          let is_tc = List.length (List.filter 
+                                     (fun q -> q.mapvar = SMTimeConstant)
+                                  mapvars) > 0
+          in
+          if is_tc then
+              begin
+                match objective with
+                | SMOMaxTC ->
+                  let expr = (SEDiv(SENumber(Integer 1), SEVar(SMFreeVar idx))) in
+                  q (SCIObjective(xid_expr_to_sciopt_expr reflow_xid expr))
+
+                | SMOMinTC ->
+                  let expr = SEVar(SMFreeVar idx) in
+                  q (SCIObjective(xid_expr_to_sciopt_expr reflow_xid expr))
+
+                | SMONone ->
+                  ()
+              end
+
+
         );
       List.iter (fun (bins:mapslvr_bin set) ->
           let is_tc = REF.mk false in
@@ -483,31 +339,27 @@ struct
               | SMVCoverTime(min,max) ->
                 begin
                   if REF.dr is_tc then
-                      if opt_use_cover then
-                        begin
-                          if List.length exported_lin_expr > 0 then
-                            qall (lin_time_cstr_to_sciopt (List.nth exported_lin_expr 0) min max)
-                          else if List.length exported_expr > 0 then
-                            qall (time_cstr_to_sciopt (List.nth exported_expr 0) min max)
-                          else
-                            ()
-                        end
-
+                    if opt_use_cover then
+                      begin
+                        if List.length exported_lin_expr > 0 then
+                          qall (lin_time_cstr_to_sciopt (List.nth exported_lin_expr 0) min max)
+                        else if List.length exported_expr > 0 then
+                          qall (time_cstr_to_sciopt (List.nth exported_expr 0) min max)
+                        else
+                          ()
+                      end
                 end
-
               | _ -> ()
-              
             ) exported_bins; 
           (*maximize speed*)
           ()
         ) disjoint;
-
       SET.iter ctx.sts (fun st -> match st with
           | SMVCover(sc,off,hwival,mival) ->
             if opt_use_cover then
             qall (cover_cstr_to_sciopt reflow_xid sc off hwival mival)
         );
-      QUEUE.to_list sts 
+      QUEUE.to_list sts
 
 
 

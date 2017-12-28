@@ -6,6 +6,7 @@ open SolverData;;
 
 open SMapData;;
 open SMapHwSpecGen;;
+open SMapSolverData;;
 open SMapHwConfigGen;;
 open SMapSolver;;
 
@@ -45,12 +46,12 @@ module SMapMain = struct
       | None -> _mkctx hwenv tbl
 
   (*build a macro-component from building blocks.*)
-  let infer : (gltbl) -> (wireid,linear_transform) map option=
-    fun tbl ->
+  let infer : (gltbl) -> mapslvr_opt -> (wireid,linear_transform) map option=
+    fun tbl optimize ->
       let problem_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl in
       match problem_opt with
       | Some(problem) ->
-        let mappings : 'a option = SMapSolver.compute_transform tbl problem 60 in
+        let mappings : 'a option = SMapSolver.compute_transform tbl problem 60 optimize in
         mappings
       | None -> None
 
@@ -79,17 +80,6 @@ module SMapMain = struct
         end
 
       | None -> false
-
-
-  let infer_best : (gltbl) -> (wireid,linear_transform) map option =
-    fun tbl ->
-      let prob_opt = SMapHwConfigGen.build_config tbl.map_ctx tbl in
-      match prob_opt with
-      | Some(prob) ->
-        let mappings = SMapSolver.compute_transform tbl prob 120 in
-        mappings
-      | None -> None
-
 
 
 end
