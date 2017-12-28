@@ -983,7 +983,7 @@ struct
         if model_op_ranges () then
           let smin_exact,smax_exact = IntervalLib.interval2numbounds ival in
           let smin = smin_exact -. 1e-6 in
-          let smax = smax_exact +. 1e06 in
+          let smax = smax_exact +. 1e-6 in
           let clamp,clamp_in,clamp_out= create_force_range q cmpns smin smax in
           if model_mapper () then
             begin
