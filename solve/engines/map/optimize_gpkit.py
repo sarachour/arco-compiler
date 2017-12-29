@@ -275,14 +275,14 @@ class OptimizeProblem:
         flip_sign = False
         if value == 0.0:
             if not (minimum <= 0.0):
-                self.fail("%s <= scf*%s => False" % (minimum,value))
+                self.fail("llb: %s <= scf*%s => False" % (minimum,value))
             return
 
         elif minimum == 0.0 and value > 0.0:
             return
 
         elif minimum == 0.0 and value < 0.0:
-            self.fail("%s <= scf*%s => False" % (minimum,value))
+            self.fail("llb: %s <= scf*%s => False" % (minimum,value))
             return
 
         elif minimum < 0.0 and value > 0.0:

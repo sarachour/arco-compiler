@@ -23,8 +23,10 @@
 %param r16_beta : unit = 5.0
 
 param r1_gamma : unit = 0.50
-param r4_delta : unit = 0.002
-param r5_gamma : unit = 0.010
+%param r4_delta : unit = 0.002
+param r4_delta : unit = 0.2
+%param r5_gamma : unit = 0.010
+param r5_gamma : unit = 0.10
 param r6_theta:unit = 0.500
 param r7_alpha:unit = 0.50
 param r8_alpha:unit = 5.00
@@ -32,7 +34,8 @@ param r9_delta : unit = 0.100
 param r10_beta : unit= 0.500
 param r11_gamma : unit = 1.0
 param r12_theta : unit = 1.000
-param r13_alpha : unit = 0.0001
+%param r13_alpha : unit = 0.0001
+param r13_alpha : unit = 0.1
 param r14_alpha : unit = 0.50
 param r15_delta : unit = 0.05
 param r16_beta : unit = 0.50

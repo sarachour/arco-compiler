@@ -3,9 +3,10 @@
 import sys
 import hdf5storage
 import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
 import seaborn as sns
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 
 def read_series(name):
     types = {}
@@ -239,6 +240,13 @@ def read_meta(graphspec):
 
     return gs
 
-graphspec = sys.argv[1]
-gs = read_meta(graphspec)
-gs.generate()
+def generate(graphspec):
+    gs = read_meta(graphspec)
+    gs.generate()
+
+
+def main():
+    generate(sys.argv[1])
+
+if __name__ == '__main__':
+    main()

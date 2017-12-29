@@ -1,9 +1,9 @@
 base,mmrxn
 series,4,mmrxn.ideal.mat,ideal,1
-series,1,mmrxn.map.slow.mat,min tc,1
-series,2,mmrxn.map.fast.mat,max tc,10
+series,1,mmrxn.slow.map.mat,min tc,1
+series,2,mmrxn.fast.map.mat,max tc,10
 series,3,mmrxn.hw.mat,no jaunt,1
-series,5,mmrxn.map.fast.mat,jaunt,1
+series,5,mmrxn.fast.map.mat,jaunt,1
 output,circuit:1,E
 output,circuit:2,S
 output,circuit:3,ES
