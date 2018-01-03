@@ -20,53 +20,52 @@ output TetRm : M
 output clm : M
 
 
-param k_tl : 1/s = 3.01029995664
 param n : unit = 2
+param k_tl : 1/s = 3.01029995664
 param kd_prot : 1/s = 0.03010299956
 param kd_mrna : 1/s = 0.15051499783
-%param KMp : 1/s = 40
-param a0_tr : 1/s = 0.0005
 param a_tr : 1/s = 0.4995
 
+%input a0_tr : 1/s
+param a0_tr : 1/s = 0.0005
+%def a0_tr mag = [0.0005,0.0005] unit
 
 time t : s
 
-%s
-input KMp : M
+%input KMp : M
+%def KMp mag = [20,20] M
+param KMp : 1/s = 20
 %Set KMp to 20
-def KMp mag = [20,20] M
+%param KMp : 1/s = 40
 
+
+
+rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm)  init 0.5
+def LacLm mag = [0,3] M
+
+rel ddt clm = (a0_tr +(TRclp)) - (kd_mrna*clm)  init 0.25
+def clm mag = [0,3] M
+
+rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm)  init 0.12
+def TetRm mag = [0,3] M
+
+rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 60
+def LacLp mag = [0,140] M
+
+rel ddt clp = (k_tl*clm)-(kd_prot*clp) init 20
+def clp mag = [0,140] M
+
+rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 40
+def TetRp mag = [0,140] M
 
 rel TRTetR =(a_tr)*((KMp^n)/( (KMp^n) + (LacLp^n)))
 rel TRLacL =(a_tr)*((KMp^n)/( (KMp^n) + (clp^n)))
 rel TRclp =(a_tr)*((KMp^n)/( (KMp^n) + (TetRp^n)))
 
-rel ddt LacLm = (a0_tr + (TRLacL)) - (kd_mrna*LacLm)  init 0.5
-def LacLm mag = [0,30] M
-def ddt LacLm sample 5 s
-def ddt LacLm speed 5 ms 
+def ddt TetRm speed 1 ms
+def ddt clm speed 1 ms
+def ddt LacLm speed 1 ms
+def ddt LacLp speed 1 ms
+def ddt clp speed 1 ms
+def ddt TetRp speed 1 ms
 
-rel ddt clm = (a0_tr +(TRclp)) - (kd_mrna*clm)  init 0.25
-def clm mag = [0,30] M
-def ddt clm sample 5 s
-def ddt clm speed 5 ms 
-
-rel ddt TetRm = (a0_tr +(TRTetR)) - (kd_mrna*TetRm)  init 0.12
-def TetRm mag = [0,30] M
-def ddt TetRm sample 5 s
-def ddt TetRm speed 5 ms 
-
-rel ddt LacLp = (k_tl*LacLm)-(kd_prot*LacLp) init 60
-def LacLp mag = [0,5] M
-def ddt LacLp sample 5 s
-def ddt LacLp speed 5 ms 
-
-rel ddt clp = (k_tl*clm)-(kd_prot*clp) init 20
-def clp mag = [0,5] M
-def ddt clp sample 5 s
-def ddt clp speed 5 ms 
-
-rel ddt TetRp = (k_tl*TetRm)-(kd_prot*TetRp) init 40
-def TetRp mag = [0,5] M
-def ddt TetRp sample 5 s
-def ddt TetRp speed 5 ms 

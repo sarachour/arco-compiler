@@ -112,4 +112,3 @@ rel ddt R = ((( C*r3_delta) + ( MR*r16_beta)))  - (r4_delta +  A*r1_gamma)*R ini
 def R mag = [0,1] A 
 
 
-def ddt R speed 1.5 s 

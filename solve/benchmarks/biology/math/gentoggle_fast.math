@@ -4,7 +4,6 @@ name "genetic toggle switch with E.coli"
 % 3 diffeqs
 
 
-
 type M
 type kmol
 type s
@@ -12,7 +11,8 @@ type s
 time t : s
 
 %param a2 : M/s = 15.6
-%param a1 : M/s = 113.32
+%param a1 : M/s = 156.25
+%param K : kmol = 0.000029618
 
 param a1 : M/s = 15.6
 param a2 : M/s = 13.32
@@ -33,9 +33,9 @@ param kdeg : (M/s) = 1
 %
 output U : unit 
 output V : unit 
-local umodif : unit 
 local UTF : unit
 local VTF : unit
+local umodif : unit 
 %
 
 input IPTG : kmol
@@ -47,21 +47,22 @@ input K2P : unit
 def K2P mag = [1,1] unit
 
 rel umodif = (U)*(1/((1+(IPTG/K) )^nu))
+def umodif mag = [0,15.6] unit
 
 rel UTF = (Cu*a1)*((K2P^beta)/((K2P^beta) +(V^beta)))
 rel VTF = (Cv*a2)*((K2^gamma)/((K2^gamma) + (umodif^gamma)))
+%def UTF mag = [0,15.6] unit
+%def VTF mag = [0,13.32] unit
+
 %
 rel ddt U =  (UTF)/Cu - (kdeg*U) init 0.0
 def U mag = [0,15.6] unit
+%def ddt U sample 1000 s
+%def ddt U speed 1000 ms 
 
 %
 rel ddt V = (VTF)/Cv - (kdeg*V) init 0.0
 def V mag = [0,13.32] unit 
 
-
-def ddt U sample 5 s
-def ddt U speed 5 s 
-
-%
-def ddt V sample 2 s
-def ddt V speed 100 s 
+def ddt V speed 1 ms 
+def ddt U speed 1 ms 

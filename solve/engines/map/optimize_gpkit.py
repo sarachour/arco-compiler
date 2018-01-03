@@ -3,6 +3,7 @@ from gpkit.nomials.math import MonomialEquality, PosynomialInequality
 from gpkit.constraints.bounded import Bounded
 import gpkit
 from math_expr_parser import Parser, Expression, Token, TNUMBER
+import time
 
 class OptimizeProblem:
     class ExpressionHandler:
@@ -137,6 +138,7 @@ class OptimizeProblem:
         self._n = n
         self._vars = VectorVariable(n,'x')
         self._cstrs = []
+        self._start_time = time.time()
         self._success = True
         terms = map(lambda v : v**(-1), self._vars)
         prod = reduce(lambda x,y : x*y, terms)
@@ -343,6 +345,9 @@ class OptimizeProblem:
         self.lin_upper_bound(scale,value,maximum)
 
 
+    def lin_lte(self,expr1,expr2):
+        self.lin_gte(expr2,expr1)
+
     def lin_gte(self,expr1,expr2):
         is_valid = lambda x : x is not None and x != 0.0
         e1 = OptimizeProblem.LinTermHandler.lin_expr_to_posy(self._vars,expr1)
@@ -490,14 +495,21 @@ class OptimizeProblem:
             self._sln = None
             return
 
+        debug = False
         model = Model(self._opt,Bounded(self._cstrs))
+
+        start = time.time()
         try:
             self._sln = model.solve()
             print(self._sln.table())
         except RuntimeWarning as w:
             print('[FAILED TO SOLVE] %s' % w)
             self._sln = None
-            model.debug()
+            if debug:
+                model.debug()
+        end = time.time()
+        print("SOLVE_TIME %s" % (end-start))
+        print("TOTAL_TIME %s" % (end-self._start_time))
 
     def write(self,filename):
         print("=== Writing Solution ===")
